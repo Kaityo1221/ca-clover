@@ -41,7 +41,7 @@ const sections: { title: string; subtitle: string; items: MenuItem[] }[] = [
     subtitle: "一般CAが普段使う場所",
     items: [
       { icon: "🍀", title: "My Community", description: "自分のCommunity活動を見る", href: "/my" },
-      { icon: "👤", title: "アカウント", description: "Googleログイン・Niantic ID", href: "/login" },
+      { icon: "👤", title: "アカウント", description: "Googleログイン・Niantic ID", href: "/account" },
     ],
   },
 ];
