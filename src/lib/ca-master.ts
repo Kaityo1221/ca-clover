@@ -98,8 +98,13 @@ function normalizeDate(value: string) {
 export function extractCommunityId(campfireUrl: string) {
   try {
     const url = new URL(campfireUrl);
+
+    const directId = url.searchParams.get("clubId");
+    if (directId && /^[0-9a-f-]{36}$/i.test(directId)) return directId;
+
     const encoded = url.searchParams.get("deep_link_sub1");
     if (!encoded) return null;
+
     const normalized = encoded.replace(/-/g, "+").replace(/_/g, "/");
     const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
     const decoded = Buffer.from(padded, "base64").toString("utf8");
@@ -145,7 +150,7 @@ export function parseCaMasterCsv(csv: string): CaMasterRecord[] {
     const second = index.second >= 0 ? (row[index.second] ?? "").trim() : "";
 
     return [{
-      sourceKey: `${trainerName.toLowerCase()}|${communityId ?? communityName.toLowerCase()}`,
+      sourceKey: trainerName.toLowerCase(),
       trainerName,
       caLevel: second ? "2nd" : "1st",
       communityName,
