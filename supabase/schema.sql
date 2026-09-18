@@ -38,6 +38,14 @@ create table public.ca_members(
   created_at timestamptz not null default now()
 );
 
+create table public.community_ca_members(
+  id uuid primary key default gen_random_uuid(),
+  community_id uuid not null references public.communities(id) on delete cascade,
+  ca_member_id uuid not null references public.ca_members(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique(community_id,ca_member_id)
+);
+
 create table public.community_memberships(
   id uuid primary key default gen_random_uuid(),
   user_id uuid references public.profiles(id) on delete cascade,
@@ -72,6 +80,7 @@ create table public.sync_runs(
 alter table public.profiles enable row level security;
 alter table public.communities enable row level security;
 alter table public.community_memberships enable row level security;
+alter table public.community_ca_members enable row level security;
 alter table public.meetups enable row level security;
 alter table public.ca_members enable row level security;
 alter table public.sync_runs enable row level security;
@@ -93,3 +102,5 @@ create policy "ca reads assigned meetups" on public.meetups for select to authen
 );
 create policy "admin reads ca master" on public.ca_members for select to authenticated using(public.is_admin());
 create policy "admin reads sync runs" on public.sync_runs for select to authenticated using(public.is_admin());
+
+create policy "admin reads community ca links" on public.community_ca_members for select to authenticated using(public.is_admin());
