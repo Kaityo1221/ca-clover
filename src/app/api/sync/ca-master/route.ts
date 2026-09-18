@@ -37,11 +37,15 @@ export async function POST(request: Request) {
   }
 
   const records = parseCaMasterCsv(await response.text());
-  const usable = records.filter((record) => record.communityId);
+  const resolved = records.filter(
+    (record): record is typeof record & { communityId: string } =>
+      Boolean(record.communityId),
+  );
+  const unresolved = records.filter((record) => !record.communityId);
 
   const communityRows = Array.from(
     new Map(
-      usable.map((record) => [
+      resolved.map((record) => [
         record.communityId,
         {
           campfire_community_id: record.communityId,
@@ -56,36 +60,30 @@ export async function POST(request: Request) {
     ).values(),
   );
 
-  const { error: communityError } = await supabase
-    .from("communities")
-    .upsert(communityRows, { onConflict: "campfire_community_id" });
-  if (communityError) throw communityError;
+  if (communityRows.length) {
+    const { error: communityError } = await supabase
+      .from("communities")
+      .upsert(communityRows, { onConflict: "campfire_community_id" });
+    if (communityError) throw communityError;
+  }
 
-  const communityIds = communityRows
-    .map((row) => row.campfire_community_id)
-    .filter((value): value is string => Boolean(value));
-
-  const { data: communities, error: communitySelectError } = await supabase
-    .from("communities")
-    .select("id,campfire_community_id")
-    .in("campfire_community_id", communityIds);
-  if (communitySelectError) throw communitySelectError;
-
-  const caRows = usable.map((record) => ({
+  const caRows = records.map((record) => ({
     source_key: record.sourceKey,
     trainer_name: record.trainerName,
     ca_level: record.caLevel,
     prefecture: record.prefecture,
     join_date: record.joinDate,
-    status: record.status || null,
+    status: record.status || "active",
     latitude: record.latitude,
     longitude: record.longitude,
   }));
 
-  const { error: caError } = await supabase
-    .from("ca_members")
-    .upsert(caRows, { onConflict: "source_key" });
-  if (caError) throw caError;
+  if (caRows.length) {
+    const { error: caError } = await supabase
+      .from("ca_members")
+      .upsert(caRows, { onConflict: "source_key" });
+    if (caError) throw caError;
+  }
 
   const sourceKeys = caRows.map((row) => row.source_key);
   const { data: caMembers, error: caSelectError } = await supabase
@@ -94,13 +92,31 @@ export async function POST(request: Request) {
     .in("source_key", sourceKeys);
   if (caSelectError) throw caSelectError;
 
+  const communityIds = communityRows.map((row) => row.campfire_community_id);
+  const communities = communityIds.length
+    ? await supabase
+        .from("communities")
+        .select("id,campfire_community_id")
+        .in("campfire_community_id", communityIds)
+    : { data: [], error: null };
+
+  if (communities.error) throw communities.error;
+
   const communityMap = new Map(
-    (communities ?? []).map((row) => [row.campfire_community_id, row.id]),
+    (communities.data ?? []).map((row) => [row.campfire_community_id, row.id]),
   );
   const caMap = new Map((caMembers ?? []).map((row) => [row.source_key, row.id]));
 
-  const links = usable.flatMap((record) => {
-    if (!record.communityId) return [];
+  const importedCaIds = (caMembers ?? []).map((row) => row.id);
+  if (importedCaIds.length) {
+    const { error: deleteLinkError } = await supabase
+      .from("community_ca_members")
+      .delete()
+      .in("ca_member_id", importedCaIds);
+    if (deleteLinkError) throw deleteLinkError;
+  }
+
+  const links = resolved.flatMap((record) => {
     const communityId = communityMap.get(record.communityId);
     const caMemberId = caMap.get(record.sourceKey);
     if (!communityId || !caMemberId) return [];
@@ -116,12 +132,14 @@ export async function POST(request: Request) {
 
   await supabase.from("sync_runs").insert({
     source: "ca_members_map",
-    status: "success",
+    status: unresolved.length ? "partial" : "success",
     finished_at: new Date().toISOString(),
     details: {
       source_rows: records.length,
-      usable_rows: usable.length,
+      resolved_rows: resolved.length,
+      unresolved_rows: unresolved.length,
       communities: communityRows.length,
+      ca_members: caRows.length,
       links: links.length,
     },
   });
@@ -129,7 +147,8 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     sourceRows: records.length,
-    usableRows: usable.length,
+    resolvedRows: resolved.length,
+    unresolvedRows: unresolved.length,
     communities: communityRows.length,
     caMembers: caRows.length,
     links: links.length,
