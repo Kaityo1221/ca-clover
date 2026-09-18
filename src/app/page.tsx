@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useAuthProfile } from "@/lib/use-auth-profile";
 
 type MenuItem = {
   icon: string;
@@ -8,7 +11,7 @@ type MenuItem = {
   badge?: string;
 };
 
-const sections: { title: string; subtitle: string; items: MenuItem[] }[] = [
+const adminSections = [
   {
     title: "全国を見る",
     subtitle: "日本のCAとCommunityを探す",
@@ -38,88 +41,84 @@ const sections: { title: string; subtitle: string; items: MenuItem[] }[] = [
   },
   {
     title: "自分のCommunity",
-    subtitle: "一般CAが普段使う場所",
+    subtitle: "普段使う場所",
     items: [
       { icon: "🍀", title: "My Community", description: "自分のCommunity活動を見る", href: "/my" },
-      { icon: "👤", title: "アカウント", description: "Googleログイン・Niantic ID", href: "/account" },
+      { icon: "👤", title: "アカウント", description: "Niantic IDとログイン設定", href: "/account" },
     ],
   },
-];
+] satisfies { title: string; subtitle: string; items: MenuItem[] }[];
 
-function Header() {
-  return (
-    <header className="sticky top-0 z-20 border-b border-lime-100 bg-white/90 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 md:px-8">
-        <span className="grid size-11 place-items-center rounded-2xl bg-lime-300 text-2xl">🍀</span>
-        <div>
-          <div className="font-black text-lime-950">CA Clover</div>
-          <div className="text-[11px] font-bold text-lime-700">Japan Community Activity Dashboard</div>
-        </div>
-        <div className="ml-auto rounded-full bg-lime-50 px-3 py-2 text-xs font-black text-lime-800">ADMIN</div>
-      </div>
-    </header>
-  );
-}
+const caSections = [
+  {
+    title: "自分のCommunity",
+    subtitle: "普段使う場所",
+    items: [
+      { icon: "🍀", title: "My Community", description: "自分のCommunity活動を見る", href: "/my" },
+      { icon: "🌱", title: "Community", description: "割り当てられたCommunityを確認", href: "/communities" },
+      { icon: "🔥", title: "Meetup活動", description: "Meetup履歴と集計を見る", href: "/activity" },
+      { icon: "👤", title: "アカウント", description: "Niantic IDとログイン設定", href: "/account" },
+    ],
+  },
+] satisfies { title: string; subtitle: string; items: MenuItem[] }[];
 
 function MenuButton({ item }: { item: MenuItem }) {
-  return (
-    <Link
-      href={item.href}
-      className="group relative min-h-36 rounded-[26px] border border-lime-100 bg-white p-5 shadow-[0_14px_40px_rgba(77,124,15,.08)] transition hover:-translate-y-1 hover:border-lime-300 hover:shadow-[0_20px_45px_rgba(77,124,15,.14)]"
-    >
-      {item.badge ? (
-        <span className="absolute right-4 top-4 rounded-full bg-lime-100 px-2.5 py-1 text-xs font-black text-lime-800">
-          {item.badge}
-        </span>
-      ) : null}
-      <div className="grid size-12 place-items-center rounded-2xl bg-lime-100 text-2xl transition group-hover:bg-lime-200">
-        {item.icon}
-      </div>
-      <div className="mt-4 text-base font-black text-lime-950">{item.title}</div>
-      <div className="mt-1 text-xs font-semibold leading-5 text-slate-500">{item.description}</div>
-      <div className="mt-3 text-xs font-black text-lime-700">開く →</div>
-    </Link>
-  );
+  return <Link href={item.href} className="group relative min-h-36 rounded-[26px] border border-lime-100 bg-white p-5 shadow-[0_14px_40px_rgba(77,124,15,.08)] transition hover:-translate-y-1 hover:border-lime-300 hover:shadow-[0_20px_45px_rgba(77,124,15,.14)]">
+    {item.badge ? <span className="absolute right-4 top-4 rounded-full bg-lime-100 px-2.5 py-1 text-xs font-black text-lime-800">{item.badge}</span> : null}
+    <div className="grid size-12 place-items-center rounded-2xl bg-lime-100 text-2xl transition group-hover:bg-lime-200">{item.icon}</div>
+    <div className="mt-4 text-base font-black text-lime-950">{item.title}</div>
+    <div className="mt-1 text-xs font-semibold leading-5 text-slate-500">{item.description}</div>
+    <div className="mt-3 text-xs font-black text-lime-700">開く →</div>
+  </Link>;
 }
 
 export default function Page() {
-  return (
-    <>
-      <Header />
-      <main className="mx-auto max-w-6xl px-4 py-7 md:px-8">
-        <section className="rounded-[30px] border border-lime-100 bg-gradient-to-br from-lime-100 via-white to-emerald-50 p-6 md:p-8">
-          <span className="rounded-full bg-lime-300 px-3 py-1 text-xs font-black text-lime-950">CA CLOVER HOME</span>
-          <h1 className="mt-4 text-3xl font-black tracking-tight text-lime-950 md:text-4xl">
-            今日は何を見る？ 🍀
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
-            数字を縦に追うのではなく、目的から機能を選ぶホーム画面にしました。
-          </p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-lime-800">🌱 141 Community</span>
-            <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-lime-800">🏕️ 177 CA</span>
-            <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-amber-700">◐ 未解決 1</span>
-          </div>
-        </section>
+  const { user, profile, loading } = useAuthProfile();
+  const roleLabel = loading ? "..." : !user ? "GUEST" : profile?.role === "admin" ? "ADMIN" : profile?.role === "ca" ? "CA" : "確認中";
+  const sections = profile?.role === "admin" ? adminSections : profile?.role === "ca" ? caSections : [];
 
-        <div className="mt-7 space-y-7">
-          {sections.map((section) => (
-            <section key={section.title}>
-              <div className="mb-3 flex items-end justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-black text-lime-950">{section.title}</h2>
-                  <p className="mt-0.5 text-xs font-semibold text-slate-500">{section.subtitle}</p>
-                </div>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {section.items.map((item) => (
-                  <MenuButton key={item.title} item={item} />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      </main>
-    </>
-  );
+  return <>
+    <header className="sticky top-0 z-20 border-b border-lime-100 bg-white/90 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 md:px-8">
+        <span className="grid size-11 place-items-center rounded-2xl bg-lime-300 text-2xl">🍀</span>
+        <div><div className="font-black text-lime-950">CA Clover</div><div className="text-[11px] font-bold text-lime-700">Japan Community Activity Dashboard</div></div>
+        <div className="ml-auto rounded-full bg-lime-50 px-3 py-2 text-xs font-black text-lime-800">{roleLabel}</div>
+      </div>
+    </header>
+
+    <main className="mx-auto max-w-6xl px-4 py-7 md:px-8">
+      <section className="rounded-[30px] border border-lime-100 bg-gradient-to-br from-lime-100 via-white to-emerald-50 p-6 md:p-8">
+        <span className="rounded-full bg-lime-300 px-3 py-1 text-xs font-black text-lime-950">CA CLOVER HOME</span>
+        <h1 className="mt-4 text-3xl font-black tracking-tight text-lime-950 md:text-4xl">今日は何を見る？ 🍀</h1>
+        <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-600">目的から機能を選ぶ、カテゴリ型のホーム画面です。</p>
+
+        {profile?.role === "admin" ? <div className="mt-5 flex flex-wrap gap-2">
+          <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-lime-800">🌱 141 Community</span>
+          <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-lime-800">🏕️ 177 CA</span>
+          <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-amber-700">◐ 未解決 1</span>
+        </div> : null}
+      </section>
+
+      {!loading && !user ? <section className="clover-card mt-7 p-8 text-center">
+        <div className="text-5xl">🍀</div>
+        <h2 className="mt-3 text-xl font-black text-lime-950">CA Cloverへようこそ</h2>
+        <p className="mt-2 text-sm font-semibold text-slate-500">利用するにはGoogleログインが必要です。</p>
+        <Link href="/login" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black text-lime-950">Googleでログイン</Link>
+      </section> : null}
+
+      {!loading && user && profile?.role === "pending" ? <section className="clover-card mt-7 p-8 text-center">
+        <div className="text-5xl">🌱</div>
+        <h2 className="mt-3 text-xl font-black text-lime-950">アカウント確認中</h2>
+        <p className="mt-2 text-sm font-semibold text-slate-500">Niantic IDを登録して、Community割当を待ってください。</p>
+        <Link href="/account" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black text-lime-950">アカウント設定へ</Link>
+      </section> : null}
+
+      {sections.length ? <div className="mt-7 space-y-7">
+        {sections.map(section => <section key={section.title}>
+          <div className="mb-3"><h2 className="text-lg font-black text-lime-950">{section.title}</h2><p className="mt-0.5 text-xs font-semibold text-slate-500">{section.subtitle}</p></div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{section.items.map(item => <MenuButton key={item.title} item={item} />)}</div>
+        </section>)}
+      </div> : null}
+    </main>
+  </>;
 }
