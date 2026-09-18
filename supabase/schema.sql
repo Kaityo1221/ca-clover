@@ -118,9 +118,37 @@ $$;
 
 grant execute on function private.is_admin() to authenticated;
 
+create or replace function private.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  insert into public.profiles(id, role)
+  values(new.id, 'pending')
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute procedure private.handle_new_user();
+
 create policy "profiles self or admin read"
 on public.profiles for select to authenticated
 using(id = (select auth.uid()) or private.is_admin());
+
+create policy "profiles self update"
+on public.profiles
+for update
+to authenticated
+using(id = (select auth.uid()))
+with check(id = (select auth.uid()));
+
+revoke update on public.profiles from authenticated;
+grant update (niantic_id) on public.profiles to authenticated;
 
 create policy "read allowed communities"
 on public.communities for select to authenticated
@@ -148,14 +176,36 @@ using(
   )
 );
 
-create policy "admin reads ca master"
-on public.ca_members for select to authenticated
-using(private.is_admin());
+create policy "read allowed community ca links"
+on public.community_ca_members
+for select
+to authenticated
+using(
+  private.is_admin()
+  or exists(
+    select 1
+    from public.community_memberships m
+    where m.community_id = community_ca_members.community_id
+      and m.user_id = (select auth.uid())
+  )
+);
+
+create policy "read allowed ca master"
+on public.ca_members
+for select
+to authenticated
+using(
+  private.is_admin()
+  or exists(
+    select 1
+    from public.community_ca_members l
+    join public.community_memberships m
+      on m.community_id = l.community_id
+    where l.ca_member_id = ca_members.id
+      and m.user_id = (select auth.uid())
+  )
+);
 
 create policy "admin reads sync runs"
 on public.sync_runs for select to authenticated
-using(private.is_admin());
-
-create policy "admin reads community ca links"
-on public.community_ca_members for select to authenticated
 using(private.is_admin());
