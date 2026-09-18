@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+:root {
+  --clover-50:#f7fee7;
+  --clover-100:#ecfccb;
+  --clover-200:#d9f99d;
+  --clover-300:#bef264;
+  --clover-400:#a3e635;
+  --clover-700:#4d7c0f;
+  --ink:#213018;
+  --line:#e5eed7;
+  --bg:#f8fce9;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  color:var(--ink);
+  background:
+    radial-gradient(circle at 0 0, rgba(190,242,100,.30), transparent 30rem),
+    linear-gradient(180deg,#fbfff4 0%,var(--bg) 100%);
+  font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+}
+a{color:inherit;text-decoration:none}
+.clover-card{
+  background:rgba(255,255,255,.94);
+  border:1px solid var(--line);
+  border-radius:24px;
+  box-shadow:0 14px 40px rgba(77,124,15,.08);
+}
+.clover-pill{
+  border-radius:999px;
+  border:1px solid #dce9c7;
+  background:white;
+  padding:.5rem .85rem;
+  font-size:.78rem;
+  font-weight:800;
+  color:#58713b;
+}
+.clover-pill.active{
+  background:var(--clover-300);
+  border-color:var(--clover-400);
+  color:#29430a;
+}
