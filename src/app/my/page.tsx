@@ -29,13 +29,15 @@ export default function Page() {
     if (loading || !user || !profile || profile.role === "pending") return;
     let alive = true;
 
+    const userId = user.id;
+
     async function load() {
       setDataLoading(true);
 
       const { data: memberships } = await supabase
         .from("community_memberships")
         .select("community_id")
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
 
       const ids = ((memberships as MembershipRow[] | null) ?? []).map(x => x.community_id);
 
