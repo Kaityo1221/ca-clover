@@ -21,7 +21,7 @@ export default function Page(){
     const value = nianticId.trim();
     const { error } = await supabase
       .from("profiles")
-      .update({ niantic_id: value || null })
+      .update({ niantic_id: value || null } as never)
       .eq("id", user.id);
 
     setSaving(false);
