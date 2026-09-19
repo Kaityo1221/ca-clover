@@ -15,3 +15,15 @@ jobs:
           node-version: 22
       - run: npm install --no-audit --no-fund
       - run: npm run build
+      - name: Diagnostic pYqMTy anonymous Meetup lookup
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHORT='https://cmpf.re/pYqMTy'
+          FINAL="$(curl -Ls -o /dev/null -w '%{url_effective}' "$SHORT")"
+          echo "FINAL_URL=$FINAL"
+          ID="$(printf '%s' "$FINAL" | grep -oE '[0-9a-fA-F-]{36}' | tail -1)"
+          echo "MEETUP_ID=$ID"
+          BODY="$(jq -nc --arg id "$ID" '{query:"query Probe($id: ID!) { event(id: $id) { id name clubId eventTime eventEndTime createdByCommunityAmbassador checkedInMembersCount members(first: 1) { totalCount } campfireLiveEvent { eventName } } }",variables:{id:$id}}')"
+          RESP="$(curl -sS -X POST 'https://niantic-social-api.nianticlabs.com/graphql' -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$BODY")"
+          echo "$RESP" | jq '{errors, event: .data.event}'
