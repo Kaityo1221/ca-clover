@@ -1,6 +1,7 @@
 const EVENT_FIELDS=`
   id
   name
+  clubId
   address
   location
   eventTime
