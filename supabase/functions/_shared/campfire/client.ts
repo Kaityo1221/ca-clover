@@ -97,6 +97,10 @@ export class CampfireClient{
     return this.requestEndpoint<T>(this.endpoint,query,variables,true);
   }
 
+  async anonymousRequest<T>(query:string,variables:Record<string,unknown>={}):Promise<T>{
+    return this.requestEndpoint<T>(this.endpoint,query,variables,false);
+  }
+
   async publicRequest<T>(query:string,variables:Record<string,unknown>={}):Promise<T>{
     return this.requestEndpoint<T>(this.publicEndpoint,query,variables,false);
   }
@@ -118,6 +122,12 @@ export class CampfireClient{
   async getEvent(eventId:string):Promise<CampfireEvent>{
     const data=await this.request<{event?:CampfireEvent|null}>(EVENT_QUERY,{id:eventId});
     if(!data.event) throw new CampfireApiError("Meetupを取得できません","EVENT_NOT_FOUND");
+    return data.event;
+  }
+
+  async getAnonymousEvent(eventId:string):Promise<CampfireEvent>{
+    const data=await this.anonymousRequest<{event?:CampfireEvent|null}>(EVENT_QUERY,{id:eventId});
+    if(!data.event) throw new CampfireApiError("公開Meetupを取得できません","EVENT_NOT_FOUND");
     return data.event;
   }
 
