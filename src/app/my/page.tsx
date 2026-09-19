@@ -52,7 +52,7 @@ export default function Page() {
   }
 
   useEffect(() => {
-    if (loading || !user || !profile || profile.role === "pending") return;
+    if (loading || !user || !profile) return;
     let alive = true;
     const userId = user.id;
 
@@ -132,21 +132,26 @@ export default function Page() {
 
   if (loading) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 読み込み中...</main>;
   if (!user) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><div className="text-5xl">🍀</div><h1 className="mt-3 text-2xl font-black text-lime-950">ログインが必要です</h1><Link href="/login" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black">Googleでログイン</Link></div></main>;
-  if (profile?.role === "pending") return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><div className="text-5xl">🌱</div><h1 className="mt-3 text-2xl font-black text-lime-950">アカウント確認中</h1><p className="mt-2 text-sm font-semibold text-slate-500">CAアカウントとして承認されるとCommunity申請ができます。</p></div></main>;
-
   return <main className="mx-auto max-w-5xl px-4 py-8 md:px-8">
     <Link href="/" className="text-sm font-black text-lime-700">← CA Clover Home</Link>
     <span className="mt-4 block w-fit rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900">MY COMMUNITY</span>
     <h1 className="mt-3 text-3xl font-black text-lime-950">🍀 自分のCommunity</h1>
     <p className="mt-2 text-sm font-semibold text-slate-500">{dataLoading ? "読み込み中..." : communities.length + " Community"}</p>
 
-    {profile?.role==="ca" ? <section className="clover-card mt-6 p-6">
+    {profile?.role==="pending" ? <section className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5">
+      <div className="text-xs font-black text-amber-700">初回CA登録</div>
+      <h2 className="mt-1 text-lg font-black text-amber-950">自分主催のMeetupでCA確認をします</h2>
+      <p className="mt-2 text-xs font-semibold leading-5 text-amber-800">Niantic IDを登録してから、自分が主催したMeetupを1件提出してください。会長が承認するとCAアカウント化とCommunity割当が同時に完了します。</p>
+      {!profile.niantic_id?<Link href="/account" className="mt-3 inline-flex rounded-full bg-amber-200 px-4 py-2 text-xs font-black text-amber-950">先にNiantic IDを登録 →</Link>:<div className="mt-3 text-xs font-black text-amber-900">Niantic ID: {profile.niantic_id} ✓</div>}
+    </section> : null}
+
+    {profile?.role==="ca" || profile?.role==="pending" ? <section className="clover-card mt-6 p-6">
       <div className="flex items-start gap-3">
         <div className="text-3xl">🔥</div>
         <div><h2 className="font-black text-lime-950">MeetupからCommunityを申請</h2><p className="mt-1 text-xs font-semibold text-slate-500">必ず自分が主催したMeetupのCampfire共有URL（cmpf.re）・Meetup URL・Meetup IDを入力してください。主催者の紫色Community AmbassadorバッジとCommunityを自動確認します。</p></div>
       </div>
       <input value={claimInput} onChange={e=>setClaimInput(e.target.value)} placeholder="Campfire共有URL / Meetup URL / Meetup ID" className="mt-5 w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-lime-400"/>
-      <button onClick={submitClaim} disabled={claimBusy||!claimInput.trim()} className="mt-3 w-full rounded-2xl bg-lime-400 px-5 py-3 text-sm font-black text-lime-950 disabled:opacity-50">{claimBusy?"Communityを確認中...":"Communityを確認して申請"}</button>
+      <button onClick={submitClaim} disabled={claimBusy||!claimInput.trim()||(profile?.role==="pending"&&!profile?.niantic_id)} className="mt-3 w-full rounded-2xl bg-lime-400 px-5 py-3 text-sm font-black text-lime-950 disabled:opacity-50">{claimBusy?"Communityを確認中...":"Communityを確認して申請"}</button>
       {claimMessage ? <p className="mt-3 text-center text-xs font-bold text-lime-700">{claimMessage}</p> : null}
     </section> : null}
 
@@ -171,7 +176,7 @@ export default function Page() {
       <section className="clover-card mt-6 p-8 text-center">
         <div className="text-5xl">🌱</div>
         <h2 className="mt-3 text-xl font-black text-lime-950">Community未割当です</h2>
-        <p className="mt-2 text-sm font-semibold text-slate-500">上のフォームから自分のMeetupを登録すると、Communityを自動判定して承認申請できます。</p>
+        <p className="mt-2 text-sm font-semibold text-slate-500">{profile?.role==="pending"?"自分が主催したMeetupを提出し、承認されるとCAアカウントとCommunity割当が同時に有効になります。":"上のフォームから自分のMeetupを登録すると、Communityを自動判定して承認申請できます。"}</p>
       </section>
     ) : null}
 
