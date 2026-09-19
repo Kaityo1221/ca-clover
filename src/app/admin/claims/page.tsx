@@ -14,7 +14,11 @@ type ClaimRow={
   is_ca_meetup:boolean|null;
   master_match:boolean|null;
   creator_display_name:string|null;
+  creator_username:string|null;
+  creator_username_matches_profile:boolean|null;
   creator_ca_badge_verified:boolean|null;
+  ca_level_snapshot:string|null;
+  ca_role_verified:boolean|null;
   ca_map_status:"matched"|"not_listed"|"community_mismatch"|"identity_missing"|null;
   status:"pending"|"approved"|"rejected";
   requested_at:string;
@@ -30,7 +34,7 @@ export default function Page(){
 
   async function load(){
     const {data:requests}=await supabase.from("community_access_requests")
-      .select("id,user_id,meetup_title,meetup_url,community_name_snapshot,community_prefecture_snapshot,is_ca_meetup,master_match,creator_display_name,creator_ca_badge_verified,ca_map_status,status,requested_at,reviewed_at")
+      .select("id,user_id,meetup_title,meetup_url,community_name_snapshot,community_prefecture_snapshot,is_ca_meetup,master_match,creator_display_name,creator_username,creator_username_matches_profile,creator_ca_badge_verified,ca_level_snapshot,ca_role_verified,ca_map_status,status,requested_at,reviewed_at")
       .order("requested_at",{ascending:false});
     const claimRows=(requests as ClaimRow[]|null)??[];
     setRows(claimRows);
@@ -65,11 +69,13 @@ export default function Page(){
             <span className="rounded-full bg-lime-100 px-3 py-1 text-[11px] font-black text-lime-800">{row.community_prefecture_snapshot??"—"}</span>
             <span className={row.creator_ca_badge_verified===true?"rounded-full bg-violet-100 px-3 py-1 text-[11px] font-black text-violet-700":"rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black text-slate-500"}>{row.creator_ca_badge_verified===true?"🟣 紫CAバッジ確認済み":"CAバッジ未確認"}</span>
             <span className={row.ca_map_status==="matched"?"rounded-full bg-lime-200 px-3 py-1 text-[11px] font-black text-lime-900":row.ca_map_status==="not_listed"?"rounded-full bg-amber-100 px-3 py-1 text-[11px] font-black text-amber-800":row.ca_map_status==="community_mismatch"?"rounded-full bg-rose-100 px-3 py-1 text-[11px] font-black text-rose-700":"rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black text-slate-600"}>日本CA地図: {row.ca_map_status==="matched"?"掲載済み":row.ca_map_status==="not_listed"?"未掲載":row.ca_map_status==="community_mismatch"?"Community不一致":row.ca_map_status==="identity_missing"?"Niantic ID未登録":row.master_match===true?"掲載済み":"要確認"}</span>
+            <span className={row.creator_username_matches_profile===true?"rounded-full bg-sky-100 px-3 py-1 text-[11px] font-black text-sky-800":"rounded-full bg-rose-100 px-3 py-1 text-[11px] font-black text-rose-700"}>{row.creator_username_matches_profile===true?"Niantic ID一致":"Niantic ID不一致"}</span>
+            <span className={row.ca_role_verified===true?"rounded-full bg-lime-100 px-3 py-1 text-[11px] font-black text-lime-800":"rounded-full bg-rose-100 px-3 py-1 text-[11px] font-black text-rose-700"}>{row.ca_role_verified===true?"日本CA地図 "+(row.ca_level_snapshot??"")+"確認済み":"1st/2nd未確認"}</span>
             <span className={row.is_ca_meetup===true?"rounded-full bg-lime-100 px-3 py-1 text-[11px] font-black text-lime-800":"rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black text-slate-500"}>{row.is_ca_meetup===true?"CA Meetup":"CA判定未確認"}</span>
           </div>
           <h2 className="mt-3 text-xl font-black text-lime-950">{row.community_name_snapshot}</h2>
           <div className="mt-2 text-sm font-bold text-slate-600">{row.meetup_title}</div>
-          <div className="mt-3 text-xs font-black text-violet-700">Meetup主催者: {row.creator_display_name??"未取得"}</div>
+          <div className="mt-3 text-xs font-black text-violet-700">Meetup主催者: {row.creator_display_name??"未取得"} / Niantic ID: {row.creator_username??"未取得"}</div>
           {row.ca_map_status==="not_listed"?<div className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black text-amber-800">日本CA地図に未掲載です。申請者へ「リョータさんに掲載をお願いしてください」と案内してください。</div>:null}
           <div className="mt-3 text-xs font-semibold text-slate-500">申請者: {requester?.email??"—"} / Niantic ID: {requester?.niantic_id??"未登録"}</div>
           <div className="mt-1 text-[11px] font-black text-lime-700">承認すると、pendingアカウントはCA化され、このCommunityが同時に割り当てられます。</div>
@@ -78,7 +84,7 @@ export default function Page(){
         </div>
         {row.status==="pending" ? <div className="flex shrink-0 gap-2">
           <button disabled={busy===row.id} onClick={()=>review(row.id,"reject")} className="rounded-full border border-rose-200 bg-white px-4 py-2 text-xs font-black text-rose-700 disabled:opacity-50">却下</button>
-          <button disabled={busy===row.id} onClick={()=>review(row.id,"approve")} className="rounded-full bg-lime-400 px-5 py-2 text-xs font-black text-lime-950 disabled:opacity-50">{busy===row.id?"処理中...":"承認"}</button>
+          <button disabled={busy===row.id||row.creator_ca_badge_verified!==true||row.creator_username_matches_profile!==true||row.ca_role_verified!==true||row.ca_map_status!=="matched"} onClick={()=>review(row.id,"approve")} className="rounded-full bg-lime-400 px-5 py-2 text-xs font-black text-lime-950 disabled:opacity-50">{busy===row.id?"処理中...":"承認"}</button>
         </div> : <span className={row.status==="approved"?"rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900":"rounded-full bg-rose-100 px-3 py-1 text-xs font-black text-rose-700"}>{row.status==="approved"?"承認済み":"却下"}</span>}
       </div>
     </section>;
