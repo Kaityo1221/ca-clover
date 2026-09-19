@@ -3,14 +3,14 @@ import {
   ARCHIVED_FEED_QUERY,
   CLUB_QUERY,
   EVENT_QUERY,
-  PUBLIC_EVENTS_QUERY,
+  PUBLIC_MAP_OBJECTS_QUERY,
 } from "./queries.ts";
 import type {
   CampfireClub,
   CampfireConnection,
   CampfireEvent,
   CampfireFeedResult,
-  CampfirePublicEvent,
+  CampfirePublicMapObject,
   PaginationResult,
 } from "./types.ts";
 import type {TokenProvider} from "./token-provider.ts";
@@ -37,11 +37,8 @@ type FeedResponse={
   }|null;
 };
 
-type PublicEventsResponse={
-  publicMapObjectsById?:Array<{
-    id?:string|null;
-    event?:CampfirePublicEvent|null;
-  }>|null;
+type PublicMapObjectsResponse={
+  publicMapObjectsById?:CampfirePublicMapObject[]|null;
 };
 
 export type CampfireClientOptions={
@@ -131,14 +128,13 @@ export class CampfireClient{
     return data.event;
   }
 
-  async getPublicEvents(eventIds:string[]):Promise<CampfirePublicEvent[]>{
-    const ids=[...new Set(eventIds.map(id=>id.trim()).filter(Boolean))];
+  async getPublicMapObjects(mapObjectIds:string[]):Promise<CampfirePublicMapObject[]>{
+    const ids=[...new Set(mapObjectIds.map(id=>id.trim()).filter(Boolean))];
     if(ids.length===0) return [];
 
-    const data=await this.publicRequest<PublicEventsResponse>(PUBLIC_EVENTS_QUERY,{ids});
+    const data=await this.publicRequest<PublicMapObjectsResponse>(PUBLIC_MAP_OBJECTS_QUERY,{ids});
     return (data.publicMapObjectsById??[])
-      .map(item=>item?.event)
-      .filter((event):event is CampfirePublicEvent=>Boolean(event?.id) && Boolean(event?.name));
+      .filter((item):item is CampfirePublicMapObject=>Boolean(item?.id));
   }
 
   async paginate<T>(
