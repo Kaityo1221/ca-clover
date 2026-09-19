@@ -33,3 +33,6 @@ The external CA master source remains read-only. Approval never modifies communi
 ## Load behavior
 
 Normal submission makes one anonymous Campfire GraphQL request. Public GraphQL is used only as a fallback. Approval does not contact Campfire again; it uses the aggregate Meetup values stored with the request.
+
+
+<!-- diagnostic trigger pYqMTy -->
