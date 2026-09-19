@@ -19,6 +19,7 @@ export type CampfireEvent={
   __typename?:string;
   id:string;
   name:string;
+  clubId?:string|null;
   address?:string|null;
   location?:string|null;
   eventTime?:string|null;
@@ -27,6 +28,29 @@ export type CampfireEvent={
   checkedInMembersCount?:number|null;
   members?:CampfireMemberCount|null;
   campfireLiveEvent?:CampfireLiveEvent|null;
+};
+
+export type CampfirePublicPlace={
+  location?:unknown;
+  name?:string|null;
+  formattedAddress?:string|null;
+};
+
+export type CampfirePublicMapLocation={
+  latitude?:number|null;
+  longitude?:number|null;
+};
+
+export type CampfirePublicEvent={
+  id:string;
+  name:string;
+  clubId?:string|null;
+  clubName?:string|null;
+  address?:string|null;
+  eventTime?:string|null;
+  eventEndTime?:string|null;
+  place?:CampfirePublicPlace|null;
+  mapObjectLocation?:CampfirePublicMapLocation|null;
 };
 
 export type CampfirePageInfo={

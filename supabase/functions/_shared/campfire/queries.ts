@@ -1,6 +1,7 @@
 const EVENT_FIELDS=`
   id
   name
+  clubId
   address
   location
   eventTime
@@ -65,6 +66,30 @@ export const ARCHIVED_FEED_QUERY=`query CA_Clover_ArchivedFeed($clubId: ID!, $fi
 export const EVENT_QUERY=`query CA_Clover_Event($id: ID!) {
   event(id: $id) {
     ${EVENT_FIELDS}
+  }
+}`;
+
+export const PUBLIC_EVENTS_QUERY=`query CA_Clover_PublicEvents($ids: [ID!]!) {
+  publicMapObjectsById(ids: $ids) {
+    id
+    event {
+      id
+      name
+      clubId
+      clubName
+      address
+      eventTime
+      eventEndTime
+      place {
+        location
+        name
+        formattedAddress
+      }
+      mapObjectLocation {
+        latitude
+        longitude
+      }
+    }
   }
 }`;
 

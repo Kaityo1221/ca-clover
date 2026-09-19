@@ -3,17 +3,20 @@ import {
   ARCHIVED_FEED_QUERY,
   CLUB_QUERY,
   EVENT_QUERY,
+  PUBLIC_EVENTS_QUERY,
 } from "./queries.ts";
 import type {
   CampfireClub,
   CampfireConnection,
   CampfireEvent,
   CampfireFeedResult,
+  CampfirePublicEvent,
   PaginationResult,
 } from "./types.ts";
 import type {TokenProvider} from "./token-provider.ts";
 
 export const CAMPFIRE_GRAPHQL_ENDPOINT="https://niantic-social-api.nianticlabs.com/graphql";
+export const CAMPFIRE_PUBLIC_GRAPHQL_ENDPOINT="https://niantic-social-api.nianticlabs.com/public/graphql";
 
 const DEFAULT_PAGE_SIZE=100;
 const DEFAULT_MAX_PAGES=100;
@@ -34,9 +37,17 @@ type FeedResponse={
   }|null;
 };
 
+type PublicEventsResponse={
+  publicMapObjectsById?:Array<{
+    id?:string|null;
+    event?:CampfirePublicEvent|null;
+  }>|null;
+};
+
 export type CampfireClientOptions={
-  tokenProvider:TokenProvider;
+  tokenProvider?:TokenProvider;
   endpoint?:string;
+  publicEndpoint?:string;
   fetchImpl?:typeof fetch;
   pageSize?:number;
   maxPages?:number;
@@ -61,6 +72,7 @@ const sleep=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 
 export class CampfireClient{
   private readonly endpoint:string;
+  private readonly publicEndpoint:string;
   private readonly fetchImpl:typeof fetch;
   private readonly pageSize:number;
   private readonly maxPages:number;
@@ -70,8 +82,9 @@ export class CampfireClient{
   private rateGate:Promise<void>=Promise.resolve();
   private nextRequestAt=0;
 
-  constructor(private readonly options:CampfireClientOptions){
+  constructor(private readonly options:CampfireClientOptions={}){
     this.endpoint=options.endpoint??CAMPFIRE_GRAPHQL_ENDPOINT;
+    this.publicEndpoint=options.publicEndpoint??CAMPFIRE_PUBLIC_GRAPHQL_ENDPOINT;
     this.fetchImpl=options.fetchImpl??fetch;
     this.pageSize=Math.max(1,options.pageSize??DEFAULT_PAGE_SIZE);
     this.maxPages=Math.max(1,options.maxPages??DEFAULT_MAX_PAGES);
@@ -81,21 +94,15 @@ export class CampfireClient{
   }
 
   async request<T>(query:string,variables:Record<string,unknown>={}):Promise<T>{
-    let lastError:unknown;
+    return this.requestEndpoint<T>(this.endpoint,query,variables,true);
+  }
 
-    for(let attempt=0;attempt<this.maxRetries;attempt++){
-      try{
-        await this.waitForRateLimit();
-        return await this.execute<T>(query,variables);
-      }catch(error){
-        lastError=error;
-        const retryable=error instanceof CampfireApiError && error.retryable;
-        if(!retryable || attempt===this.maxRetries-1) throw error;
-        await sleep(this.retryDelayMs*(attempt+1));
-      }
-    }
+  async anonymousRequest<T>(query:string,variables:Record<string,unknown>={}):Promise<T>{
+    return this.requestEndpoint<T>(this.endpoint,query,variables,false);
+  }
 
-    throw lastError instanceof Error?lastError:new CampfireApiError("Campfire request failed","UNKNOWN");
+  async publicRequest<T>(query:string,variables:Record<string,unknown>={}):Promise<T>{
+    return this.requestEndpoint<T>(this.publicEndpoint,query,variables,false);
   }
 
   async getClub(clubId:string):Promise<CampfireClub>{
@@ -116,6 +123,22 @@ export class CampfireClient{
     const data=await this.request<{event?:CampfireEvent|null}>(EVENT_QUERY,{id:eventId});
     if(!data.event) throw new CampfireApiError("Meetupを取得できません","EVENT_NOT_FOUND");
     return data.event;
+  }
+
+  async getAnonymousEvent(eventId:string):Promise<CampfireEvent>{
+    const data=await this.anonymousRequest<{event?:CampfireEvent|null}>(EVENT_QUERY,{id:eventId});
+    if(!data.event) throw new CampfireApiError("公開Meetupを取得できません","EVENT_NOT_FOUND");
+    return data.event;
+  }
+
+  async getPublicEvents(eventIds:string[]):Promise<CampfirePublicEvent[]>{
+    const ids=[...new Set(eventIds.map(id=>id.trim()).filter(Boolean))];
+    if(ids.length===0) return [];
+
+    const data=await this.publicRequest<PublicEventsResponse>(PUBLIC_EVENTS_QUERY,{ids});
+    return (data.publicMapObjectsById??[])
+      .map(item=>item?.event)
+      .filter((event):event is CampfirePublicEvent=>Boolean(event?.id) && Boolean(event?.name));
   }
 
   async paginate<T>(
@@ -153,6 +176,30 @@ export class CampfireClient{
     return {items,totalCount,complete:false,pages:this.maxPages,lastCursor:cursor};
   }
 
+  private async requestEndpoint<T>(
+    endpoint:string,
+    query:string,
+    variables:Record<string,unknown>,
+    authenticated:boolean,
+  ):Promise<T>{
+    let lastError:unknown;
+
+    for(let attempt=0;attempt<this.maxRetries;attempt++){
+      try{
+        await this.waitForRateLimit();
+        const token=authenticated?await this.getToken():null;
+        return await this.execute<T>(endpoint,query,variables,token);
+      }catch(error){
+        lastError=error;
+        const retryable=error instanceof CampfireApiError && error.retryable;
+        if(!retryable || attempt===this.maxRetries-1) throw error;
+        await sleep(this.retryDelayMs*(attempt+1));
+      }
+    }
+
+    throw lastError instanceof Error?lastError:new CampfireApiError("Campfire request failed","UNKNOWN");
+  }
+
   private async getFeed(
     clubId:string,
     field:"activeFeed"|"archivedFeed",
@@ -187,18 +234,30 @@ export class CampfireClient{
     };
   }
 
-  private async execute<T>(query:string,variables:Record<string,unknown>):Promise<T>{
-    const token=await this.options.tokenProvider.getToken();
+  private async getToken():Promise<string>{
+    if(!this.options.tokenProvider){
+      throw new CampfireApiError("Campfire token provider is not configured","TOKEN_PROVIDER_UNAVAILABLE");
+    }
+    return this.options.tokenProvider.getToken();
+  }
+
+  private async execute<T>(
+    endpoint:string,
+    query:string,
+    variables:Record<string,unknown>,
+    token:string|null,
+  ):Promise<T>{
     let response:Response;
+    const headers:Record<string,string>={
+      "Content-Type":"application/json",
+      "Accept":"application/json",
+    };
+    if(token) headers.Authorization="Bearer "+token;
 
     try{
-      response=await this.fetchImpl(this.endpoint,{
+      response=await this.fetchImpl(endpoint,{
         method:"POST",
-        headers:{
-          "Content-Type":"application/json",
-          "Accept":"application/json",
-          "Authorization":"Bearer "+token,
-        },
+        headers,
         body:JSON.stringify({query,variables}),
       });
     }catch(error){
