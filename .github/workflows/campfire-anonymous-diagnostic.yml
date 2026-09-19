@@ -25,3 +25,5 @@ jobs:
           echo "$RESPONSE" | jq '{errors, event: .data.event | if . == null then null else {id,name,clubId,eventTime,eventEndTime,createdByCommunityAmbassador,checkedInMembersCount,rsvpCount:.members.totalCount,liveEvent:.campfireLiveEvent.eventName} end}'
           test "$(echo "$RESPONSE" | jq -r '.data.event.id // empty')" != ""
           test "$(echo "$RESPONSE" | jq -r '.data.event.clubId // empty')" != ""
+
+# trigger diagnostic after PR creation
