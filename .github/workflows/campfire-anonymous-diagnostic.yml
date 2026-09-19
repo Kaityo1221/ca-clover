@@ -1,0 +1,24 @@
+name: Campfire Anonymous Diagnostic
+
+on:
+  push:
+    branches:
+      - diagnostic-campfire-anonymous
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe anonymous public Meetup detail
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY='{"query":"query Probe($id: ID!) { event(id: $id) { id name clubId eventTime eventEndTime createdByCommunityAmbassador checkedInMembersCount members(first: 1) { totalCount } campfireLiveEvent { eventName } } }","variables":{"id":"7d5719a2-e1a2-4d04-9638-e60eb35728bf"}}'
+          RESPONSE="$(curl --fail-with-body --silent --show-error \
+            -X POST 'https://niantic-social-api.nianticlabs.com/graphql' \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json' \
+            --data "$BODY")"
+          echo "$RESPONSE" | jq '{errors, event: .data.event | if . == null then null else {id,name,clubId,eventTime,eventEndTime,createdByCommunityAmbassador,checkedInMembersCount,rsvpCount:.members.totalCount,liveEvent:.campfireLiveEvent.eventName} end}'
+          test "$(echo "$RESPONSE" | jq -r '.data.event.id // empty')" != ""
+          test "$(echo "$RESPONSE" | jq -r '.data.event.clubId // empty')" != ""
