@@ -1,32 +1,14 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  CampfireClient,
+  CampfireTokenUnavailableError,
+  VaultTokenProvider,
+  type CampfireEvent,
+} from "../_shared/campfire/mod.ts";
 
 const corsHeaders={
   "Access-Control-Allow-Origin":"*",
   "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type",
-};
-
-const endpoint="https://niantic-social-api.nianticlabs.com/graphql";
-const PAGE_SIZE=100;
-const MAX_PAGES=100;
-
-type FeedEvent={
-  __typename?:string;
-  id?:string;
-  name?:string;
-  address?:string|null;
-  location?:string|null;
-  eventTime?:string|null;
-  eventEndTime?:string|null;
-  createdByCommunityAmbassador?:boolean|null;
-  checkedInMembersCount?:number|null;
-  members?:{totalCount?:number|null}|null;
-  campfireLiveEvent?:{eventName?:string|null}|null;
-};
-
-type FeedPage={
-  totalCount?:number;
-  edges?:Array<{node?:FeedEvent|null}>|null;
-  pageInfo?:{hasNextPage?:boolean;endCursor?:string|null}|null;
 };
 
 function json(data:unknown,status=200){
@@ -37,124 +19,6 @@ function json(data:unknown,status=200){
 }
 
 const sleep=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
-
-async function fetchGraphql(token:string,query:string,variables:Record<string,unknown>){
-  let lastError:Error|undefined;
-
-  for(let attempt=0;attempt<3;attempt++){
-    try{
-      const rs=await fetch(endpoint,{
-        method:"POST",
-        headers:{
-          "Content-Type":"application/json",
-          "Accept":"application/json",
-          "Authorization":"Bearer "+token,
-        },
-        body:JSON.stringify({query,variables}),
-      });
-
-      const payload=await rs.json().catch(()=>null) as {data?:Record<string,unknown>;errors?:Array<{message?:string}>}|null;
-
-      if([429,502,503,504].includes(rs.status)){
-        lastError=new Error("Campfire HTTP "+rs.status);
-        await sleep(600*(attempt+1));
-        continue;
-      }
-
-      if(!rs.ok) throw new Error("Campfire HTTP "+rs.status);
-
-      if(payload?.errors?.length){
-        const message=payload.errors.map(e=>e.message||"GraphQL error").join(" / ");
-        if(/DeadlineExceeded|temporar|timeout/i.test(message)){
-          lastError=new Error(message);
-          await sleep(600*(attempt+1));
-          continue;
-        }
-        throw new Error(message);
-      }
-
-      return payload?.data??{};
-    }catch(error){
-      lastError=error instanceof Error?error:new Error(String(error));
-      if(attempt<2) await sleep(600*(attempt+1));
-    }
-  }
-
-  throw lastError??new Error("Campfire request failed");
-}
-
-function makeFeedQuery(field:"activeFeed"|"archivedFeed"){
-  return `query CA_Clover_Feed($clubId: ID!, $first: Int!, $after: String) {
-    club(id:$clubId) {
-      id
-      name
-      members { totalCount }
-      ${field}(first:$first, after:$after) {
-        totalCount
-        edges {
-          node {
-            __typename
-            ... on Event {
-              id
-              name
-              address
-              location
-              eventTime
-              eventEndTime
-              createdByCommunityAmbassador
-              checkedInMembersCount
-              members(first:1) { totalCount }
-              campfireLiveEvent { eventName }
-            }
-          }
-        }
-        pageInfo { hasNextPage endCursor }
-      }
-    }
-  }`;
-}
-
-async function fetchFeed(token:string,clubId:string,field:"activeFeed"|"archivedFeed"){
-  const query=makeFeedQuery(field);
-  const events:FeedEvent[]=[];
-  let after:string|null=null;
-  let memberCount:number|null=null;
-
-  for(let page=0;page<MAX_PAGES;page++){
-    const data=await fetchGraphql(token,query,{
-      clubId,
-      first:PAGE_SIZE,
-      after,
-    }) as {
-      club?:{
-        id?:string;
-        members?:{totalCount?:number|null}|null;
-        activeFeed?:FeedPage;
-        archivedFeed?:FeedPage;
-      }|null;
-    };
-
-    if(!data.club) throw new Error("Communityを取得できません");
-
-    if(memberCount===null && Number.isFinite(data.club.members?.totalCount)){
-      memberCount=Number(data.club.members?.totalCount);
-    }
-
-    const feed=(field==="activeFeed"?data.club.activeFeed:data.club.archivedFeed)??{};
-    for(const edge of feed.edges??[]){
-      const node=edge?.node;
-      if(node?.__typename==="Event" && node.id && node.name) events.push(node);
-    }
-
-    const pageInfo=feed.pageInfo;
-    if(!pageInfo?.hasNextPage) return {events,memberCount,complete:true};
-    if(!pageInfo.endCursor) throw new Error(field+" pagination cursor missing");
-    after=pageInfo.endCursor;
-    await sleep(180);
-  }
-
-  return {events,memberCount,complete:false};
-}
 
 async function requireAdmin(req:Request){
   const supabaseUrl=Deno.env.get("SUPABASE_URL");
@@ -189,9 +53,15 @@ Deno.serve(async(req:Request)=>{
     if(auth.error) return auth.error;
     const {admin}=auth;
 
-    const {data:token,error:tokenError}=await admin.rpc("internal_get_campfire_token");
-    if(tokenError) throw tokenError;
-    if(!token) return json({error:"Campfire tokenが登録されていません",code:"TOKEN_MISSING"},409);
+    const tokenProvider=new VaultTokenProvider(async()=>admin.rpc("internal_get_campfire_token"));
+    try{
+      await tokenProvider.getToken();
+    }catch(error){
+      if(error instanceof CampfireTokenUnavailableError && error.reason==="missing"){
+        return json({error:"Campfire tokenが登録されていません",code:"TOKEN_MISSING"},409);
+      }
+      throw error;
+    }
 
     const {data:state,error:stateError}=await admin
       .from("campfire_connection_state")
@@ -207,6 +77,15 @@ Deno.serve(async(req:Request)=>{
       }).eq("id",1);
       return json({error:"Campfire tokenの有効期限が切れています",code:"TOKEN_EXPIRED"},409);
     }
+
+    const campfire=new CampfireClient({
+      tokenProvider,
+      pageSize:100,
+      maxPages:100,
+      maxRetries:3,
+      retryDelayMs:600,
+      minRequestIntervalMs:180,
+    });
 
     const body=await req.json().catch(()=>({}));
     const offset=Math.max(0,Number(body.offset??0)||0);
@@ -249,20 +128,19 @@ Deno.serve(async(req:Request)=>{
       if(!clubId) continue;
 
       try{
-        const active=await fetchFeed(String(token),clubId,"activeFeed");
-        await sleep(180);
-        const archived=await fetchFeed(String(token),clubId,"archivedFeed");
+        const active=await campfire.getActiveFeed(clubId);
+        const archived=await campfire.getArchivedFeed(clubId);
 
-        const byId=new Map<string,FeedEvent>();
+        const byId=new Map<string,CampfireEvent>();
         for(const event of [...archived.events,...active.events]){
           if(event.id) byId.set(event.id,event);
         }
 
         const nowIso=new Date().toISOString();
         const rows=[...byId.values()].map(event=>({
-          campfire_meetup_id:event.id!,
+          campfire_meetup_id:event.id,
           community_id:community.id,
-          title:event.name!,
+          title:event.name,
           starts_at:event.eventTime??null,
           ends_at:event.eventEndTime??null,
           location:event.address??event.location??null,
@@ -307,6 +185,8 @@ Deno.serve(async(req:Request)=>{
           events:rows.length,
           active_events:active.events.length,
           archived_events:archived.events.length,
+          active_pages:active.pages,
+          archived_pages:archived.pages,
         });
       }catch(error){
         failedCommunities++;
@@ -336,7 +216,7 @@ Deno.serve(async(req:Request)=>{
         imported_events:importedEvents,
         failed_communities:failedCommunities,
         results,
-        note:"Campfire authenticated feeds; participant identities are not requested or stored",
+        note:"CA Clover Campfire client; participant identities are not requested or stored",
       },
     }).eq("id",run.id);
 

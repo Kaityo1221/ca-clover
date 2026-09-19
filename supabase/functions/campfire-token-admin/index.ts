@@ -1,11 +1,14 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  CampfireClient,
+  StaticTokenProvider,
+  TOKEN_CHECK_QUERY,
+} from "../_shared/campfire/mod.ts";
 
 const corsHeaders={
   "Access-Control-Allow-Origin":"*",
   "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type",
 };
-
-const campfireEndpoint="https://niantic-social-api.nianticlabs.com/graphql";
 
 function json(data:unknown,status=200){
   return new Response(JSON.stringify(data),{
@@ -25,21 +28,15 @@ function decodeJwt(token:string){
 }
 
 async function validateCampfireToken(token:string){
-  const rs=await fetch(campfireEndpoint,{
-    method:"POST",
-    headers:{
-      "Content-Type":"application/json",
-      "Accept":"application/json",
-      "Authorization":"Bearer "+token,
-    },
-    body:JSON.stringify({query:"query CA_Clover_Token_Check { me { id } }"}),
+  const campfire=new CampfireClient({
+    tokenProvider:new StaticTokenProvider(token),
+    maxRetries:3,
+    retryDelayMs:600,
+    minRequestIntervalMs:0,
   });
-
-  const payload=await rs.json().catch(()=>null) as {data?:{me?:{id?:string}|null};errors?:Array<{message?:string}>}|null;
-  if(!rs.ok) throw new Error("Campfire接続に失敗しました (HTTP "+rs.status+")");
-  if(payload?.errors?.length) throw new Error(payload.errors.map(e=>e.message||"GraphQL error").join(" / "));
-  if(!payload?.data?.me?.id) throw new Error("Campfire tokenを確認できませんでした");
-  return payload.data.me.id;
+  const data=await campfire.request<{me?:{id?:string}|null}>(TOKEN_CHECK_QUERY);
+  if(!data.me?.id) throw new Error("Campfire tokenを確認できませんでした");
+  return data.me.id;
 }
 
 async function requireAdmin(req:Request){
