@@ -43,7 +43,7 @@ export default function Page(){
     if(!selected) return;
     const next=!assigned.has(communityId);
     setBusy(communityId);
-    const {error}=await supabase.rpc("admin_set_membership",{p_user_id:selected,p_community_id:communityId,p_assigned:next} as never);
+    const {error}=await supabase.functions.invoke("admin-manage",{body:{action:"set_membership",userId:selected,communityId,assigned:next}});
     if(!error){
       setMemberships(current=>{
         if(next) return [...current,{user_id:selected,community_id:communityId}];
