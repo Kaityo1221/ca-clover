@@ -19,6 +19,7 @@ export type CampfireEvent={
   __typename?:string;
   id:string;
   name:string;
+  clubId?:string|null;
   address?:string|null;
   location?:string|null;
   eventTime?:string|null;
