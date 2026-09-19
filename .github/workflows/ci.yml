@@ -236,6 +236,16 @@ jobs:
                       print('NEEDLE',needle,data[max(0,pos-2500):pos+5000].replace('\\n',' ')[:7500])
           PY8
 
+
+          echo '=== ANON CLUB LOCATION QUERY ==='
+          CLUB_QUERY='query ClubProbe($id: ID!) { club(id: $id) { id name address location createdByCommunityAmbassador members { totalCount } } }'
+          for ITEM in 'YOKOHAMA|1816a36d-1560-41ec-962c-4f27ae3e221d' 'BUKURO|21ebceac-0796-475c-9056-cba006922779' 'UENO|'; do
+            LABEL="${ITEM%%|*}"; ID="${ITEM#*|}"
+            [ -z "$ID" ] && continue
+            BODY="$(jq -nc --arg query "$CLUB_QUERY" --arg id "$ID" '{query:$query,variables:{id:$id}}')"
+            echo "--- $LABEL ---"
+            curl -sS -X POST 'https://niantic-social-api.nianticlabs.com/graphql' -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$BODY" | jq .
+          done
           echo '=== ANON MAP QUERY VARIANTS ==='
           MAP_QUERY='query MapMeetups($input: RealityChannelMapObjectsInLatLngBoundsInput!) { realityChannelMapObjectsInLatLngBounds(input: $input) { id mapObjectType event { id eventTime eventEndTime createdByCommunityAmbassador location mapObjectLocation { latitude longitude } } } }'
           probe() {
