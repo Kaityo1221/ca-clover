@@ -25,7 +25,11 @@ type ClaimRow = {
   community_prefecture_snapshot:string|null;
   master_match:boolean|null;
   creator_display_name:string|null;
+  creator_username:string|null;
+  creator_username_matches_profile:boolean|null;
   creator_ca_badge_verified:boolean|null;
+  ca_level_snapshot:string|null;
+  ca_role_verified:boolean|null;
   ca_map_status:"matched"|"not_listed"|"community_mismatch"|"identity_missing"|null;
   status:"pending"|"approved"|"rejected";
   requested_at:string;
@@ -45,7 +49,7 @@ export default function Page() {
   async function loadClaims(){
     if(!user) return;
     const {data}=await supabase.from("community_access_requests")
-      .select("id,meetup_title,community_name_snapshot,community_prefecture_snapshot,master_match,creator_display_name,creator_ca_badge_verified,ca_map_status,status,requested_at,reviewed_at")
+      .select("id,meetup_title,community_name_snapshot,community_prefecture_snapshot,master_match,creator_display_name,creator_username,creator_username_matches_profile,creator_ca_badge_verified,ca_level_snapshot,ca_role_verified,ca_map_status,status,requested_at,reviewed_at")
       .eq("user_id",user.id)
       .order("requested_at",{ascending:false});
     setClaims((data as ClaimRow[]|null)??[]);
@@ -61,7 +65,7 @@ export default function Page() {
       const [{data:memberships},{data:claimRows}]=await Promise.all([
         supabase.from("community_memberships").select("community_id").eq("user_id", userId),
         supabase.from("community_access_requests")
-          .select("id,meetup_title,community_name_snapshot,community_prefecture_snapshot,master_match,creator_display_name,creator_ca_badge_verified,ca_map_status,status,requested_at,reviewed_at")
+          .select("id,meetup_title,community_name_snapshot,community_prefecture_snapshot,master_match,creator_display_name,creator_username,creator_username_matches_profile,creator_ca_badge_verified,ca_level_snapshot,ca_role_verified,ca_map_status,status,requested_at,reviewed_at")
           .eq("user_id",userId)
           .order("requested_at",{ascending:false}),
       ]);
@@ -148,7 +152,7 @@ export default function Page() {
     {profile?.role==="ca" || profile?.role==="pending" ? <section className="clover-card mt-6 p-6">
       <div className="flex items-start gap-3">
         <div className="text-3xl">🔥</div>
-        <div><h2 className="font-black text-lime-950">MeetupからCommunityを申請</h2><p className="mt-1 text-xs font-semibold text-slate-500">必ず自分が主催したMeetupのCampfire共有URL（cmpf.re）・Meetup URL・Meetup IDを入力してください。主催者の紫色Community AmbassadorバッジとCommunityを自動確認します。</p></div>
+        <div><h2 className="font-black text-lime-950">MeetupからCommunityを申請</h2><p className="mt-1 text-xs font-semibold text-slate-500">必ず自分が主催したMeetupを入力してください。紫色Community Ambassadorバッジ、主催者Niantic ID、Community、日本CA地図の1st/2ndを自動照合します。</p></div>
       </div>
       <input value={claimInput} onChange={e=>setClaimInput(e.target.value)} placeholder="Campfire共有URL / Meetup URL / Meetup ID" className="mt-5 w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-lime-400"/>
       <button onClick={submitClaim} disabled={claimBusy||!claimInput.trim()||(profile?.role==="pending"&&!profile?.niantic_id)} className="mt-3 w-full rounded-2xl bg-lime-400 px-5 py-3 text-sm font-black text-lime-950 disabled:opacity-50">{claimBusy?"Communityを確認中...":"Communityを確認して申請"}</button>
@@ -164,7 +168,9 @@ export default function Page() {
         </div>
         <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-bold">
           <span className={c.creator_ca_badge_verified===true?"rounded-full bg-violet-100 px-2.5 py-1 text-violet-700":"rounded-full bg-slate-100 px-2.5 py-1 text-slate-500"}>{c.creator_ca_badge_verified===true?"🟣 CAバッジ確認済み":"CAバッジ未確認"}</span>
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">主催者: {c.creator_display_name??"未取得"}</span>
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">主催者: {c.creator_display_name??"未取得"} / {c.creator_username??"ID未取得"}</span>
+          <span className={c.creator_username_matches_profile===true?"rounded-full bg-sky-100 px-2.5 py-1 text-sky-800":"rounded-full bg-rose-100 px-2.5 py-1 text-rose-700"}>{c.creator_username_matches_profile===true?"Niantic ID一致":"Niantic ID未確認"}</span>
+          <span className={c.ca_role_verified===true?"rounded-full bg-lime-100 px-2.5 py-1 text-lime-800":"rounded-full bg-rose-100 px-2.5 py-1 text-rose-700"}>{c.ca_role_verified===true?"日本CA地図 "+(c.ca_level_snapshot??"")+"確認済み":"1st/2nd未確認"}</span>
           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">日本CA地図: {c.ca_map_status==="matched"?"掲載済み":c.ca_map_status==="not_listed"?"未掲載":c.ca_map_status==="community_mismatch"?"Community要確認":c.ca_map_status==="identity_missing"?"Niantic ID未登録":c.master_match===true?"掲載済み":"要確認"}</span>
         </div>
         {c.ca_map_status==="not_listed"?<p className="mt-2 text-xs font-black text-amber-700">日本CA地図にまだ掲載されていません。リョータさんに掲載をお願いしてください。</p>:null}
