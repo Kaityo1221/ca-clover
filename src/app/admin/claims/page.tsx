@@ -72,6 +72,7 @@ export default function Page(){
           <div className="mt-3 text-xs font-black text-violet-700">Meetup主催者: {row.creator_display_name??"未取得"}</div>
           {row.ca_map_status==="not_listed"?<div className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black text-amber-800">日本CA地図に未掲載です。申請者へ「リョータさんに掲載をお願いしてください」と案内してください。</div>:null}
           <div className="mt-3 text-xs font-semibold text-slate-500">申請者: {requester?.email??"—"} / Niantic ID: {requester?.niantic_id??"未登録"}</div>
+          <div className="mt-1 text-[11px] font-black text-lime-700">承認すると、pendingアカウントはCA化され、このCommunityが同時に割り当てられます。</div>
           <div className="mt-1 text-[11px] text-slate-400">申請 {new Date(row.requested_at).toLocaleString("ja-JP")}</div>
           <a href={row.meetup_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex text-xs font-black text-lime-700">Campfire Meetupを確認 ↗</a>
         </div>

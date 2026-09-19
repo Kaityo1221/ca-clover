@@ -105,6 +105,19 @@ Deno.serve(async(req:Request)=>{
       },{onConflict:"user_id,community_id"});
       if(membershipError) throw membershipError;
 
+      const {data:requesterProfile,error:requesterProfileError}=await admin.from("profiles")
+        .select("role")
+        .eq("id",request.user_id)
+        .single();
+      if(requesterProfileError||!requesterProfile) throw requesterProfileError??new Error("requester profile not found");
+      if(requesterProfile.role==="pending"){
+        const {error:roleError}=await admin.from("profiles")
+          .update({role:"ca"})
+          .eq("id",request.user_id)
+          .eq("role","pending");
+        if(roleError) throw roleError;
+      }
+
       const {error:meetupError}=await admin.from("meetups").upsert({
         campfire_meetup_id:request.campfire_meetup_id,
         community_id:request.community_id,
@@ -133,11 +146,19 @@ Deno.serve(async(req:Request)=>{
       }).eq("id",requestId);
       if(updateError) throw updateError;
 
-      return json({ok:true,status:"approved",communityId:request.community_id});
+      return json({
+        ok:true,
+        status:"approved",
+        communityId:request.community_id,
+        accountRole:requesterProfile.role==="pending"?"ca":requesterProfile.role,
+      });
     }
 
     if(action!=="submit") return json({error:"unknown action"},400);
-    if(profile.role!=="ca") return json({error:"CAアカウント承認後に申請できます",code:"CA_ROLE_REQUIRED"},403);
+    if(profile.role!=="ca" && profile.role!=="pending") return json({error:"CA申請を利用できません",code:"CA_ROLE_REQUIRED"},403);
+    if(profile.role==="pending" && !String(profile.niantic_id??"").trim()){
+      return json({error:"先にアカウント設定でNiantic IDを登録してください",code:"NIANTIC_ID_REQUIRED"},422);
+    }
 
     const meetupId=await resolveMeetupId(body.meetup);
     if(!meetupId) return json({error:"Campfire共有URL / Meetup URL / Meetup IDを確認してください",code:"INVALID_MEETUP"},400);
