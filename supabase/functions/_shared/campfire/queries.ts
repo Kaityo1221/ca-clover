@@ -7,6 +7,10 @@ const EVENT_FIELDS=`
   eventTime
   eventEndTime
   createdByCommunityAmbassador
+  creator {
+    displayName
+    badges { badgeType alias }
+  }
   checkedInMembersCount
   members(first: 1) { totalCount }
   campfireLiveEvent { eventName }

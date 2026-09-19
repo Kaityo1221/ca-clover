@@ -6,6 +6,16 @@ export type CampfireLiveEvent={
   eventName?:string|null;
 };
 
+export type CampfireBadge={
+  badgeType?:string|null;
+  alias?:string|null;
+};
+
+export type CampfireEventCreator={
+  displayName?:string|null;
+  badges?:CampfireBadge[]|null;
+};
+
 export type CampfireClub={
   id:string;
   name:string;
@@ -25,6 +35,7 @@ export type CampfireEvent={
   eventTime?:string|null;
   eventEndTime?:string|null;
   createdByCommunityAmbassador?:boolean|null;
+  creator?:CampfireEventCreator|null;
   checkedInMembersCount?:number|null;
   members?:CampfireMemberCount|null;
   campfireLiveEvent?:CampfireLiveEvent|null;

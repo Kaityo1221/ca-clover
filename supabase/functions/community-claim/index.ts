@@ -167,6 +167,19 @@ Deno.serve(async(req:Request)=>{
       };
     }
 
+    const creatorDisplayName=String(event.creator?.displayName??"").trim();
+    const creatorCaBadgeVerified=Boolean(event.creator?.badges?.some(badge=>
+      badge?.badgeType==="PGO_COMMUNITY_AMBASSADOR" ||
+      badge?.alias==="PGO_COMMUNITY_AMBASSADOR"
+    ));
+
+    if(event.createdByCommunityAmbassador!==true || !creatorDisplayName || !creatorCaBadgeVerified){
+      return json({
+        error:"自分が主催したCommunity AmbassadorのMeetupを入力してください。主催者の紫CAバッジを確認できませんでした。",
+        code:"CA_HOST_VERIFICATION_FAILED",
+      },422);
+    }
+
     if(!event.clubId) return json({error:"MeetupからCommunity IDを取得できませんでした",code:"COMMUNITY_ID_MISSING"},422);
 
     const {data:community,error:communityError}=await admin
@@ -209,19 +222,23 @@ Deno.serve(async(req:Request)=>{
     });
 
     let masterMatch:boolean|null=null;
+    let caMapStatus:"matched"|"not_listed"|"community_mismatch"|"identity_missing"="identity_missing";
     const identity=String(profile.niantic_id??"").trim().toLowerCase();
     if(identity){
       const {data:caMember}=await admin.from("ca_members")
         .select("id")
         .eq("source_key",identity)
         .maybeSingle();
-      if(caMember){
+      if(!caMember){
+        caMapStatus="not_listed";
+      }else{
         const {data:link}=await admin.from("community_ca_members")
           .select("id")
           .eq("ca_member_id",caMember.id)
           .eq("community_id",community.id)
           .maybeSingle();
         masterMatch=Boolean(link);
+        caMapStatus=link?"matched":"community_mismatch";
       }
     }
 
@@ -241,6 +258,9 @@ Deno.serve(async(req:Request)=>{
       rsvp_count:Number.isFinite(event.members?.totalCount)?Number(event.members?.totalCount):null,
       checkin_count:Number.isFinite(event.checkedInMembersCount)?Number(event.checkedInMembersCount):null,
       campfire_live_event_name:event.campfireLiveEvent?.eventName??null,
+      creator_display_name:creatorDisplayName,
+      creator_ca_badge_verified:creatorCaBadgeVerified,
+      ca_map_status:caMapStatus,
       master_match:masterMatch,
       status:"pending",
     }).select("id,status,requested_at").single();
@@ -258,6 +278,9 @@ Deno.serve(async(req:Request)=>{
       meetupId,
       meetupTitle:event.name,
       isCaMeetup:event.createdByCommunityAmbassador??null,
+      creatorDisplayName,
+      creatorCaBadgeVerified,
+      caMapStatus,
       masterMatch,
     });
   }catch(error){
