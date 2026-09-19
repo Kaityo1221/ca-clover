@@ -105,11 +105,46 @@ Deno.serve(async(req:Request)=>{
       },{onConflict:"user_id,community_id"});
       if(membershipError) throw membershipError;
 
+      if(
+        request.creator_ca_badge_verified!==true ||
+        request.creator_username_matches_profile!==true ||
+        request.ca_role_verified!==true ||
+        request.ca_map_status!=="matched" ||
+        request.master_match!==true ||
+        !["1st","2nd"].includes(String(request.ca_level_snapshot??""))
+      ){
+        return json({error:"本人・CAバッジ・Community・1st/2ndの確認が完了していないため承認できません",code:"VERIFICATION_INCOMPLETE"},409);
+      }
+
       const {data:requesterProfile,error:requesterProfileError}=await admin.from("profiles")
-        .select("role")
+        .select("role,niantic_id")
         .eq("id",request.user_id)
         .single();
       if(requesterProfileError||!requesterProfile) throw requesterProfileError??new Error("requester profile not found");
+
+      const currentIdentity=String(requesterProfile.niantic_id??"").trim().toLowerCase();
+      if(!currentIdentity || currentIdentity!==String(request.niantic_id_snapshot??"").trim().toLowerCase() || currentIdentity!==String(request.creator_username??"").trim().toLowerCase()){
+        return json({error:"申請後にNiantic IDが変更されたか、Meetup主催者と一致しないため承認できません",code:"IDENTITY_CHANGED"},409);
+      }
+
+      const {data:currentCa,error:currentCaError}=await admin.from("ca_members")
+        .select("id,ca_level,status")
+        .eq("source_key",currentIdentity)
+        .maybeSingle();
+      if(currentCaError) throw currentCaError;
+      if(!currentCa || currentCa.status!=="active" || !["1st","2nd"].includes(String(currentCa.ca_level??""))){
+        return json({error:"日本CA地図で現在の1st/2nd資格を確認できないため承認できません",code:"CA_ROLE_CHANGED"},409);
+      }
+      const {data:currentLink,error:currentLinkError}=await admin.from("community_ca_members")
+        .select("id")
+        .eq("ca_member_id",currentCa.id)
+        .eq("community_id",request.community_id)
+        .maybeSingle();
+      if(currentLinkError) throw currentLinkError;
+      if(!currentLink){
+        return json({error:"日本CA地図で現在このCommunityの担当CAとして確認できないため承認できません",code:"CA_COMMUNITY_CHANGED"},409);
+      }
+
       if(requesterProfile.role==="pending"){
         const {error:roleError}=await admin.from("profiles")
           .update({role:"ca"})
@@ -156,7 +191,8 @@ Deno.serve(async(req:Request)=>{
 
     if(action!=="submit") return json({error:"unknown action"},400);
     if(profile.role!=="ca" && profile.role!=="pending") return json({error:"CA申請を利用できません",code:"CA_ROLE_REQUIRED"},403);
-    if(profile.role==="pending" && !String(profile.niantic_id??"").trim()){
+    const profileNianticId=String(profile.niantic_id??"").trim();
+    if(!profileNianticId){
       return json({error:"先にアカウント設定でNiantic IDを登録してください",code:"NIANTIC_ID_REQUIRED"},422);
     }
 
@@ -189,15 +225,27 @@ Deno.serve(async(req:Request)=>{
     }
 
     const creatorDisplayName=String(event.creator?.displayName??"").trim();
+    const creatorUsername=String(event.creator?.username??"").trim();
     const creatorCaBadgeVerified=Boolean(event.creator?.badges?.some(badge=>
       badge?.badgeType==="PGO_COMMUNITY_AMBASSADOR" ||
       badge?.alias==="PGO_COMMUNITY_AMBASSADOR"
     ));
 
-    if(event.createdByCommunityAmbassador!==true || !creatorDisplayName || !creatorCaBadgeVerified){
+    if(event.createdByCommunityAmbassador!==true || !creatorDisplayName || !creatorUsername || !creatorCaBadgeVerified){
       return json({
-        error:"自分が主催したCommunity AmbassadorのMeetupを入力してください。主催者の紫CAバッジを確認できませんでした。",
+        error:"自分が主催したCommunity AmbassadorのMeetupを入力してください。主催者の紫CAバッジまたはNiantic IDを確認できませんでした。",
         code:"CA_HOST_VERIFICATION_FAILED",
+      },422);
+    }
+
+    const identity=profileNianticId.toLowerCase();
+    const creatorUsernameNormalized=creatorUsername.toLowerCase();
+    const creatorUsernameMatchesProfile=creatorUsernameNormalized===identity;
+    if(!creatorUsernameMatchesProfile){
+      return json({
+        error:"登録したNiantic IDとMeetup主催者のNiantic IDが一致しません。自分が主催したMeetupを入力してください。",
+        code:"CREATOR_ID_MISMATCH",
+        creatorUsername,
       },422);
     }
 
@@ -244,24 +292,51 @@ Deno.serve(async(req:Request)=>{
 
     let masterMatch:boolean|null=null;
     let caMapStatus:"matched"|"not_listed"|"community_mismatch"|"identity_missing"="identity_missing";
-    const identity=String(profile.niantic_id??"").trim().toLowerCase();
-    if(identity){
-      const {data:caMember}=await admin.from("ca_members")
-        .select("id")
-        .eq("source_key",identity)
-        .maybeSingle();
-      if(!caMember){
-        caMapStatus="not_listed";
-      }else{
-        const {data:link}=await admin.from("community_ca_members")
-          .select("id")
-          .eq("ca_member_id",caMember.id)
-          .eq("community_id",community.id)
-          .maybeSingle();
-        masterMatch=Boolean(link);
-        caMapStatus=link?"matched":"community_mismatch";
-      }
+
+    const {data:caMember,error:caMemberError}=await admin.from("ca_members")
+      .select("id,source_key,trainer_name,ca_level,status")
+      .eq("source_key",identity)
+      .maybeSingle();
+    if(caMemberError) throw caMemberError;
+
+    if(!caMember){
+      return json({
+        error:"あなたは日本CA地図にまだ掲載されていません。リョータさんに掲載をお願いしてください。",
+        code:"CA_MAP_NOT_LISTED",
+        creatorUsername,
+        communityName:community.name,
+      },422);
     }
+
+    const caLevel=String(caMember.ca_level??"").trim();
+    const caRoleVerified=(caLevel==="1st"||caLevel==="2nd") && caMember.status==="active";
+    if(!caRoleVerified){
+      return json({
+        error:"日本CA地図で有効な1st/2ndとして確認できませんでした。掲載内容を確認してください。",
+        code:"CA_ROLE_NOT_VERIFIED",
+        caLevel:caLevel||null,
+        caStatus:caMember.status??null,
+      },422);
+    }
+
+    const {data:link,error:linkError}=await admin.from("community_ca_members")
+      .select("id")
+      .eq("ca_member_id",caMember.id)
+      .eq("community_id",community.id)
+      .maybeSingle();
+    if(linkError) throw linkError;
+    if(!link){
+      return json({
+        error:"日本CA地図では、登録したNiantic IDがこのCommunityの1st/2ndとして登録されていません。",
+        code:"CA_COMMUNITY_MISMATCH",
+        creatorUsername,
+        communityName:community.name,
+        caLevel,
+      },422);
+    }
+
+    masterMatch=true;
+    caMapStatus="matched";
 
     const canonicalUrl="https://campfire.scopely.com/discover/meetup/"+meetupId;
     const {data:created,error:createError}=await admin.from("community_access_requests").insert({
@@ -280,7 +355,12 @@ Deno.serve(async(req:Request)=>{
       checkin_count:Number.isFinite(event.checkedInMembersCount)?Number(event.checkedInMembersCount):null,
       campfire_live_event_name:event.campfireLiveEvent?.eventName??null,
       creator_display_name:creatorDisplayName,
+      creator_username:creatorUsername,
+      creator_username_matches_profile:creatorUsernameMatchesProfile,
       creator_ca_badge_verified:creatorCaBadgeVerified,
+      ca_level_snapshot:caLevel,
+      ca_role_verified:caRoleVerified,
+      niantic_id_snapshot:profileNianticId,
       ca_map_status:caMapStatus,
       master_match:masterMatch,
       status:"pending",
@@ -300,7 +380,11 @@ Deno.serve(async(req:Request)=>{
       meetupTitle:event.name,
       isCaMeetup:event.createdByCommunityAmbassador??null,
       creatorDisplayName,
+      creatorUsername,
+      creatorUsernameMatchesProfile,
       creatorCaBadgeVerified,
+      caLevel,
+      caRoleVerified,
       caMapStatus,
       masterMatch,
     });

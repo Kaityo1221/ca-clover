@@ -13,6 +13,7 @@ export type CampfireBadge={
 
 export type CampfireEventCreator={
   displayName?:string|null;
+  username?:string|null;
   badges?:CampfireBadge[]|null;
 };
 
