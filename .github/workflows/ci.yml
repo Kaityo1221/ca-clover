@@ -153,3 +153,38 @@ jobs:
                       print(data[max(0,pos-2200):pos+4200].replace('\\n',' ')[:6400])
                       print()
           PY5
+          echo '=== RC IDS AND MAP DEFAULTS ==='
+          python - <<'PY6'
+          import re, urllib.parse, urllib.request
+          html=open('/tmp/campfire.html',encoding='utf-8',errors='ignore').read()
+          srcs=re.findall(r'<script[^>]+src="([^"]+)"',html)
+          urls=['https://campfire.scopely.com']+[urllib.parse.urljoin('https://campfire.scopely.com',s) for s in srcs]
+          uuid_re=re.compile(r'(?i)[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}')
+          seen=set()
+          for url in urls:
+              try:
+                  if url=='https://campfire.scopely.com':
+                      data=html
+                  else:
+                      req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0'})
+                      data=urllib.request.urlopen(req,timeout=15).read().decode('utf-8','ignore')
+              except Exception:
+                  continue
+              for m in uuid_re.finditer(data):
+                  ctx=data[max(0,m.start()-700):m.end()+700]
+                  if any(k.lower() in ctx.lower() for k in ['realitychannel','reality channel','pokemon','pgo','source']):
+                      key=(url,m.group(0))
+                      if key not in seen:
+                          print('UUID',m.group(0),'URL',url)
+                          print(ctx.replace('\\n',' ')[:1500])
+                          seen.add(key)
+              for needle in ['realityChannelId:', 'realityChannelId=', 'realityChannelId"', 'realityChannelId\\":']:
+                  for m in list(re.finditer(re.escape(needle),data))[:20]:
+                      print('RCCTX',url,needle,data[max(0,m.start()-1500):m.start()+3500].replace('\\n',' ')[:5000])
+              if '/3248-' in url:
+                  for module_id in ['3481:function','97145:function']:
+                      pos=data.find(module_id)
+                      print('MODULE',module_id,'POS',pos)
+                      if pos>=0: print(data[pos:pos+10000].replace('\\n',' ')[:10000])
+          print('HTML_UUIDS',sorted(set(uuid_re.findall(html)))[:100])
+          PY6
