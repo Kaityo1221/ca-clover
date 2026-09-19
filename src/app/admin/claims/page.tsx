@@ -13,6 +13,9 @@ type ClaimRow={
   community_prefecture_snapshot:string|null;
   is_ca_meetup:boolean|null;
   master_match:boolean|null;
+  creator_display_name:string|null;
+  creator_ca_badge_verified:boolean|null;
+  ca_map_status:"matched"|"not_listed"|"community_mismatch"|"identity_missing"|null;
   status:"pending"|"approved"|"rejected";
   requested_at:string;
   reviewed_at:string|null;
@@ -27,7 +30,7 @@ export default function Page(){
 
   async function load(){
     const {data:requests}=await supabase.from("community_access_requests")
-      .select("id,user_id,meetup_title,meetup_url,community_name_snapshot,community_prefecture_snapshot,is_ca_meetup,master_match,status,requested_at,reviewed_at")
+      .select("id,user_id,meetup_title,meetup_url,community_name_snapshot,community_prefecture_snapshot,is_ca_meetup,master_match,creator_display_name,creator_ca_badge_verified,ca_map_status,status,requested_at,reviewed_at")
       .order("requested_at",{ascending:false});
     const claimRows=(requests as ClaimRow[]|null)??[];
     setRows(claimRows);
@@ -60,11 +63,14 @@ export default function Page(){
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap gap-2">
             <span className="rounded-full bg-lime-100 px-3 py-1 text-[11px] font-black text-lime-800">{row.community_prefecture_snapshot??"—"}</span>
-            <span className={row.master_match===true?"rounded-full bg-lime-200 px-3 py-1 text-[11px] font-black text-lime-900":row.master_match===false?"rounded-full bg-rose-100 px-3 py-1 text-[11px] font-black text-rose-700":"rounded-full bg-amber-100 px-3 py-1 text-[11px] font-black text-amber-800"}>CAマスター: {row.master_match===true?"一致":row.master_match===false?"不一致":"要確認"}</span>
+            <span className={row.creator_ca_badge_verified===true?"rounded-full bg-violet-100 px-3 py-1 text-[11px] font-black text-violet-700":"rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black text-slate-500"}>{row.creator_ca_badge_verified===true?"🟣 紫CAバッジ確認済み":"CAバッジ未確認"}</span>
+            <span className={row.ca_map_status==="matched"?"rounded-full bg-lime-200 px-3 py-1 text-[11px] font-black text-lime-900":row.ca_map_status==="not_listed"?"rounded-full bg-amber-100 px-3 py-1 text-[11px] font-black text-amber-800":row.ca_map_status==="community_mismatch"?"rounded-full bg-rose-100 px-3 py-1 text-[11px] font-black text-rose-700":"rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black text-slate-600"}>日本CA地図: {row.ca_map_status==="matched"?"掲載済み":row.ca_map_status==="not_listed"?"未掲載":row.ca_map_status==="community_mismatch"?"Community不一致":row.ca_map_status==="identity_missing"?"Niantic ID未登録":row.master_match===true?"掲載済み":"要確認"}</span>
             <span className={row.is_ca_meetup===true?"rounded-full bg-lime-100 px-3 py-1 text-[11px] font-black text-lime-800":"rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black text-slate-500"}>{row.is_ca_meetup===true?"CA Meetup":"CA判定未確認"}</span>
           </div>
           <h2 className="mt-3 text-xl font-black text-lime-950">{row.community_name_snapshot}</h2>
           <div className="mt-2 text-sm font-bold text-slate-600">{row.meetup_title}</div>
+          <div className="mt-3 text-xs font-black text-violet-700">Meetup主催者: {row.creator_display_name??"未取得"}</div>
+          {row.ca_map_status==="not_listed"?<div className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black text-amber-800">日本CA地図に未掲載です。申請者へ「リョータさんに掲載をお願いしてください」と案内してください。</div>:null}
           <div className="mt-3 text-xs font-semibold text-slate-500">申請者: {requester?.email??"—"} / Niantic ID: {requester?.niantic_id??"未登録"}</div>
           <div className="mt-1 text-[11px] text-slate-400">申請 {new Date(row.requested_at).toLocaleString("ja-JP")}</div>
           <a href={row.meetup_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex text-xs font-black text-lime-700">Campfire Meetupを確認 ↗</a>
