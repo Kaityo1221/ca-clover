@@ -15,3 +15,38 @@ jobs:
           node-version: 22
       - run: npm install --no-audit --no-fund
       - run: npm run build
+      - name: Diagnostic public collection query
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL='https://campfire.scopely.com/discover/collection/all-meetups'
+          curl -LfsS -A 'Mozilla/5.0' "$URL" -o /tmp/campfire.html
+          echo '=== HTML HEAD ==='
+          head -c 1200 /tmp/campfire.html | tr '\n' ' '
+          echo
+          echo '=== SCRIPT SRCS ==='
+          grep -oE '<script[^>]+src="[^"]+"' /tmp/campfire.html | sed -E 's/.*src="([^"]+)".*/\1/' | head -80 | tee /tmp/scripts.txt || true
+          python - <<'PY'
+          import re, urllib.parse, urllib.request
+          base='https://campfire.scopely.com'
+          html=open('/tmp/campfire.html',encoding='utf-8',errors='ignore').read()
+          srcs=re.findall(r'<script[^>]+src="([^"]+)"',html)
+          needles=['all-meetups','collection','publicMapObjectsById','activeFeed','archivedFeed','GraphQL','graphql']
+          print('=== BUNDLE MATCHES ===')
+          for src in srcs[:80]:
+              url=urllib.parse.urljoin(base,src)
+              try:
+                  req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0'})
+                  data=urllib.request.urlopen(req,timeout=15).read().decode('utf-8','ignore')
+              except Exception as e:
+                  continue
+              hits=[n for n in needles if n in data]
+              if not hits:
+                  continue
+              print('BUNDLE',url,'HITS',','.join(hits))
+              for n in hits:
+                  i=data.find(n)
+                  if i>=0:
+                      snippet=data[max(0,i-220):i+500].replace('\n',' ')
+                      print('NEEDLE',n,'SNIPPET',snippet[:720])
+          PY
