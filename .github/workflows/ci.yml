@@ -188,3 +188,27 @@ jobs:
                       if pos>=0: print(data[pos:pos+10000].replace('\\n',' ')[:10000])
           print('HTML_UUIDS',sorted(set(uuid_re.findall(html)))[:100])
           PY6
+          echo '=== ANON RC QUERY ==='
+          BODY="$(jq -nc --arg id '8947de81-e387-4e03-89c6-31ce2ca47c3c' '{query:"query RC($id: ID!) { realityChannelById(id: $id) { id metadata { isWebEmbed showUGC showGameIP } sources { name dropTypes } } }",variables:{id:$id}}')"
+          curl -sS -X POST 'https://niantic-social-api.nianticlabs.com/graphql' -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$BODY" | jq .
+
+          echo '=== FIND MAP CONSTANT MODULES ==='
+          python - <<'PY7'
+          import re, urllib.parse, urllib.request
+          html=open('/tmp/campfire.html',encoding='utf-8',errors='ignore').read()
+          srcs=re.findall(r'<script[^>]+src="([^"]+)"',html)
+          for src in srcs:
+              url=urllib.parse.urljoin('https://campfire.scopely.com',src)
+              try:
+                  req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0'})
+                  data=urllib.request.urlopen(req,timeout=15).read().decode('utf-8','ignore')
+              except Exception:
+                  continue
+              for mid in ['3481','97145']:
+                  for pat in [mid+':function(',mid+':(',mid+':function']:
+                      pos=data.find(pat)
+                      if pos>=0:
+                          print('FOUND MODULE',mid,'URL',url,'PAT',pat)
+                          print(data[pos:pos+14000].replace('\\n',' ')[:14000])
+                          break
+          PY7
