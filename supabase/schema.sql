@@ -1,3 +1,5 @@
+create extension if not exists supabase_vault;
+
 create type public.app_role as enum ('admin','ca','pending');
 create type public.coverage_status as enum ('complete','partial','missing');
 
