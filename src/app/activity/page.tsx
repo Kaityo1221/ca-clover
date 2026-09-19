@@ -6,17 +6,24 @@ import { useAuthProfile } from "@/lib/use-auth-profile";
 
 type MeetupRow = {
   id: string;
+  community_id: string | null;
   title: string;
   starts_at: string | null;
   location: string | null;
+  event_url: string | null;
   is_ca_meetup: boolean | null;
   rsvp_count: number | null;
   checkin_count: number | null;
 };
 
+type CommunityRow={id:string;name:string};
+const periods=[30,90,180,365] as const;
+
 export default function Page() {
   const { supabase, user, profile, loading } = useAuthProfile();
   const [rows, setRows] = useState<MeetupRow[]>([]);
+  const [communities,setCommunities]=useState<CommunityRow[]>([]);
+  const [period,setPeriod]=useState<number>(30);
   const [dataLoading, setDataLoading] = useState(false);
 
   useEffect(() => {
@@ -24,26 +31,61 @@ export default function Page() {
     let alive = true;
     setDataLoading(true);
 
-    supabase
-      .from("meetups")
-      .select("id,title,starts_at,location,is_ca_meetup,rsvp_count,checkin_count")
-      .order("starts_at", { ascending: false })
-      .limit(200)
-      .then(({ data }) => {
-        if (!alive) return;
-        setRows((data as MeetupRow[]) ?? []);
-        setDataLoading(false);
-      });
+    const since=new Date(Date.now()-365*24*60*60*1000).toISOString();
+    Promise.all([
+      supabase
+        .from("meetups")
+        .select("id,community_id,title,starts_at,location,event_url,is_ca_meetup,rsvp_count,checkin_count")
+        .gte("starts_at",since)
+        .order("starts_at", { ascending: false })
+        .limit(2000),
+      supabase.from("communities").select("id,name"),
+    ]).then(([meetupResult,communityResult])=>{
+      if(!alive) return;
+      setRows((meetupResult.data as MeetupRow[]|null)??[]);
+      setCommunities((communityResult.data as CommunityRow[]|null)??[]);
+      setDataLoading(false);
+    });
 
     return () => { alive = false; };
   }, [loading, profile, supabase, user]);
 
+  const communityMap=useMemo(()=>new Map(communities.map(c=>[c.id,c.name])),[communities]);
+  const filtered=useMemo(()=>{
+    const since=Date.now()-period*24*60*60*1000;
+    return rows.filter(row=>row.starts_at && new Date(row.starts_at).getTime()>=since);
+  },[rows,period]);
+
   const summary = useMemo(() => ({
-    meetup: rows.length,
-    rsvp: rows.reduce((sum, row) => sum + (row.rsvp_count ?? 0), 0),
-    checkin: rows.reduce((sum, row) => sum + (row.checkin_count ?? 0), 0),
-    ca: rows.filter(row => row.is_ca_meetup).length,
-  }), [rows]);
+    meetup: filtered.length,
+    rsvp: filtered.reduce((sum, row) => sum + (row.rsvp_count ?? 0), 0),
+    checkin: filtered.reduce((sum, row) => sum + (row.checkin_count ?? 0), 0),
+    ca: filtered.filter(row => row.is_ca_meetup).length,
+  }), [filtered]);
+
+  const monthly=useMemo(()=>{
+    const map=new Map<string,{events:number;rsvp:number;checkin:number}>();
+    const now=new Date();
+    for(let i=11;i>=0;i--){
+      const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+      const key=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+      map.set(key,{events:0,rsvp:0,checkin:0});
+    }
+    for(const row of rows){
+      if(!row.starts_at) continue;
+      const d=new Date(row.starts_at);
+      const key=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+      const item=map.get(key);
+      if(item){
+        item.events++;
+        item.rsvp+=row.rsvp_count??0;
+        item.checkin+=row.checkin_count??0;
+      }
+    }
+    return [...map.entries()];
+  },[rows]);
+
+  const maxMonthly=Math.max(1,...monthly.map(([,v])=>v.checkin));
 
   if (loading) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 読み込み中...</main>;
   if (!user) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><h1 className="text-2xl font-black text-lime-950">ログインが必要です</h1><Link href="/login" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black">Googleでログイン</Link></div></main>;
@@ -53,27 +95,42 @@ export default function Page() {
     <Link href="/" className="text-sm font-black text-lime-700">← CA Clover Home</Link>
     <span className="mt-4 block w-fit rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900">活動を見る</span>
     <h1 className="mt-3 text-3xl font-black text-lime-950">🔥 Meetup Activity</h1>
-    <p className="mt-2 text-sm font-semibold text-slate-500">{dataLoading ? "読み込み中..." : "RLSで閲覧可能なMeetupを表示中"}</p>
+    <p className="mt-2 text-sm font-semibold text-slate-500">{dataLoading ? "読み込み中..." : profile?.role==="admin" ? "全国の取得済みMeetupを集計" : "割り当てCommunityのMeetupを集計"}</p>
 
-    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="mt-5 flex flex-wrap gap-2">
+      {periods.map(days=><button key={days} onClick={()=>setPeriod(days)} className={period===days?"clover-pill active":"clover-pill"}>{days}日</button>)}
+    </div>
+
+    <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {[
         ["🔥","Meetup",summary.meetup],
         ["🍀","CA Meetup",summary.ca],
         ["📨","RSVP",summary.rsvp],
         ["✅","Check-in",summary.checkin],
-      ].map(([icon,label,value])=><div key={String(label)} className="clover-card min-h-36 p-5"><div className="text-2xl">{icon}</div><div className="mt-3 text-xs font-black text-slate-500">{label}</div><div className="mt-1 text-3xl font-black text-lime-950">{value}</div></div>)}
+      ].map(([icon,label,value])=><div key={String(label)} className="clover-card min-h-36 p-5"><div className="text-2xl">{icon}</div><div className="mt-3 text-xs font-black text-slate-500">{label} / {period}日</div><div className="mt-1 text-3xl font-black text-lime-950">{value}</div></div>)}
     </div>
 
+    <section className="clover-card mt-5 p-5">
+      <div className="flex items-end justify-between gap-3"><div><h2 className="font-black text-lime-950">📊 月別Activity</h2><p className="mt-1 text-xs font-semibold text-slate-500">過去12か月 / Check-inをバー表示</p></div></div>
+      <div className="mt-6 grid grid-cols-6 gap-3 md:grid-cols-12">
+        {monthly.map(([month,value])=><div key={month} className="flex min-w-0 flex-col items-center justify-end gap-2">
+          <div className="flex h-36 w-full items-end justify-center rounded-xl bg-lime-50 p-1"><div className="w-full rounded-lg bg-lime-300" style={{height:Math.max(4,Math.round(value.checkin/maxMonthly*100))+"%"}} title={"Check-in "+value.checkin}/></div>
+          <div className="text-[9px] font-black text-slate-500">{month.slice(5)}月</div>
+          <div className="text-[9px] font-bold text-lime-700">{value.events}回</div>
+        </div>)}
+      </div>
+    </section>
+
     <section className="clover-card mt-5 overflow-hidden">
-      <div className="border-b border-lime-100 px-5 py-4"><h2 className="font-black text-lime-950">最近のMeetup</h2></div>
-      {rows.length === 0 && !dataLoading ? <div className="p-8 text-center text-sm font-semibold text-slate-500">まだMeetupデータがありません。Campfire同期後にここへ表示されます。</div> : null}
+      <div className="border-b border-lime-100 px-5 py-4"><h2 className="font-black text-lime-950">最近のMeetup / {period}日</h2></div>
+      {filtered.length === 0 && !dataLoading ? <div className="p-8 text-center text-sm font-semibold text-slate-500">この期間のMeetupデータはありません。</div> : null}
       <div className="divide-y divide-lime-50">
-        {rows.map(row => <div key={row.id} className="p-5">
+        {filtered.slice(0,200).map(row => <div key={row.id} className="p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="text-xs font-black text-lime-700">{row.starts_at ? new Date(row.starts_at).toLocaleString("ja-JP") : "日時未取得"}</div>
-              <div className="mt-1 font-black text-lime-950">{row.title}</div>
-              <div className="mt-1 text-xs font-semibold text-slate-500">📍 {row.location ?? "場所未取得"}</div>
+              <div className="mt-1 font-black text-lime-950">{row.event_url?<a href={row.event_url} target="_blank" rel="noreferrer" className="hover:text-lime-700">{row.title} ↗</a>:row.title}</div>
+              <div className="mt-1 text-xs font-semibold text-slate-500">{row.community_id ? "🏕️ "+(communityMap.get(row.community_id)??"Community") : ""}{row.location ? "　📍 "+row.location : ""}</div>
             </div>
             {row.is_ca_meetup ? <span className="rounded-full bg-lime-200 px-2.5 py-1 text-[11px] font-black text-lime-900">CA Meetup</span> : null}
           </div>
@@ -81,5 +138,7 @@ export default function Page() {
         </div>)}
       </div>
     </section>
+
+    <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold leading-5 text-amber-900">表示値はCA Cloverが取得できた公開データの範囲です。cmpf-tools側の履歴が完全とは限らないため、取得状況はData Coverageも併せて確認してください。</div>
   </main>;
 }

@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useAuthProfile } from "@/lib/use-auth-profile";
 
 const buttons=[
-  ["🔄","データ同期","CAマスターとActivityを更新"],
-  ["🔗","Community割当","CAとCommunityの紐付け"],
-  ["👥","CAアカウント","承認・権限を管理"],
-  ["🧾","同期履歴","取得結果とエラーを確認"],
-  ["⚙️","データ設定","取得元・更新条件を管理"],
-  ["🛡️","権限設定","ADMIN / CA / pendingを管理"],
+  ["🔄","データ同期","Campfire Activityを全国更新","/admin/sync"],
+  ["🔗","Community割当","CAアカウントへCommunityを割当","/admin/assignments"],
+  ["👥","CAアカウント","pending / CA / ADMINを承認・変更","/admin/accounts"],
+  ["🧾","同期履歴","取得件数・失敗・部分取得を確認","/admin/sync-runs"],
+  ["🧾","Data Coverage","全国の取得状態を確認","/data"],
+  ["🏠","ホームへ","カテゴリホームに戻る","/"],
 ];
 
 export default function Page(){
@@ -25,9 +25,9 @@ export default function Page(){
     <h1 className="mt-3 text-3xl font-black text-lime-950">⚙️ 管理メニュー</h1>
     <p className="mt-2 text-sm font-semibold text-slate-500">ADMIN権限でログイン中</p>
     <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {buttons.map(([i,t,d])=><button key={t} className="clover-card min-h-40 p-5 text-left transition hover:-translate-y-1 hover:border-lime-300">
-        <div className="text-3xl">{i}</div><div className="mt-4 font-black text-lime-950">{t}</div><div className="mt-1 text-xs font-semibold text-slate-500">{d}</div>
-      </button>)}
+      {buttons.map(([i,t,d,href])=><Link key={t} href={href} className="clover-card min-h-40 p-5 text-left transition hover:-translate-y-1 hover:border-lime-300">
+        <div className="text-3xl">{i}</div><div className="mt-4 font-black text-lime-950">{t}</div><div className="mt-1 text-xs font-semibold text-slate-500">{d}</div><div className="mt-4 text-xs font-black text-lime-700">開く →</div>
+      </Link>)}
     </div>
   </main>;
 }
