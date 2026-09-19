@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useAuthProfile } from "@/lib/use-auth-profile";
 
 const buttons=[
+  ["🔐","Campfire接続","ADMIN tokenと接続状態を管理","/admin/campfire"],
   ["🔄","データ同期","Campfire Activityを全国更新","/admin/sync"],
   ["🔗","Community割当","CAアカウントへCommunityを割当","/admin/assignments"],
   ["👥","CAアカウント","pending / CA / ADMINを承認・変更","/admin/accounts"],
