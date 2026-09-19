@@ -18,49 +18,64 @@ type MeetupRow = {
   rsvp_count: number | null;
   checkin_count: number | null;
 };
+type ClaimRow = {
+  id:string;
+  meetup_title:string;
+  community_name_snapshot:string;
+  community_prefecture_snapshot:string|null;
+  master_match:boolean|null;
+  status:"pending"|"approved"|"rejected";
+  requested_at:string;
+  reviewed_at:string|null;
+};
 
 export default function Page() {
   const { supabase, user, profile, loading } = useAuthProfile();
   const [communities, setCommunities] = useState<CommunityRow[]>([]);
   const [meetups, setMeetups] = useState<MeetupRow[]>([]);
+  const [claims,setClaims]=useState<ClaimRow[]>([]);
+  const [claimInput,setClaimInput]=useState("");
+  const [claimBusy,setClaimBusy]=useState(false);
+  const [claimMessage,setClaimMessage]=useState<string|null>(null);
   const [dataLoading, setDataLoading] = useState(false);
+
+  async function loadClaims(){
+    if(!user) return;
+    const {data}=await supabase.from("community_access_requests")
+      .select("id,meetup_title,community_name_snapshot,community_prefecture_snapshot,master_match,status,requested_at,reviewed_at")
+      .eq("user_id",user.id)
+      .order("requested_at",{ascending:false});
+    setClaims((data as ClaimRow[]|null)??[]);
+  }
 
   useEffect(() => {
     if (loading || !user || !profile || profile.role === "pending") return;
     let alive = true;
-
     const userId = user.id;
 
     async function load() {
       setDataLoading(true);
-
-      const { data: memberships } = await supabase
-        .from("community_memberships")
-        .select("community_id")
-        .eq("user_id", userId);
+      const [{data:memberships},{data:claimRows}]=await Promise.all([
+        supabase.from("community_memberships").select("community_id").eq("user_id", userId),
+        supabase.from("community_access_requests")
+          .select("id,meetup_title,community_name_snapshot,community_prefecture_snapshot,master_match,status,requested_at,reviewed_at")
+          .eq("user_id",userId)
+          .order("requested_at",{ascending:false}),
+      ]);
+      if(!alive) return;
+      setClaims((claimRows as ClaimRow[]|null)??[]);
 
       const ids = ((memberships as MembershipRow[] | null) ?? []).map(x => x.community_id);
-
       if (!ids.length) {
-        if (alive) {
-          setCommunities([]);
-          setMeetups([]);
-          setDataLoading(false);
-        }
+        setCommunities([]);
+        setMeetups([]);
+        setDataLoading(false);
         return;
       }
 
       const [{ data: communityRows }, { data: meetupRows }] = await Promise.all([
-        supabase
-          .from("communities")
-          .select("id,name,prefecture,member_count,coverage")
-          .in("id", ids)
-          .order("name"),
-        supabase
-          .from("meetups")
-          .select("community_id,starts_at,rsvp_count,checkin_count")
-          .in("community_id", ids)
-          .order("starts_at", { ascending: false }),
+        supabase.from("communities").select("id,name,prefecture,member_count,coverage").in("id", ids).order("name"),
+        supabase.from("meetups").select("community_id,starts_at,rsvp_count,checkin_count").in("community_id", ids).order("starts_at", { ascending: false }),
       ]);
 
       if (!alive) return;
@@ -72,6 +87,25 @@ export default function Page() {
     load();
     return () => { alive = false; };
   }, [loading, profile, supabase, user]);
+
+  async function submitClaim(){
+    const value=claimInput.trim();
+    if(!value) return;
+    setClaimBusy(true);
+    setClaimMessage(null);
+    const {data,error}=await supabase.functions.invoke("community-claim",{body:{action:"submit",meetup:value}});
+    if(error){
+      setClaimMessage("申請に失敗しました。Meetup URL / IDを確認してください。");
+    }else if(data?.status==="already_assigned"){
+      setClaimMessage(data.communityName+" はすでに閲覧できます 🍀");
+      setClaimInput("");
+    }else{
+      setClaimMessage(data?.communityName ? data.communityName+" の承認申請を送りました 🍀" : "承認申請を送りました 🍀");
+      setClaimInput("");
+      await loadClaims();
+    }
+    setClaimBusy(false);
+  }
 
   const metrics = useMemo(() => {
     const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -85,7 +119,7 @@ export default function Page() {
 
   if (loading) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 読み込み中...</main>;
   if (!user) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><div className="text-5xl">🍀</div><h1 className="mt-3 text-2xl font-black text-lime-950">ログインが必要です</h1><Link href="/login" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black">Googleでログイン</Link></div></main>;
-  if (profile?.role === "pending") return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><div className="text-5xl">🌱</div><h1 className="mt-3 text-2xl font-black text-lime-950">アカウント確認中</h1><p className="mt-2 text-sm font-semibold text-slate-500">Communityが割り当てられると利用できます。</p></div></main>;
+  if (profile?.role === "pending") return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><div className="text-5xl">🌱</div><h1 className="mt-3 text-2xl font-black text-lime-950">アカウント確認中</h1><p className="mt-2 text-sm font-semibold text-slate-500">CAアカウントとして承認されるとCommunity申請ができます。</p></div></main>;
 
   return <main className="mx-auto max-w-5xl px-4 py-8 md:px-8">
     <Link href="/" className="text-sm font-black text-lime-700">← CA Clover Home</Link>
@@ -93,34 +127,52 @@ export default function Page() {
     <h1 className="mt-3 text-3xl font-black text-lime-950">🍀 自分のCommunity</h1>
     <p className="mt-2 text-sm font-semibold text-slate-500">{dataLoading ? "読み込み中..." : communities.length + " Community"}</p>
 
+    {profile?.role==="ca" ? <section className="clover-card mt-6 p-6">
+      <div className="flex items-start gap-3">
+        <div className="text-3xl">🔥</div>
+        <div><h2 className="font-black text-lime-950">MeetupからCommunityを申請</h2><p className="mt-1 text-xs font-semibold text-slate-500">自分のCampfire Meetup URLまたはMeetup IDを1つ入力してください。Communityは自動判定され、ADMIN承認後に閲覧できます。</p></div>
+      </div>
+      <input value={claimInput} onChange={e=>setClaimInput(e.target.value)} placeholder="Campfire Meetup URL / Meetup ID" className="mt-5 w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-lime-400"/>
+      <button onClick={submitClaim} disabled={claimBusy||!claimInput.trim()} className="mt-3 w-full rounded-2xl bg-lime-400 px-5 py-3 text-sm font-black text-lime-950 disabled:opacity-50">{claimBusy?"Communityを確認中...":"Communityを確認して申請"}</button>
+      {claimMessage ? <p className="mt-3 text-center text-xs font-bold text-lime-700">{claimMessage}</p> : null}
+    </section> : null}
+
+    {claims.length ? <section className="mt-6">
+      <h2 className="text-lg font-black text-lime-950">申請履歴</h2>
+      <div className="mt-3 space-y-3">{claims.map(c=><div key={c.id} className="clover-card p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div><div className="text-xs font-black text-lime-700">{c.community_prefecture_snapshot??"—"}</div><div className="mt-1 font-black text-lime-950">{c.community_name_snapshot}</div><div className="mt-1 text-xs font-semibold text-slate-500">{c.meetup_title}</div></div>
+          <span className={c.status==="approved"?"rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900":c.status==="rejected"?"rounded-full bg-rose-100 px-3 py-1 text-xs font-black text-rose-700":"rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800"}>{c.status==="approved"?"承認済み":c.status==="rejected"?"却下":"承認待ち"}</span>
+        </div>
+        <div className="mt-3 text-[11px] font-bold text-slate-400">CAマスター照合: {c.master_match===true?"一致":c.master_match===false?"不一致":"要確認"} / 申請 {new Date(c.requested_at).toLocaleString("ja-JP")}</div>
+      </div>)}</div>
+    </section> : null}
+
     {!dataLoading && communities.length === 0 ? (
       <section className="clover-card mt-6 p-8 text-center">
         <div className="text-5xl">🌱</div>
         <h2 className="mt-3 text-xl font-black text-lime-950">Community未割当です</h2>
-        <p className="mt-2 text-sm font-semibold text-slate-500">管理者がCommunityを割り当てると、ここに表示されます。</p>
+        <p className="mt-2 text-sm font-semibold text-slate-500">上のフォームから自分のMeetupを登録すると、Communityを自動判定して承認申請できます。</p>
       </section>
     ) : null}
 
-    {communities.length ? (
-      <>
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <div className="clover-card p-5"><div className="text-2xl">🔥</div><div className="mt-2 text-xs font-black text-slate-500">30日Meetup</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.meetups}</div></div>
-          <div className="clover-card p-5"><div className="text-2xl">📨</div><div className="mt-2 text-xs font-black text-slate-500">30日RSVP</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.rsvp}</div></div>
-          <div className="clover-card p-5"><div className="text-2xl">✅</div><div className="mt-2 text-xs font-black text-slate-500">30日Check-in</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.checkin}</div></div>
-        </div>
-
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          {communities.map(c => <Link key={c.id} href={"/community/"+c.id} className="clover-card p-6 transition hover:-translate-y-1 hover:border-lime-300">
-            <div className="text-xs font-black text-lime-700">{c.prefecture ?? "—"}</div>
-            <h2 className="mt-2 text-xl font-black text-lime-950">{c.name}</h2>
-            <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold text-slate-500">
-              <span className="rounded-full bg-lime-50 px-3 py-2">Member: {c.member_count?.toLocaleString("ja-JP") ?? "未取得"}</span>
-              <span className="rounded-full bg-lime-50 px-3 py-2">Data: {c.coverage}</span>
-            </div>
-            <div className="mt-5 text-xs font-black text-lime-700">Activityを見る →</div>
-          </Link>)}
-        </div>
-      </>
-    ) : null}
+    {communities.length ? <>
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <div className="clover-card p-5"><div className="text-2xl">🔥</div><div className="mt-2 text-xs font-black text-slate-500">30日Meetup</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.meetups}</div></div>
+        <div className="clover-card p-5"><div className="text-2xl">📨</div><div className="mt-2 text-xs font-black text-slate-500">30日RSVP</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.rsvp}</div></div>
+        <div className="clover-card p-5"><div className="text-2xl">✅</div><div className="mt-2 text-xs font-black text-slate-500">30日Check-in</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.checkin}</div></div>
+      </div>
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        {communities.map(c => <Link key={c.id} href={"/community/"+c.id} className="clover-card p-6 transition hover:-translate-y-1 hover:border-lime-300">
+          <div className="text-xs font-black text-lime-700">{c.prefecture ?? "—"}</div>
+          <h2 className="mt-2 text-xl font-black text-lime-950">{c.name}</h2>
+          <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold text-slate-500">
+            <span className="rounded-full bg-lime-50 px-3 py-2">Member: {c.member_count?.toLocaleString("ja-JP") ?? "未取得"}</span>
+            <span className="rounded-full bg-lime-50 px-3 py-2">Data: {c.coverage}</span>
+          </div>
+          <div className="mt-5 text-xs font-black text-lime-700">Activityを見る →</div>
+        </Link>)}
+      </div>
+    </> : null}
   </main>;
 }
