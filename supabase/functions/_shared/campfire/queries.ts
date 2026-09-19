@@ -68,6 +68,30 @@ export const EVENT_QUERY=`query CA_Clover_Event($id: ID!) {
   }
 }`;
 
+export const PUBLIC_EVENTS_QUERY=`query CA_Clover_PublicEvents($ids: [ID!]!) {
+  publicMapObjectsById(ids: $ids) {
+    id
+    event {
+      id
+      name
+      clubId
+      clubName
+      address
+      eventTime
+      eventEndTime
+      place {
+        location
+        name
+        formattedAddress
+      }
+      mapObjectLocation {
+        latitude
+        longitude
+      }
+    }
+  }
+}`;
+
 export const TOKEN_CHECK_QUERY=`query CA_Clover_Token_Check {
   me { id }
 }`;
