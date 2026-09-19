@@ -9,6 +9,7 @@ const EVENT_FIELDS=`
   createdByCommunityAmbassador
   creator {
     displayName
+    username
     badges { badgeType alias }
   }
   checkedInMembersCount
