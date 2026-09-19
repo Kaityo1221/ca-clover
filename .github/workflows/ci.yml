@@ -86,3 +86,27 @@ jobs:
                   if pos>=0 and ('all-meetups' in url or '/3310-' in url or '/8236-' in url or '/1121-' in url or '/1966-' in url or '/7484-' in url):
                       print('CONTEXT',url,needle,data[max(0,pos-800):pos+2400].replace('\n',' ')[:3200])
           PY2
+          echo '=== TARGET QUERY ARTIFACT ==='
+          python - <<'PY3'
+          import urllib.request
+          url='https://campfire-web-assets.nianticlabs.com/_next/static/chunks/3248-4db68ec4bf2822ee.js'
+          req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0'})
+          data=urllib.request.urlopen(req,timeout=20).read().decode('utf-8','ignore')
+          for needle in [
+              'DiscoveryMapObjectsProvider_meetupMapObjects_Query',
+              'DiscoveryMapObjectsProvider_mapObjectsInLatLng_Query',
+              'meetupMapObjectsByLiveEventIdInLatLngBounds',
+              'realityChannelMapObjectsInLatLngBounds'
+          ]:
+              print('---',needle,'---')
+              start=0
+              count=0
+              while True:
+                  pos=data.find(needle,start)
+                  if pos<0 or count>=5:
+                      break
+                  print(data[max(0,pos-2500):pos+9000].replace('\\n',' ')[:11500])
+                  print()
+                  start=pos+len(needle)
+                  count+=1
+          PY3
