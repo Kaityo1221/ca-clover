@@ -130,9 +130,9 @@ export default function Page() {
     {profile?.role==="ca" ? <section className="clover-card mt-6 p-6">
       <div className="flex items-start gap-3">
         <div className="text-3xl">🔥</div>
-        <div><h2 className="font-black text-lime-950">MeetupからCommunityを申請</h2><p className="mt-1 text-xs font-semibold text-slate-500">自分のCampfire Meetup URLまたはMeetup IDを1つ入力してください。Communityは自動判定され、ADMIN承認後に閲覧できます。</p></div>
+        <div><h2 className="font-black text-lime-950">MeetupからCommunityを申請</h2><p className="mt-1 text-xs font-semibold text-slate-500">自分のCampfire共有URL（cmpf.re）・Meetup URL・Meetup IDのどれかを1つ入力してください。Communityは自動判定され、ADMIN承認後に閲覧できます。</p></div>
       </div>
-      <input value={claimInput} onChange={e=>setClaimInput(e.target.value)} placeholder="Campfire Meetup URL / Meetup ID" className="mt-5 w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-lime-400"/>
+      <input value={claimInput} onChange={e=>setClaimInput(e.target.value)} placeholder="Campfire共有URL / Meetup URL / Meetup ID" className="mt-5 w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-lime-400"/>
       <button onClick={submitClaim} disabled={claimBusy||!claimInput.trim()} className="mt-3 w-full rounded-2xl bg-lime-400 px-5 py-3 text-sm font-black text-lime-950 disabled:opacity-50">{claimBusy?"Communityを確認中...":"Communityを確認して申請"}</button>
       {claimMessage ? <p className="mt-3 text-center text-xs font-bold text-lime-700">{claimMessage}</p> : null}
     </section> : null}
