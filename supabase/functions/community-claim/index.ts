@@ -20,6 +20,32 @@ function extractMeetupId(value:unknown){
   return raw.match(UUID_RE)?.[0]??null;
 }
 
+async function resolveMeetupId(value:unknown){
+  const raw=String(value??"").trim();
+  const direct=extractMeetupId(raw);
+  if(direct) return direct;
+
+  let parsed:URL;
+  try{
+    parsed=new URL(raw);
+  }catch{
+    return null;
+  }
+
+  if(parsed.protocol!=="https:" || parsed.hostname.toLowerCase()!=="cmpf.re") return null;
+
+  const response=await fetch(parsed.toString(),{
+    method:"GET",
+    redirect:"follow",
+    headers:{"User-Agent":"CA-Clover/1.0"},
+  });
+
+  const finalUrl=new URL(response.url);
+  if(finalUrl.protocol!=="https:" || finalUrl.hostname.toLowerCase()!=="campfire.scopely.com") return null;
+
+  return extractMeetupId(finalUrl.toString());
+}
+
 Deno.serve(async(req:Request)=>{
   if(req.method==="OPTIONS") return new Response("ok",{headers:corsHeaders});
 
@@ -113,8 +139,8 @@ Deno.serve(async(req:Request)=>{
     if(action!=="submit") return json({error:"unknown action"},400);
     if(profile.role!=="ca") return json({error:"CAアカウント承認後に申請できます",code:"CA_ROLE_REQUIRED"},403);
 
-    const meetupId=extractMeetupId(body.meetup);
-    if(!meetupId) return json({error:"Campfire Meetup URLまたはMeetup IDを確認してください",code:"INVALID_MEETUP"},400);
+    const meetupId=await resolveMeetupId(body.meetup);
+    if(!meetupId) return json({error:"Campfire共有URL / Meetup URL / Meetup IDを確認してください",code:"INVALID_MEETUP"},400);
 
     const campfire=new CampfireClient({
       maxRetries:2,
