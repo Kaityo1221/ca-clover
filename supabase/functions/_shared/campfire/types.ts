@@ -53,6 +53,11 @@ export type CampfirePublicEvent={
   mapObjectLocation?:CampfirePublicMapLocation|null;
 };
 
+export type CampfirePublicMapObject={
+  id:string;
+  event?:CampfirePublicEvent|null;
+};
+
 export type CampfirePageInfo={
   hasNextPage?:boolean;
   endCursor?:string|null;
