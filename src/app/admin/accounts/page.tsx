@@ -26,7 +26,7 @@ export default function Page(){
 
   async function changeRole(id:string,role:AppRole){
     setBusy(id);
-    const {error}=await supabase.rpc("admin_set_user_role",{p_user_id:id,p_role:role} as never);
+    const {error}=await supabase.functions.invoke("admin-manage",{body:{action:"set_role",userId:id,role}});
     if(!error) await load();
     setBusy(null);
   }
