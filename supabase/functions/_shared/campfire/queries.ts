@@ -69,7 +69,7 @@ export const EVENT_QUERY=`query CA_Clover_Event($id: ID!) {
   }
 }`;
 
-export const PUBLIC_EVENTS_QUERY=`query CA_Clover_PublicEvents($ids: [ID!]!) {
+export const PUBLIC_MAP_OBJECTS_QUERY=`query CA_Clover_PublicMapObjects($ids: [ID!]!) {
   publicMapObjectsById(ids: $ids) {
     id
     event {
