@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
 
 type MenuItem = {
@@ -34,9 +35,9 @@ const adminSections = [
     title: "管理する",
     subtitle: "CA Cloverのデータと権限を整える",
     items: [
-      { icon: "🔄", title: "データ同期", description: "CAマスターと活動データを更新", href: "/admin" },
-      { icon: "🔗", title: "Community割当", description: "CAとCommunityの紐付けを管理", href: "/admin" },
-      { icon: "⚙️", title: "管理設定", description: "権限・データ状態を確認", href: "/admin" },
+      { icon: "🔄", title: "データ同期", description: "Campfire Activityを更新", href: "/admin/sync" },
+      { icon: "🔗", title: "Community割当", description: "CAアカウントへCommunityを割当", href: "/admin/assignments" },
+      { icon: "⚙️", title: "管理設定", description: "承認・同期履歴・権限を管理", href: "/admin" },
     ],
   },
   {
@@ -73,7 +74,26 @@ function MenuButton({ item }: { item: MenuItem }) {
 }
 
 export default function Page() {
-  const { user, profile, loading } = useAuthProfile();
+  const { supabase, user, profile, loading } = useAuthProfile();
+  const [counts,setCounts]=useState({communities:0,cas:0,unresolved:0});
+
+  useEffect(()=>{
+    if(profile?.role!=="admin") return;
+    Promise.all([
+      supabase.from("communities").select("id",{count:"exact",head:true}),
+      supabase.from("ca_members").select("id"),
+      supabase.from("community_ca_members").select("ca_member_id"),
+    ]).then(([communities,cas,links])=>{
+      const caIds=((cas.data as {id:string}[]|null)??[]).map(x=>x.id);
+      const linked=new Set(((links.data as {ca_member_id:string}[]|null)??[]).map(x=>x.ca_member_id));
+      setCounts({
+        communities:communities.count??0,
+        cas:caIds.length,
+        unresolved:caIds.filter(id=>!linked.has(id)).length,
+      });
+    });
+  },[profile?.role,supabase]);
+
   const roleLabel = loading ? "..." : !user ? "GUEST" : profile?.role === "admin" ? "ADMIN" : profile?.role === "ca" ? "CA" : "確認中";
   const sections = profile?.role === "admin" ? adminSections : profile?.role === "ca" ? caSections : [];
 
@@ -93,9 +113,9 @@ export default function Page() {
         <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-600">目的から機能を選ぶ、カテゴリ型のホーム画面です。</p>
 
         {profile?.role === "admin" ? <div className="mt-5 flex flex-wrap gap-2">
-          <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-lime-800">🌱 141 Community</span>
-          <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-lime-800">🏕️ 177 CA</span>
-          <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-amber-700">◐ 未解決 1</span>
+          <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-lime-800">🌱 {counts.communities} Community</span>
+          <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-lime-800">🏕️ {counts.cas} CA</span>
+          <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-amber-700">◐ 未解決 {counts.unresolved}</span>
         </div> : null}
       </section>
 
