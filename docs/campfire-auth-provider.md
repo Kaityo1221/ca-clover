@@ -12,8 +12,10 @@ CampfireClient
        -> TokenProvider
             -> VaultTokenProvider (current)
             -> FutureAuthProvider (only when a supported token acquisition flow is confirmed)
+  -> anonymous normal GraphQL
+       -> no token required for confirmed public event-detail operations
   -> public GraphQL
-       -> no token required
+       -> no token required for public map-object lookup
 ```
 
 Do not make manual DevTools token extraction a production user workflow.
@@ -22,7 +24,7 @@ Do not copy or depend on cmpf-tools user/community data. Only its API-access imp
 
 ## What was confirmed
 
-### 1. Campfire GraphQL access
+### 1. Authenticated Campfire GraphQL
 
 Authenticated Campfire GraphQL calls use:
 
@@ -59,32 +61,116 @@ Important: campfire-auth itself also needs a separately stored Campfire Bearer t
 
 Therefore self-hosting campfire-auth does not solve CA Clover's GraphQL token acquisition problem.
 
-## Current Niantic web-session findings
+## Campfire Web session findings
 
-There is evidence that Niantic's browser session has historically been used directly as a Bearer for the Niantic Social GraphQL API.
+The Campfire Web session token is used as a Bearer for the normal Niantic Social GraphQL endpoint.
 
-A 2022 Niantic Profile browser script used `localStorage.sessionToken` as:
+A recent `topi314/campfire-map` implementation documents the first-party Campfire Web Local Storage key as:
+
+```
+CapacitorStorage.sessionToken
+```
+
+and sends that value as:
 
 ```
 Authorization: Bearer <sessionToken>
 ```
 
-against:
+to:
 
 ```
-https://niantic-social-api.nianticlabs.com/niantic/graphql
+https://niantic-social-api.nianticlabs.com/graphql
 ```
 
-More importantly, a Niantic Profile userscript updated on 2025-10-31 still observes the first-party web application calling the same `/niantic/graphql` endpoint directly from the browser.
+This confirms the token shape/location used by the first-party web session.
 
-This confirms that the browser-to-Niantic-Social architecture remains active recently, but it does **not** yet prove that:
+It does **not** provide a supported third-party acquisition flow. The same project requires the operator to copy the token manually, so it is evidence about protocol behavior only, not a production authentication design for CA Clover.
 
-- the 2026 Campfire web app stores the same token in localStorage,
-- the Niantic Profile token is accepted by Campfire's `/graphql` endpoint,
-- a third-party application can obtain that token through a supported redirect/callback,
-- the token has a supported refresh flow for third-party clients.
+Historical Niantic Profile code also used a browser session token as a Bearer for Niantic Social GraphQL, and a userscript updated on 2025-10-31 still observes the first-party Profile site calling `/niantic/graphql` directly from the browser.
 
-Until those points are confirmed, CA Clover must not build an automatic provider around guessed first-party behavior.
+## Anonymous normal GraphQL findings
+
+`topi314/campfire-exporter` sends a logged-out request to the normal endpoint:
+
+```
+POST https://niantic-social-api.nianticlabs.com/graphql
+```
+
+with no Authorization header and `isLoggedIn: false`.
+
+Its Relay query fetches `event(id)` and demonstrates that public Meetup detail can be returned without a Bearer.
+
+The observed logged-out event shape includes fields CA Clover needs, such as:
+
+- Meetup ID and title,
+- start/end time,
+- location/address,
+- Community ID/name,
+- Community Ambassador flag/badges,
+- RSVP total count,
+- check-in count,
+- Campfire Live Event metadata.
+
+The reference exporter also requests participant identities, but CA Clover intentionally does not copy those fields.
+
+CA Clover now supports:
+
+- `CampfireClient.anonymousRequest()`
+- `CampfireClient.getAnonymousEvent(id)`
+
+using the existing minimal `EVENT_QUERY`, which does not request ordinary participant identities.
+
+This means a known Meetup ID can potentially be enriched with the required aggregate fields without a bearer token.
+
+## Public GraphQL findings
+
+Campfire also exposes:
+
+```
+POST https://niantic-social-api.nianticlabs.com/public/graphql
+```
+
+without a Bearer token.
+
+`topi314/campfire-tools` uses this endpoint with `publicMapObjectsById(ids: ...)`.
+
+Given a known public Meetup/map-object ID, it can return public event data including:
+
+- Meetup ID,
+- title,
+- Community ID and name,
+- address/place,
+- coordinates,
+- start/end time.
+
+CA Clover has a minimal `PUBLIC_EVENTS_QUERY` and `CampfireClient.getPublicEvents(ids)` path that does not require a TokenProvider.
+
+This is intentionally limited to non-participant data.
+
+## Discovery remains the blocker
+
+The missing piece is still:
+
+```
+Community ID -> active/archived Meetup IDs
+```
+
+or an equivalent public collection/discovery query.
+
+Pokémon GO officially links users to:
+
+```
+https://campfire.nianticlabs.com/discover/collection/all-meetups
+```
+
+which confirms an "all meetups" collection exists in the first-party product.
+
+No public source inspected so far exposes the GraphQL operation behind that collection.
+
+`topi314/campfire-map` is not that operation. Its `realityChannelMapObjectsByS2Cells` query is for Pokémon GO game-map POIs such as gyms, PokéStops, routes and powerspots.
+
+Therefore CA Clover should not guess a Collection field or query name.
 
 ## Official sign-in findings
 
@@ -101,90 +187,46 @@ Known first-party services use a URL pattern resembling:
 https://signin.nianticlabs.com/signin?continue=<first-party callback>&service=<service id>
 ```
 
-For example, Wayfarer uses its own first-party service identifier and callback.
-
 No public documentation or public code was found that provides all of the following for third-party Campfire integrations:
 
 - application/client registration for Campfire API access,
 - an authorization endpoint intended for third-party Campfire integrations,
 - a documented third-party callback flow,
-- a token endpoint that returns a Bearer accepted by `niantic-social-api.nianticlabs.com/graphql`,
+- a token endpoint that returns a Bearer accepted by Campfire GraphQL,
 - refresh-token semantics for that Bearer.
 
-Because those pieces are not confirmed, CA Clover must not guess service identifiers or endpoint names, copy private mobile-app credentials, or embed undocumented client secrets.
-
-## Public GraphQL findings
-
-Campfire also exposes:
-
-```
-POST https://niantic-social-api.nianticlabs.com/public/graphql
-```
-
-without a Bearer token.
-
-`topi314/campfire-tools` uses this public endpoint with `publicMapObjectsById(ids: ...)`.
-
-Given a known public Meetup/map-object ID, the endpoint can return public event data including:
-
-- Meetup ID,
-- title,
-- Community ID and name,
-- address/place,
-- coordinates,
-- start time,
-- end time.
-
-CA Clover now has a minimal `PUBLIC_EVENTS_QUERY` and `CampfireClient.getPublicEvents(ids)` path that does not require a TokenProvider.
-
-This is intentionally limited to non-participant data.
-
-### Public endpoint limitation
-
-The missing piece is discovery.
-
-The confirmed public query resolves **known Meetup IDs**. It does not by itself provide the required:
-
-```
-Community ID -> all active/archived Meetup IDs
-```
-
-mapping.
-
-Therefore it cannot currently replace authenticated `activeFeed` / `archivedFeed` sync.
-
-If a public collection/map query is confirmed later, CA Clover may be able to reduce or eliminate Bearer dependence for event discovery.
+Because those pieces are not confirmed, CA Clover must not guess service identifiers or endpoint names, copy first-party app credentials, or embed undocumented secrets.
 
 ## Current production position
 
-Use `VaultTokenProvider` as the only production authenticated token source for now.
+Use `VaultTokenProvider` as the production source for operations that are confirmed to require authentication, especially Community feed discovery.
 
-The existing ADMIN token UI is still considered an experimental/bootstrap mechanism, not the final user-facing authentication design.
+The existing ADMIN token UI remains an experimental/bootstrap mechanism, not the final user-facing authentication design.
 
-Use public GraphQL whenever a Meetup ID is already known and the required field is available publicly.
+For a known Meetup ID, prefer an anonymous/public operation when the required fields are available without authentication.
 
-The API client is ready for a future provider without another GraphQL refactor.
+The API client is ready for a future supported AuthProvider without another GraphQL transport refactor.
 
 ## Requirements for a future provider
 
-A future automatic provider can replace VaultTokenProvider only after the following are known and verified:
+A future automatic provider can replace VaultTokenProvider only after all of the following are verified:
 
 1. User authorization is interactive and does not require CA Clover to collect Google/Facebook/Apple passwords.
 2. The flow yields a token explicitly accepted by Campfire GraphQL.
 3. Token expiry can be determined.
 4. Renewal or re-authorization behavior is known.
-5. No private app secret extracted from the Campfire mobile application is required.
-6. The flow can be used without storing participant identity data that CA Clover does not need.
+5. No private first-party app secret is required.
+6. The flow can be used without storing participant identity data CA Clover does not need.
 
 ## Next research targets
 
 Priority order:
 
-1. Determine whether the public Campfire discovery/collection UI uses a public GraphQL query capable of returning Meetup IDs by area, collection, or Community.
-2. Confirm whether Campfire Web performs a browser-visible user-driven exchange from shared Niantic sign-in to a Campfire API token.
-3. Confirm whether the browser token used by Niantic Profile is accepted by Campfire `/graphql` or has a different audience.
-4. Determine whether any supported refresh mechanism exists.
-5. If no supported exchange exists, keep VaultTokenProvider and improve operational token-expiry handling rather than building a brittle pseudo-OAuth flow.
+1. Identify the GraphQL operation behind `/discover/collection/all-meetups` from a public source or first-party browser-visible request.
+2. Determine whether the collection operation can be used logged out.
+3. Determine whether Community pages expose public active Meetup IDs.
+4. Test whether archived Community feeds require authentication.
+5. If public discovery cannot be confirmed, keep VaultTokenProvider for discovery and use anonymous/public detail queries to reduce the amount of authenticated API access.
 
 ## References inspected
 
@@ -200,9 +242,12 @@ Priority order:
 - `topi314/campfire-auth/server/web/api.go`
 - `topi314/campfire-auth/server/campfire_login_code_checker.go`
 - `topi314/campfire-auth/server/server.go`
-- `topi314/campfire-auth/server/database/campfire_tokens.go`
+- `topi314/campfire-exporter/main.go`
+- `topi314/campfire-exporter/query.graphql`
+- `topi314/campfire-map/server/campfire/client.go`
+- `topi314/campfire-map/server/campfire/queries/README.md`
+- `topi314/campfire-map/server/campfire/queries/map_objects_by_s2_cells.graphql`
 - Campfire Help Center: Other ways to log in to Campfire
-- Niantic Profile
-- Niantic shared sign-in page
+- Pokémon GO 2024 Community Update linking the all-meetups collection
 - Niantic Profile userscript updated 2025-10-31 observing `/niantic/graphql`
-- Historical Niantic Profile browser script using `localStorage.sessionToken` as a Bearer
+- Historical Niantic Profile browser script using a browser session token as a Bearer
