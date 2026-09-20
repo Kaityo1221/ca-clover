@@ -162,3 +162,15 @@ begin
     perform cron.schedule('ca-clover-auto-sync-5m','*/5 * * * *',v_command);
   end if;
 end $$;
+
+
+-- One-time rollout assist: mark recent rows for a structure refresh so Campfire
+-- createdAt can be captured without making createdAt a permanent hash input.
+-- After this refresh, equal structure/activity hashes again mean zero Meetup writes.
+update public.meetups
+set structure_hash=null
+where campfire_created_at is null
+  and starts_at >= now()-interval '30 days';
+
+comment on column public.meetups.campfire_created_at is
+  'Campfire Event.createdAt. Not part of structure_hash; populated on insert/structure refresh. meetup_watch_v1_created_at_recheck';
