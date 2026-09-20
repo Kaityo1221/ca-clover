@@ -193,44 +193,77 @@ async function ensureCase(
   return data as CaseRow;
 }
 
+const STRONG_DISCORD_FLAGS=new Set([
+  "TITLE_STRONG",
+  "PARTICIPATION_RESTRICTED",
+  "HOST_ABSENT_TEXT",
+  "NON_FACE_TO_FACE",
+  "REWARD_ONLY",
+]);
+
 async function queueDiscordNotification(
   admin:SupabaseClient,
   row:WatchMeetup,
   caseId:string,
   summary:ReturnType<typeof summarizeFindings>,
-  findings:Array<{reason:string;score_weight:number}>,
+  findings:Array<{
+    flag_code:string;
+    reason:string;
+    score_weight:number;
+    matched_text?:string|null;
+  }>,
 ){
   if(!summary.discordCandidate||summary.notifyFlags.length===0) return false;
 
-  // Notify again only when a new notification-target flag appears.
-  // A flag disappearing must never create a second notification.
   const {data:previous,error:previousError}=await admin
     .from("meetup_watch_notifications")
-    .select("payload,status")
+    .select("status,flags,payload,notification_type")
     .eq("meetup_id",row.id)
-    .eq("channel","discord")
-    .in("status",["queued","sent"]);
+    .eq("channel","discord");
   if(previousError) throw previousError;
 
-  const alreadyNotified=new Set<string>();
+  // Do not stack a second Discord message while the first one is still queued.
+  if((previous??[]).some(item=>item.status==="queued")) return false;
+
+  const sentFlags=new Set<string>();
   for(const item of previous??[]){
-    const payload=(item.payload??{}) as Record<string,unknown>;
-    const notificationFlags=Array.isArray(payload.notification_flags)
-      ?payload.notification_flags
-      :Array.isArray(payload.flags)
-        ?payload.flags
+    if(item.status!=="sent") continue;
+    const storedFlags=Array.isArray(item.flags)
+      ?item.flags
+      :Array.isArray((item.payload as Record<string,unknown>|null)?.notification_flags)
+        ?((item.payload as Record<string,unknown>).notification_flags as unknown[])
         :[];
-    for(const flag of notificationFlags){
-      if(typeof flag==="string") alreadyNotified.add(flag);
+    for(const flag of storedFlags){
+      if(typeof flag==="string") sentFlags.add(flag);
     }
   }
 
-  const newNotificationFlags=summary.notifyFlags
-    .filter(flag=>!alreadyNotified.has(flag))
+  const strongFlags=summary.flags
+    .filter(flag=>STRONG_DISCORD_FLAGS.has(flag))
     .sort();
-  if(newNotificationFlags.length===0) return false;
 
-  const dedupeKey=row.id+":"+newNotificationFlags.join(",");
+  const hasSent=(previous??[]).some(item=>item.status==="sent");
+  let notificationType:"initial"|"update"="initial";
+  let notificationFlags:string[];
+
+  if(!hasSent){
+    // Initial notification: strong flag immediately, otherwise score >= 5.
+    notificationFlags=(strongFlags.length?strongFlags:summary.flags).slice().sort();
+  }else{
+    // Re-notify only when a new strong flag has been added.
+    notificationFlags=strongFlags.filter(flag=>!sentFlags.has(flag));
+    if(notificationFlags.length===0) return false;
+    notificationType="update";
+  }
+
+  const notificationKey=row.id+":"+notificationFlags.join(",");
+  const detectedTerms=[...new Set(
+    findings
+      .filter(item=>notificationFlags.includes(item.flag_code))
+      .map(item=>item.matched_text?.trim())
+      .filter((value):value is string=>Boolean(value))
+  )];
+
   const payload={
     case_id:caseId,
     community_id:row.community_id,
@@ -240,26 +273,35 @@ async function queueDiscordNotification(
     ends_at:row.ends_at,
     rsvp_count:row.rsvp_count,
     checkin_count:row.checkin_count,
-    flags:summary.notifyFlags,
-    notification_flags:newNotificationFlags,
+    flags:summary.flags,
+    notification_flags:notificationFlags,
+    notification_type:notificationType,
     score:summary.score,
+    detected_terms:detectedTerms,
     reasons:[...findings]
       .sort((a,b)=>b.score_weight-a.score_weight)
       .map(item=>item.reason)
       .filter((value,index,array)=>array.indexOf(value)===index)
-      .slice(0,4),
+      .slice(0,6),
     event_url:row.event_url,
   };
-  const {error}=await admin.from("meetup_watch_notifications").upsert({
+
+  const {data,error}=await admin.from("meetup_watch_notifications").upsert({
     meetup_id:row.id,
     case_id:caseId,
     channel:"discord",
-    dedupe_key:dedupeKey,
+    notification_type:notificationType,
+    notification_key:notificationKey,
+    dedupe_key:notificationKey,
+    flags:notificationFlags,
+    score:summary.score,
     status:"queued",
+    retry_count:0,
+    next_retry_at:null,
     payload,
-  },{onConflict:"dedupe_key",ignoreDuplicates:true});
+  },{onConflict:"notification_key",ignoreDuplicates:true}).select("id");
   if(error) throw error;
-  return true;
+  return Boolean(data?.length);
 }
 
 async function evaluateWatch(
@@ -377,7 +419,7 @@ async function evaluateWatch(
 
     const {data:activeData,error:activeError}=await admin
       .from("meetup_watch_findings")
-      .select("flag_code,severity,score_weight,reason")
+      .select("flag_code,severity,score_weight,reason,matched_text")
       .eq("meetup_id",row.id)
       .eq("active",true);
     if(activeError) throw activeError;
@@ -386,6 +428,7 @@ async function evaluateWatch(
       severity:number;
       score_weight:number;
       reason:string;
+      matched_text:string|null;
     }>;
     const summary=summarizeFindings(activeFindings);
 
