@@ -142,7 +142,12 @@ export default function Page() {
     <header className="sticky top-0 z-20 border-b border-lime-100 bg-white/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 md:px-8">
         <span className="grid size-11 place-items-center rounded-2xl bg-lime-300 text-2xl">🍀</span>
-        <div><div className="font-black text-lime-950">CA Clover</div><div className="text-[11px] font-bold text-lime-700">Japan Community Activity Dashboard</div></div>
+        <div>
+          <div className="font-black text-lime-950">CA Clover</div>
+          <div className="text-[11px] font-bold text-lime-700">
+            {profile?.role === "ca" ? "My Community Management" : "Japan Community Activity Dashboard"}
+          </div>
+        </div>
         <div className="ml-auto flex items-center gap-2">
           {profile?.role === "ca" ? (
             <Link
