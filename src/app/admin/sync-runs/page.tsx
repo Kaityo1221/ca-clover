@@ -45,9 +45,12 @@ export default function Page(){
           </div>
           <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold text-slate-600">
             <span className="rounded-full bg-lime-50 px-3 py-2">Community {n(d.processed_communities)}</span>
+            {row.source==="campfire-public-map"
+              ?<span className="rounded-full bg-sky-50 px-3 py-2 text-sky-700">発見 {n(d.discovered_event_ids)}</span>
+              :null}
             <span className="rounded-full bg-lime-50 px-3 py-2">Event {n(d.imported_events)}</span>
-            <span className="rounded-full bg-amber-50 px-3 py-2 text-amber-700">データなし {n(d.no_data_communities)}</span>
-            <span className="rounded-full bg-rose-50 px-3 py-2 text-rose-700">失敗 {n(d.failed_communities)}</span>
+            <span className="rounded-full bg-amber-50 px-3 py-2 text-amber-700">データなし {n(d.no_data_communities)+n(d.skipped_no_coordinates)}</span>
+            <span className="rounded-full bg-rose-50 px-3 py-2 text-rose-700">失敗 {n(d.failed_communities)+n(d.scan_failures)+n(d.detail_failures)}</span>
           </div>
         </section>;
       })}
