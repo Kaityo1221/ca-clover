@@ -83,6 +83,7 @@ function MenuButton({ item }: { item: MenuItem }) {
 export default function Page() {
   const { supabase, user, profile, loading } = useAuthProfile();
   const [counts,setCounts]=useState({communities:0,cas:0,unresolved:0});
+  const [myCommunityHref,setMyCommunityHref]=useState("/my");
 
   useEffect(()=>{
     if(profile?.role!=="admin") return;
@@ -101,8 +102,41 @@ export default function Page() {
     });
   },[profile?.role,supabase]);
 
+  useEffect(()=>{
+    if(!user || profile?.role!=="ca"){
+      setMyCommunityHref("/my");
+      return;
+    }
+
+    let alive=true;
+    supabase
+      .from("community_memberships")
+      .select("community_id")
+      .eq("user_id",user.id)
+      .then(({data})=>{
+        if(!alive) return;
+        const memberships=(data as {community_id:string}[]|null)??[];
+        setMyCommunityHref(
+          memberships.length===1
+            ? "/community/"+memberships[0].community_id
+            : "/my"
+        );
+      });
+
+    return()=>{alive=false;};
+  },[profile?.role,supabase,user]);
+
   const roleLabel = loading ? "..." : !user ? "GUEST" : profile?.role === "admin" ? "ADMIN" : profile?.role === "ca" ? "CA" : "確認中";
-  const sections = profile?.role === "admin" ? adminSections : profile?.role === "ca" ? caSections : [];
+  const sections = profile?.role === "admin"
+    ? adminSections
+    : profile?.role === "ca"
+      ? caSections.map(section => ({
+          ...section,
+          items: section.items.map(item =>
+            item.title === "My Community" ? { ...item, href: myCommunityHref } : item
+          ),
+        }))
+      : [];
 
   return <>
     <header className="sticky top-0 z-20 border-b border-lime-100 bg-white/90 backdrop-blur-xl">
