@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
+import { useAdminRouteGuard } from "@/lib/use-admin-route-guard";
 import MonthlyActivityChart from "@/components/monthly-activity-chart";
 
 type MeetupRow={
@@ -37,7 +37,7 @@ const periods=[30,90,180,365] as const;
 
 export default function Page(){
   const {supabase,user,profile,loading}=useAuthProfile();
-  const router = useRouter();
+  const { denied: adminDenied } = useAdminRouteGuard({ loading, user, profile });
   const [period,setPeriod]=useState<number>(30);
   const [summary,setSummary]=useState<SummaryRow>({meetup_count:0,ca_meetup_count:0,rsvp_count:0,checkin_count:0,last_event_at:null});
   const [monthly,setMonthly]=useState<MonthlyRow[]>([]);
@@ -45,11 +45,6 @@ export default function Page(){
   const [communities,setCommunities]=useState<CommunityRow[]>([]);
   const [dataLoading,setDataLoading]=useState(false);
 
-  useEffect(() => {
-    if (!loading && user && profile?.role === "ca") {
-      router.replace("/my");
-    }
-  }, [loading, user, profile?.role, router]);
 
   useEffect(()=>{
     if(loading||!user||!profile||profile.role!=="admin") return;

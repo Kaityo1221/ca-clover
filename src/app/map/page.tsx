@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
+import { useAdminRouteGuard } from "@/lib/use-admin-route-guard";
 import { comparePrefectures } from "@/lib/prefecture-order";
 
 type ActivityMapRow = {
@@ -273,7 +273,7 @@ function renderRecentMeetups(container: HTMLElement, meetups: RecentMeetupRow[])
 
 export default function Page() {
   const { supabase, user, profile, loading } = useAuthProfile();
-  const router = useRouter();
+  const { denied: adminDenied } = useAdminRouteGuard({ loading, user, profile });
   const [period, setPeriod] = useState<number>(30);
   const [metric, setMetric] = useState<MetricKey>("checkin_count");
   const [mapMode, setMapMode] = useState<MapMode>("activity");
@@ -286,11 +286,6 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null);
   const mapElementRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    if (!loading && user && profile?.role === "ca") {
-      router.replace("/my");
-    }
-  }, [loading, user, profile?.role, router]);
 
   useEffect(() => {
     if (loading || !user || !profile || profile.role !== "admin") return;

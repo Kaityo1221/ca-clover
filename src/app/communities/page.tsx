@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
+import { useAdminRouteGuard } from "@/lib/use-admin-route-guard";
 import { comparePrefectures } from "@/lib/prefecture-order";
 
 type CommunityRow = {
@@ -18,16 +18,11 @@ type CommunityRow = {
 
 export default function Page() {
   const { supabase, user, profile, loading } = useAuthProfile();
-  const router = useRouter();
+  const { denied: adminDenied } = useAdminRouteGuard({ loading, user, profile });
   const [rows, setRows] = useState<CommunityRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(false);
 
-  useEffect(() => {
-    if (!loading && user && profile?.role === "ca") {
-      router.replace("/my");
-    }
-  }, [loading, user, profile?.role, router]);
 
   useEffect(() => {
     if (loading || !user || !profile || profile.role !== "admin") return;

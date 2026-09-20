@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
+import { useAdminRouteGuard } from "@/lib/use-admin-route-guard";
 
 type CaRow = {
   id: string;
@@ -15,6 +16,7 @@ type CaRow = {
 
 export default function Page() {
   const { supabase, user, profile, loading } = useAuthProfile();
+  const { denied: adminDenied } = useAdminRouteGuard({ loading, user, profile });
   const [rows, setRows] = useState<CaRow[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
 
@@ -39,7 +41,7 @@ export default function Page() {
 
   if (loading) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 読み込み中...</main>;
   if (!user) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><h1 className="text-2xl font-black text-lime-950">ログインが必要です</h1><Link href="/login" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black">Googleでログイン</Link></div></main>;
-  if (profile?.role !== "admin") return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><div className="text-5xl">🔒</div><h1 className="mt-3 text-2xl font-black text-lime-950">ADMIN専用です</h1></div></main>;
+  if (adminDenied) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 My Communityへ移動中...</main>;
 
   return <main className="mx-auto max-w-6xl px-4 py-8 md:px-8">
     <Link href="/" className="text-sm font-black text-lime-700">← CA Clover Home</Link>
