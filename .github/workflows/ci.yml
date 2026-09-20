@@ -5,18 +5,29 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe discovery sources
+      - name: Find discovery source defaults
         shell: bash
         run: |
           set -euo pipefail
-          Q='query Probe($input: RealityChannelMapObjectsInLatLngBoundsInput!) { realityChannelMapObjectsInLatLngBounds(input: $input) { id mapObjectType event { id eventTime eventEndTime } } }'
-          BASE='{"bounds":{"sw":{"lat":35.0,"lng":139.0},"ne":{"lat":36.0,"lng":140.5}},"realityChannelId":"POKEMON_GO"}'
-          probe() {
-            echo "=== $1 ==="
-            BODY="$(jq -nc --arg q "$Q" --argjson input "$2" '{query:$q,variables:{input:$input}}')"
-            curl -sS -X POST 'https://niantic-social-api.nianticlabs.com/graphql' -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$BODY" | jq '{errors,count:(.data.realityChannelMapObjectsInLatLngBounds|length),sample:(.data.realityChannelMapObjectsInLatLngBounds[0:2])}'
-          }
-          probe empty_sources '{"bounds":{"sw":{"lat":35.0,"lng":139.0},"ne":{"lat":36.0,"lng":140.5}},"realityChannelId":"POKEMON_GO","sources":[]}'
-          probe event_source '{"bounds":{"sw":{"lat":35.0,"lng":139.0},"ne":{"lat":36.0,"lng":140.5}},"realityChannelId":"POKEMON_GO","sources":["EVENT"]}'
-          probe meetup_source '{"bounds":{"sw":{"lat":35.0,"lng":139.0},"ne":{"lat":36.0,"lng":140.5}},"realityChannelId":"POKEMON_GO","sources":["MEETUP"]}'
-          probe events_lower '{"bounds":{"sw":{"lat":35.0,"lng":139.0},"ne":{"lat":36.0,"lng":140.5}},"realityChannelId":"POKEMON_GO","sources":["events"]}'
+          curl -LfsS -A 'Mozilla/5.0' 'https://campfire.scopely.com/discover/collection/all-meetups' -o /tmp/page.html
+          python - <<'PY'
+          import re, urllib.request
+          html=open('/tmp/page.html',encoding='utf-8',errors='ignore').read()
+          srcs=re.findall(r'<script[^>]+src="([^"]+)"',html)
+          terms=['selectedRealityChannelSources','selectedRealityChannelId','RealityChannelSourceInput','realityChannelId','limitDropCount']
+          for src in srcs:
+              try:
+                  data=urllib.request.urlopen(urllib.request.Request(src,headers={'User-Agent':'Mozilla/5.0'}),timeout=15).read().decode('utf-8','ignore')
+              except Exception:
+                  continue
+              found=False
+              for term in terms:
+                  positions=[m.start() for m in re.finditer(re.escape(term),data)]
+                  if not positions: continue
+                  if not found:
+                      print('\n###',src)
+                      found=True
+                  for i in positions[:8]:
+                      print('\nTERM',term,'AT',i)
+                      print(data[max(0,i-1200):i+2200].replace('\n',' ')[:3400])
+          PY
