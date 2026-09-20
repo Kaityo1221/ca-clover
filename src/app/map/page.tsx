@@ -24,6 +24,8 @@ type MetricKey =
   | "ca_meetup_count"
   | "rsvp_count";
 
+type MapMode = "activity" | "recency";
+
 type RecentMeetupRow = {
   id: string;
   title: string;
@@ -137,7 +139,11 @@ function numberValue(row: ActivityMapRow, key: MetricKey) {
   return Number(row[key]) || 0;
 }
 
-function makePopup(row: ActivityMapRow, periodLabel: string) {
+function makePopup(
+  row: ActivityMapRow,
+  periodLabel: string,
+  lastEventAt?: string | null
+) {
   const wrapper = document.createElement("div");
   wrapper.style.minWidth = "240px";
   wrapper.style.fontFamily =
@@ -176,11 +182,12 @@ function makePopup(row: ActivityMapRow, periodLabel: string) {
   last.style.marginTop = "5px";
   last.style.fontSize = "11px";
   last.style.color = "#64748b";
+  const lastDate = lastEventAt ?? row.last_event_at;
   last.textContent =
     "最終開催: " +
-    (row.last_event_at
-      ? new Date(row.last_event_at).toLocaleDateString("ja-JP")
-      : "期間内なし");
+    (lastDate
+      ? new Date(lastDate).toLocaleDateString("ja-JP")
+      : "履歴なし");
 
   const recentTitle = document.createElement("div");
   recentTitle.textContent = "最近のMeetup";
@@ -267,10 +274,12 @@ export default function Page() {
   const { supabase, user, profile, loading } = useAuthProfile();
   const [period, setPeriod] = useState<number>(30);
   const [metric, setMetric] = useState<MetricKey>("checkin_count");
+  const [mapMode, setMapMode] = useState<MapMode>("activity");
   const [prefecture, setPrefecture] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [selectedCommunityId, setSelectedCommunityId] = useState<string | null>(null);
   const [rows, setRows] = useState<ActivityMapRow[]>([]);
+  const [allTimeRows, setAllTimeRows] = useState<ActivityMapRow[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mapElementRef = useRef<HTMLDivElement | null>(null);
@@ -281,18 +290,41 @@ export default function Page() {
     setDataLoading(true);
     setError(null);
 
-    supabase
-      .rpc("activity_map_summary", { p_days: period } as never)
-      .then(({ data, error: queryError }) => {
+    const currentPromise = supabase.rpc(
+      "activity_map_summary",
+      { p_days: period } as never
+    );
+    const allTimePromise =
+      profile.role === "admin"
+        ? supabase.rpc("activity_map_summary", { p_days: 0 } as never)
+        : Promise.resolve({ data: null, error: null });
+
+    Promise.all([currentPromise, allTimePromise]).then(
+      ([currentResult, allTimeResult]) => {
         if (!alive) return;
-        if (queryError) {
+
+        if (currentResult.error) {
           setRows([]);
-          setError(queryError.message);
+          setError(currentResult.error.message);
         } else {
-          setRows((data as ActivityMapRow[] | null) ?? []);
+          setRows((currentResult.data as ActivityMapRow[] | null) ?? []);
         }
+
+        if (profile.role === "admin") {
+          if (allTimeResult.error) {
+            setAllTimeRows([]);
+          } else {
+            setAllTimeRows(
+              (allTimeResult.data as ActivityMapRow[] | null) ?? []
+            );
+          }
+        } else {
+          setAllTimeRows([]);
+        }
+
         setDataLoading(false);
-      });
+      }
+    );
 
     return () => {
       alive = false;
@@ -302,6 +334,7 @@ export default function Page() {
   const periodLabel =
     periods.find((item) => item.value === period)?.label ?? "期間";
   const showActivityScale = profile?.role === "admin";
+  const isAdmin = profile?.role === "admin";
 
   const prefectures = useMemo(
     () =>
@@ -317,6 +350,53 @@ export default function Page() {
         : rows.filter((row) => row.prefecture === prefecture),
     [rows, prefecture]
   );
+
+  const allTimeLastByCommunity = useMemo(
+    () =>
+      new Map(
+        allTimeRows.map((row) => [row.community_id, row.last_event_at] as const)
+      ),
+    [allTimeRows]
+  );
+
+  const comparisonRows = useMemo(
+    () =>
+      [...visibleRows]
+        .sort((a, b) => {
+          const metricDiff = numberValue(b, metric) - numberValue(a, metric);
+          if (metricDiff !== 0) return metricDiff;
+          const areaOrder = comparePrefectures(a.prefecture, b.prefecture);
+          if (areaOrder !== 0) return areaOrder;
+          return a.community_name.localeCompare(b.community_name, "ja");
+        })
+        .slice(0, 15),
+    [visibleRows, metric]
+  );
+
+  const prefectureSummary = useMemo(() => {
+    const grouped = new Map<
+      string,
+      { communityCount: number; activeCount: number; total: number }
+    >();
+
+    for (const row of rows) {
+      const name = row.prefecture ?? "未設定";
+      const current = grouped.get(name) ?? {
+        communityCount: 0,
+        activeCount: 0,
+        total: 0,
+      };
+      const value = numberValue(row, metric);
+      current.communityCount += 1;
+      current.total += value;
+      if (value > 0) current.activeCount += 1;
+      grouped.set(name, current);
+    }
+
+    return [...grouped.entries()]
+      .map(([name, value]) => ({ name, ...value }))
+      .sort((a, b) => comparePrefectures(a.name, b.name));
+  }, [rows, metric]);
 
   const searchResults = useMemo(() => {
     const query = search.normalize("NFKC").trim().toLowerCase();
@@ -394,25 +474,69 @@ export default function Page() {
             showActivityScale && value > 0
               ? Math.sqrt(value / maxValue)
               : 0;
-          const radius = showActivityScale
-            ? value > 0
-              ? 7 + scaled * 17
-              : 5
-            : 9;
-          const fillOpacity = showActivityScale
-            ? value > 0
-              ? 0.38 + scaled * 0.5
-              : 0.16
-            : value > 0
-              ? 0.68
-              : 0.22;
 
-          const popup = makePopup(row, periodLabel);
+          const allTimeLast = allTimeLastByCommunity.get(row.community_id) ?? null;
+          const recencyDays = allTimeLast
+            ? Math.floor(
+                (Date.now() - new Date(allTimeLast).getTime()) /
+                  (24 * 60 * 60 * 1000)
+              )
+            : null;
+
+          const recencyColor =
+            recencyDays === null
+              ? { stroke: "#94a3b8", fill: "#cbd5e1" }
+              : recencyDays <= 30
+                ? { stroke: "#4d7c0f", fill: "#84cc16" }
+                : recencyDays <= 90
+                  ? { stroke: "#b45309", fill: "#fbbf24" }
+                  : { stroke: "#475569", fill: "#94a3b8" };
+
+          const radius =
+            mapMode === "recency" && isAdmin
+              ? 10
+              : showActivityScale
+                ? value > 0
+                  ? 7 + scaled * 17
+                  : 5
+                : 9;
+          const fillOpacity =
+            mapMode === "recency" && isAdmin
+              ? 0.72
+              : showActivityScale
+                ? value > 0
+                  ? 0.38 + scaled * 0.5
+                  : 0.16
+                : value > 0
+                  ? 0.68
+                  : 0.22;
+
+          const allTimeLast = allTimeLastByCommunity.get(row.community_id) ?? null;
+          const popup = makePopup(
+            row,
+            periodLabel,
+            mapMode === "recency" ? allTimeLast : undefined
+          );
           const marker = L.circleMarker([row.latitude, row.longitude], {
             radius,
-            color: value > 0 ? "#4d7c0f" : "#94a3b8",
-            weight: value > 0 ? 1.6 : 1,
-            fillColor: value > 0 ? "#84cc16" : "#cbd5e1",
+            color:
+              mapMode === "recency" && isAdmin
+                ? recencyColor.stroke
+                : value > 0
+                  ? "#4d7c0f"
+                  : "#94a3b8",
+            weight:
+              mapMode === "recency" && isAdmin
+                ? 1.5
+                : value > 0
+                  ? 1.6
+                  : 1,
+            fillColor:
+              mapMode === "recency" && isAdmin
+                ? recencyColor.fill
+                : value > 0
+                  ? "#84cc16"
+                  : "#cbd5e1",
             fillOpacity,
           })
             .bindPopup(popup.wrapper, {
@@ -473,7 +597,17 @@ export default function Page() {
       disposed = true;
       if (map) map.remove();
     };
-  }, [visibleRows, metric, periodLabel, showActivityScale, selectedCommunityId, supabase]);
+  }, [
+    visibleRows,
+    metric,
+    periodLabel,
+    showActivityScale,
+    selectedCommunityId,
+    supabase,
+    allTimeLastByCommunity,
+    mapMode,
+    isAdmin,
+  ]);
 
   if (loading) {
     return (
@@ -647,6 +781,26 @@ export default function Page() {
         ))}
       </div>
 
+      {isAdmin ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-black text-slate-500">地図表示</span>
+          <button
+            type="button"
+            onClick={() => setMapMode("activity")}
+            className={mapMode === "activity" ? "clover-pill active" : "clover-pill"}
+          >
+            📊 活動量
+          </button>
+          <button
+            type="button"
+            onClick={() => setMapMode("recency")}
+            className={mapMode === "recency" ? "clover-pill active" : "clover-pill"}
+          >
+            🗓️ 最終開催
+          </button>
+        </div>
+      ) : null}
+
       {error ? (
         <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-700">
           {error}
@@ -684,13 +838,25 @@ export default function Page() {
         <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-3">
           <div>
             <h2 className="font-black text-lime-950">
-              {metricLabel} Activity
+              {mapMode === "recency" && isAdmin
+                ? "最終開催 Activity"
+                : metricLabel + " Activity"}
             </h2>
             <p className="mt-1 text-xs font-semibold text-slate-500">
-              {showActivityScale
-                ? "円が大きく濃いほど活動量が多いCommunityです。検索するとCommunityへズームし、ポップアップで最近のMeetupを確認できます。"
-                : "Communityはすべて同じ大きさの円で表示します。検索するとCommunityへズームし、ポップアップで最近のMeetupを確認できます。"}
+              {mapMode === "recency" && isAdmin
+                ? "最終開催から30日以内・31〜90日・90日超を色分けしています。"
+                : showActivityScale
+                  ? "円が大きく濃いほど活動量が多いCommunityです。検索するとCommunityへズームし、ポップアップで最近のMeetupを確認できます。"
+                  : "Communityはすべて同じ大きさの円で表示します。検索するとCommunityへズームし、ポップアップで最近のMeetupを確認できます。"}
             </p>
+            {mapMode === "recency" && isAdmin ? (
+              <div className="mt-2 flex flex-wrap gap-3 text-[11px] font-bold text-slate-500">
+                <span>🟢 30日以内</span>
+                <span>🟡 31〜90日</span>
+                <span>⚪ 90日超</span>
+                <span>◻️ 履歴なし</span>
+              </div>
+            ) : null}
           </div>
           <div className="text-right text-[11px] font-bold text-slate-400">
             <div>{dataLoading ? "集計中…" : visibleRows.length + " Community"}</div>
@@ -709,6 +875,106 @@ export default function Page() {
           aria-label="全国Community Activity Map"
         />
       </section>
+
+      {isAdmin ? (
+        <>
+          <section className="clover-card mt-5 p-5">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="font-black text-lime-950">📊 Activity比較</h2>
+                <p className="mt-1 text-xs font-semibold text-slate-500">
+                  {prefecture === "all" ? "全国" : prefecture} / {metricLabel}順 / 上位15 Community
+                </p>
+              </div>
+              <div className="text-[11px] font-bold text-slate-400">
+                ADMINのみ表示
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {comparisonRows.map((row) => {
+                const maxComparison = Math.max(
+                  1,
+                  ...comparisonRows.map((item) => numberValue(item, metric))
+                );
+                const value = numberValue(row, metric);
+                const width = Math.max(2, Math.round((value / maxComparison) * 100));
+                const allTimeLast = allTimeLastByCommunity.get(row.community_id);
+
+                return (
+                  <Link
+                    key={row.community_id}
+                    href={"/community/" + row.community_id}
+                    className="block rounded-2xl border border-lime-100 bg-white p-3 transition hover:border-lime-300"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-black text-lime-700">
+                          {row.prefecture ?? "—"}
+                        </div>
+                        <div className="mt-0.5 truncate text-sm font-black text-lime-950">
+                          {row.community_name}
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <div className="text-sm font-black text-lime-950">
+                          {value.toLocaleString("ja-JP")}
+                        </div>
+                        <div className="text-[10px] font-bold text-slate-400">
+                          最終 {allTimeLast ? new Date(allTimeLast).toLocaleDateString("ja-JP") : "—"}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-lime-50">
+                      <div
+                        className="h-full rounded-full bg-lime-300"
+                        style={{ width: width + "%" }}
+                      />
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="clover-card mt-5 overflow-hidden">
+            <div className="border-b border-lime-100 px-5 py-4">
+              <h2 className="font-black text-lime-950">🗾 都道府県Activity集計</h2>
+              <p className="mt-1 text-xs font-semibold text-slate-500">
+                北海道から沖縄まで / {periodLabel} / {metricLabel}
+              </p>
+            </div>
+            <div className="max-h-[560px] overflow-auto">
+              <table className="w-full min-w-[520px] text-left text-sm">
+                <thead className="sticky top-0 bg-lime-50 text-[11px] font-black text-lime-800">
+                  <tr>
+                    <th className="px-5 py-3">都道府県</th>
+                    <th className="px-5 py-3 text-right">Community</th>
+                    <th className="px-5 py-3 text-right">{metricLabel}あり</th>
+                    <th className="px-5 py-3 text-right">{metricLabel}合計</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-lime-50">
+                  {prefectureSummary.map((row) => (
+                    <tr key={row.name} className="bg-white">
+                      <td className="px-5 py-3 font-black text-lime-950">{row.name}</td>
+                      <td className="px-5 py-3 text-right font-bold text-slate-600">
+                        {row.communityCount}
+                      </td>
+                      <td className="px-5 py-3 text-right font-bold text-slate-600">
+                        {row.activeCount}
+                      </td>
+                      <td className="px-5 py-3 text-right font-black text-lime-800">
+                        {row.total.toLocaleString("ja-JP")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      ) : null}
 
       <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-xs font-semibold leading-5 text-sky-900">
         地図へ送るのはCommunityごとの集計結果だけです。Meetup全件はブラウザへ読み込まず、
