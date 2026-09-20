@@ -2,16 +2,34 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches: [main]
 
 jobs:
-  build:
+  probe:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm install --no-audit --no-fund
-      - run: npm run build
+      - name: Scan Tokushima-Anan public Campfire map
+        shell: bash
+        run: |
+          set -euo pipefail
+          ENDPOINT='https://niantic-social-api.nianticlabs.com/graphql'
+          RC_ID='8947de81-e387-4e03-89c6-31ce2ca47c3c'
+
+          RC_Q='query Probe($realityChannelId: ID!) { realityChannelById(id: $realityChannelId) { id sources { name dropTypes } } }'
+          RC_BODY="$(jq -nc --arg q "$RC_Q" --arg id "$RC_ID" '{query:$q,variables:{realityChannelId:$id}}')"
+          curl -sS -X POST "$ENDPOINT" -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$RC_BODY" -o /tmp/rc.json
+          SOURCES="$(jq -c '.data.realityChannelById.sources' /tmp/rc.json)"
+
+          MAP_Q='query Probe($input: RealityChannelMapObjectsInLatLngBoundsInput!) { realityChannelMapObjectsInLatLngBounds(input: $input) { id mapObjectType event { id location eventTime eventEndTime createdByCommunityAmbassador mapObjectLocation { latitude longitude } } } }'
+          INPUT="$(jq -nc --arg id "$RC_ID" --argjson sources "$SOURCES" '{zoomLevel:10,bounds:{sw:{lat:33.75,lng:134.35},ne:{lat:34.25,lng:134.85}},sources:$sources,realityChannelId:$id,limitDropCount:false}')"
+          MAP_BODY="$(jq -nc --arg q "$MAP_Q" --argjson input "$INPUT" '{query:$q,variables:{input:$input}}')"
+          curl -sS -X POST "$ENDPOINT" -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$MAP_BODY" -o /tmp/map.json
+
+          echo '=== MAP SUMMARY ==='
+          jq '{errors,count:(.data.realityChannelMapObjectsInLatLngBounds|length),items:(.data.realityChannelMapObjectsInLatLngBounds // [] | map({mapObjectType,event}))}' /tmp/map.json
+
+          EVENT_Q='query Probe($id: ID!) { event(id: $id) { id name clubId address location eventTime eventEndTime createdByCommunityAmbassador creator { displayName username badges { badgeType alias } } } }'
+          echo '=== EVENT DETAILS ==='
+          jq -r '.data.realityChannelMapObjectsInLatLngBounds[]?.event.id // empty' /tmp/map.json | sort -u | while read -r EVENT_ID; do
+            BODY="$(jq -nc --arg q "$EVENT_Q" --arg id "$EVENT_ID" '{query:$q,variables:{id:$id}}')"
+            curl -sS -X POST "$ENDPOINT" -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$BODY" | jq -c '.data.event // {error:.errors}'
+          done
