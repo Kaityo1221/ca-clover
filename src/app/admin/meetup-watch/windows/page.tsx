@@ -46,7 +46,7 @@ export default function Page(){
       notes:notes.trim()||null,
       enabled:true,
       updated_at:new Date().toISOString(),
-    });
+    } as never);
     if(error){
       setError(error.message);
       return;
@@ -62,7 +62,7 @@ export default function Page(){
     const {error}=await supabase.from("official_event_windows").update({
       enabled:!row.enabled,
       updated_at:new Date().toISOString(),
-    }).eq("id",row.id);
+    } as never).eq("id",row.id);
     if(error) setError(error.message);
     else await load();
   }
