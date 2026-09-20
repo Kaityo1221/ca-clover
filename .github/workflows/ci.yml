@@ -5,19 +5,18 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe discovery required fields
+      - name: Probe discovery sources
         shell: bash
         run: |
           set -euo pipefail
           Q='query Probe($input: RealityChannelMapObjectsInLatLngBoundsInput!) { realityChannelMapObjectsInLatLngBounds(input: $input) { id mapObjectType event { id eventTime eventEndTime } } }'
-          B='{"sw":{"lat":35.0,"lng":139.0},"ne":{"lat":36.0,"lng":140.5}}'
+          BASE='{"bounds":{"sw":{"lat":35.0,"lng":139.0},"ne":{"lat":36.0,"lng":140.5}},"realityChannelId":"POKEMON_GO"}'
           probe() {
             echo "=== $1 ==="
             BODY="$(jq -nc --arg q "$Q" --argjson input "$2" '{query:$q,variables:{input:$input}}')"
             curl -sS -X POST 'https://niantic-social-api.nianticlabs.com/graphql' -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$BODY" | jq '{errors,count:(.data.realityChannelMapObjectsInLatLngBounds|length),sample:(.data.realityChannelMapObjectsInLatLngBounds[0:2])}'
           }
-          probe empty_id '{"bounds":'"$B"',"realityChannelId":""}'
-          probe null_id '{"bounds":'"$B"',"realityChannelId":null}'
-          probe pgo_id '{"bounds":'"$B"',"realityChannelId":"POKEMON_GO"}'
-          probe pgo_short '{"bounds":'"$B"',"realityChannelId":"PGO"}'
-          probe pokemon_go_lower '{"bounds":'"$B"',"realityChannelId":"pokemon_go"}'
+          probe empty_sources '{"bounds":{"sw":{"lat":35.0,"lng":139.0},"ne":{"lat":36.0,"lng":140.5}},"realityChannelId":"POKEMON_GO","sources":[]}'
+          probe event_source '{"bounds":{"sw":{"lat":35.0,"lng":139.0},"ne":{"lat":36.0,"lng":140.5}},"realityChannelId":"POKEMON_GO","sources":["EVENT"]}'
+          probe meetup_source '{"bounds":{"sw":{"lat":35.0,"lng":139.0},"ne":{"lat":36.0,"lng":140.5}},"realityChannelId":"POKEMON_GO","sources":["MEETUP"]}'
+          probe events_lower '{"bounds":{"sw":{"lat":35.0,"lng":139.0},"ne":{"lat":36.0,"lng":140.5}},"realityChannelId":"POKEMON_GO","sources":["events"]}'
