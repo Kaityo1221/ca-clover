@@ -7,44 +7,12 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect Campfire bundles for club search queries
+      - name: Probe current Tokushima event club name
         shell: bash
         run: |
           set -euo pipefail
-          URL='https://campfire.scopely.com/discover?language=ja'
-          curl -LfsS -A 'Mozilla/5.0' "$URL" -o /tmp/page.html
-          python - <<'PY'
-          import re, urllib.request
-          html=open('/tmp/page.html',encoding='utf-8',errors='ignore').read()
-          srcs=re.findall(r'<script[^>]+src="([^"]+)"',html)
-          terms=[
-            'SearchClub','SearchClubs','ClubSearch','searchClubs','searchClub',
-            'ClubSearchResults','SearchResults','searchResults',
-            'searchForClubs','clubSearch','SearchForLocation',
-            'searchQuery','queryText','textSearch','clubsBy'
-          ]
-          print('SCRIPT_COUNT',len(srcs))
-          for src in srcs:
-              try:
-                  req=urllib.request.Request(src,headers={'User-Agent':'Mozilla/5.0'})
-                  data=urllib.request.urlopen(req,timeout=20).read().decode('utf-8','ignore')
-              except Exception:
-                  continue
-              hits=[t for t in terms if t in data]
-              if not hits: continue
-              print('\nBUNDLE',src,'HITS',hits)
-              seen=set()
-              for t in hits:
-                  pos=0
-                  n=0
-                  while n<10:
-                      i=data.find(t,pos)
-                      if i<0: break
-                      frag=data[max(0,i-3500):i+9000].replace('\n',' ')
-                      key=frag[:300]
-                      if key not in seen:
-                          print('\nTERM',t)
-                          print(frag[:12500])
-                          seen.add(key)
-                      pos=i+len(t); n+=1
-          PY
+          ENDPOINT='https://niantic-social-api.nianticlabs.com/graphql'
+          EVENT_ID='7f0edc7c-8b4f-4d59-8a33-e882050fb357'
+          Q='query Probe($id: ID!) { event(id: $id) { id name clubId club { id name location game visibility badgeGrants } creator { displayName username badges { badgeType alias } } } }'
+          BODY="$(jq -nc --arg q "$Q" --arg id "$EVENT_ID" '{query:$q,variables:{id:$id}}')"
+          curl -sS -X POST "$ENDPOINT" -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$BODY" | jq .
