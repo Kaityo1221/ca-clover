@@ -146,7 +146,11 @@ export default function Page() {
     <Link href="/" className="text-sm font-black text-lime-700">← CA Clover Home</Link>
     <span className="mt-4 block w-fit rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900">MY COMMUNITY</span>
     <h1 className="mt-3 text-3xl font-black text-lime-950">🍀 自分のCommunity</h1>
-    <p className="mt-2 text-sm font-semibold text-slate-500">{dataLoading ? "読み込み中..." : communities.length + " Community"}</p>
+    {dataLoading ? (
+      <p className="mt-2 text-sm font-semibold text-slate-500">読み込み中...</p>
+    ) : communities.length > 1 ? (
+      <p className="mt-2 text-sm font-semibold text-slate-500">{communities.length} Communities</p>
+    ) : null}
 
     {profile?.role==="pending" ? <section className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5">
       <div className="text-xs font-black text-amber-700">初回CA登録</div>
