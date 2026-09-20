@@ -44,6 +44,7 @@ export default function Page() {
   const [claimInput,setClaimInput]=useState("");
   const [claimBusy,setClaimBusy]=useState(false);
   const [claimMessage,setClaimMessage]=useState<string|null>(null);
+  const [showClaimForm,setShowClaimForm]=useState(false);
   const [dataLoading, setDataLoading] = useState(false);
 
   async function loadClaims(){
@@ -149,7 +150,39 @@ export default function Page() {
       {!profile.niantic_id?<Link href="/account" className="mt-3 inline-flex rounded-full bg-amber-200 px-4 py-2 text-xs font-black text-amber-950">先にNiantic IDを登録 →</Link>:<div className="mt-3 text-xs font-black text-amber-900">Niantic ID: {profile.niantic_id} ✓</div>}
     </section> : null}
 
-    {profile?.role==="ca" || profile?.role==="pending" ? <section className="clover-card mt-6 p-6">
+    {communities.length ? <>
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <div className="clover-card p-5"><div className="text-2xl">🔥</div><div className="mt-2 text-xs font-black text-slate-500">30日Meetup</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.meetups}</div></div>
+        <div className="clover-card p-5"><div className="text-2xl">📨</div><div className="mt-2 text-xs font-black text-slate-500">30日RSVP</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.rsvp}</div></div>
+        <div className="clover-card p-5"><div className="text-2xl">✅</div><div className="mt-2 text-xs font-black text-slate-500">30日Check-in</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.checkin}</div></div>
+      </div>
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        {communities.map(c => <Link key={c.id} href={"/community/"+c.id} className="clover-card p-6 transition hover:-translate-y-1 hover:border-lime-300">
+          <div className="text-xs font-black text-lime-700">{c.prefecture ?? "—"}</div>
+          <h2 className="mt-2 text-xl font-black text-lime-950">{c.name}</h2>
+          <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold text-slate-500">
+            <span className="rounded-full bg-lime-50 px-3 py-2">Member: {c.member_count?.toLocaleString("ja-JP") ?? "未取得"}</span>
+            {profile?.role === "admin" ? <span className="rounded-full bg-lime-50 px-3 py-2">Data: {c.coverage}</span> : null}
+          </div>
+          <div className="mt-5 text-xs font-black text-lime-700">Activityを見る →</div>
+        </Link>)}
+      </div>
+    </> : null}
+
+
+    {profile?.role === "ca" && communities.length > 0 ? (
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowClaimForm(value => !value)}
+          className="inline-flex rounded-full border border-lime-200 bg-white px-4 py-2 text-xs font-black text-lime-700"
+        >
+          {showClaimForm ? "閉じる" : "＋ Communityを追加"}
+        </button>
+      </div>
+    ) : null}
+
+    {(profile?.role === "pending" || (profile?.role === "ca" && (communities.length === 0 || showClaimForm))) ? <section className="clover-card mt-6 p-6">
       <div className="flex items-start gap-3">
         <div className="text-3xl">🔥</div>
         <div><h2 className="font-black text-lime-950">MeetupからCommunityを申請</h2><p className="mt-1 text-xs font-semibold text-slate-500">必ず自分が主催したMeetupを入力してください。紫色Community Ambassadorバッジ、主催者Niantic ID、Community、日本CA地図の1st/2ndを自動照合します。</p></div>
@@ -186,23 +219,5 @@ export default function Page() {
       </section>
     ) : null}
 
-    {communities.length ? <>
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
-        <div className="clover-card p-5"><div className="text-2xl">🔥</div><div className="mt-2 text-xs font-black text-slate-500">30日Meetup</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.meetups}</div></div>
-        <div className="clover-card p-5"><div className="text-2xl">📨</div><div className="mt-2 text-xs font-black text-slate-500">30日RSVP</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.rsvp}</div></div>
-        <div className="clover-card p-5"><div className="text-2xl">✅</div><div className="mt-2 text-xs font-black text-slate-500">30日Check-in</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.checkin}</div></div>
-      </div>
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        {communities.map(c => <Link key={c.id} href={"/community/"+c.id} className="clover-card p-6 transition hover:-translate-y-1 hover:border-lime-300">
-          <div className="text-xs font-black text-lime-700">{c.prefecture ?? "—"}</div>
-          <h2 className="mt-2 text-xl font-black text-lime-950">{c.name}</h2>
-          <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold text-slate-500">
-            <span className="rounded-full bg-lime-50 px-3 py-2">Member: {c.member_count?.toLocaleString("ja-JP") ?? "未取得"}</span>
-            <span className="rounded-full bg-lime-50 px-3 py-2">Data: {c.coverage}</span>
-          </div>
-          <div className="mt-5 text-xs font-black text-lime-700">Activityを見る →</div>
-        </Link>)}
-      </div>
-    </> : null}
   </main>;
 }
