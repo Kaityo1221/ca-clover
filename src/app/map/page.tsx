@@ -185,6 +185,7 @@ export default function Page() {
   const { supabase, user, profile, loading } = useAuthProfile();
   const [period, setPeriod] = useState<number>(30);
   const [metric, setMetric] = useState<MetricKey>("checkin_count");
+  const [prefecture, setPrefecture] = useState<string>("all");
   const [rows, setRows] = useState<ActivityMapRow[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -218,10 +219,31 @@ export default function Page() {
     periods.find((item) => item.value === period)?.label ?? "期間";
   const showActivityScale = profile?.role === "admin";
 
+  const prefectures = useMemo(
+    () =>
+      [...new Set(rows.map((row) => row.prefecture).filter((value): value is string => Boolean(value)))]
+        .sort((a, b) => a.localeCompare(b, "ja")),
+    [rows]
+  );
+
+  const visibleRows = useMemo(
+    () =>
+      prefecture === "all"
+        ? rows
+        : rows.filter((row) => row.prefecture === prefecture),
+    [rows, prefecture]
+  );
+
+  useEffect(() => {
+    if (prefecture !== "all" && !prefectures.includes(prefecture)) {
+      setPrefecture("all");
+    }
+  }, [prefecture, prefectures]);
+
   const summary = useMemo(() => {
-    const active = rows.filter((row) => numberValue(row, metric) > 0).length;
-    const total = rows.reduce((sum, row) => sum + numberValue(row, metric), 0);
-    const latest = rows.reduce<string | null>((current, row) => {
+    const active = visibleRows.filter((row) => numberValue(row, metric) > 0).length;
+    const total = visibleRows.reduce((sum, row) => sum + numberValue(row, metric), 0);
+    const latest = visibleRows.reduce<string | null>((current, row) => {
       if (!row.last_event_at) return current;
       if (!current) return row.last_event_at;
       return new Date(row.last_event_at) > new Date(current)
@@ -229,11 +251,11 @@ export default function Page() {
         : current;
     }, null);
     return { active, total, latest };
-  }, [rows, metric]);
+  }, [visibleRows, metric]);
 
   useEffect(() => {
     const element = mapElementRef.current;
-    if (!element || rows.length === 0) return;
+    if (!element || visibleRows.length === 0) return;
 
     let disposed = false;
     let map: LeafletMap | null = null;
@@ -252,7 +274,7 @@ export default function Page() {
           maxZoom: 18,
         }).addTo(map);
 
-        const points = rows.map(
+        const points = visibleRows.map(
           (row) => [row.latitude, row.longitude] as [number, number]
         );
         map.fitBounds(L.latLngBounds(points), {
@@ -261,10 +283,10 @@ export default function Page() {
         });
 
         const maxValue = showActivityScale
-          ? Math.max(1, ...rows.map((row) => numberValue(row, metric)))
+          ? Math.max(1, ...visibleRows.map((row) => numberValue(row, metric)))
           : 1;
 
-        for (const row of rows) {
+        for (const row of visibleRows) {
           const value = numberValue(row, metric);
           const scaled =
             showActivityScale && value > 0
@@ -309,7 +331,7 @@ export default function Page() {
       disposed = true;
       if (map) map.remove();
     };
-  }, [rows, metric, periodLabel, showActivityScale]);
+  }, [visibleRows, metric, periodLabel, showActivityScale]);
 
   if (loading) {
     return (
@@ -382,6 +404,28 @@ export default function Page() {
         ))}
       </div>
 
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <label htmlFor="prefecture-filter" className="text-xs font-black text-slate-500">
+          都道府県
+        </label>
+        <select
+          id="prefecture-filter"
+          value={prefecture}
+          onChange={(event) => setPrefecture(event.target.value)}
+          className="w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-black text-lime-900 outline-none focus:border-lime-400 sm:w-64"
+        >
+          <option value="all">全国</option>
+          {prefectures.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+        <span className="text-xs font-bold text-slate-400">
+          {prefecture === "all" ? "全国表示" : prefecture + "を表示"}
+        </span>
+      </div>
+
       <div className="mt-3 flex flex-wrap gap-2">
         {metrics.map((item) => (
           <button
@@ -408,7 +452,7 @@ export default function Page() {
             表示Community
           </div>
           <div className="mt-1 text-3xl font-black text-lime-950">
-            {dataLoading ? "…" : rows.length}
+            {dataLoading ? "…" : visibleRows.length}
           </div>
         </div>
         <div className="clover-card p-5">
@@ -437,12 +481,12 @@ export default function Page() {
             </h2>
             <p className="mt-1 text-xs font-semibold text-slate-500">
               {showActivityScale
-                ? "円が大きく濃いほど活動量が多いCommunityです。クリックで詳細を表示します。"
-                : "Communityはすべて同じ大きさの円で表示します。クリックで詳細を表示します。"}
+                ? "円が大きく濃いほど活動量が多いCommunityです。都道府県を選ぶとその地域へ自動で寄ります。"
+                : "Communityはすべて同じ大きさの円で表示します。都道府県を選ぶとその地域へ自動で寄ります。"}
             </p>
           </div>
           <div className="text-right text-[11px] font-bold text-slate-400">
-            <div>{dataLoading ? "集計中…" : rows.length + " Community"}</div>
+            <div>{dataLoading ? "集計中…" : visibleRows.length + " Community"}</div>
             <div>
               最新開催{" "}
               {summary.latest
