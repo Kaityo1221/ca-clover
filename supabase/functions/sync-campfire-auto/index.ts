@@ -83,12 +83,33 @@ Deno.serve(async(req:Request)=>{
     }).eq("id",1);
 
     const errors:string[]=[];
+    let coordinateResult:Record<string,unknown>|null=null;
     let publicResult:Record<string,unknown>|null=null;
     let historyResult:Record<string,unknown>|null=null;
     let historyCommunity:{id:string;name:string}|null=null;
-    let nextOffset=Number(state.public_offset??0)||0;
+    let currentPublicOffset=Math.max(0,Number(state.public_offset??0)||0);
+    let nextOffset=currentPublicOffset;
     let publicImported=0;
     let historyImported=0;
+
+    const lastCaMasterAt=state.last_ca_master_at?new Date(state.last_ca_master_at).getTime():0;
+    const coordinateRefreshDue=!lastCaMasterAt || now-lastCaMasterAt>=24*60*60*1000;
+
+    if(coordinateRefreshDue){
+      try{
+        coordinateResult=await invokeInternal(
+          supabaseUrl,
+          anonKey,
+          suppliedSecret,
+          "sync-ca-master-coordinates",
+          {},
+        );
+        const communityUpdated=Math.max(0,Number(coordinateResult.communityUpdated??0)||0);
+        if(communityUpdated>0) currentPublicOffset=0;
+      }catch(error){
+        errors.push("coordinates: "+(error instanceof Error?error.message:String(error)));
+      }
+    }
 
     try{
       publicResult=await invokeInternal(
@@ -97,14 +118,14 @@ Deno.serve(async(req:Request)=>{
         suppliedSecret,
         "sync-campfire-public",
         {
-          offset:Math.max(0,Number(state.public_offset??0)||0),
+          offset:currentPublicOffset,
           limit:Math.max(1,Math.min(10,Number(state.public_batch_size??10)||10)),
         },
       );
 
       const processed=Math.max(0,Number(publicResult.processed??0)||0);
       const total=Math.max(0,Number(publicResult.total??0)||0);
-      const currentOffset=Math.max(0,Number(state.public_offset??0)||0);
+      const currentOffset=currentPublicOffset;
       publicImported=Math.max(0,Number(publicResult.importedEvents??0)||0);
 
       if(processed===0 || total===0 || currentOffset+processed>=total){
@@ -189,6 +210,7 @@ Deno.serve(async(req:Request)=>{
       details:{
         public_offset_before:state.public_offset,
         public_offset_after:nextOffset,
+        coordinate_result:coordinateResult,
         public_result:publicResult,
         history_community:historyCommunity,
         history_result:historyResult,
@@ -200,6 +222,7 @@ Deno.serve(async(req:Request)=>{
       ok:true,
       status:errors.length?"partial":"success",
       nextOffset,
+      coordinateResult,
       publicResult,
       historyCommunity,
       historyResult,
