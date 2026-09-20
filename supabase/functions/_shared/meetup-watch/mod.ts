@@ -1,6 +1,7 @@
 import type {SupabaseClient} from "npm:@supabase/supabase-js@2";
 import {buildMeetupHashes,type MeetupHashInput} from "./hash.ts";
 import {
+  durationMinutes,
   evaluateActivity,
   evaluateStructure,
   summarizeFindings,
@@ -37,7 +38,6 @@ type ExistingRow={
   campfire_meetup_id:string;
   structure_hash:string|null;
   activity_hash:string|null;
-  campfire_created_at:string|null;
 };
 
 type CaseRow={
@@ -62,7 +62,7 @@ async function loadExisting(admin:SupabaseClient,ids:string[]){
   for(const part of chunk(ids,200)){
     const {data,error}=await admin
       .from("meetups")
-      .select("id,campfire_meetup_id,structure_hash,activity_hash,campfire_created_at")
+      .select("id,campfire_meetup_id,structure_hash,activity_hash")
       .in("campfire_meetup_id",part);
     if(error) throw error;
     rows.push(...((data as ExistingRow[]|null)??[]));
@@ -290,6 +290,12 @@ async function evaluateWatch(
     const findings:FindingDraft[]=[];
     const sourceClasses:string[]=[];
 
+    // HOT is a scan-frequency state, not a violation flag.
+    // Keep it independent from official-event suppression rules.
+    if((kind==="new"||kind==="structure") && (durationMinutes(row)??Infinity)<=60){
+      await upsertHotState(admin,row,settings);
+    }
+
     if(kind==="new"||kind==="structure"){
       findings.push(...evaluateStructure(row,terms,related,settings,officialWindow));
       sourceClasses.push("structure","repeat");
@@ -384,7 +390,6 @@ async function evaluateWatch(
     currentCase.flags=summary.flags;
     if(shouldReopen) currentCase.status="unreviewed";
 
-    if(summary.isHotTrigger) await upsertHotState(admin,row,settings);
 
     if(summary.discordCandidate){
       await queueDiscordNotification(admin,row,currentCase.id,summary,activeFindings);
@@ -399,7 +404,7 @@ async function evaluateWatch(
 export async function processMeetupRows(admin:SupabaseClient,rows:MeetupWriteRow[]){
   if(!rows.length){
     return {
-      fetched:0,written:0,newEvents:0,structureUpdates:0,activityUpdates:0,metadataUpdates:0,
+      fetched:0,written:0,newEvents:0,structureUpdates:0,activityUpdates:0,
       unchanged:0,touchedCommunityIds:[] as string[],watchEvaluated:0,watchCasesTouched:0,
       notificationsQueued:0,watchError:null as string|null,
     };
@@ -421,15 +426,6 @@ export async function processMeetupRows(admin:SupabaseClient,rows:MeetupWriteRow
     const old=existingMap.get(row.campfire_meetup_id);
     return Boolean(old)&&old?.structure_hash===row.structure_hash&&old?.activity_hash!==row.activity_hash;
   });
-  const metadataRows=hashed.filter(row=>{
-    const old=existingMap.get(row.campfire_meetup_id);
-    return Boolean(old)
-      && old?.structure_hash===row.structure_hash
-      && old?.activity_hash===row.activity_hash
-      && !old?.campfire_created_at
-      && Boolean(row.campfire_created_at);
-  });
-
   const changedIds=new Set<string>();
   const changeKinds=new Map<string,"new"|"structure"|"activity">();
 
@@ -449,35 +445,18 @@ export async function processMeetupRows(admin:SupabaseClient,rows:MeetupWriteRow
   }
 
   for(const row of activityRows){
-    const old=existingMap.get(row.campfire_meetup_id);
-    const createdEnriched=!old?.campfire_created_at&&Boolean(row.campfire_created_at);
     const {error}=await admin
       .from("meetups")
       .update({
         rsvp_count:row.rsvp_count,
         checkin_count:row.checkin_count,
         activity_hash:row.activity_hash,
-        campfire_created_at:createdEnriched?row.campfire_created_at:old?.campfire_created_at??null,
         fetched_at:row.fetched_at,
       })
       .eq("campfire_meetup_id",row.campfire_meetup_id);
     if(error) throw error;
     changedIds.add(row.campfire_meetup_id);
-    changeKinds.set(row.campfire_meetup_id,createdEnriched?"structure":"activity");
-  }
-
-  for(const row of metadataRows){
-    if(changedIds.has(row.campfire_meetup_id)) continue;
-    const {error}=await admin
-      .from("meetups")
-      .update({
-        campfire_created_at:row.campfire_created_at,
-        fetched_at:row.fetched_at,
-      })
-      .eq("campfire_meetup_id",row.campfire_meetup_id);
-    if(error) throw error;
-    changedIds.add(row.campfire_meetup_id);
-    changeKinds.set(row.campfire_meetup_id,"structure");
+    changeKinds.set(row.campfire_meetup_id,"activity");
   }
 
   const unchanged=hashed.length-changedIds.size;
@@ -509,7 +488,6 @@ export async function processMeetupRows(admin:SupabaseClient,rows:MeetupWriteRow
     newEvents:newRows.length,
     structureUpdates:structureRows.length,
     activityUpdates:activityRows.length,
-    metadataUpdates:metadataRows.filter(row=>!structureRows.some(item=>item.campfire_meetup_id===row.campfire_meetup_id)).length,
     unchanged,
     touchedCommunityIds,
     watchEvaluated,
