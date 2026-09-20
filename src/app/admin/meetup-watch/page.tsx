@@ -89,6 +89,7 @@ export default function Page(){
   const [dataLoading,setDataLoading]=useState(false);
   const [busy,setBusy]=useState<string|null>(null);
   const [error,setError]=useState<string|null>(null);
+  const [discordTest,setDiscordTest]=useState<"idle"|"sending"|"success"|"unconfigured"|"error">("idle");
 
   async function load(){
     setDataLoading(true);
@@ -178,6 +179,23 @@ export default function Page(){
     setBusy(null);
   }
 
+  async function testDiscord(){
+    setDiscordTest("sending");
+    setError(null);
+    const {data,error}=await supabase.functions.invoke("meetup-watch-notify",{
+      body:{action:"test"},
+    });
+    if(error){
+      const message=error.message??"Discordテスト通知に失敗しました";
+      setDiscordTest(message.includes("409")||message.includes("not configured")?"unconfigured":"error");
+      setError(message);
+      return;
+    }
+    if(data?.status==="test_sent") setDiscordTest("success");
+    else if(data?.error?.includes("not configured")) setDiscordTest("unconfigured");
+    else setDiscordTest("error");
+  }
+
   async function copyTemplate(caseId:string,text:string){
     try{
       await navigator.clipboard.writeText(text);
@@ -205,13 +223,26 @@ export default function Page(){
     <Link href="/admin" className="text-sm font-black text-lime-700">← 管理メニュー</Link>
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
       <span className="block w-fit rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900">MEETUP WATCH v1.0</span>
-      <Link href="/admin/meetup-watch/windows" className="text-xs font-black text-lime-700">公式イベント時間マスター →</Link>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={testDiscord}
+          disabled={discordTest==="sending"}
+          className="rounded-xl border border-lime-200 bg-white px-3 py-2 text-xs font-black text-lime-700 disabled:opacity-50"
+        >
+          {discordTest==="sending"?"送信中...":"🔔 Discordテスト通知"}
+        </button>
+        <Link href="/admin/meetup-watch/windows" className="text-xs font-black text-lime-700">公式イベント時間マスター →</Link>
+      </div>
     </div>
     <h1 className="mt-3 text-3xl font-black text-lime-950">🔍 要確認Meetup</h1>
     <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
       CA Cloverは裁判官ではなくレーダーです。検知した事実と理由を表示し、最終判断はADMIN・コミュニティチームが行います。
+      Discordテスト通知はWebhook接続だけを確認し、実際のMeetup判定には影響しません。
     </p>
 
+    {discordTest==="success"?<div className="mt-5 rounded-2xl bg-lime-50 p-4 text-sm font-bold text-lime-800">✓ Discordテスト通知を送信しました。</div>:null}
+    {discordTest==="unconfigured"?<div className="mt-5 rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-800">Webhook Secret が未設定です。DISCORD_MEETUP_WATCH_WEBHOOK_URL を設定してください。</div>:null}
     {error?<div className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm font-bold text-rose-700">{error}</div>:null}
     <div className="mt-5 text-xs font-black text-slate-500">
       {dataLoading?"読み込み中...":"要確認 "+cases.length+"件"}
@@ -229,7 +260,7 @@ export default function Page(){
         const relatedMeetups=nearby(meetup);
         const template=buildMeetupWatchContactTemplate(item.flags,activeFindings);
 
-        return <article id={"case-"+item.id} key={item.id} className="clover-card p-5 md:p-6">
+        return <article id={"meetup-"+meetup.id} key={item.id} className="clover-card p-5 md:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="text-xs font-black text-lime-700">{community?.prefecture??"—"} / {community?.name??"Community未取得"}</div>
