@@ -238,6 +238,7 @@ export default function Page(){
     <h1 className="mt-3 text-3xl font-black text-lime-950">🔍 要確認Meetup</h1>
     <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
       CA Cloverは裁判官ではなくレーダーです。検知した事実と理由を表示し、最終判断はADMIN・コミュニティチームが行います。
+      Discordテスト通知はWebhook接続だけを確認し、実際のMeetup判定には影響しません。
     </p>
 
     {discordTest==="success"?<div className="mt-5 rounded-2xl bg-lime-50 p-4 text-sm font-bold text-lime-800">✓ Discordテスト通知を送信しました。</div>:null}
