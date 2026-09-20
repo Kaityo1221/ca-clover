@@ -15,32 +15,34 @@ jobs:
           node-version: 22
       - run: npm install --no-audit --no-fund
       - run: npm run build
-      - name: Diagnostic all-meetups Relay operations
+      - name: Diagnostic discovery map query
         shell: bash
         run: |
           set -euo pipefail
           URL='https://campfire.scopely.com/discover/collection/all-meetups'
           curl -LfsS -A 'Mozilla/5.0' "$URL" -o /tmp/page.html
-          BUNDLE="$(grep -oE 'https://campfire-web-assets\.nianticlabs\.com[^"]+all-meetups/page-[^"]+\.js' /tmp/page.html | head -1)"
-          echo "BUNDLE=$BUNDLE"
-          test -n "$BUNDLE"
-          curl -LfsS -A 'Mozilla/5.0' "$BUNDLE" -o /tmp/all-meetups.js
           python - <<'PY'
-          import re
-          s=open('/tmp/all-meetups.js',encoding='utf-8',errors='ignore').read()
-          print('SIZE',len(s))
-          print('=== REQUEST NAMES ===')
-          for n in sorted(set(re.findall(r'name:"([^"]+_Query)"',s))):
-              print(n)
-          print('=== ALL GRAPHQL FIELD NAMES ===')
-          fields=sorted(set(re.findall(r'kind:"LinkedField",name:"([^"]+)"',s)))
-          for x in fields:
-              print(x)
-          print('=== REQUEST BLOCKS ===')
-          for m in re.finditer(r'kind:"Request"',s):
-              block=s[max(0,m.start()-5000):m.start()+10000]
-              names=re.findall(r'name:"([^"]+)"',block)
-              print('NAMES', names[-80:])
-              print('SNIP', block.replace('\n',' ')[:12000])
-              print('---')
+          import re, urllib.request
+          html=open('/tmp/page.html',encoding='utf-8',errors='ignore').read()
+          srcs=re.findall(r'<script[^>]+src="([^"]+)"',html)
+          targets=['87878:function','89312:function','realityChannelMapObjectsInLatLngBoundsInput','RealityChannelMapObjectsInLatLngBounds','realityChannelMapObjectsInLatLngBounds']
+          print('SCRIPT_COUNT',len(srcs))
+          for src in srcs:
+              try:
+                  req=urllib.request.Request(src,headers={'User-Agent':'Mozilla/5.0'})
+                  data=urllib.request.urlopen(req,timeout=15).read().decode('utf-8','ignore')
+              except Exception:
+                  continue
+              hits=[x for x in targets if x in data]
+              if not hits: continue
+              print('\nBUNDLE',src,'HITS',hits)
+              for x in hits:
+                  pos=0
+                  count=0
+                  while count<8:
+                      i=data.find(x,pos)
+                      if i<0: break
+                      print('\nTERM',x)
+                      print(data[max(0,i-6000):i+14000].replace('\n',' ')[:20000])
+                      pos=i+len(x); count+=1
           PY
