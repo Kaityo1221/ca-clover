@@ -23,7 +23,8 @@ type SyncResult={
   code?:string;
 };
 
-type SyncMode="public"|"history"|null;
+type SyncMode="public"|"history"|"history-one"|null;
+type CommunityOption={id:string;name:string;prefecture:string|null};
 
 export default function Page(){
   const {supabase,user,profile,loading}=useAuthProfile();
@@ -31,14 +32,34 @@ export default function Page(){
   const [running,setRunning]=useState<SyncMode>(null);
   const [progress,setProgress]=useState({done:0,total:0,events:0,failed:0,discovered:0});
   const [message,setMessage]=useState<string|null>(null);
+  const [communities,setCommunities]=useState<CommunityOption[]>([]);
+  const [selectedCommunityId,setSelectedCommunityId]=useState("");
 
   async function loadConnection(){
     const {data,error}=await supabase.functions.invoke("campfire-token-admin",{body:{action:"status"}});
     if(!error) setConnection((data?.state??null) as ConnectionState|null);
   }
 
+  async function loadCommunities(){
+    const {data,error}=await supabase
+      .from("communities")
+      .select("id,name,prefecture")
+      .not("campfire_community_id","is",null)
+      .order("name");
+    if(error) return;
+    const rows=(data as CommunityOption[]|null)??[];
+    setCommunities(rows);
+    setSelectedCommunityId(current=>{
+      if(current&&rows.some(row=>row.id===current)) return current;
+      return rows.find(row=>row.name==="Pokémon GO Club Tokyo")?.id??rows[0]?.id??"";
+    });
+  }
+
   useEffect(()=>{
-    if(!loading&&user&&profile?.role==="admin") loadConnection();
+    if(!loading&&user&&profile?.role==="admin"){
+      loadConnection();
+      loadCommunities();
+    }
   },[loading,user,profile?.role]);
 
   function resetProgress(){
@@ -79,6 +100,35 @@ export default function Page(){
         :"公開Meetup同期が完了しました 🍀");
     }catch(error){
       setMessage(error instanceof Error?error.message:String(error));
+    }finally{
+      setRunning(null);
+    }
+  }
+
+  async function runHistoryOne(){
+    if(!selectedCommunityId) return;
+    setRunning("history-one");
+    resetProgress();
+
+    try{
+      const {data,error}=await supabase.functions.invoke("sync-campfire",{body:{communityId:selectedCommunityId}});
+      if(error) throw error;
+      const result=(data??{}) as SyncResult;
+      if(result.error) throw new Error(result.error);
+
+      const processed=result.processed??0;
+      const events=result.importedEvents??0;
+      const failed=result.failedCommunities??0;
+      setProgress({done:processed,total:processed||1,events,failed,discovered:0});
+
+      const selected=communities.find(row=>row.id===selectedCommunityId);
+      setMessage(failed>0
+        ?(selected?.name??"選択Community")+" の過去履歴同期でエラーがありました。"
+        :(selected?.name??"選択Community")+" の過去履歴を "+events+" 件保存しました 🍀");
+      await loadConnection();
+    }catch(error){
+      setMessage(error instanceof Error?error.message:String(error));
+      await loadConnection();
     }finally{
       setRunning(null);
     }
@@ -171,17 +221,36 @@ export default function Page(){
             {connection?.expires_at?"Token期限 "+new Date(connection.expires_at).toLocaleString("ja-JP"):"Token未登録"}
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/admin/campfire" className="rounded-2xl border border-lime-200 bg-white px-4 py-3 text-xs font-black text-lime-700">
-            token設定
-          </Link>
-          <button
-            onClick={runHistoryAll}
-            disabled={isRunning||!ready}
-            className="rounded-2xl border border-lime-300 bg-white px-5 py-3 text-xs font-black text-lime-800 disabled:opacity-40"
-          >
-            {running==="history"?"過去履歴を同期中…":"過去履歴を同期"}
-          </button>
+        <div className="w-full md:w-auto">
+          <div className="flex flex-col gap-2">
+            <select
+              value={selectedCommunityId}
+              onChange={e=>setSelectedCommunityId(e.target.value)}
+              disabled={isRunning||!ready}
+              className="max-w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-xs font-black text-lime-900 outline-none disabled:opacity-40"
+            >
+              {communities.map(row=><option key={row.id} value={row.id}>{row.prefecture?row.prefecture+" / ":""}{row.name}</option>)}
+            </select>
+            <button
+              onClick={runHistoryOne}
+              disabled={isRunning||!ready||!selectedCommunityId}
+              className="rounded-2xl bg-lime-400 px-5 py-3 text-xs font-black text-lime-950 disabled:opacity-40"
+            >
+              {running==="history-one"?"このCommunityを同期中…":"選択Communityだけ過去同期"}
+            </button>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/admin/campfire" className="rounded-2xl border border-lime-200 bg-white px-4 py-3 text-xs font-black text-lime-700">
+                token設定
+              </Link>
+              <button
+                onClick={runHistoryAll}
+                disabled={isRunning||!ready}
+                className="rounded-2xl border border-lime-300 bg-white px-5 py-3 text-xs font-black text-lime-800 disabled:opacity-40"
+              >
+                {running==="history"?"全国の過去履歴を同期中…":"全国の過去履歴を同期"}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </section>
