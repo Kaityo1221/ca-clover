@@ -348,7 +348,7 @@ export function evaluateActivity(
 
 export function summarizeFindings(findings:Array<Pick<FindingDraft,"flag_code"|"severity"|"reason"|"source_class">>){
   const flags=[...new Set(findings.map(f=>f.flag_code))].sort();
-  const material=flags.filter(flag=>!["TIME_SHORT","REPEAT_SAME_DAY"].includes(flag));
+  const material=flags.filter(flag=>!["TIME_SHORT","TIME_VERY_SHORT","REPEAT_SAME_DAY"].includes(flag));
   const strong=findings.some(f=>
     f.severity>=3 &&
     ["TITLE_STRONG","TITLE_REWARD","HOST_ABSENT_TEXT","FREE_CHECKIN_TEXT"].includes(f.flag_code)
