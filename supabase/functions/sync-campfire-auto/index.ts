@@ -83,7 +83,7 @@ Deno.serve(async(req:Request)=>{
     }).eq("id",1);
 
     const errors:string[]=[];
-    let coordinateResult:Record<string,unknown>|null=null;
+    let masterResult:Record<string,unknown>|null=null;
     let publicResult:Record<string,unknown>|null=null;
     let historyResult:Record<string,unknown>|null=null;
     let historyCommunity:{id:string;name:string}|null=null;
@@ -97,17 +97,17 @@ Deno.serve(async(req:Request)=>{
 
     if(coordinateRefreshDue){
       try{
-        coordinateResult=await invokeInternal(
+        masterResult=await invokeInternal(
           supabaseUrl,
           anonKey,
           suppliedSecret,
-          "sync-ca-master-coordinates",
+          "sync-ca-master",
           {},
         );
-        const communityUpdated=Math.max(0,Number(coordinateResult.communityUpdated??0)||0);
-        if(communityUpdated>0) currentPublicOffset=0;
+        const communitiesCreated=Math.max(0,Number(masterResult.communitiesCreated??0)||0);
+        if(communitiesCreated>0) currentPublicOffset=0;
       }catch(error){
-        errors.push("coordinates: "+(error instanceof Error?error.message:String(error)));
+        errors.push("ca master: "+(error instanceof Error?error.message:String(error)));
       }
     }
 
@@ -210,7 +210,7 @@ Deno.serve(async(req:Request)=>{
       details:{
         public_offset_before:state.public_offset,
         public_offset_after:nextOffset,
-        coordinate_result:coordinateResult,
+        ca_master_result:masterResult,
         public_result:publicResult,
         history_community:historyCommunity,
         history_result:historyResult,
@@ -222,7 +222,7 @@ Deno.serve(async(req:Request)=>{
       ok:true,
       status:errors.length?"partial":"success",
       nextOffset,
-      coordinateResult,
+      masterResult,
       publicResult,
       historyCommunity,
       historyResult,
