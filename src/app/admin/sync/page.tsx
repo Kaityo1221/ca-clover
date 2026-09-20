@@ -120,6 +120,7 @@ export default function Page(){
       setMessage(failed>0
         ?"公開Meetup同期は完了しましたが、一部の探索または詳細取得に失敗があります。"
         :"公開Meetup同期が完了しました 🍀");
+      await loadAutomation();
     }catch(error){
       setMessage(error instanceof Error?error.message:String(error));
     }finally{
@@ -187,6 +188,7 @@ export default function Page(){
         ?"過去履歴同期は完了しましたが、一部Communityでエラーがあります。"
         :"過去履歴同期が完了しました 🍀");
       await loadConnection();
+      await loadAutomation();
     }catch(error){
       setMessage(error instanceof Error?error.message:String(error));
       await loadConnection();
@@ -218,7 +220,7 @@ export default function Page(){
         <div>
           <div className="text-xs font-black text-emerald-700">AUTOMATION</div>
           <div className="mt-1 text-xl font-black text-lime-950">
-            {automation?.enabled!==false?"🟢 自動同期 ON":"⚪ 自動同期 OFF"}
+            {automation?automation.enabled?"🟢 自動同期 ON":"⚪ 自動同期 OFF":"⚪ 自動同期を確認中…"}
           </div>
           <div className="mt-2 text-xs font-semibold leading-5 text-slate-600">
             15分ごとに10 Communityずつ公開Meetupを巡回します。全国1周は約2時間半です。
@@ -246,7 +248,7 @@ export default function Page(){
           <div className="mt-1 text-xl font-black text-lime-950">🗺️ 公開Meetup同期</div>
           <div className="mt-2 max-w-2xl text-xs font-semibold leading-5 text-slate-500">
             日本CA一覧のCommunity座標を中心にCampfireの公開地図を探索し、公開中のMeetup IDを発見します。
-            Meetup詳細も匿名取得し、clubIdがCA CloverのCommunityと一致したものだけ保存します。
+            Meetup詳細も匿名取得し、現行ID・ID履歴・一意なCommunity名を照合してCA CloverのCommunityへ保存します。
           </div>
         </div>
         <button
