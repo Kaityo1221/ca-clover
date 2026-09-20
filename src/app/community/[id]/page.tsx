@@ -39,7 +39,12 @@ type SummaryRow={
 };
 type MonthlyRow={month:string;meetup_count:number;rsvp_count:number;checkin_count:number};
 
-const periods=[30,90,180,365] as const;
+const periods=[
+  {value:30,label:"30日"},
+  {value:90,label:"3か月"},
+  {value:180,label:"6か月"},
+  {value:365,label:"1年"},
+] as const;
 
 export default function Page(){
   const params=useParams<{id:string}>();
@@ -125,6 +130,8 @@ export default function Page(){
     return()=>{alive=false;};
   },[id,loading,user,profile?.role,period,notFound,supabase]);
 
+  const periodLabel=periods.find(item=>item.value===period)?.label??period+"日";
+
   const monthMap=useMemo(()=>{
     const source=new Map(monthly.map(row=>[row.month.slice(0,7),row]));
     const now=new Date();
@@ -162,7 +169,7 @@ export default function Page(){
     </section>
 
     <div className="mt-5 flex flex-wrap gap-2">
-      {periods.map(days=><button key={days} onClick={()=>setPeriod(days)} className={period===days?"clover-pill active":"clover-pill"}>{days}日</button>)}
+      {periods.map(item=><button key={item.value} onClick={()=>setPeriod(item.value)} className={period===item.value?"clover-pill active":"clover-pill"}>{item.label}</button>)}
     </div>
 
     <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -172,7 +179,7 @@ export default function Page(){
         ["📨","RSVP",summary.rsvp_count],
         ["✅","Check-in",summary.checkin_count],
         ["🗓️","最終開催",summary.last_event_at?new Date(summary.last_event_at).toLocaleDateString("ja-JP"):"—"],
-      ].map(([icon,label,value])=><div key={String(label)} className="clover-card p-5"><div className="text-2xl">{icon}</div><div className="mt-2 text-xs font-black text-slate-500">{label}{label!=="最終開催"?" / "+period+"日":""}</div><div className="mt-1 text-2xl font-black text-lime-950">{typeof value==="number"?value.toLocaleString("ja-JP"):value}</div></div>)}
+      ].map(([icon,label,value])=><div key={String(label)} className="clover-card p-5"><div className="text-2xl">{icon}</div><div className="mt-2 text-xs font-black text-slate-500">{label}{label!=="最終開催"?" / "+periodLabel:""}</div><div className="mt-1 text-2xl font-black text-lime-950">{typeof value==="number"?value.toLocaleString("ja-JP"):value}</div></div>)}
     </div>
 
     <section className="clover-card mt-5 p-5">
@@ -190,7 +197,7 @@ export default function Page(){
     </section>
 
     <section className="clover-card mt-5 overflow-hidden">
-      <div className="border-b border-lime-100 px-5 py-4"><h2 className="font-black text-lime-950">🔥 Meetup履歴 / {period}日</h2><p className="mt-1 text-[11px] font-semibold text-slate-400">最新50件まで表示</p></div>
+      <div className="border-b border-lime-100 px-5 py-4"><h2 className="font-black text-lime-950">🔥 Meetup履歴 / {periodLabel}</h2><p className="mt-1 text-[11px] font-semibold text-slate-400">最新50件まで表示</p></div>
       {meetups.length===0&&!dataLoading?<div className="p-8 text-center text-sm font-semibold text-slate-500">この期間のMeetupデータはありません。</div>:null}
       <div className="divide-y divide-lime-50">
         {meetups.map(m=><div key={m.id} className="p-5">
