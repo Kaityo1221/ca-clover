@@ -5,29 +5,28 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Find discovery source defaults
+      - name: Find Pokemon GO reality channel
         shell: bash
         run: |
           set -euo pipefail
           curl -LfsS -A 'Mozilla/5.0' 'https://campfire.scopely.com/discover/collection/all-meetups' -o /tmp/page.html
+          echo '=== PAGE realityChannelId matches ==='
           python - <<'PY'
-          import re, urllib.request
-          html=open('/tmp/page.html',encoding='utf-8',errors='ignore').read()
-          srcs=re.findall(r'<script[^>]+src="([^"]+)"',html)
-          terms=['selectedRealityChannelSources','selectedRealityChannelId','RealityChannelSourceInput','realityChannelId','limitDropCount']
-          for src in srcs:
-              try:
-                  data=urllib.request.urlopen(urllib.request.Request(src,headers={'User-Agent':'Mozilla/5.0'}),timeout=15).read().decode('utf-8','ignore')
-              except Exception:
-                  continue
-              found=False
-              for term in terms:
-                  positions=[m.start() for m in re.finditer(re.escape(term),data)]
-                  if not positions: continue
-                  if not found:
-                      print('\n###',src)
-                      found=True
-                  for i in positions[:8]:
-                      print('\nTERM',term,'AT',i)
-                      print(data[max(0,i-1200):i+2200].replace('\n',' ')[:3400])
+          import re
+          s=open('/tmp/page.html',encoding='utf-8',errors='ignore').read()
+          for term in ['realityChannelId','POKEMON_GO','pokemon_go','PGO','Pokemon GO','Pokémon GO']:
+              print('\nTERM',term)
+              for m in list(re.finditer(re.escape(term),s,re.I))[:20]:
+                  i=m.start()
+                  print(s[max(0,i-500):i+900].replace('\n',' ')[:1400])
           PY
+          Q='query Probe($id: ID!) { realityChannelById(id: $id) { id metadata { isWebEmbed showUGC showGameIP } sources { name dropTypes } } }'
+          probe() {
+            echo "=== ID $1 ==="
+            BODY="$(jq -nc --arg q "$Q" --arg id "$1" '{query:$q,variables:{id:$id}}')"
+            curl -sS -X POST 'https://niantic-social-api.nianticlabs.com/graphql' -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$BODY" | jq .
+          }
+          probe 'POKEMON_GO'
+          probe 'PGO'
+          probe 'pokemon_go'
+          probe 'pgo'
