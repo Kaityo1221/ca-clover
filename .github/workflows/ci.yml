@@ -7,15 +7,38 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe old and current Tokushima club IDs
+      - name: Inspect Campfire bundles for username profile queries
         shell: bash
         run: |
           set -euo pipefail
-          ENDPOINT='https://niantic-social-api.nianticlabs.com/graphql'
-          Q='query Probe($clubId: ID!) { club(id: $clubId) { id name address location createdByCommunityAmbassador members { totalCount } } }'
-          for CLUB_ID in             '2cba3ab5-4785-41ba-be31-ffd5e84cfcf9'             '8f173f1e-49a0-4344-bfc9-062762790e01'
-          do
-            echo "=== CLUB $CLUB_ID ==="
-            BODY="$(jq -nc --arg q "$Q" --arg id "$CLUB_ID" '{query:$q,variables:{clubId:$id}}')"
-            curl -sS -X POST "$ENDPOINT" -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$BODY" | jq .
-          done
+          URL='https://campfire.scopely.com/discover?language=ja'
+          curl -LfsS -A 'Mozilla/5.0' "$URL" -o /tmp/page.html
+          python - <<'PY'
+          import re, urllib.request
+          html=open('/tmp/page.html',encoding='utf-8',errors='ignore').read()
+          srcs=re.findall(r'<script[^>]+src="([^"]+)"',html)
+          terms=[
+            'userByUsername','UserByUsername','profileByUsername','ProfileByUsername',
+            'username_Query','UserProfile','ProfilePage','socialUser','clubs {',
+            'communityMembership','memberOf','memberships'
+          ]
+          print('SCRIPT_COUNT',len(srcs))
+          for src in srcs:
+              try:
+                  req=urllib.request.Request(src,headers={'User-Agent':'Mozilla/5.0'})
+                  data=urllib.request.urlopen(req,timeout=20).read().decode('utf-8','ignore')
+              except Exception:
+                  continue
+              hits=[t for t in terms if t in data]
+              if not hits: continue
+              print('\nBUNDLE',src,'HITS',hits)
+              for t in hits:
+                  pos=0
+                  n=0
+                  while n<5:
+                      i=data.find(t,pos)
+                      if i<0: break
+                      print('\nTERM',t)
+                      print(data[max(0,i-2500):i+6500].replace('\n',' ')[:9000])
+                      pos=i+len(t); n+=1
+          PY
