@@ -3,7 +3,10 @@ import {
   ARCHIVED_FEED_QUERY,
   CLUB_QUERY,
   EVENT_QUERY,
+  PUBLIC_ACTIVITY_EVENT_QUERY,
   PUBLIC_EVENTS_QUERY,
+  REALITY_CHANNEL_QUERY,
+  DISCOVERY_MAP_QUERY,
 } from "./queries.ts";
 import type {
   CampfireClub,
@@ -11,6 +14,9 @@ import type {
   CampfireEvent,
   CampfireFeedResult,
   CampfirePublicEvent,
+  CampfireRealityChannelSource,
+  CampfireLatLngBounds,
+  CampfireDiscoveryMapObject,
   PaginationResult,
 } from "./types.ts";
 import type {TokenProvider} from "./token-provider.ts";
@@ -42,6 +48,17 @@ type PublicEventsResponse={
     id?:string|null;
     event?:CampfirePublicEvent|null;
   }>|null;
+};
+
+type RealityChannelResponse={
+  realityChannelById?:{
+    id?:string|null;
+    sources?:CampfireRealityChannelSource[]|null;
+  }|null;
+};
+
+type DiscoveryMapResponse={
+  realityChannelMapObjectsInLatLngBounds?:CampfireDiscoveryMapObject[]|null;
 };
 
 export type CampfireClientOptions={
@@ -129,6 +146,46 @@ export class CampfireClient{
     const data=await this.anonymousRequest<{event?:CampfireEvent|null}>(EVENT_QUERY,{id:eventId});
     if(!data.event) throw new CampfireApiError("公開Meetupを取得できません","EVENT_NOT_FOUND");
     return data.event;
+  }
+
+  async getAnonymousActivityEvent(eventId:string):Promise<CampfireEvent>{
+    const data=await this.anonymousRequest<{event?:CampfireEvent|null}>(PUBLIC_ACTIVITY_EVENT_QUERY,{id:eventId});
+    if(!data.event) throw new CampfireApiError("公開Meetupを取得できません","EVENT_NOT_FOUND");
+    return data.event;
+  }
+
+  async getRealityChannelSources(realityChannelId:string):Promise<CampfireRealityChannelSource[]>{
+    const data=await this.anonymousRequest<RealityChannelResponse>(REALITY_CHANNEL_QUERY,{realityChannelId});
+    const sources=data.realityChannelById?.sources??[];
+    if(!sources.length) throw new CampfireApiError("Reality Channel sourcesを取得できません","REALITY_CHANNEL_NOT_FOUND");
+    return sources;
+  }
+
+  async discoverMapObjects(
+    bounds:CampfireLatLngBounds,
+    options:{
+      realityChannelId:string;
+      zoomLevel?:number;
+      sources?:CampfireRealityChannelSource[];
+      limitDropCount?:boolean;
+    },
+  ):Promise<CampfireDiscoveryMapObject[]>{
+    const sources=options.sources?.length
+      ?options.sources
+      :await this.getRealityChannelSources(options.realityChannelId);
+
+    const data=await this.anonymousRequest<DiscoveryMapResponse>(DISCOVERY_MAP_QUERY,{
+      input:{
+        zoomLevel:options.zoomLevel??15,
+        bounds,
+        sources,
+        realityChannelId:options.realityChannelId,
+        limitDropCount:options.limitDropCount??false,
+      },
+    });
+
+    return (data.realityChannelMapObjectsInLatLngBounds??[])
+      .filter(item=>Boolean(item?.id)&&Boolean(item?.event?.id));
   }
 
   async getPublicEvents(eventIds:string[]):Promise<CampfirePublicEvent[]>{
