@@ -144,7 +144,12 @@ export default function Page(){
   if(!community) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 Communityを読み込み中...</main>;
 
   return <main className="mx-auto max-w-6xl px-4 py-7 md:px-8">
-    <Link href="/communities" className="text-sm font-black text-lime-700">← Community一覧</Link>
+    <Link
+      href={profile?.role === "admin" ? "/communities" : "/my"}
+      className="text-sm font-black text-lime-700"
+    >
+      {profile?.role === "admin" ? "← Community一覧" : "← My Community"}
+    </Link>
 
     <section className="clover-card mt-4 p-6">
       <div className="text-xs font-black text-lime-600">{community.prefecture??"—"}</div>
@@ -202,15 +207,17 @@ export default function Page(){
       </div>
     </section>
 
-    <section className="clover-card mt-5 p-5">
-      <h2 className="font-black text-lime-950">🧾 Data Coverage</h2>
-      <div className="mt-4 grid gap-4 text-sm sm:grid-cols-4">
-        <div><div className="text-xs text-slate-400">取得開始</div><b>{community.coverage_from?new Date(community.coverage_from).toLocaleDateString("ja-JP"):"未取得"}</b></div>
-        <div><div className="text-xs text-slate-400">取得終了</div><b>{community.coverage_to?new Date(community.coverage_to).toLocaleDateString("ja-JP"):"未取得"}</b></div>
-        <div><div className="text-xs text-slate-400">状態</div><b>{community.coverage==="partial"?"◐ 一部取得":community.coverage==="complete"?"● 取得済み":"○ 未取得"}</b></div>
-        <div><div className="text-xs text-slate-400">最終同期</div><b>{community.fetched_at?new Date(community.fetched_at).toLocaleString("ja-JP"):"未取得"}</b></div>
-      </div>
-      {community.coverage==="partial"?<p className="mt-4 text-xs font-semibold text-amber-700">同期が途中で終了したため「一部取得」と表示しています。</p>:null}
-    </section>
+    {profile?.role === "admin" ? (
+      <section className="clover-card mt-5 p-5">
+        <h2 className="font-black text-lime-950">🧾 Data Coverage</h2>
+        <div className="mt-4 grid gap-4 text-sm sm:grid-cols-4">
+          <div><div className="text-xs text-slate-400">取得開始</div><b>{community.coverage_from?new Date(community.coverage_from).toLocaleDateString("ja-JP"):"未取得"}</b></div>
+          <div><div className="text-xs text-slate-400">取得終了</div><b>{community.coverage_to?new Date(community.coverage_to).toLocaleDateString("ja-JP"):"未取得"}</b></div>
+          <div><div className="text-xs text-slate-400">状態</div><b>{community.coverage==="partial"?"◐ 一部取得":community.coverage==="complete"?"● 取得済み":"○ 未取得"}</b></div>
+          <div><div className="text-xs text-slate-400">最終同期</div><b>{community.fetched_at?new Date(community.fetched_at).toLocaleString("ja-JP"):"未取得"}</b></div>
+        </div>
+        {community.coverage==="partial"?<p className="mt-4 text-xs font-semibold text-amber-700">同期が途中で終了したため「一部取得」と表示しています。</p>:null}
+      </section>
+    ) : null}
   </main>;
 }
