@@ -201,17 +201,26 @@ export default function Page() {
       <h2 className="text-lg font-black text-lime-950">申請状況</h2>
       <div className="mt-3 space-y-3">{visibleClaims.map(c=><div key={c.id} className="clover-card p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div><div className="text-xs font-black text-lime-700">{c.community_prefecture_snapshot??"—"}</div><div className="mt-1 font-black text-lime-950">{c.community_name_snapshot}</div><div className="mt-1 text-xs font-semibold text-slate-500">{c.meetup_title}</div></div>
-          <span className={c.status==="approved"?"rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900":c.status==="rejected"?"rounded-full bg-rose-100 px-3 py-1 text-xs font-black text-rose-700":"rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800"}>{c.status==="approved"?"承認済み":c.status==="rejected"?"却下":"承認待ち"}</span>
+          <div>
+            <div className="text-xs font-black text-lime-700">{c.community_prefecture_snapshot??"—"}</div>
+            <div className="mt-1 font-black text-lime-950">{c.community_name_snapshot}</div>
+            <div className="mt-1 text-xs font-semibold text-slate-500">提出Meetup: {c.meetup_title}</div>
+          </div>
+          <span className={c.status==="rejected"?"rounded-full bg-rose-100 px-3 py-1 text-xs font-black text-rose-700":"rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800"}>
+            {c.status==="rejected"?"要再申請":"承認待ち"}
+          </span>
         </div>
-        <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-bold">
-          <span className={c.creator_ca_badge_verified===true?"rounded-full bg-violet-100 px-2.5 py-1 text-violet-700":"rounded-full bg-slate-100 px-2.5 py-1 text-slate-500"}>{c.creator_ca_badge_verified===true?"🟣 CAバッジ確認済み":"CAバッジ未確認"}</span>
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">主催者: {c.creator_display_name??"未取得"} / {c.creator_username??"ID未取得"}</span>
-          <span className={c.creator_username_matches_profile===true?"rounded-full bg-sky-100 px-2.5 py-1 text-sky-800":"rounded-full bg-rose-100 px-2.5 py-1 text-rose-700"}>{c.creator_username_matches_profile===true?"Niantic ID一致":"Niantic ID未確認"}</span>
-          <span className={c.ca_role_verified===true?"rounded-full bg-lime-100 px-2.5 py-1 text-lime-800":"rounded-full bg-rose-100 px-2.5 py-1 text-rose-700"}>{c.ca_role_verified===true?"日本CA地図 "+(c.ca_level_snapshot??"")+"確認済み":"1st/2nd未確認"}</span>
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">日本CA地図: {c.ca_map_status==="matched"?"掲載済み":c.ca_map_status==="not_listed"?"未掲載":c.ca_map_status==="community_mismatch"?"Community要確認":c.ca_map_status==="identity_missing"?"Niantic ID未登録":c.master_match===true?"掲載済み":"要確認"}</span>
+        <div className={c.status==="rejected"?"mt-3 rounded-2xl bg-rose-50 p-3 text-xs font-bold leading-5 text-rose-700":"mt-3 rounded-2xl bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-800"}>
+          {c.status==="rejected"
+            ?"内容を確認して、自分が主催したMeetupからもう一度申請してください。"
+            :c.ca_map_status==="not_listed"
+              ?"日本CA地図にまだ掲載されていません。リョータさんに掲載をお願いしてください。"
+              :c.ca_map_status==="identity_missing"
+                ?"アカウント画面でNiantic IDを登録してください。"
+                :c.ca_map_status==="community_mismatch"
+                  ?"Community情報を確認しています。必要に応じて再申請をご案内します。"
+                  :"承認をお待ちください。"}
         </div>
-        {c.ca_map_status==="not_listed"?<p className="mt-2 text-xs font-black text-amber-700">日本CA地図にまだ掲載されていません。リョータさんに掲載をお願いしてください。</p>:null}
         <div className="mt-2 text-[11px] font-bold text-slate-400">申請 {new Date(c.requested_at).toLocaleString("ja-JP")}</div>
       </div>)}</div>
     </section> : null}
