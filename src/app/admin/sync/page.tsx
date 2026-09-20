@@ -16,8 +16,10 @@ type AutomationState={
   public_batch_size:number;
   last_public_at:string|null;
   last_history_at:string|null;
+  last_ca_master_at:string|null;
   last_public_imported:number;
   last_history_imported:number;
+  last_ca_master_updated:number;
   last_error:string|null;
 };
 
@@ -55,7 +57,7 @@ export default function Page(){
   async function loadAutomation(){
     const {data,error}=await supabase
       .from("sync_automation_state")
-      .select("enabled,public_offset,public_batch_size,last_public_at,last_history_at,last_public_imported,last_history_imported,last_error")
+      .select("enabled,public_offset,public_batch_size,last_public_at,last_history_at,last_ca_master_at,last_public_imported,last_history_imported,last_ca_master_updated,last_error")
       .eq("id",1)
       .maybeSingle();
     if(!error) setAutomation((data??null) as AutomationState|null);
@@ -232,6 +234,9 @@ export default function Page(){
             </span>
             <span className="rounded-full bg-white px-3 py-2 text-emerald-800">
               最終Backfill {automation?.last_history_at?new Date(automation.last_history_at).toLocaleString("ja-JP"):"まだ"}
+            </span>
+            <span className="rounded-full bg-white px-3 py-2 text-emerald-800">
+              CA座標 {automation?.last_ca_master_at?new Date(automation.last_ca_master_at).toLocaleString("ja-JP"):"未取得"}
             </span>
           </div>
           {automation?.last_error
