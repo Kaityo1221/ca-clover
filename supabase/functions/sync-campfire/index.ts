@@ -5,6 +5,7 @@ import {
   VaultTokenProvider,
   type CampfireEvent,
 } from "../_shared/campfire/mod.ts";
+import {processMeetupRows,type MeetupWriteRow} from "../_shared/meetup-watch/mod.ts";
 
 const corsHeaders={
   "Access-Control-Allow-Origin":"*",
@@ -154,7 +155,7 @@ Deno.serve(async(req:Request)=>{
           ends_at:event.eventEndTime??null,
           location:event.address??event.location??null,
           event_url:"https://campfire.nianticlabs.com/discover/meetup/"+event.id,
-          details:null,
+          details:event.details??null,
           is_ca_meetup:Boolean(event.createdByCommunityAmbassador),
           rsvp_count:Number.isFinite(event.members?.totalCount)?Number(event.members?.totalCount):null,
           checkin_count:Number.isFinite(event.checkedInMembersCount)?Number(event.checkedInMembersCount):null,
@@ -165,10 +166,7 @@ Deno.serve(async(req:Request)=>{
           fetched_at:nowIso,
         }));
 
-        if(rows.length){
-          const {error:upsertError}=await admin.from("meetups").upsert(rows,{onConflict:"campfire_meetup_id"});
-          if(upsertError) throw upsertError;
-        }
+        const diff=await processMeetupRows(admin,rows as MeetupWriteRow[]);
 
         const times=rows
           .map(row=>row.starts_at?new Date(row.starts_at).getTime():NaN)
@@ -186,12 +184,20 @@ Deno.serve(async(req:Request)=>{
         const {error:updateError}=await admin.from("communities").update(patch).eq("id",community.id);
         if(updateError) throw updateError;
 
-        importedEvents+=rows.length;
+        importedEvents+=diff.written;
         results.push({
           community_id:community.id,
           name:community.name,
           status:complete?"complete":"partial",
           events:rows.length,
+          written_events:diff.written,
+          new_events:diff.newEvents,
+          structure_updates:diff.structureUpdates,
+          activity_updates:diff.activityUpdates,
+          unchanged_events:diff.unchanged,
+          watch_evaluated:diff.watchEvaluated,
+          watch_cases_touched:diff.watchCasesTouched,
+          watch_error:diff.watchError,
           active_events:active.events.length,
           archived_events:archived.events.length,
           active_pages:active.pages,

@@ -91,6 +91,7 @@ Deno.serve(async(req:Request)=>{
     let nextOffset=currentPublicOffset;
     let publicImported=0;
     let historyImported=0;
+    const hotResults:Array<Record<string,unknown>>=[];
 
     const lastCaMasterAt=state.last_ca_master_at?new Date(state.last_ca_master_at).getTime():0;
     const coordinateRefreshDue=!lastCaMasterAt || now-lastCaMasterAt>=24*60*60*1000;
@@ -112,6 +113,53 @@ Deno.serve(async(req:Request)=>{
     }
 
     try{
+      const {data:watchSettings}=await admin
+        .from("watch_settings")
+        .select("enabled,hot_batch_size")
+        .eq("id",1)
+        .maybeSingle();
+
+      if(watchSettings?.enabled===true){
+        const nowIso=new Date().toISOString();
+        const {data:hotStates,error:hotError}=await admin
+          .from("watch_community_state")
+          .select("community_id,hot_until,next_hot_scan_at")
+          .gt("hot_until",nowIso)
+          .order("next_hot_scan_at",{ascending:true,nullsFirst:true})
+          .limit(Math.max(1,Math.min(20,Number(watchSettings.hot_batch_size??3)||3))*3);
+        if(hotError) throw hotError;
+
+        const due=(hotStates??[])
+          .filter(row=>!row.next_hot_scan_at||Date.parse(row.next_hot_scan_at)<=Date.now())
+          .slice(0,Math.max(1,Math.min(20,Number(watchSettings.hot_batch_size??3)||3)));
+
+        for(const hot of due){
+          try{
+            const result=await invokeInternal(
+              supabaseUrl,
+              anonKey,
+              suppliedSecret,
+              "sync-campfire-public",
+              {communityId:hot.community_id},
+            );
+            hotResults.push({community_id:hot.community_id,status:"success",result});
+          }catch(error){
+            hotResults.push({
+              community_id:hot.community_id,
+              status:"error",
+              error:error instanceof Error?error.message:String(error),
+            });
+          }finally{
+            const scannedAt=new Date();
+            await admin.from("watch_community_state").update({
+              last_hot_scan_at:scannedAt.toISOString(),
+              next_hot_scan_at:new Date(scannedAt.getTime()+15*60*1000).toISOString(),
+              updated_at:scannedAt.toISOString(),
+            }).eq("community_id",hot.community_id);
+          }
+        }
+      }
+
       publicResult=await invokeInternal(
         supabaseUrl,
         anonKey,
@@ -211,6 +259,7 @@ Deno.serve(async(req:Request)=>{
         public_offset_before:state.public_offset,
         public_offset_after:nextOffset,
         ca_master_result:masterResult,
+        hot_results:hotResults,
         public_result:publicResult,
         history_community:historyCommunity,
         history_result:historyResult,
@@ -223,6 +272,7 @@ Deno.serve(async(req:Request)=>{
       status:errors.length?"partial":"success",
       nextOffset,
       masterResult,
+      hotResults,
       publicResult,
       historyCommunity,
       historyResult,
