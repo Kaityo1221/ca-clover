@@ -7,40 +7,15 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Grid-scan Tokushima-Anan public Campfire map
+      - name: Probe old and current Tokushima club IDs
         shell: bash
         run: |
           set -euo pipefail
           ENDPOINT='https://niantic-social-api.nianticlabs.com/graphql'
-          RC_ID='8947de81-e387-4e03-89c6-31ce2ca47c3c'
-          RC_Q='query Probe($realityChannelId: ID!) { realityChannelById(id: $realityChannelId) { id sources { name dropTypes } } }'
-          RC_BODY="$(jq -nc --arg q "$RC_Q" --arg id "$RC_ID" '{query:$q,variables:{realityChannelId:$id}}')"
-          curl -sS -X POST "$ENDPOINT" -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$RC_BODY" -o /tmp/rc.json
-          SOURCES="$(jq -c '.data.realityChannelById.sources' /tmp/rc.json)"
-          MAP_Q='query Probe($input: RealityChannelMapObjectsInLatLngBoundsInput!) { realityChannelMapObjectsInLatLngBounds(input: $input) { id mapObjectType event { id location eventTime eventEndTime createdByCommunityAmbassador mapObjectLocation { latitude longitude } } } }'
-          : > /tmp/event_ids.txt
-          : > /tmp/map_items.ndjson
-
-          LATS=(33.80 33.90 34.00 34.10 34.20)
-          LNGS=(134.45 134.55 134.65 134.75 134.85)
-          for ((i=0;i<4;i++)); do
-            for ((j=0;j<4;j++)); do
-              SWLAT="${LATS[$i]}"; NELAT="${LATS[$((i+1))]}"
-              SWLNG="${LNGS[$j]}"; NELNG="${LNGS[$((j+1))]}"
-              INPUT="$(jq -nc --arg id "$RC_ID" --argjson sources "$SOURCES" --argjson swlat "$SWLAT" --argjson nelat "$NELAT" --argjson swlng "$SWLNG" --argjson nelng "$NELNG" '{zoomLevel:13,bounds:{sw:{lat:$swlat,lng:$swlng},ne:{lat:$nelat,lng:$nelng}},sources:$sources,realityChannelId:$id,limitDropCount:false}')"
-              BODY="$(jq -nc --arg q "$MAP_Q" --argjson input "$INPUT" '{query:$q,variables:{input:$input}}')"
-              curl -sS -X POST "$ENDPOINT" -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$BODY" -o /tmp/cell.json
-              jq -c '.data.realityChannelMapObjectsInLatLngBounds[]? | {mapObjectType,event}' /tmp/cell.json >> /tmp/map_items.ndjson
-              jq -r '.data.realityChannelMapObjectsInLatLngBounds[]?.event.id // empty' /tmp/cell.json >> /tmp/event_ids.txt
-            done
-          done
-
-          echo '=== GRID MAP ITEMS ==='
-          sort -u /tmp/map_items.ndjson
-          echo '=== UNIQUE EVENT DETAILS ==='
-          EVENT_Q='query Probe($id: ID!) { event(id: $id) { id name clubId address location eventTime eventEndTime createdByCommunityAmbassador creator { displayName username badges { badgeType alias } } } }'
-          sort -u /tmp/event_ids.txt | while read -r EVENT_ID; do
-            [ -z "$EVENT_ID" ] && continue
-            BODY="$(jq -nc --arg q "$EVENT_Q" --arg id "$EVENT_ID" '{query:$q,variables:{id:$id}}')"
-            curl -sS -X POST "$ENDPOINT" -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$BODY" | jq -c '.data.event // {error:.errors}'
+          Q='query Probe($clubId: ID!) { club(id: $clubId) { id name address location createdByCommunityAmbassador members { totalCount } } }'
+          for CLUB_ID in             '2cba3ab5-4785-41ba-be31-ffd5e84cfcf9'             '8f173f1e-49a0-4344-bfc9-062762790e01'
+          do
+            echo "=== CLUB $CLUB_ID ==="
+            BODY="$(jq -nc --arg q "$Q" --arg id "$CLUB_ID" '{query:$q,variables:{clubId:$id}}')"
+            curl -sS -X POST "$ENDPOINT" -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$BODY" | jq .
           done
