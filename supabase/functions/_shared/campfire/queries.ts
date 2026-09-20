@@ -2,6 +2,7 @@ const EVENT_FIELDS=`
   id
   name
   details
+  createdAt
   clubId
   club { id name }
   address
@@ -23,6 +24,7 @@ const PUBLIC_ACTIVITY_EVENT_FIELDS=`
   id
   name
   details
+  createdAt
   clubId
   club { id name }
   address
