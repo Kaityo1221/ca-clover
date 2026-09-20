@@ -511,7 +511,6 @@ export default function Page() {
                   ? 0.68
                   : 0.22;
 
-          const allTimeLast = allTimeLastByCommunity.get(row.community_id) ?? null;
           const popup = makePopup(
             row,
             periodLabel,
