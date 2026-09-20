@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
 import { comparePrefectures } from "@/lib/prefecture-order";
@@ -272,6 +273,7 @@ function renderRecentMeetups(container: HTMLElement, meetups: RecentMeetupRow[])
 
 export default function Page() {
   const { supabase, user, profile, loading } = useAuthProfile();
+  const router = useRouter();
   const [period, setPeriod] = useState<number>(30);
   const [metric, setMetric] = useState<MetricKey>("checkin_count");
   const [mapMode, setMapMode] = useState<MapMode>("activity");
@@ -285,7 +287,13 @@ export default function Page() {
   const mapElementRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (loading || !user || !profile || profile.role === "pending") return;
+    if (!loading && user && profile?.role === "ca") {
+      router.replace("/my");
+    }
+  }, [loading, user, profile?.role, router]);
+
+  useEffect(() => {
+    if (loading || !user || !profile || profile.role !== "admin") return;
     let alive = true;
     setDataLoading(true);
     setError(null);
@@ -630,6 +638,14 @@ export default function Page() {
             Googleでログイン
           </Link>
         </div>
+      </main>
+    );
+  }
+
+  if (profile?.role === "ca") {
+    return (
+      <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">
+        🍀 My Communityへ移動中...
       </main>
     );
   }

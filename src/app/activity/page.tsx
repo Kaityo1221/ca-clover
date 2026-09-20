@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
 import MonthlyActivityChart from "@/components/monthly-activity-chart";
@@ -36,6 +37,7 @@ const periods=[30,90,180,365] as const;
 
 export default function Page(){
   const {supabase,user,profile,loading}=useAuthProfile();
+  const router = useRouter();
   const [period,setPeriod]=useState<number>(30);
   const [summary,setSummary]=useState<SummaryRow>({meetup_count:0,ca_meetup_count:0,rsvp_count:0,checkin_count:0,last_event_at:null});
   const [monthly,setMonthly]=useState<MonthlyRow[]>([]);
@@ -43,8 +45,14 @@ export default function Page(){
   const [communities,setCommunities]=useState<CommunityRow[]>([]);
   const [dataLoading,setDataLoading]=useState(false);
 
+  useEffect(() => {
+    if (!loading && user && profile?.role === "ca") {
+      router.replace("/my");
+    }
+  }, [loading, user, profile?.role, router]);
+
   useEffect(()=>{
-    if(loading||!user||!profile||profile.role==="pending") return;
+    if(loading||!user||!profile||profile.role!=="admin") return;
     supabase.from("communities").select("id,name").then(({data})=>{
       setCommunities((data as CommunityRow[]|null)??[]);
     });
@@ -54,7 +62,7 @@ export default function Page(){
   },[loading,user,profile?.role,supabase]);
 
   useEffect(()=>{
-    if(loading||!user||!profile||profile.role==="pending") return;
+    if(loading||!user||!profile||profile.role!=="admin") return;
     let alive=true;
     setDataLoading(true);
     const since=new Date(Date.now()-period*24*60*60*1000).toISOString();
@@ -93,6 +101,7 @@ export default function Page(){
 
   if(loading) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 読み込み中...</main>;
   if(!user) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><h1 className="text-2xl font-black text-lime-950">ログインが必要です</h1><Link href="/login" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black">Googleでログイン</Link></div></main>;
+  if(profile?.role==="ca") return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 My Communityへ移動中...</main>;
   if(profile?.role==="pending") return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><div className="text-5xl">🌱</div><h1 className="mt-3 text-2xl font-black text-lime-950">アカウント確認中</h1></div></main>;
 
   return <main className="mx-auto max-w-6xl px-4 py-8 md:px-8">

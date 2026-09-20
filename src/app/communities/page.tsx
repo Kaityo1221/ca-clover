@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
 import { comparePrefectures } from "@/lib/prefecture-order";
@@ -17,12 +18,19 @@ type CommunityRow = {
 
 export default function Page() {
   const { supabase, user, profile, loading } = useAuthProfile();
+  const router = useRouter();
   const [rows, setRows] = useState<CommunityRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(false);
 
   useEffect(() => {
-    if (loading || !user || !profile || profile.role === "pending") return;
+    if (!loading && user && profile?.role === "ca") {
+      router.replace("/my");
+    }
+  }, [loading, user, profile?.role, router]);
+
+  useEffect(() => {
+    if (loading || !user || !profile || profile.role !== "admin") return;
     let alive = true;
     setDataLoading(true);
 
@@ -55,6 +63,10 @@ export default function Page() {
     return <main className="grid min-h-[70vh] place-items-center px-4 text-center">
       <div><div className="text-5xl">🍀</div><h1 className="mt-3 text-2xl font-black text-lime-950">ログインが必要です</h1><Link href="/login" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black text-lime-950">Googleでログイン</Link></div>
     </main>;
+  }
+
+  if (profile?.role === "ca") {
+    return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 My Communityへ移動中...</main>;
   }
 
   if (profile?.role === "pending") {
