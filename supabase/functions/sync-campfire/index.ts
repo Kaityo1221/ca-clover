@@ -8,7 +8,7 @@ import {
 
 const corsHeaders={
   "Access-Control-Allow-Origin":"*",
-  "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type, x-ca-clover-cron-secret",
 };
 
 function json(data:unknown,status=200){
@@ -26,6 +26,19 @@ async function requireAdmin(req:Request){
   const serviceRoleKey=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if(!supabaseUrl||!anonKey||!serviceRoleKey) throw new Error("Supabase environment is incomplete");
 
+  const admin=createClient(supabaseUrl,serviceRoleKey,{
+    auth:{persistSession:false,autoRefreshToken:false},
+  });
+
+  const cronSecret=req.headers.get("x-ca-clover-cron-secret")??"";
+  if(cronSecret){
+    const {data:expected,error:secretError}=await admin.rpc("internal_get_sync_cron_secret");
+    if(!secretError && typeof expected==="string" && expected && cronSecret===expected){
+      return {admin,error:null,actor:"cron"} as const;
+    }
+    return {error:json({error:"invalid cron secret"},401)} as const;
+  }
+
   const authorization=req.headers.get("Authorization")??"";
   const userClient=createClient(supabaseUrl,anonKey,{
     global:{headers:{Authorization:authorization}},
@@ -38,11 +51,7 @@ async function requireAdmin(req:Request){
   const {data:profile,error:profileError}=await userClient.from("profiles").select("role").eq("id",userData.user.id).single();
   if(profileError||profile?.role!=="admin") return {error:json({error:"admin required"},403)} as const;
 
-  const admin=createClient(supabaseUrl,serviceRoleKey,{
-    auth:{persistSession:false,autoRefreshToken:false},
-  });
-
-  return {admin,error:null} as const;
+  return {admin,error:null,actor:"admin"} as const;
 }
 
 Deno.serve(async(req:Request)=>{
