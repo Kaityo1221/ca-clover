@@ -1,26 +1,30 @@
 name: CI
-
 on:
   pull_request:
-  push:
-    branches: [main]
-
 jobs:
-  build:
+  probe:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm install --no-audit --no-fund
-      - run: npm run build
-      - name: Diagnostic discovery input schema
+      - name: Inspect discovery defaults
         shell: bash
         run: |
           set -euo pipefail
-          BODY="$(jq -nc '{query:"query Probe { __type(name: \"RealityChannelMapObjectsInLatLngBoundsInput\") { name kind inputFields { name defaultValue type { kind name ofType { kind name ofType { kind name } } } } } }"}')"
-          curl -sS -X POST 'https://niantic-social-api.nianticlabs.com/graphql'             -H 'Content-Type: application/json' -H 'Accept: application/json'             --data "$BODY" | jq .
-          echo '=== EMPTY INPUT PROBE ==='
-          BODY2="$(jq -nc '{query:"query Probe($input: RealityChannelMapObjectsInLatLngBoundsInput!) { realityChannelMapObjectsInLatLngBounds(input: $input) { id mapObjectType event { id eventTime eventEndTime } } }",variables:{input:{}}}')"
-          curl -sS -X POST 'https://niantic-social-api.nianticlabs.com/graphql'             -H 'Content-Type: application/json' -H 'Accept: application/json'             --data "$BODY2" | jq .
+          curl -LfsS -A 'Mozilla/5.0' 'https://campfire.scopely.com/discover/collection/all-meetups' -o /tmp/page.html
+          python - <<'PY'
+          import re, urllib.request
+          html=open('/tmp/page.html',encoding='utf-8',errors='ignore').read()
+          srcs=re.findall(r'<script[^>]+src="([^"]+)"',html)
+          terms=['3481:function','selectedRealityChannelSources','selectedRealityChannelId','limitDropCount','zoomLevel','bounds:','hb:','n4:']
+          for src in srcs:
+              try:
+                  data=urllib.request.urlopen(urllib.request.Request(src,headers={'User-Agent':'Mozilla/5.0'}),timeout=15).read().decode('utf-8','ignore')
+              except Exception:
+                  continue
+              hits=[x for x in terms if x in data]
+              if not hits: continue
+              print('\nBUNDLE',src,'HITS',hits)
+              for x in hits:
+                  i=data.find(x)
+                  print('\nTERM',x)
+                  print(data[max(0,i-5000):i+10000].replace('\n',' ')[:15000])
+          PY
