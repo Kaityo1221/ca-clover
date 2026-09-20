@@ -216,6 +216,7 @@ export default function Page() {
 
   const periodLabel =
     periods.find((item) => item.value === period)?.label ?? "期間";
+  const showActivityScale = profile?.role === "admin";
 
   const summary = useMemo(() => {
     const active = rows.filter((row) => numberValue(row, metric) > 0).length;
@@ -259,16 +260,28 @@ export default function Page() {
           maxZoom: 7,
         });
 
-        const maxValue = Math.max(
-          1,
-          ...rows.map((row) => numberValue(row, metric))
-        );
+        const maxValue = showActivityScale
+          ? Math.max(1, ...rows.map((row) => numberValue(row, metric)))
+          : 1;
 
         for (const row of rows) {
           const value = numberValue(row, metric);
-          const scaled = value > 0 ? Math.sqrt(value / maxValue) : 0;
-          const radius = value > 0 ? 7 + scaled * 17 : 5;
-          const fillOpacity = value > 0 ? 0.38 + scaled * 0.5 : 0.16;
+          const scaled =
+            showActivityScale && value > 0
+              ? Math.sqrt(value / maxValue)
+              : 0;
+          const radius = showActivityScale
+            ? value > 0
+              ? 7 + scaled * 17
+              : 5
+            : 9;
+          const fillOpacity = showActivityScale
+            ? value > 0
+              ? 0.38 + scaled * 0.5
+              : 0.16
+            : value > 0
+              ? 0.68
+              : 0.22;
 
           L.circleMarker([row.latitude, row.longitude], {
             radius,
@@ -296,7 +309,7 @@ export default function Page() {
       disposed = true;
       if (map) map.remove();
     };
-  }, [rows, metric, periodLabel]);
+  }, [rows, metric, periodLabel, showActivityScale]);
 
   if (loading) {
     return (
@@ -423,7 +436,9 @@ export default function Page() {
               {metricLabel} Activity
             </h2>
             <p className="mt-1 text-xs font-semibold text-slate-500">
-              円が大きく濃いほど活動量が多いCommunityです。クリックで詳細を表示します。
+              {showActivityScale
+                ? "円が大きく濃いほど活動量が多いCommunityです。クリックで詳細を表示します。"
+                : "Communityはすべて同じ大きさの円で表示します。クリックで詳細を表示します。"}
             </p>
           </div>
           <div className="text-right text-[11px] font-bold text-slate-400">
