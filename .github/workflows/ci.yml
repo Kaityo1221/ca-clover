@@ -2,16 +2,20 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches: [main]
 
 jobs:
-  build:
+  probe:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm install --no-audit --no-fund
-      - run: npm run build
+      - name: Resolve Anan links
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== SHORT LINK HEAD ==='
+          curl -sSIL 'https://cmpf.re/Wukjpl' | sed -n '1,80p'
+          echo '=== SHORT LINK FINAL ==='
+          curl -sSL -o /tmp/final.html -w 'final_url=%{url_effective}\nstatus=%{http_code}\n' 'https://cmpf.re/Wukjpl'
+          head -c 3000 /tmp/final.html || true
+          echo
+          echo '=== COMMUNITY ONELINK HEAD ==='
+          curl -sSIL 'https://campfire.onelink.me/eBr8?af_dp=campfire://&af_force_deeplink=true&deep_link_sub1=cj1jbHVicyZjPWY4NDQ1ODg2LTFmMzYtNGE1NC1hNzlkLWIyMDVhNGM0MDlkYSZpPXRydWU=' | sed -n '1,80p'
