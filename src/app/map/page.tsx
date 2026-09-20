@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
+import { comparePrefectures } from "@/lib/prefecture-order";
 
 type ActivityMapRow = {
   community_id: string;
@@ -305,7 +306,7 @@ export default function Page() {
   const prefectures = useMemo(
     () =>
       [...new Set(rows.map((row) => row.prefecture).filter((value): value is string => Boolean(value)))]
-        .sort((a, b) => a.localeCompare(b, "ja")),
+        .sort(comparePrefectures),
     [rows]
   );
 
@@ -325,6 +326,11 @@ export default function Page() {
         const name = row.community_name.normalize("NFKC").toLowerCase();
         const area = (row.prefecture ?? "").normalize("NFKC").toLowerCase();
         return name.includes(query) || area.includes(query);
+      })
+      .sort((a, b) => {
+        const areaOrder = comparePrefectures(a.prefecture, b.prefecture);
+        if (areaOrder !== 0) return areaOrder;
+        return a.community_name.localeCompare(b.community_name, "ja");
       })
       .slice(0, 8);
   }, [rows, search]);
