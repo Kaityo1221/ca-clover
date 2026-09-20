@@ -37,7 +37,12 @@ export default function Page(){
   if (!user) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><h1 className="text-2xl font-black text-lime-950">ログインが必要です</h1><Link href="/login" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black">Googleでログイン</Link></div></main>;
 
   return <main className="mx-auto max-w-2xl px-4 py-8 md:px-8">
-    <Link href="/" className="text-sm font-black text-lime-700">← CA Clover Home</Link>
+    <Link
+      href={profile?.role === "admin" ? "/" : "/my"}
+      className="text-sm font-black text-lime-700"
+    >
+      {profile?.role === "admin" ? "← CA Clover Home" : "← My Community"}
+    </Link>
     <span className="mt-4 block w-fit rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900">ACCOUNT</span>
     <h1 className="mt-3 text-3xl font-black text-lime-950">👤 アカウント</h1>
 
