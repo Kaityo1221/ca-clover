@@ -23,14 +23,27 @@ type MetricKey =
   | "ca_meetup_count"
   | "rsvp_count";
 
+type RecentMeetupRow = {
+  id: string;
+  title: string;
+  starts_at: string | null;
+  location: string | null;
+  event_url: string | null;
+  is_ca_meetup: boolean | null;
+  checkin_count: number | null;
+};
+
 type LeafletMap = {
   fitBounds: (bounds: unknown, options?: Record<string, unknown>) => void;
+  setView: (latlng: [number, number], zoom: number) => void;
   remove: () => void;
 };
 
 type LeafletMarker = {
   addTo: (map: LeafletMap) => LeafletMarker;
   bindPopup: (content: HTMLElement, options?: Record<string, unknown>) => LeafletMarker;
+  openPopup: () => LeafletMarker;
+  on: (event: string, handler: () => void) => LeafletMarker;
 };
 
 type LeafletNamespace = {
@@ -125,7 +138,7 @@ function numberValue(row: ActivityMapRow, key: MetricKey) {
 
 function makePopup(row: ActivityMapRow, periodLabel: string) {
   const wrapper = document.createElement("div");
-  wrapper.style.minWidth = "220px";
+  wrapper.style.minWidth = "240px";
   wrapper.style.fontFamily =
     'Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
 
@@ -168,6 +181,23 @@ function makePopup(row: ActivityMapRow, periodLabel: string) {
       ? new Date(row.last_event_at).toLocaleDateString("ja-JP")
       : "期間内なし");
 
+  const recentTitle = document.createElement("div");
+  recentTitle.textContent = "最近のMeetup";
+  recentTitle.style.marginTop = "12px";
+  recentTitle.style.paddingTop = "10px";
+  recentTitle.style.borderTop = "1px solid #ecfccb";
+  recentTitle.style.fontSize = "11px";
+  recentTitle.style.fontWeight = "900";
+  recentTitle.style.color = "#365314";
+
+  const recent = document.createElement("div");
+  recent.dataset.loaded = "false";
+  recent.style.marginTop = "5px";
+  recent.style.fontSize = "11px";
+  recent.style.lineHeight = "1.45";
+  recent.style.color = "#64748b";
+  recent.textContent = "開くと最新5件を読み込みます";
+
   const link = document.createElement("a");
   link.href = "/community/" + row.community_id;
   link.textContent = "Community詳細を見る →";
@@ -177,8 +207,59 @@ function makePopup(row: ActivityMapRow, periodLabel: string) {
   link.style.fontWeight = "900";
   link.style.color = "#4d7c0f";
 
-  wrapper.append(area, title, metricsLine, last, link);
-  return wrapper;
+  wrapper.append(area, title, metricsLine, last, recentTitle, recent, link);
+  return { wrapper, recent };
+}
+
+function renderRecentMeetups(container: HTMLElement, meetups: RecentMeetupRow[]) {
+  container.replaceChildren();
+
+  if (meetups.length === 0) {
+    container.textContent = "Meetup履歴はありません";
+    return;
+  }
+
+  for (const meetup of meetups) {
+    const item = document.createElement("div");
+    item.style.padding = "6px 0";
+    item.style.borderBottom = "1px solid #f1f5f9";
+
+    const date = document.createElement("div");
+    date.textContent = meetup.starts_at
+      ? new Date(meetup.starts_at).toLocaleDateString("ja-JP")
+      : "日時未取得";
+    date.style.fontSize = "10px";
+    date.style.fontWeight = "800";
+    date.style.color = "#84a31d";
+
+    const title = meetup.event_url
+      ? document.createElement("a")
+      : document.createElement("div");
+    title.textContent = meetup.title;
+    title.style.display = "block";
+    title.style.marginTop = "2px";
+    title.style.fontSize = "11px";
+    title.style.fontWeight = "800";
+    title.style.color = "#334155";
+
+    if (meetup.event_url && title instanceof HTMLAnchorElement) {
+      title.href = meetup.event_url;
+      title.target = "_blank";
+      title.rel = "noreferrer";
+    }
+
+    const meta = document.createElement("div");
+    meta.style.marginTop = "2px";
+    meta.style.fontSize = "10px";
+    meta.style.color = "#94a3b8";
+    meta.textContent =
+      (meetup.is_ca_meetup ? "CA Meetup" : "Meetup") +
+      " / Check-in " +
+      (meetup.checkin_count ?? "—");
+
+    item.append(date, title, meta);
+    container.append(item);
+  }
 }
 
 export default function Page() {
@@ -186,6 +267,8 @@ export default function Page() {
   const [period, setPeriod] = useState<number>(30);
   const [metric, setMetric] = useState<MetricKey>("checkin_count");
   const [prefecture, setPrefecture] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [selectedCommunityId, setSelectedCommunityId] = useState<string | null>(null);
   const [rows, setRows] = useState<ActivityMapRow[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -233,6 +316,18 @@ export default function Page() {
         : rows.filter((row) => row.prefecture === prefecture),
     [rows, prefecture]
   );
+
+  const searchResults = useMemo(() => {
+    const query = search.normalize("NFKC").trim().toLowerCase();
+    if (!query) return [];
+    return rows
+      .filter((row) => {
+        const name = row.community_name.normalize("NFKC").toLowerCase();
+        const area = (row.prefecture ?? "").normalize("NFKC").toLowerCase();
+        return name.includes(query) || area.includes(query);
+      })
+      .slice(0, 8);
+  }, [rows, search]);
 
   useEffect(() => {
     if (prefecture !== "all" && !prefectures.includes(prefecture)) {
@@ -285,6 +380,7 @@ export default function Page() {
         const maxValue = showActivityScale
           ? Math.max(1, ...visibleRows.map((row) => numberValue(row, metric)))
           : 1;
+        const markerByCommunity = new Map<string, LeafletMarker>();
 
         for (const row of visibleRows) {
           const value = numberValue(row, metric);
@@ -305,17 +401,57 @@ export default function Page() {
               ? 0.68
               : 0.22;
 
-          L.circleMarker([row.latitude, row.longitude], {
+          const popup = makePopup(row, periodLabel);
+          const marker = L.circleMarker([row.latitude, row.longitude], {
             radius,
             color: value > 0 ? "#4d7c0f" : "#94a3b8",
             weight: value > 0 ? 1.6 : 1,
             fillColor: value > 0 ? "#84cc16" : "#cbd5e1",
             fillOpacity,
           })
-            .bindPopup(makePopup(row, periodLabel), {
-              maxWidth: 320,
+            .bindPopup(popup.wrapper, {
+              maxWidth: 360,
+            })
+            .on("popupopen", () => {
+              if (popup.recent.dataset.loaded === "loading" || popup.recent.dataset.loaded === "true") {
+                return;
+              }
+              popup.recent.dataset.loaded = "loading";
+              popup.recent.textContent = "読み込み中…";
+
+              supabase
+                .from("meetups")
+                .select("id,title,starts_at,location,event_url,is_ca_meetup,checkin_count")
+                .eq("community_id", row.community_id)
+                .order("starts_at", { ascending: false })
+                .limit(5)
+                .then(({ data, error: meetupError }) => {
+                  if (meetupError) {
+                    popup.recent.dataset.loaded = "false";
+                    popup.recent.textContent = "Meetupを読み込めませんでした";
+                    return;
+                  }
+                  popup.recent.dataset.loaded = "true";
+                  renderRecentMeetups(
+                    popup.recent,
+                    (data as RecentMeetupRow[] | null) ?? []
+                  );
+                });
             })
             .addTo(map);
+
+          markerByCommunity.set(row.community_id, marker);
+        }
+
+        if (selectedCommunityId) {
+          const selected = visibleRows.find(
+            (row) => row.community_id === selectedCommunityId
+          );
+          const selectedMarker = markerByCommunity.get(selectedCommunityId);
+          if (selected && selectedMarker) {
+            map.setView([selected.latitude, selected.longitude], 14);
+            selectedMarker.openPopup();
+          }
         }
       })
       .catch((loadError: unknown) => {
@@ -331,7 +467,7 @@ export default function Page() {
       disposed = true;
       if (map) map.remove();
     };
-  }, [visibleRows, metric, periodLabel, showActivityScale]);
+  }, [visibleRows, metric, periodLabel, showActivityScale, selectedCommunityId, supabase]);
 
   if (loading) {
     return (
@@ -426,6 +562,71 @@ export default function Page() {
         </span>
       </div>
 
+      <div className="relative mt-3 max-w-xl">
+        <label htmlFor="community-search" className="sr-only">
+          Community検索
+        </label>
+        <div className="flex gap-2">
+          <input
+            id="community-search"
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setSelectedCommunityId(null);
+            }}
+            placeholder="Community名・都道府県で検索"
+            className="min-w-0 flex-1 rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none placeholder:text-slate-400 focus:border-lime-400"
+          />
+          {search ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setSelectedCommunityId(null);
+              }}
+              className="rounded-2xl border border-lime-200 bg-white px-4 text-xs font-black text-lime-700"
+            >
+              クリア
+            </button>
+          ) : null}
+        </div>
+
+        {search.trim() && !selectedCommunityId ? (
+          <div className="absolute z-[1000] mt-2 max-h-72 w-full overflow-auto rounded-2xl border border-lime-100 bg-white p-2 shadow-xl">
+            {searchResults.length ? (
+              searchResults.map((row) => (
+                <button
+                  key={row.community_id}
+                  type="button"
+                  onClick={() => {
+                    setSearch(row.community_name);
+                    setPrefecture(row.prefecture ?? "all");
+                    setSelectedCommunityId(row.community_id);
+                  }}
+                  className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-left hover:bg-lime-50"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-black text-lime-950">
+                      {row.community_name}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] font-bold text-slate-400">
+                      {row.prefecture ?? "都道府県未設定"}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-xs font-black text-lime-600">
+                    地図へ →
+                  </span>
+                </button>
+              ))
+            ) : (
+              <div className="px-3 py-4 text-xs font-bold text-slate-400">
+                該当するCommunityはありません
+              </div>
+            )}
+          </div>
+        ) : null}
+      </div>
+
       <div className="mt-3 flex flex-wrap gap-2">
         {metrics.map((item) => (
           <button
@@ -481,8 +682,8 @@ export default function Page() {
             </h2>
             <p className="mt-1 text-xs font-semibold text-slate-500">
               {showActivityScale
-                ? "円が大きく濃いほど活動量が多いCommunityです。都道府県を選ぶとその地域へ自動で寄ります。"
-                : "Communityはすべて同じ大きさの円で表示します。都道府県を選ぶとその地域へ自動で寄ります。"}
+                ? "円が大きく濃いほど活動量が多いCommunityです。検索するとCommunityへズームし、ポップアップで最近のMeetupを確認できます。"
+                : "Communityはすべて同じ大きさの円で表示します。検索するとCommunityへズームし、ポップアップで最近のMeetupを確認できます。"}
             </p>
           </div>
           <div className="text-right text-[11px] font-bold text-slate-400">
