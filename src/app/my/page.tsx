@@ -125,6 +125,11 @@ export default function Page() {
     setClaimBusy(false);
   }
 
+  const visibleClaims = useMemo(
+    () => profile?.role === "ca" ? claims.filter(claim => claim.status !== "approved") : claims,
+    [claims, profile?.role]
+  );
+
   const metrics = useMemo(() => {
     const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
     const recent = meetups.filter(m => m.starts_at && new Date(m.starts_at).getTime() >= since);
@@ -192,9 +197,9 @@ export default function Page() {
       {claimMessage ? <p className="mt-3 text-center text-xs font-bold text-lime-700">{claimMessage}</p> : null}
     </section> : null}
 
-    {claims.length ? <section className="mt-6">
-      <h2 className="text-lg font-black text-lime-950">申請履歴</h2>
-      <div className="mt-3 space-y-3">{claims.map(c=><div key={c.id} className="clover-card p-4">
+    {visibleClaims.length ? <section className="mt-6">
+      <h2 className="text-lg font-black text-lime-950">申請状況</h2>
+      <div className="mt-3 space-y-3">{visibleClaims.map(c=><div key={c.id} className="clover-card p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div><div className="text-xs font-black text-lime-700">{c.community_prefecture_snapshot??"—"}</div><div className="mt-1 font-black text-lime-950">{c.community_name_snapshot}</div><div className="mt-1 text-xs font-semibold text-slate-500">{c.meetup_title}</div></div>
           <span className={c.status==="approved"?"rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900":c.status==="rejected"?"rounded-full bg-rose-100 px-3 py-1 text-xs font-black text-rose-700":"rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800"}>{c.status==="approved"?"承認済み":c.status==="rejected"?"却下":"承認待ち"}</span>
