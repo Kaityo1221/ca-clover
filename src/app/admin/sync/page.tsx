@@ -226,7 +226,7 @@ export default function Page(){
           </div>
           <div className="mt-2 text-xs font-semibold leading-5 text-slate-600">
             15分ごとに10 Communityずつ公開Meetupを巡回します。全国1周は約2時間半です。
-            coverage=missing のCommunityがあれば、token有効時に1件ずつ過去履歴も自動補完します。
+            CAマスターは1日1回更新し、新規CA / Communityも取り込みます。coverage=missing があれば、token有効時に1件ずつ過去履歴も自動補完します。
           </div>
           <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-bold">
             <span className="rounded-full bg-white px-3 py-2 text-emerald-800">
@@ -236,7 +236,7 @@ export default function Page(){
               最終Backfill {automation?.last_history_at?new Date(automation.last_history_at).toLocaleString("ja-JP"):"まだ"}
             </span>
             <span className="rounded-full bg-white px-3 py-2 text-emerald-800">
-              CA座標 {automation?.last_ca_master_at?new Date(automation.last_ca_master_at).toLocaleString("ja-JP"):"未取得"}
+              CAマスター {automation?.last_ca_master_at?new Date(automation.last_ca_master_at).toLocaleString("ja-JP"):"未取得"}
             </span>
           </div>
           {automation?.last_error
