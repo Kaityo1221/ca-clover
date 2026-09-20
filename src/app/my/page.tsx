@@ -156,12 +156,7 @@ export default function Page() {
     </section> : null}
 
     {communities.length ? <>
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
-        <div className="clover-card p-5"><div className="text-2xl">🔥</div><div className="mt-2 text-xs font-black text-slate-500">30日Meetup</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.meetups}</div></div>
-        <div className="clover-card p-5"><div className="text-2xl">📨</div><div className="mt-2 text-xs font-black text-slate-500">30日RSVP</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.rsvp}</div></div>
-        <div className="clover-card p-5"><div className="text-2xl">✅</div><div className="mt-2 text-xs font-black text-slate-500">30日Check-in</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.checkin}</div></div>
-      </div>
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {communities.map(c => <Link key={c.id} href={"/community/"+c.id} className="clover-card p-6 transition hover:-translate-y-1 hover:border-lime-300">
           <div className="text-xs font-black text-lime-700">{c.prefecture ?? "—"}</div>
           <h2 className="mt-2 text-xl font-black text-lime-950">{c.name}</h2>
@@ -171,6 +166,11 @@ export default function Page() {
           </div>
           <div className="mt-5 text-xs font-black text-lime-700">Activityを見る →</div>
         </Link>)}
+      </div>
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <div className="clover-card p-5"><div className="text-2xl">🔥</div><div className="mt-2 text-xs font-black text-slate-500">30日Meetup</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.meetups}</div></div>
+        <div className="clover-card p-5"><div className="text-2xl">📨</div><div className="mt-2 text-xs font-black text-slate-500">30日RSVP</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.rsvp}</div></div>
+        <div className="clover-card p-5"><div className="text-2xl">✅</div><div className="mt-2 text-xs font-black text-slate-500">30日Check-in</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.checkin}</div></div>
       </div>
     </> : null}
 
