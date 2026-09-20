@@ -200,9 +200,37 @@ async function queueDiscordNotification(
   summary:ReturnType<typeof summarizeFindings>,
   findings:Array<{reason:string;score_weight:number}>,
 ){
-  if(!summary.discordCandidate||summary.notifyFlags.length===0) return;
-  const signature=summary.notifyFlags.slice().sort().join(",");
-  const dedupeKey=row.id+":"+signature;
+  if(!summary.discordCandidate||summary.notifyFlags.length===0) return false;
+
+  // Notify again only when a new notification-target flag appears.
+  // A flag disappearing must never create a second notification.
+  const {data:previous,error:previousError}=await admin
+    .from("meetup_watch_notifications")
+    .select("payload,status")
+    .eq("meetup_id",row.id)
+    .eq("channel","discord")
+    .in("status",["queued","sent"]);
+  if(previousError) throw previousError;
+
+  const alreadyNotified=new Set<string>();
+  for(const item of previous??[]){
+    const payload=(item.payload??{}) as Record<string,unknown>;
+    const notificationFlags=Array.isArray(payload.notification_flags)
+      ?payload.notification_flags
+      :Array.isArray(payload.flags)
+        ?payload.flags
+        :[];
+    for(const flag of notificationFlags){
+      if(typeof flag==="string") alreadyNotified.add(flag);
+    }
+  }
+
+  const newNotificationFlags=summary.notifyFlags
+    .filter(flag=>!alreadyNotified.has(flag))
+    .sort();
+  if(newNotificationFlags.length===0) return false;
+
+  const dedupeKey=row.id+":"+newNotificationFlags.join(",");
   const payload={
     case_id:caseId,
     community_id:row.community_id,
@@ -213,6 +241,7 @@ async function queueDiscordNotification(
     rsvp_count:row.rsvp_count,
     checkin_count:row.checkin_count,
     flags:summary.notifyFlags,
+    notification_flags:newNotificationFlags,
     score:summary.score,
     reasons:[...findings]
       .sort((a,b)=>b.score_weight-a.score_weight)
@@ -230,6 +259,7 @@ async function queueDiscordNotification(
     payload,
   },{onConflict:"dedupe_key",ignoreDuplicates:true});
   if(error) throw error;
+  return true;
 }
 
 async function evaluateWatch(
@@ -392,8 +422,8 @@ async function evaluateWatch(
 
 
     if(summary.discordCandidate){
-      await queueDiscordNotification(admin,row,currentCase.id,summary,activeFindings);
-      notificationsQueued++;
+      const queued=await queueDiscordNotification(admin,row,currentCase.id,summary,activeFindings);
+      if(queued) notificationsQueued++;
     }
     casesTouched++;
   }
