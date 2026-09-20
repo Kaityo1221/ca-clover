@@ -7,11 +7,17 @@ import { useAuthProfile } from "@/lib/use-auth-profile";
 export default function Page(){
   const { supabase,user, profile, loading } = useAuthProfile();
   const [pendingClaims,setPendingClaims]=useState(0);
+  const [watchCount,setWatchCount]=useState(0);
 
   useEffect(()=>{
     if(loading||!user||profile?.role!=="admin") return;
-    supabase.from("community_access_requests").select("id",{count:"exact",head:true}).eq("status","pending")
-      .then(({count})=>setPendingClaims(count??0));
+    Promise.all([
+      supabase.from("community_access_requests").select("id",{count:"exact",head:true}).eq("status","pending"),
+      supabase.from("meetup_watch_cases").select("id",{count:"exact",head:true}).eq("review_required",true).eq("status","unreviewed"),
+    ]).then(([claims,watch])=>{
+      setPendingClaims(claims.count??0);
+      setWatchCount(watch.count??0);
+    });
   },[loading,user,profile?.role,supabase]);
 
   if (loading) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 読み込み中...</main>;
@@ -19,6 +25,7 @@ export default function Page(){
   if (profile?.role !== "admin") return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><div className="text-5xl">🔒</div><h1 className="mt-3 text-2xl font-black text-lime-950">ADMIN専用です</h1></div></main>;
 
   const buttons=[
+    ["🔍","要確認Meetup",watchCount?watchCount+"件の未確認があります":"未確認はありません","/admin/meetup-watch"],
     ["🛎️","Community申請",pendingClaims?pendingClaims+"件の承認待ちがあります":"承認待ちはありません","/admin/claims"],
     ["🔐","Campfire接続","ADMIN tokenと接続状態を管理","/admin/campfire"],
     ["🔄","データ同期","Campfire Activityを全国更新","/admin/sync"],

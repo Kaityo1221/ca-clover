@@ -30,6 +30,7 @@ export type CampfireEvent={
   __typename?:string;
   id:string;
   name:string;
+  details?:string|null;
   clubId?:string|null;
   club?:Pick<CampfireClub,"id"|"name">|null;
   address?:string|null;

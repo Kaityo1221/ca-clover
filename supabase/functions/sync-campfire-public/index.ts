@@ -3,6 +3,7 @@ import {
   CampfireClient,
   type CampfireEvent,
 } from "../_shared/campfire/mod.ts";
+import {processMeetupRows,type MeetupWriteRow} from "../_shared/meetup-watch/mod.ts";
 
 const corsHeaders={
   "Access-Control-Allow-Origin":"*",
@@ -83,7 +84,7 @@ function meetupRow(event:CampfireEvent,communityId:string,nowIso:string){
     ends_at:event.eventEndTime??null,
     location:event.address??event.location??null,
     event_url:"https://campfire.nianticlabs.com/discover/meetup/"+event.id,
-    details:null,
+    details:event.details??null,
     is_ca_meetup:Boolean(event.createdByCommunityAmbassador),
     rsvp_count:Number.isFinite(event.members?.totalCount)?Number(event.members?.totalCount):null,
     checkin_count:Number.isFinite(event.checkedInMembersCount)?Number(event.checkedInMembersCount):null,
@@ -281,20 +282,13 @@ Deno.serve(async(req:Request)=>{
       }
     }
 
-    if(rows.length){
-      const {error:upsertError}=await admin
-        .from("meetups")
-        .upsert(rows,{onConflict:"campfire_meetup_id"});
-      if(upsertError) throw upsertError;
-
-      const touched=[...new Set(rows.map(row=>String(row.community_id)))];
-      if(touched.length){
-        const {error:updateError}=await admin
-          .from("communities")
-          .update({fetched_at:nowIso})
-          .in("id",touched);
-        if(updateError) throw updateError;
-      }
+    const diff=await processMeetupRows(admin,rows as MeetupWriteRow[]);
+    if(diff.touchedCommunityIds.length){
+      const {error:updateError}=await admin
+        .from("communities")
+        .update({fetched_at:nowIso})
+        .in("id",diff.touchedCommunityIds);
+      if(updateError) throw updateError;
     }
 
     const finalStatus=scanFailures>0||detailFailures>0?"partial":"success";
@@ -309,7 +303,14 @@ Deno.serve(async(req:Request)=>{
       skipped_no_coordinates:skippedNoCoordinates,
       scan_failures:scanFailures,
       discovered_event_ids:eventIds.size,
-      imported_events:rows.length,
+      imported_events:diff.written,
+      new_events:diff.newEvents,
+      structure_updates:diff.structureUpdates,
+      activity_updates:diff.activityUpdates,
+      unchanged_events:diff.unchanged,
+      watch_evaluated:diff.watchEvaluated,
+      watch_cases_touched:diff.watchCasesTouched,
+      watch_error:diff.watchError,
       unmatched_club_ids:[...unmatchedClubIds],
       promoted_community_ids:promotedCommunityIds,
       detail_failures:detailFailures,
@@ -336,7 +337,14 @@ Deno.serve(async(req:Request)=>{
       scannedCommunities,
       skippedNoCoordinates,
       discoveredEvents:eventIds.size,
-      importedEvents:rows.length,
+      importedEvents:diff.written,
+      newEvents:diff.newEvents,
+      structureUpdates:diff.structureUpdates,
+      activityUpdates:diff.activityUpdates,
+      unchangedEvents:diff.unchanged,
+      watchEvaluated:diff.watchEvaluated,
+      watchCasesTouched:diff.watchCasesTouched,
+      watchError:diff.watchError,
       unmatchedClubIds:[...unmatchedClubIds],
       promotedCommunityIds,
       scanFailures,
