@@ -45,7 +45,7 @@ export default function Page(){
           </div>
           <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold text-slate-600">
             <span className="rounded-full bg-lime-50 px-3 py-2">Community {n(d.processed_communities)}</span>
-            ${row.source==="campfire-public-map"
+            {row.source==="campfire-public-map"
               ?<span className="rounded-full bg-sky-50 px-3 py-2 text-sky-700">発見 {n(d.discovered_event_ids)}</span>
               :null}
             <span className="rounded-full bg-lime-50 px-3 py-2">Event {n(d.imported_events)}</span>
