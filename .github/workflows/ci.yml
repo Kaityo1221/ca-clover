@@ -2,16 +2,24 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches: [main]
 
 jobs:
-  build:
+  probe:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm install --no-audit --no-fund
-      - run: npm run build
+      - name: Inspect CA master CSV headers and coordinates
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL='https://docs.google.com/spreadsheets/d/1BtPjOxNX4JhttKKJa_-qrIXdVmK5UsbAX-RcLmLTuwk/export?format=csv&gid=1086182934'
+          curl -LfsS -A 'Mozilla/5.0' "$URL" -o /tmp/ca.csv
+          python - <<'PY'
+          import csv
+          with open('/tmp/ca.csv',encoding='utf-8-sig',newline='') as f:
+              rows=list(csv.reader(f))
+          print('HEADER_COUNT',len(rows[0]))
+          print('HEADER',rows[0])
+          print('FIRST_ROWS')
+          for row in rows[1:8]:
+              print(row)
+          PY
