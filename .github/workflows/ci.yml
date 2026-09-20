@@ -7,25 +7,14 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe current Hokkaido Campfire Communities
+      - name: Probe oldest and current Hokkaido Meetups
         shell: bash
         run: |
           set -euo pipefail
           ENDPOINT='https://niantic-social-api.nianticlabs.com/graphql'
+          EVENT_Q='query Probe($id: ID!) { event(id: $id) { id name clubId address location eventTime eventEndTime createdByCommunityAmbassador club { id name location game visibility badgeGrants } creator { displayName username badges { badgeType alias } } } }'
 
-          CLUB_Q='query Probe($clubId: ID!) { club(id: $clubId) { id name location game visibility badgeGrants members { totalCount } } }'
-          EVENT_Q='query Probe($id: ID!) { event(id: $id) { id name clubId address location eventTime eventEndTime createdByCommunityAmbassador checkedInMembersCount members { totalCount } club { id name location game visibility badgeGrants } creator { displayName username badges { badgeType alias } } } }'
-
-          echo '=== CLUBS ==='
-          for CLUB_ID in             '74777267-0eae-4e31-beb5-65cb7ae65b07'             '909dbef6-bbff-400d-8540-16ffe8f5f159'             'feaa27f2-0f53-4c74-a0a2-b90598175017'
-          do
-            echo "--- $CLUB_ID"
-            BODY="$(jq -nc --arg q "$CLUB_Q" --arg id "$CLUB_ID" '{query:$q,variables:{clubId:$id}}')"
-            curl -sS -X POST "$ENDPOINT" -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$BODY" | jq .
-          done
-
-          echo '=== EVENTS ==='
-          for EVENT_ID in             'd73f0e8b-100b-4c95-b824-a32fbfe517b8'             'b43d80e2-3a4c-4c77-addd-02cd5973a307'             'c211c344-52b6-44af-ba00-a81295a8c64a'
+          for EVENT_ID in             '66aa781f-4511-4ce5-a3b3-a8165a13c2aa'             'd73f0e8b-100b-4c95-b824-a32fbfe517b8'             '24797248-ea91-41a6-a1c8-8f93166c7db4'             'b43d80e2-3a4c-4c77-addd-02cd5973a307'             'd77f1c3b-9138-4759-8144-6e9590a75532'             'c211c344-52b6-44af-ba00-a81295a8c64a'
           do
             echo "--- $EVENT_ID"
             BODY="$(jq -nc --arg q "$EVENT_Q" --arg id "$EVENT_ID" '{query:$q,variables:{id:$id}}')"
