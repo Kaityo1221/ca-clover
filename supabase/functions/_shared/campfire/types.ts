@@ -65,6 +65,37 @@ export type CampfirePublicEvent={
   mapObjectLocation?:CampfirePublicMapLocation|null;
 };
 
+export type CampfireRealityChannelSource={
+  name:string;
+  dropTypes:string[];
+};
+
+export type CampfireLatLng={
+  lat:number;
+  lng:number;
+};
+
+export type CampfireLatLngBounds={
+  sw:CampfireLatLng;
+  ne:CampfireLatLng;
+};
+
+export type CampfireDiscoveryMapEvent={
+  id:string;
+  location?:string|null;
+  campfireLiveEventId?:string|null;
+  mapObjectLocation?:CampfirePublicMapLocation|null;
+  eventTime?:string|null;
+  eventEndTime?:string|null;
+  createdByCommunityAmbassador?:boolean|null;
+};
+
+export type CampfireDiscoveryMapObject={
+  id:string;
+  mapObjectType?:string|null;
+  event?:CampfireDiscoveryMapEvent|null;
+};
+
 export type CampfirePageInfo={
   hasNextPage?:boolean;
   endCursor?:string|null;
