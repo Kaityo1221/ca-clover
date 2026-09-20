@@ -17,6 +17,20 @@ const EVENT_FIELDS=`
   campfireLiveEvent { eventName }
 `;
 
+const PUBLIC_ACTIVITY_EVENT_FIELDS=`
+  id
+  name
+  clubId
+  address
+  location
+  eventTime
+  eventEndTime
+  createdByCommunityAmbassador
+  checkedInMembersCount
+  members(first: 1) { totalCount }
+  campfireLiveEvent { eventName }
+`;
+
 export const CLUB_QUERY=`query CA_Clover_Club($clubId: ID!) {
   club(id: $clubId) {
     id
@@ -71,6 +85,41 @@ export const ARCHIVED_FEED_QUERY=`query CA_Clover_ArchivedFeed($clubId: ID!, $fi
 export const EVENT_QUERY=`query CA_Clover_Event($id: ID!) {
   event(id: $id) {
     ${EVENT_FIELDS}
+  }
+}`;
+
+export const PUBLIC_ACTIVITY_EVENT_QUERY=`query CA_Clover_PublicActivityEvent($id: ID!) {
+  event(id: $id) {
+    ${PUBLIC_ACTIVITY_EVENT_FIELDS}
+  }
+}`;
+
+export const REALITY_CHANNEL_QUERY=`query CA_Clover_RealityChannel($realityChannelId: ID!) {
+  realityChannelById(id: $realityChannelId) {
+    id
+    sources {
+      name
+      dropTypes
+    }
+  }
+}`;
+
+export const DISCOVERY_MAP_QUERY=`query CA_Clover_DiscoveryMap($input: RealityChannelMapObjectsInLatLngBoundsInput!) {
+  realityChannelMapObjectsInLatLngBounds(input: $input) {
+    id
+    mapObjectType
+    event {
+      id
+      location
+      campfireLiveEventId
+      mapObjectLocation {
+        latitude
+        longitude
+      }
+      eventTime
+      eventEndTime
+      createdByCommunityAmbassador
+    }
   }
 }`;
 
