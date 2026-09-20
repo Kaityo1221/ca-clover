@@ -7,15 +7,12 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Resolve Anan links
+      - name: Inspect Anan Meetup event
         shell: bash
         run: |
           set -euo pipefail
-          echo '=== SHORT LINK HEAD ==='
-          curl -sSIL 'https://cmpf.re/Wukjpl' | sed -n '1,80p'
-          echo '=== SHORT LINK FINAL ==='
-          curl -sSL -o /tmp/final.html -w 'final_url=%{url_effective}\nstatus=%{http_code}\n' 'https://cmpf.re/Wukjpl'
-          head -c 3000 /tmp/final.html || true
-          echo
-          echo '=== COMMUNITY ONELINK HEAD ==='
-          curl -sSIL 'https://campfire.onelink.me/eBr8?af_dp=campfire://&af_force_deeplink=true&deep_link_sub1=cj1jbHVicyZjPWY4NDQ1ODg2LTFmMzYtNGE1NC1hNzlkLWIyMDVhNGM0MDlkYSZpPXRydWU=' | sed -n '1,80p'
+          ENDPOINT='https://niantic-social-api.nianticlabs.com/graphql'
+          EVENT_ID='38da9239-cde9-4f75-8aa1-b3d16e80c0d7'
+          Q='query Probe($id: ID!) { event(id: $id) { id name clubId address location eventTime eventEndTime createdByCommunityAmbassador checkedInMembersCount members { totalCount } club { id name location game visibility badgeGrants } creator { displayName username badges { badgeType alias } } } }'
+          BODY="$(jq -nc --arg q "$Q" --arg id "$EVENT_ID" '{query:$q,variables:{id:$id}}')"
+          curl -sS -X POST "$ENDPOINT" -H 'Content-Type: application/json' -H 'Accept: application/json' --data "$BODY" | jq .
