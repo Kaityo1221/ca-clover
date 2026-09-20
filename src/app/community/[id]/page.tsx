@@ -135,7 +135,8 @@ export default function Page(){
     }
     return result;
   },[monthly]);
-  const maxMonthly=Math.max(1,...monthMap.map(([,v])=>Number(v.checkin_count)||0));
+  const maxMonthlyMeetups=Math.max(1,...monthMap.map(([,v])=>Number(v.meetup_count)||0));
+  const maxMonthlyCheckins=Math.max(1,...monthMap.map(([,v])=>Number(v.checkin_count)||0));
 
   if(loading) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 読み込み中...</main>;
   if(!user) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><h1 className="text-2xl font-black text-lime-950">ログインが必要です</h1><Link href="/login" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black">Googleでログイン</Link></div></main>;
@@ -172,12 +173,33 @@ export default function Page(){
 
     <section className="clover-card mt-5 p-5">
       <h2 className="font-black text-lime-950">📊 月別Activity</h2>
-      <p className="mt-1 text-xs font-semibold text-slate-500">過去12か月 / DB集計済みCheck-in</p>
-      <div className="mt-6 grid grid-cols-6 gap-3 md:grid-cols-12">
+      <p className="mt-1 text-xs font-semibold text-slate-500">過去12か月 / Meetup回数とCheck-in数</p>
+      <div className="mt-3 flex flex-wrap gap-3 text-[11px] font-black text-slate-500">
+        <span>🔥 Meetup回数</span>
+        <span>✅ Check-in数</span>
+        <span className="font-semibold text-slate-400">※ それぞれの最大値を100%として表示</span>
+      </div>
+      <div className="mt-5 grid grid-cols-6 gap-3 md:grid-cols-12">
         {monthMap.map(([month,value])=><div key={month} className="flex min-w-0 flex-col items-center justify-end gap-2">
-          <div className="flex h-32 w-full items-end rounded-xl bg-lime-50 p-1"><div className="w-full rounded-lg bg-lime-300" style={{height:Math.max(4,Math.round((Number(value.checkin_count)||0)/maxMonthly*100))+"%"}}/></div>
+          <div className="flex h-32 w-full items-end gap-1 rounded-xl bg-lime-50 p-1">
+            <div className="flex h-full w-1/2 items-end">
+              <div
+                className="w-full rounded-lg bg-amber-300"
+                style={{height:Math.max(4,Math.round((Number(value.meetup_count)||0)/maxMonthlyMeetups*100))+"%"}}
+                title={"Meetup "+value.meetup_count+"回"}
+              />
+            </div>
+            <div className="flex h-full w-1/2 items-end">
+              <div
+                className="w-full rounded-lg bg-lime-300"
+                style={{height:Math.max(4,Math.round((Number(value.checkin_count)||0)/maxMonthlyCheckins*100))+"%"}}
+                title={"Check-in "+Number(value.checkin_count).toLocaleString("ja-JP")}
+              />
+            </div>
+          </div>
           <div className="text-[9px] font-black text-slate-500">{month.slice(5)}月</div>
-          <div className="text-[9px] font-bold text-lime-700">{value.meetup_count}回</div>
+          <div className="text-[9px] font-bold text-amber-700">🔥 {value.meetup_count}回</div>
+          <div className="text-[9px] font-bold text-lime-700">✅ {Number(value.checkin_count).toLocaleString("ja-JP")}</div>
         </div>)}
       </div>
     </section>
