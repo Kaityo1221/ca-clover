@@ -15,3 +15,39 @@ jobs:
           node-version: 22
       - run: npm install --no-audit --no-fund
       - run: npm run build
+      - name: Diagnostic CA sheet coordinates
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -LfsS 'https://docs.google.com/spreadsheets/d/1BtPjOxNX4JhttKKJa_-qrIXdVmK5UsbAX-RcLmLTuwk/export?format=csv&gid=1086182934' -o /tmp/ca.csv
+          python - <<'PY'
+          import csv, math
+          rows=list(csv.reader(open('/tmp/ca.csv',encoding='utf-8-sig')))
+          header=[x.strip().lower() for x in rows[0]]
+          def find(names):
+              for n in names:
+                  if n in header: return header.index(n)
+              return -1
+          name_i=find(['pgo trainer name'])
+          lat_i=find(['lng 緯度','lat 緯度','緯度','latitude','lat'])
+          lng_i=find(['lat 経度','lng 経度','経度','longitude','lng'])
+          group_i=find(['campfire group name'])
+          print('HEADER_COUNT',len(header))
+          print('NAME_INDEX',name_i,'LAT_INDEX',lat_i,'LNG_INDEX',lng_i,'GROUP_INDEX',group_i)
+          print('COORD_HEADERS', header[lat_i] if lat_i>=0 else None, header[lng_i] if lng_i>=0 else None)
+          valid=0
+          target=None
+          for r in rows[1:]:
+              def val(i):
+                  return r[i].strip() if i>=0 and i<len(r) else ''
+              try:
+                  a=float(val(lat_i)); b=float(val(lng_i))
+                  if math.isfinite(a) and math.isfinite(b):
+                      valid+=1
+              except: pass
+              if val(name_i).lower()=='bliareos':
+                  target={'name':val(name_i),'group':val(group_i),'c1':val(lat_i),'c2':val(lng_i)}
+          print('ROW_COUNT',len(rows)-1)
+          print('VALID_COORD_ROWS',valid)
+          print('BLIAREOS',target)
+          PY
