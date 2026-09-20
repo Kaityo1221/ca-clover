@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
+import { comparePrefectures } from "@/lib/prefecture-order";
 
 type CommunityRow = {
   id: string;
@@ -28,12 +29,18 @@ export default function Page() {
     supabase
       .from("communities")
       .select("id,campfire_community_id,name,prefecture,member_count,coverage,fetched_at")
-      .order("prefecture")
       .order("name")
       .then(({ data, error }) => {
         if (!alive) return;
         if (error) setError(error.message);
-        else setRows((data as CommunityRow[]) ?? []);
+        else {
+          const sorted = ((data as CommunityRow[]) ?? []).sort((a, b) => {
+            const areaOrder = comparePrefectures(a.prefecture, b.prefecture);
+            if (areaOrder !== 0) return areaOrder;
+            return a.name.localeCompare(b.name, "ja");
+          });
+          setRows(sorted);
+        }
         setDataLoading(false);
       });
 

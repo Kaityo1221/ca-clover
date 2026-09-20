@@ -10,6 +10,7 @@ type MenuItem = {
   description: string;
   href: string;
   badge?: string;
+  access?: "一般" | "管理者";
 };
 
 const adminSections = [
@@ -17,35 +18,35 @@ const adminSections = [
     title: "全国を見る",
     subtitle: "日本のCAとCommunityを探す",
     items: [
-      { icon: "🌱", title: "Community一覧", description: "全国のCommunityを検索・確認", href: "/communities", badge: "141" },
-      { icon: "🏕️", title: "CA一覧", description: "担当CA・1st / 2ndを確認", href: "/ca", badge: "177" },
-      { icon: "🗾", title: "Activity Map", description: "地域ごとの活動を地図で見る", href: "/map" },
+      { icon: "🌱", title: "Community一覧", description: "全国のCommunityを検索・確認", href: "/communities", badge: "141", access: "一般" },
+      { icon: "🏕️", title: "CA一覧", description: "担当CA・1st / 2ndを確認", href: "/ca", badge: "177", access: "管理者" },
+      { icon: "🗾", title: "Activity Map", description: "地域ごとの活動を地図で見る", href: "/map", access: "一般" },
     ],
   },
   {
     title: "活動を見る",
     subtitle: "Meetupの動きを数字から追う",
     items: [
-      { icon: "🔥", title: "Meetup活動", description: "開催履歴・最近の活動を確認", href: "/activity" },
-      { icon: "📊", title: "Activity集計", description: "RSVP・Check-in・期間別集計", href: "/activity" },
-      { icon: "🧾", title: "Data Coverage", description: "取得済み・一部・未取得を確認", href: "/data" },
+      { icon: "🔥", title: "Meetup活動", description: "開催履歴・最近の活動を確認", href: "/activity", access: "一般" },
+      { icon: "📊", title: "Activity集計", description: "RSVP・Check-in・期間別集計", href: "/activity", access: "一般" },
+      { icon: "🧾", title: "Data Coverage", description: "取得済み・一部・未取得を確認", href: "/data", access: "管理者" },
     ],
   },
   {
     title: "管理する",
     subtitle: "CA Cloverのデータと権限を整える",
     items: [
-      { icon: "🔄", title: "データ同期", description: "Campfire Activityを更新", href: "/admin/sync" },
-      { icon: "🔗", title: "Community割当", description: "CAアカウントへCommunityを割当", href: "/admin/assignments" },
-      { icon: "⚙️", title: "管理設定", description: "承認・同期履歴・権限を管理", href: "/admin" },
+      { icon: "🔄", title: "データ同期", description: "Campfire Activityを更新", href: "/admin/sync", access: "管理者" },
+      { icon: "🔗", title: "Community割当", description: "CAアカウントへCommunityを割当", href: "/admin/assignments", access: "管理者" },
+      { icon: "⚙️", title: "管理設定", description: "承認・同期履歴・権限を管理", href: "/admin", access: "管理者" },
     ],
   },
   {
     title: "自分のCommunity",
     subtitle: "普段使う場所",
     items: [
-      { icon: "🍀", title: "My Community", description: "自分のCommunity活動を見る", href: "/my" },
-      { icon: "👤", title: "アカウント", description: "Niantic IDとログイン設定", href: "/account" },
+      { icon: "🍀", title: "My Community", description: "自分のCommunity活動を見る", href: "/my", access: "一般" },
+      { icon: "👤", title: "アカウント", description: "Niantic IDとログイン設定", href: "/account", access: "一般" },
     ],
   },
 ] satisfies { title: string; subtitle: string; items: MenuItem[] }[];
@@ -67,7 +68,16 @@ function MenuButton({ item }: { item: MenuItem }) {
   return <Link href={item.href} className="group relative min-h-36 rounded-[26px] border border-lime-100 bg-white p-5 shadow-[0_14px_40px_rgba(77,124,15,.08)] transition hover:-translate-y-1 hover:border-lime-300 hover:shadow-[0_20px_45px_rgba(77,124,15,.14)]">
     {item.badge ? <span className="absolute right-4 top-4 rounded-full bg-lime-100 px-2.5 py-1 text-xs font-black text-lime-800">{item.badge}</span> : null}
     <div className="grid size-12 place-items-center rounded-2xl bg-lime-100 text-2xl transition group-hover:bg-lime-200">{item.icon}</div>
-    <div className="mt-4 text-base font-black text-lime-950">{item.title}</div>
+    <div className="mt-4 flex flex-wrap items-center gap-2">
+      <div className="text-base font-black text-lime-950">{item.title}</div>
+      {item.access ? (
+        <span className={item.access === "管理者"
+          ? "rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-600"
+          : "rounded-full bg-lime-100 px-2 py-1 text-[10px] font-black text-lime-700"}>
+          {item.access}
+        </span>
+      ) : null}
+    </div>
     <div className="mt-1 text-xs font-semibold leading-5 text-slate-500">{item.description}</div>
     <div className="mt-3 text-xs font-black text-lime-700">開く →</div>
   </Link>;
