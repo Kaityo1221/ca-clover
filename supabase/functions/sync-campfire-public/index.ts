@@ -6,7 +6,7 @@ import {
 
 const corsHeaders={
   "Access-Control-Allow-Origin":"*",
-  "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type, x-ca-clover-cron-secret",
 };
 
 const REALITY_CHANNEL_ID="8947de81-e387-4e03-89c6-31ce2ca47c3c";
@@ -27,6 +27,19 @@ async function requireAdmin(req:Request){
   const serviceRoleKey=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if(!supabaseUrl||!anonKey||!serviceRoleKey) throw new Error("Supabase environment is incomplete");
 
+  const admin=createClient(supabaseUrl,serviceRoleKey,{
+    auth:{persistSession:false,autoRefreshToken:false},
+  });
+
+  const cronSecret=req.headers.get("x-ca-clover-cron-secret")??"";
+  if(cronSecret){
+    const {data:expected,error:secretError}=await admin.rpc("internal_get_sync_cron_secret");
+    if(!secretError && typeof expected==="string" && expected && cronSecret===expected){
+      return {admin,error:null,actor:"cron"} as const;
+    }
+    return {error:json({error:"invalid cron secret"},401)} as const;
+  }
+
   const authorization=req.headers.get("Authorization")??"";
   const userClient=createClient(supabaseUrl,anonKey,{
     global:{headers:{Authorization:authorization}},
@@ -43,15 +56,22 @@ async function requireAdmin(req:Request){
     .single();
   if(profileError||profile?.role!=="admin") return {error:json({error:"admin required"},403)} as const;
 
-  const admin=createClient(supabaseUrl,serviceRoleKey,{
-    auth:{persistSession:false,autoRefreshToken:false},
-  });
-
-  return {admin,error:null} as const;
+  return {admin,error:null,actor:"admin"} as const;
 }
 
 function finite(value:unknown):value is number{
   return typeof value==="number"&&Number.isFinite(value);
+}
+
+function normalizeCommunityName(value:unknown){
+  return String(value??"").normalize("NFKC").trim().toLowerCase().replace(/\s+/g," ");
+}
+
+function isRecentOrFuture(event:CampfireEvent){
+  const raw=event.eventEndTime??event.eventTime;
+  if(!raw) return false;
+  const time=Date.parse(raw);
+  return Number.isFinite(time) && time>=Date.now()-60*24*60*60*1000;
 }
 
 function meetupRow(event:CampfireEvent,communityId:string,nowIso:string){
@@ -108,10 +128,29 @@ Deno.serve(async(req:Request)=>{
       .not("campfire_community_id","is",null);
     if(knownError) throw knownError;
 
-    const communityByClubId=new Map<string,{id:string;name:string}>();
+    const {data:idHistory,error:idHistoryError}=await admin
+      .from("community_campfire_ids")
+      .select("community_id,campfire_community_id,status");
+    if(idHistoryError) throw idHistoryError;
+
+    const communityByClubId=new Map<string,{id:string;name:string;status:"active"|"retired"}>();
+    const communitiesByName=new Map<string,Array<{id:string;name:string}>>();
     for(const community of knownCommunities??[]){
       const clubId=community.campfire_community_id;
-      if(clubId) communityByClubId.set(clubId,{id:community.id,name:community.name});
+      if(clubId) communityByClubId.set(clubId,{id:community.id,name:community.name,status:"active"});
+      const normalized=normalizeCommunityName(community.name);
+      const list=communitiesByName.get(normalized)??[];
+      list.push({id:community.id,name:community.name});
+      communitiesByName.set(normalized,list);
+    }
+    for(const history of idHistory??[]){
+      const community=(knownCommunities??[]).find(row=>row.id===history.community_id);
+      if(!community) continue;
+      communityByClubId.set(history.campfire_community_id,{
+        id:community.id,
+        name:community.name,
+        status:history.status==="retired"?"retired":"active",
+      });
     }
 
     const {data:run,error:runError}=await admin.from("sync_runs").insert({
@@ -190,13 +229,48 @@ Deno.serve(async(req:Request)=>{
     const nowIso=new Date().toISOString();
     const rows:Array<Record<string,unknown>>=[];
     const unmatchedClubIds=new Set<string>();
+    const promotedCommunityIds:Array<Record<string,string>>=[];
     let detailFailures=0;
 
     for(const eventId of eventIds){
       try{
         const event=await campfire.getAnonymousActivityEvent(eventId);
         const clubId=event.clubId??"";
-        const community=clubId?communityByClubId.get(clubId):undefined;
+        let community=clubId?communityByClubId.get(clubId):undefined;
+
+        if(community?.status==="retired" && clubId && isRecentOrFuture(event)){
+          const {error:promoteError}=await admin.rpc("internal_set_community_campfire_id",{
+            p_community_id:community.id,
+            p_campfire_community_id:clubId,
+            p_source:"campfire-public-map",
+            p_observed_name:event.club?.name??community.name,
+          });
+          if(!promoteError){
+            community={...community,status:"active",name:event.club?.name??community.name};
+            communityByClubId.set(clubId,community);
+            promotedCommunityIds.push({community_id:community.id,campfire_community_id:clubId,reason:"history_reactivated"});
+          }
+        }
+
+        if(!community && clubId && event.createdByCommunityAmbassador===true && isRecentOrFuture(event)){
+          const normalized=normalizeCommunityName(event.club?.name);
+          const matches=normalized?(communitiesByName.get(normalized)??[]):[];
+          if(matches.length===1){
+            const match=matches[0];
+            const {error:promoteError}=await admin.rpc("internal_set_community_campfire_id",{
+              p_community_id:match.id,
+              p_campfire_community_id:clubId,
+              p_source:"campfire-public-map",
+              p_observed_name:event.club?.name??match.name,
+            });
+            if(!promoteError){
+              community={id:match.id,name:event.club?.name??match.name,status:"active"};
+              communityByClubId.set(clubId,community);
+              promotedCommunityIds.push({community_id:match.id,campfire_community_id:clubId,reason:"unique_name_match"});
+            }
+          }
+        }
+
         if(!community){
           if(clubId) unmatchedClubIds.add(clubId);
           continue;
@@ -237,6 +311,7 @@ Deno.serve(async(req:Request)=>{
       discovered_event_ids:eventIds.size,
       imported_events:rows.length,
       unmatched_club_ids:[...unmatchedClubIds],
+      promoted_community_ids:promotedCommunityIds,
       detail_failures:detailFailures,
       scan_window_degrees:{lat:LAT_RADIUS*2,lng:LNG_RADIUS*2},
       reality_channel_id:REALITY_CHANNEL_ID,
@@ -263,6 +338,7 @@ Deno.serve(async(req:Request)=>{
       discoveredEvents:eventIds.size,
       importedEvents:rows.length,
       unmatchedClubIds:[...unmatchedClubIds],
+      promotedCommunityIds,
       scanFailures,
       detailFailures,
     });

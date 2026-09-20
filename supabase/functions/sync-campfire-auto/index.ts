@@ -1,0 +1,211 @@
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+const CRON_HEADER="x-ca-clover-cron-secret";
+
+function json(data:unknown,status=200){
+  return new Response(JSON.stringify(data),{
+    status,
+    headers:{"Content-Type":"application/json"},
+  });
+}
+
+async function invokeInternal(
+  supabaseUrl:string,
+  anonKey:string,
+  secret:string,
+  slug:string,
+  body:Record<string,unknown>,
+){
+  const response=await fetch(`${supabaseUrl}/functions/v1/${slug}`,{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "apikey":anonKey,
+      "Authorization":`Bearer ${anonKey}`,
+      [CRON_HEADER]:secret,
+    },
+    body:JSON.stringify(body),
+  });
+
+  const payload=await response.json().catch(()=>({}));
+  if(!response.ok){
+    const message=typeof payload?.error==="string"?payload.error:`${slug} HTTP ${response.status}`;
+    const error=new Error(message) as Error&{code?:string};
+    error.code=typeof payload?.code==="string"?payload.code:undefined;
+    throw error;
+  }
+  return payload as Record<string,unknown>;
+}
+
+Deno.serve(async(req:Request)=>{
+  try{
+    const supabaseUrl=Deno.env.get("SUPABASE_URL");
+    const anonKey=Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceRoleKey=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if(!supabaseUrl||!anonKey||!serviceRoleKey){
+      return json({error:"Supabase environment is incomplete"},500);
+    }
+
+    const admin=createClient(supabaseUrl,serviceRoleKey,{
+      auth:{persistSession:false,autoRefreshToken:false},
+    });
+
+    const suppliedSecret=req.headers.get(CRON_HEADER)??"";
+    const {data:expectedSecret,error:secretError}=await admin.rpc("internal_get_sync_cron_secret");
+    if(
+      secretError ||
+      typeof expectedSecret!=="string" ||
+      !expectedSecret ||
+      suppliedSecret!==expectedSecret
+    ){
+      return json({error:"unauthorized"},401);
+    }
+
+    const {data:state,error:stateError}=await admin
+      .from("sync_automation_state")
+      .select("*")
+      .eq("id",1)
+      .single();
+    if(stateError) throw stateError;
+    if(!state.enabled) return json({ok:true,status:"disabled"});
+
+    const now=Date.now();
+    const lastStarted=state.last_started_at?new Date(state.last_started_at).getTime():0;
+    const lastFinished=state.last_finished_at?new Date(state.last_finished_at).getTime():0;
+    if(lastStarted>lastFinished && now-lastStarted<12*60*1000){
+      return json({ok:true,status:"busy"});
+    }
+
+    const startedAt=new Date().toISOString();
+    await admin.from("sync_automation_state").update({
+      last_started_at:startedAt,
+      updated_at:startedAt,
+    }).eq("id",1);
+
+    const errors:string[]=[];
+    let publicResult:Record<string,unknown>|null=null;
+    let historyResult:Record<string,unknown>|null=null;
+    let historyCommunity:{id:string;name:string}|null=null;
+    let nextOffset=Number(state.public_offset??0)||0;
+    let publicImported=0;
+    let historyImported=0;
+
+    try{
+      publicResult=await invokeInternal(
+        supabaseUrl,
+        anonKey,
+        suppliedSecret,
+        "sync-campfire-public",
+        {
+          offset:Math.max(0,Number(state.public_offset??0)||0),
+          limit:Math.max(1,Math.min(10,Number(state.public_batch_size??10)||10)),
+        },
+      );
+
+      const processed=Math.max(0,Number(publicResult.processed??0)||0);
+      const total=Math.max(0,Number(publicResult.total??0)||0);
+      const currentOffset=Math.max(0,Number(state.public_offset??0)||0);
+      publicImported=Math.max(0,Number(publicResult.importedEvents??0)||0);
+
+      if(processed===0 || total===0 || currentOffset+processed>=total){
+        nextOffset=0;
+      }else{
+        nextOffset=currentOffset+processed;
+      }
+    }catch(error){
+      errors.push("public: "+(error instanceof Error?error.message:String(error)));
+    }
+
+    const {data:connection,error:connectionError}=await admin
+      .from("campfire_connection_state")
+      .select("status,expires_at")
+      .eq("id",1)
+      .single();
+
+    if(connectionError){
+      errors.push("token state: "+connectionError.message);
+    }else{
+      const expiresAt=connection?.expires_at?new Date(connection.expires_at).getTime():0;
+      const tokenUsable=
+        ["ready","expiring"].includes(String(connection?.status??"")) &&
+        expiresAt>Date.now();
+
+      if(!tokenUsable && connection?.expires_at && expiresAt<=Date.now()){
+        await admin.from("campfire_connection_state").update({
+          status:"expired",
+          last_error:"Campfire token expired",
+          updated_at:new Date().toISOString(),
+        }).eq("id",1);
+      }
+
+      if(tokenUsable){
+        const {data:candidate,error:candidateError}=await admin
+          .from("communities")
+          .select("id,name")
+          .eq("coverage","missing")
+          .not("campfire_community_id","is",null)
+          .order("created_at",{ascending:true})
+          .limit(1)
+          .maybeSingle();
+
+        if(candidateError){
+          errors.push("history candidate: "+candidateError.message);
+        }else if(candidate){
+          historyCommunity={id:candidate.id,name:candidate.name};
+          try{
+            historyResult=await invokeInternal(
+              supabaseUrl,
+              anonKey,
+              suppliedSecret,
+              "sync-campfire",
+              {communityId:candidate.id},
+            );
+            historyImported=Math.max(0,Number(historyResult.importedEvents??0)||0);
+          }catch(error){
+            errors.push("history "+candidate.name+": "+(error instanceof Error?error.message:String(error)));
+          }
+        }
+      }
+    }
+
+    const finishedAt=new Date().toISOString();
+    const statePatch:Record<string,unknown>={
+      public_offset:nextOffset,
+      last_finished_at:finishedAt,
+      last_public_at:publicResult?finishedAt:state.last_public_at,
+      last_public_imported:publicImported,
+      last_history_at:historyResult?finishedAt:state.last_history_at,
+      last_history_imported:historyImported,
+      last_error:errors.length?errors.join(" | "):null,
+      updated_at:finishedAt,
+    };
+    await admin.from("sync_automation_state").update(statePatch).eq("id",1);
+
+    await admin.from("sync_runs").insert({
+      source:"campfire-auto",
+      status:errors.length?"partial":"success",
+      started_at:startedAt,
+      finished_at:finishedAt,
+      details:{
+        public_offset_before:state.public_offset,
+        public_offset_after:nextOffset,
+        public_result:publicResult,
+        history_community:historyCommunity,
+        history_result:historyResult,
+        errors,
+      },
+    });
+
+    return json({
+      ok:true,
+      status:errors.length?"partial":"success",
+      nextOffset,
+      publicResult,
+      historyCommunity,
+      historyResult,
+      errors,
+    });
+  }catch(error){
+    return json({error:error instanceof Error?error.message:String(error)},500);
+  }
+});

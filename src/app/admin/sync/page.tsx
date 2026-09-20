@@ -10,6 +10,17 @@ type ConnectionState={
   last_sync_at:string|null;
 };
 
+type AutomationState={
+  enabled:boolean;
+  public_offset:number;
+  public_batch_size:number;
+  last_public_at:string|null;
+  last_history_at:string|null;
+  last_public_imported:number;
+  last_history_imported:number;
+  last_error:string|null;
+};
+
 type SyncResult={
   ok?:boolean;
   total?:number;
@@ -29,6 +40,7 @@ type CommunityOption={id:string;name:string;prefecture:string|null};
 export default function Page(){
   const {supabase,user,profile,loading}=useAuthProfile();
   const [connection,setConnection]=useState<ConnectionState|null>(null);
+  const [automation,setAutomation]=useState<AutomationState|null>(null);
   const [running,setRunning]=useState<SyncMode>(null);
   const [progress,setProgress]=useState({done:0,total:0,events:0,failed:0,discovered:0});
   const [message,setMessage]=useState<string|null>(null);
@@ -38,6 +50,15 @@ export default function Page(){
   async function loadConnection(){
     const {data,error}=await supabase.functions.invoke("campfire-token-admin",{body:{action:"status"}});
     if(!error) setConnection((data?.state??null) as ConnectionState|null);
+  }
+
+  async function loadAutomation(){
+    const {data,error}=await supabase
+      .from("sync_automation_state")
+      .select("enabled,public_offset,public_batch_size,last_public_at,last_history_at,last_public_imported,last_history_imported,last_error")
+      .eq("id",1)
+      .maybeSingle();
+    if(!error) setAutomation((data??null) as AutomationState|null);
   }
 
   async function loadCommunities(){
@@ -58,6 +79,7 @@ export default function Page(){
   useEffect(()=>{
     if(!loading&&user&&profile?.role==="admin"){
       loadConnection();
+      loadAutomation();
       loadCommunities();
     }
   },[loading,user,profile?.role]);
@@ -98,6 +120,7 @@ export default function Page(){
       setMessage(failed>0
         ?"公開Meetup同期は完了しましたが、一部の探索または詳細取得に失敗があります。"
         :"公開Meetup同期が完了しました 🍀");
+      await loadAutomation();
     }catch(error){
       setMessage(error instanceof Error?error.message:String(error));
     }finally{
@@ -126,6 +149,7 @@ export default function Page(){
         ?(selected?.name??"選択Community")+" の過去履歴同期でエラーがありました。"
         :(selected?.name??"選択Community")+" の過去履歴を "+events+" 件保存しました 🍀");
       await loadConnection();
+      await loadAutomation();
     }catch(error){
       setMessage(error instanceof Error?error.message:String(error));
       await loadConnection();
@@ -164,6 +188,7 @@ export default function Page(){
         ?"過去履歴同期は完了しましたが、一部Communityでエラーがあります。"
         :"過去履歴同期が完了しました 🍀");
       await loadConnection();
+      await loadAutomation();
     }catch(error){
       setMessage(error instanceof Error?error.message:String(error));
       await loadConnection();
@@ -176,6 +201,9 @@ export default function Page(){
   if(!user||profile?.role!=="admin") return <main className="grid min-h-[70vh] place-items-center text-center"><div>🔒 ADMIN専用です</div></main>;
 
   const ready=connection?.status==="ready"||connection?.status==="expiring";
+  const expiresAt=connection?.expires_at?new Date(connection.expires_at).getTime():0;
+  const tokenHoursLeft=expiresAt?Math.round((expiresAt-Date.now())/3600000):null;
+  const tokenWarning=tokenHoursLeft!==null&&tokenHoursLeft<=48;
   const percent=progress.total?Math.min(100,Math.round(progress.done/progress.total*100)):0;
   const isRunning=running!==null;
 
@@ -187,14 +215,40 @@ export default function Page(){
       公開Map discoveryから現在・未来のMeetupをtokenなしで取得します。過去履歴だけ、必要なときにADMIN tokenを使います。
     </p>
 
-    <section className="clover-card mt-6 p-6">
+    <section className="clover-card mt-6 border border-emerald-200 bg-emerald-50/60 p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="text-xs font-black text-emerald-700">AUTOMATION</div>
+          <div className="mt-1 text-xl font-black text-lime-950">
+            {automation?automation.enabled?"🟢 自動同期 ON":"⚪ 自動同期 OFF":"⚪ 自動同期を確認中…"}
+          </div>
+          <div className="mt-2 text-xs font-semibold leading-5 text-slate-600">
+            15分ごとに10 Communityずつ公開Meetupを巡回します。全国1周は約2時間半です。
+            coverage=missing のCommunityがあれば、token有効時に1件ずつ過去履歴も自動補完します。
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-bold">
+            <span className="rounded-full bg-white px-3 py-2 text-emerald-800">
+              最終公開同期 {automation?.last_public_at?new Date(automation.last_public_at).toLocaleString("ja-JP"):"まだ"}
+            </span>
+            <span className="rounded-full bg-white px-3 py-2 text-emerald-800">
+              最終Backfill {automation?.last_history_at?new Date(automation.last_history_at).toLocaleString("ja-JP"):"まだ"}
+            </span>
+          </div>
+          {automation?.last_error
+            ?<div className="mt-3 rounded-2xl bg-rose-50 p-3 text-xs font-bold text-rose-700">⚠ {automation.last_error}</div>
+            :null}
+        </div>
+      </div>
+    </section>
+
+    <section className="clover-card mt-5 p-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="text-xs font-black text-emerald-600">TOKEN不要</div>
           <div className="mt-1 text-xl font-black text-lime-950">🗺️ 公開Meetup同期</div>
           <div className="mt-2 max-w-2xl text-xs font-semibold leading-5 text-slate-500">
             日本CA一覧のCommunity座標を中心にCampfireの公開地図を探索し、公開中のMeetup IDを発見します。
-            Meetup詳細も匿名取得し、clubIdがCA CloverのCommunityと一致したものだけ保存します。
+            Meetup詳細も匿名取得し、現行ID・ID履歴・一意なCommunity名を照合してCA CloverのCommunityへ保存します。
           </div>
         </div>
         <button
@@ -217,8 +271,11 @@ export default function Page(){
           <div className="mt-2 text-xs font-semibold leading-5 text-slate-500">
             過去Meetupを含む完全履歴を取り直す場合だけ使用します。通常の公開Meetup同期にはtokenは不要です。
           </div>
-          <div className="mt-2 text-xs font-semibold text-slate-400">
-            {connection?.expires_at?"Token期限 "+new Date(connection.expires_at).toLocaleString("ja-JP"):"Token未登録"}
+          <div className={`mt-2 text-xs font-black ${tokenWarning?"text-rose-600":"text-slate-400"}`}>
+            {connection?.expires_at
+              ?(tokenWarning?"⚠ Token期限 ":"Token期限 ")+new Date(connection.expires_at).toLocaleString("ja-JP")
+              :"Token未登録"}
+            {tokenHoursLeft!==null&&tokenWarning?`（残り約${Math.max(0,tokenHoursLeft)}時間）`:""}
           </div>
         </div>
         <div className="w-full md:w-auto">
