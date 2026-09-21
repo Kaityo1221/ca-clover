@@ -204,9 +204,19 @@ export default function Page(){
     <section className="clover-card mt-4 p-6">
       <div className="text-xs font-black text-lime-600">{community.prefecture??"—"}</div>
       <h1 className="mt-2 text-3xl font-black text-lime-950">{community.name}</h1>
+      <div className="mt-3 flex flex-wrap gap-2 text-xs font-black">
+        {cas.map(ca=>{
+          const mine=(profile?.niantic_id??"").replace(/^@+/,"").toLowerCase()===ca.trainer_name.replace(/^@+/,"").toLowerCase();
+          const klass=ca.ca_level==="1st"
+            ?"rounded-full border border-amber-200 bg-amber-100 px-3 py-2 text-amber-900"
+            :ca.ca_level==="2nd"
+              ?"rounded-full border border-sky-200 bg-sky-100 px-3 py-2 text-sky-900"
+              :"rounded-full bg-lime-100 px-3 py-2 text-lime-800";
+          return <span key={ca.id} className={klass}>{ca.ca_level??"CA"}: {ca.trainer_name}{mine?"（あなた）":""}</span>;
+        })}
+      </div>
       <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-slate-500">
         <span className="rounded-full bg-lime-50 px-3 py-2">Member: {community.member_count?.toLocaleString("ja-JP")??"未取得"}</span>
-        {cas.map(ca=><span key={ca.id} className="rounded-full bg-lime-100 px-3 py-2 text-lime-800">{ca.ca_level??"CA"}: {ca.trainer_name}</span>)}
       </div>
       {community.campfire_url?<a href={community.campfire_url} target="_blank" rel="noreferrer" className="mt-4 inline-flex rounded-full border border-lime-200 bg-white px-4 py-2 text-xs font-black text-lime-700">Campfireを開く ↗</a>:null}
     </section>
