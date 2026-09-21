@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { CampfireClient, type CampfireEvent } from "../_shared/campfire/mod.ts";
+import { resolveCampfireShareUrl } from "../_shared/campfire-share-url.js";
 
 const corsHeaders={
   "Access-Control-Allow-Origin":"*",
@@ -11,39 +12,6 @@ function json(data:unknown,status=200){
     status,
     headers:{...corsHeaders,"Content-Type":"application/json"},
   });
-}
-
-const UUID_RE=/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i;
-
-function extractMeetupId(value:unknown){
-  const raw=String(value??"").trim();
-  return raw.match(UUID_RE)?.[0]??null;
-}
-
-async function resolveMeetupId(value:unknown){
-  const raw=String(value??"").trim();
-  const direct=extractMeetupId(raw);
-  if(direct) return direct;
-
-  let parsed:URL;
-  try{
-    parsed=new URL(raw);
-  }catch{
-    return null;
-  }
-
-  if(parsed.protocol!=="https:" || parsed.hostname.toLowerCase()!=="cmpf.re") return null;
-
-  const response=await fetch(parsed.toString(),{
-    method:"GET",
-    redirect:"follow",
-    headers:{"User-Agent":"CA-Clover/1.0"},
-  });
-
-  const finalUrl=new URL(response.url);
-  if(finalUrl.protocol!=="https:" || finalUrl.hostname.toLowerCase()!=="campfire.scopely.com") return null;
-
-  return extractMeetupId(finalUrl.toString());
 }
 
 function normalizeCommunityName(value:unknown){
@@ -111,15 +79,22 @@ Deno.serve(async(req:Request)=>{
         if(updateError) throw updateError;
         return json({ok:true,status:"rejected"});
       }
+      const requestSource=String(request.request_source??"meetup_share");
+      const requiresMeetupBadge=requestSource==="meetup_share";
       if(
-        request.creator_ca_badge_verified!==true ||
+        (requiresMeetupBadge && request.creator_ca_badge_verified!==true) ||
         request.creator_username_matches_profile!==true ||
         request.ca_role_verified!==true ||
         request.ca_map_status!=="matched" ||
         request.master_match!==true ||
         !["1st","2nd"].includes(String(request.ca_level_snapshot??""))
       ){
-        return json({error:"本人・CAバッジ・Community・1st/2ndの確認が完了していないため承認できません",code:"VERIFICATION_INCOMPLETE"},409);
+        return json({
+          error:requiresMeetupBadge
+            ?"本人・CAバッジ・Community・1st/2ndの確認が完了していないため承認できません"
+            :"本人・Community・1st/2ndの確認が完了していないため承認できません",
+          code:"VERIFICATION_INCOMPLETE",
+        },409);
       }
 
       const {data:requesterProfile,error:requesterProfileError}=await admin.from("profiles")
@@ -128,9 +103,20 @@ Deno.serve(async(req:Request)=>{
         .single();
       if(requesterProfileError||!requesterProfile) throw requesterProfileError??new Error("requester profile not found");
 
-      const currentIdentity=String(requesterProfile.niantic_id??"").trim().toLowerCase();
-      if(!currentIdentity || currentIdentity!==String(request.niantic_id_snapshot??"").trim().toLowerCase() || currentIdentity!==String(request.creator_username??"").trim().toLowerCase()){
-        return json({error:"申請後にNiantic IDが変更されたか、Meetup主催者と一致しないため承認できません",code:"IDENTITY_CHANGED"},409);
+      const currentIdentity=String(requesterProfile.niantic_id??"").trim().replace(/^@+/,"").toLowerCase();
+      const snapshotIdentity=String(request.niantic_id_snapshot??"").trim().replace(/^@+/,"").toLowerCase();
+      const creatorIdentity=String(request.creator_username??"").trim().replace(/^@+/,"").toLowerCase();
+      if(
+        !currentIdentity ||
+        currentIdentity!==snapshotIdentity ||
+        (requestSource==="meetup_share" && currentIdentity!==creatorIdentity)
+      ){
+        return json({
+          error:requestSource==="meetup_share"
+            ?"申請後にNiantic IDが変更されたか、Meetup主催者と一致しないため承認できません"
+            :"申請後にNiantic IDが変更されたため承認できません",
+          code:"IDENTITY_CHANGED",
+        },409);
       }
 
       const {data:currentCa,error:currentCaError}=await admin.from("ca_members")
@@ -178,25 +164,27 @@ Deno.serve(async(req:Request)=>{
       },{onConflict:"user_id,community_id"});
       if(membershipError) throw membershipError;
 
-      const {error:meetupError}=await admin.from("meetups").upsert({
-        campfire_meetup_id:request.campfire_meetup_id,
-        community_id:request.community_id,
-        title:request.meetup_title,
-        starts_at:request.meetup_starts_at,
-        ends_at:request.meetup_ends_at,
-        location:request.meetup_location,
-        event_url:request.meetup_url,
-        details:null,
-        is_ca_meetup:request.is_ca_meetup,
-        rsvp_count:request.rsvp_count,
-        checkin_count:request.checkin_count,
-        accepted_count:null,
-        declined_count:null,
-        campfire_live_event_name:request.campfire_live_event_name,
-        source:"campfire-claim",
-        fetched_at:request.requested_at,
-      },{onConflict:"campfire_meetup_id"});
-      if(meetupError) throw meetupError;
+      if(requestSource==="meetup_share" && request.campfire_meetup_id && request.meetup_title){
+        const {error:meetupError}=await admin.from("meetups").upsert({
+          campfire_meetup_id:request.campfire_meetup_id,
+          community_id:request.community_id,
+          title:request.meetup_title,
+          starts_at:request.meetup_starts_at,
+          ends_at:request.meetup_ends_at,
+          location:request.meetup_location,
+          event_url:request.meetup_url,
+          details:null,
+          is_ca_meetup:request.is_ca_meetup,
+          rsvp_count:request.rsvp_count,
+          checkin_count:request.checkin_count,
+          accepted_count:null,
+          declined_count:null,
+          campfire_live_event_name:request.campfire_live_event_name,
+          source:"campfire-claim",
+          fetched_at:request.requested_at,
+        },{onConflict:"campfire_meetup_id"});
+        if(meetupError) throw meetupError;
+      }
 
       const {error:updateError}=await admin.from("community_access_requests").update({
         status:"approved",
