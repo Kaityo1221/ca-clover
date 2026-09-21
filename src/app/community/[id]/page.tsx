@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
-import MonthlyActivityChart from "@/components/monthly-activity-chart";
+import ActivityTrendChart from "@/components/monthly-activity-chart";
 
 type CommunityRow={
   id:string;
@@ -39,7 +39,8 @@ type SummaryRow={
   checkin_count:number;
   last_event_at:string|null;
 };
-type MonthlyRow={month:string;meetup_count:number;rsvp_count:number;checkin_count:number};
+type TrendBucket="day"|"week"|"month"|"year";
+type TrendRow={bucket:string;meetup_count:number;rsvp_count:number;checkin_count:number};
 
 type PeriodValue=30|90|180|365|null;
 const periods=[
@@ -50,6 +51,20 @@ const periods=[
   {label:"全期間",days:null},
 ] as const satisfies ReadonlyArray<{label:string;days:PeriodValue}>;
 
+function trendBucketForPeriod(period:PeriodValue):TrendBucket{
+  if(period===30) return "day";
+  if(period===90) return "week";
+  if(period===null) return "year";
+  return "month";
+}
+
+function trendUnitLabel(bucket:TrendBucket){
+  if(bucket==="day") return "日別";
+  if(bucket==="week") return "週別";
+  if(bucket==="year") return "年別";
+  return "月別";
+}
+
 export default function Page(){
   const params=useParams<{id:string}>();
   const id=params.id;
@@ -59,7 +74,7 @@ export default function Page(){
   const [cas,setCas]=useState<CaRow[]>([]);
   const [meetups,setMeetups]=useState<MeetupRow[]>([]);
   const [summary,setSummary]=useState<SummaryRow>({meetup_count:0,ca_meetup_count:0,rsvp_count:0,checkin_count:0,last_event_at:null});
-  const [monthly,setMonthly]=useState<MonthlyRow[]>([]);
+  const [trend,setTrend]=useState<TrendRow[]>([]);
   const [period,setPeriod]=useState<PeriodValue>(30);
   const [dataLoading,setDataLoading]=useState(false);
   const [notFound,setNotFound]=useState(false);
@@ -85,10 +100,10 @@ export default function Page(){
         return;
       }
 
-      const [linksResult,monthlyResult]=await Promise.all([
-        supabase.from("community_ca_members").select("ca_member_id").eq("community_id",id),
-        supabase.rpc("community_monthly_activity",{p_community_id:id,p_months:12} as never),
-      ]);
+      const linksResult=await supabase
+        .from("community_ca_members")
+        .select("ca_member_id")
+        .eq("community_id",id);
 
       const links=(linksResult.data as LinkRow[]|null)??[];
       let caRows:CaRow[]=[];
@@ -103,7 +118,6 @@ export default function Page(){
       if(!alive) return;
       setCommunity(communityRow as CommunityRow);
       setCas(caRows);
-      setMonthly((monthlyResult.data as MonthlyRow[]|null)??[]);
       setDataLoading(false);
     }
 
@@ -124,14 +138,22 @@ export default function Page(){
       .limit(period===null?500:50);
     if(since) meetupQuery=meetupQuery.gte("starts_at",since);
 
+    const trendBucket=trendBucketForPeriod(period);
+
     Promise.all([
       supabase.rpc("community_activity_summary",{p_community_id:id,p_days:period} as never),
       meetupQuery,
-    ]).then(([summaryResult,meetupResult])=>{
+      supabase.rpc("community_activity_trend",{
+        p_community_id:id,
+        p_bucket:trendBucket,
+        p_days:period,
+      } as never),
+    ]).then(([summaryResult,meetupResult,trendResult])=>{
       if(!alive) return;
       const first=((summaryResult.data as SummaryRow[]|null)??[])[0];
       setSummary(first??{meetup_count:0,ca_meetup_count:0,rsvp_count:0,checkin_count:0,last_event_at:null});
       setMeetups((meetupResult.data as MeetupRow[]|null)??[]);
+      setTrend((trendResult.data as TrendRow[]|null)??[]);
       setDataLoading(false);
     });
 
@@ -178,19 +200,8 @@ export default function Page(){
     window.setTimeout(()=>setCopied(false),1600);
   }
 
-  const monthMap=useMemo(()=>{
-    const source=new Map(monthly.map(row=>[row.month.slice(0,7),row]));
-    const now=new Date();
-    const result:Array<[string,MonthlyRow]>=[];
-    for(let i=11;i>=0;i--){
-      const d=new Date(now.getFullYear(),now.getMonth()-i,1);
-      const key=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
-      result.push([key,source.get(key)??{month:key+"-01",meetup_count:0,rsvp_count:0,checkin_count:0}]);
-    }
-    return result;
-  },[monthly]);
-
   const selectedPeriodLabel=periods.find(item=>item.days===period)?.label??"1か月";
+  const selectedTrendBucket=trendBucketForPeriod(period);
 
   if(loading) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 読み込み中...</main>;
   if(!user) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><h1 className="text-2xl font-black text-lime-950">ログインが必要です</h1><Link href="/login" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black">Googleでログイン</Link></div></main>;
@@ -236,15 +247,17 @@ export default function Page(){
     </div>
 
     <section className="clover-card mt-5 p-5">
-      <h2 className="font-black text-lime-950">📊 月別Activity</h2>
-      <p className="mt-1 text-xs font-semibold text-slate-500">過去12か月 / Meetup回数とCheck-in数の推移</p>
+      <h2 className="font-black text-lime-950">📈 Activity推移 / {selectedPeriodLabel}</h2>
+      <p className="mt-1 text-xs font-semibold text-slate-500">{trendUnitLabel(selectedTrendBucket)} / Meetup回数とCheck-in数の推移</p>
       <div className="mt-5">
-        <MonthlyActivityChart
-          data={monthMap.map(([month,value])=>({
-            month,
-            meetup_count:Number(value.meetup_count)||0,
-            checkin_count:Number(value.checkin_count)||0,
+        <ActivityTrendChart
+          data={trend.map(row=>({
+            bucket:row.bucket,
+            meetup_count:Number(row.meetup_count)||0,
+            checkin_count:Number(row.checkin_count)||0,
           }))}
+          bucket={selectedTrendBucket}
+          periodLabel={selectedPeriodLabel}
         />
       </div>
     </section>
