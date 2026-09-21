@@ -226,26 +226,51 @@
     return lines.join("\n");
   }
 
-  function openMeetupOverview(m){
+  async function openMeetupOverview(m){
     const old=document.getElementById("meetupModal");
     if(old)old.remove();
+
+    const loading=document.createElement("div");
+    loading.id="meetupModal";
+    loading.className="modalback";
+    loading.innerHTML='<section class="modal center"><span class="pill">MEETUP OVERVIEW</span><h2 style="margin-top:12px">'+e(m.title||"Meetup")+'</h2><div class="notice section">概要を読み込み中...</div></section>';
+    document.body.appendChild(loading);
+
+    let detail=m;
+    let detailState="";
+    if(!detail.details||!String(detail.details).trim()){
+      try{
+        const r=await client.functions.invoke("meetup-detail",{body:{meetupId:detail.id}});
+        if(!r.error&&r.data&&r.data.meetup){
+          detail=r.data.meetup;
+          if(r.data.detailUnavailable==="campfire_returned_empty_details") detailState="Campfire側から概要本文を取得できませんでした。";
+          if(r.data.detailUnavailable==="token_missing") detailState="現在、概要本文を取得できません。";
+        }else{
+          detailState="概要本文の取得に失敗しました。";
+        }
+      }catch(_e){
+        detailState="概要本文の取得に失敗しました。";
+      }
+    }
+
+    loading.remove();
     const back=document.createElement("div");
     back.id="meetupModal";
     back.className="modalback";
-    const description=m.details&&String(m.details).trim()
-      ?'<div class="modaltext section">'+e(String(m.details).trim())+'</div>'
-      :'<div class="notice section">概要文はありません。</div>';
-    back.innerHTML='<section class="modal"><div class="row between"><div><span class="pill">MEETUP OVERVIEW</span><h2 style="margin-top:10px">'+e(m.title||"Meetup")+'</h2></div><button id="meetupClose" class="closebtn" type="button">×</button></div>'+
-      '<div class="modalgrid section"><div><div class="tiny strong muted">日時</div><div class="small strong" style="margin-top:4px">'+e(fmt(m.starts_at)+(m.ends_at?" 〜 "+fmt(m.ends_at):""))+'</div></div><div><div class="tiny strong muted">場所</div><div class="small strong" style="margin-top:4px">'+e(m.location||"未取得")+'</div></div><div><div class="tiny strong muted">RSVP</div><div class="strong" style="margin-top:4px">'+e(m.rsvp_count==null?"—":m.rsvp_count)+'</div></div><div><div class="tiny strong muted">Check-in</div><div class="strong" style="margin-top:4px">'+e(m.checkin_count==null?"—":m.checkin_count)+'</div></div></div>'+
+    const description=detail.details&&String(detail.details).trim()
+      ?'<div class="modaltext section">'+e(String(detail.details).trim())+'</div>'
+      :'<div class="notice section">'+e(detailState||"概要文はありません。")+'</div>';
+    back.innerHTML='<section class="modal"><div class="row between"><div><span class="pill">MEETUP OVERVIEW</span><h2 style="margin-top:10px">'+e(detail.title||"Meetup")+'</h2></div><button id="meetupClose" class="closebtn" type="button">×</button></div>'+
+      '<div class="modalgrid section"><div><div class="tiny strong muted">日時</div><div class="small strong" style="margin-top:4px">'+e(fmt(detail.starts_at)+(detail.ends_at?" 〜 "+fmt(detail.ends_at):""))+'</div></div><div><div class="tiny strong muted">場所</div><div class="small strong" style="margin-top:4px">'+e(detail.location||"未取得")+'</div></div><div><div class="tiny strong muted">RSVP</div><div class="strong" style="margin-top:4px">'+e(detail.rsvp_count==null?"—":detail.rsvp_count)+'</div></div><div><div class="tiny strong muted">Check-in</div><div class="strong" style="margin-top:4px">'+e(detail.checkin_count==null?"—":detail.checkin_count)+'</div></div></div>'+
       description+
-      '<div class="grid g2 section"><button id="copyMeetup" class="btn" type="button">📋 概要をコピー</button>'+(m.event_url?'<a class="extbtn" target="_blank" rel="noreferrer" href="'+e(m.event_url)+'">Campfireで開く ↗</a>':'<button class="btn line" type="button" disabled>Campfire URLなし</button>')+'</div></section>';
+      '<div class="grid g2 section"><button id="copyMeetup" class="btn" type="button">📋 概要をコピー</button>'+(detail.event_url?'<a class="extbtn" target="_blank" rel="noreferrer" href="'+e(detail.event_url)+'">Campfireで開く ↗</a>':'<button class="btn line" type="button" disabled>Campfire URLなし</button>')+'</div></section>';
     document.body.appendChild(back);
     function close(){back.remove()}
     back.onclick=function(ev){if(ev.target===back)close()};
     document.getElementById("meetupClose").onclick=close;
     document.getElementById("copyMeetup").onclick=async function(){
       try{
-        await navigator.clipboard.writeText(meetupOverviewText(m));
+        await navigator.clipboard.writeText(meetupOverviewText(detail));
         this.textContent="✓ コピーしました";
         const button=this;
         setTimeout(function(){if(document.body.contains(button))button.textContent="📋 概要をコピー"},1600);
