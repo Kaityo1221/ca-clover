@@ -26,6 +26,16 @@ const parsedMeetup=parseCampfireShareUrl(meetupOneLink);
 assert.equal(parsedMeetup.kind,"meetup");
 assert.equal(parsedMeetup.id,meetupId);
 
+const urlSafePayload=Buffer.from("r=events&e="+meetupId,"utf8")
+  .toString("base64")
+  .replace(/\+/g,"-")
+  .replace(/\//g,"_")
+  .replace(/=+$/,"");
+const urlSafeOneLink="https://campfire.onelink.me/eBr8?deep_link_sub1="+urlSafePayload;
+const parsedUrlSafe=parseCampfireShareUrl(urlSafeOneLink);
+assert.equal(parsedUrlSafe.kind,"meetup");
+assert.equal(parsedUrlSafe.id,meetupId);
+
 const directMeetup="https://campfire.scopely.com/discover/meetup/"+meetupId;
 const parsedDirect=parseCampfireShareUrl(directMeetup);
 assert.equal(parsedDirect.kind,"meetup");
