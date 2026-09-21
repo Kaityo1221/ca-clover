@@ -48,7 +48,8 @@ function demoAcquired(id: string) {
 }
 
 export default function Page() {
-  const { supabase, user, profile, loading } = useAuthProfile();
+  const { supabase, user, profile, permissions, loading } = useAuthProfile();
+  const canAccessStamp = profile?.role === "admin" || permissions.includes("S");
   const [communities, setCommunities] = useState<CommunityRow[]>([]);
   const [links, setLinks] = useState<CommunityCaLink[]>([]);
   const [cas, setCas] = useState<CaRow[]>([]);
@@ -59,7 +60,7 @@ export default function Page() {
   const [selectedCommunity, setSelectedCommunity] = useState<StampCommunity | null>(null);
 
   useEffect(() => {
-    if (loading || !user || profile?.role !== "admin") return;
+    if (loading || !user || !canAccessStamp) return;
     let alive = true;
     setDataLoading(true);
 
@@ -90,7 +91,7 @@ export default function Page() {
     return () => {
       alive = false;
     };
-  }, [loading, profile?.role, supabase, user]);
+  }, [canAccessStamp, loading, supabase, user]);
 
   const stampCommunities = useMemo<StampCommunity[]>(() => {
     const caById = new Map(cas.map((ca) => [ca.id, ca]));
@@ -178,12 +179,12 @@ export default function Page() {
     return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 読み込み中...</main>;
   }
 
-  if (!user || profile?.role !== "admin") {
+  if (!user || !canAccessStamp) {
     return <main className="grid min-h-[70vh] place-items-center px-4 text-center">
       <div>
         <div className="text-5xl">🔒</div>
         <h1 className="mt-3 text-2xl font-black text-lime-950">Stamp Rally LAB</h1>
-        <p className="mt-2 text-sm font-semibold text-slate-500">現在はADMINテスト中です。</p>
+        <p className="mt-2 text-sm font-semibold text-slate-500">このページにはS権限が必要です。</p>
       </div>
     </main>;
   }
