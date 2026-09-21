@@ -133,7 +133,7 @@
     const items=[["my","My Community"],["account","アカウント"]];
     nav.innerHTML=items.map(function(x){
       return '<button data-go="'+x[0]+'" class="'+(route()===x[0]?"on":"")+'">'+x[1]+'</button>'
-    }).join("")+(profile&&profile.role==="admin"?'<a href="./admin.html?v=20260921-1408" style="border:0;border-radius:999px;padding:9px 13px;background:#ede9fe;color:#6d28d9;font-weight:900;text-decoration:none">管理画面</a>':"");
+    }).join("")+(profile&&profile.role==="admin"?'<a href="./admin.html?v=20260921-1815" style="border:0;border-radius:999px;padding:9px 13px;background:#ede9fe;color:#6d28d9;font-weight:900;text-decoration:none">管理画面</a>':"");
     nav.querySelectorAll("[data-go]").forEach(function(b){b.onclick=function(){flash=null;go(b.dataset.go)}})
   }
   async function login(){
@@ -192,7 +192,7 @@
 
     if(communities.length){
       html+='<section class="section"><h2>✅ 認証済みCommunity</h2><div class="grid g2 section">'+communities.map(function(c){
-        return '<button type="button" class="claim clickable" style="text-align:left;width:100%;position:relative" data-community="'+e(c.id)+'"><span class="pill" style="position:absolute;right:14px;top:14px">✅ 認証済み</span><div class="row" style="align-items:center;padding-right:86px"><div style="width:64px;height:64px;flex:0 0 64px;border-radius:21px;overflow:hidden;border:1px solid #ecfccb;background:#f7fee7;display:grid;place-items:center;font-size:30px">'+(c.avatar_url?'<img src="'+e(c.avatar_url)+'" alt="" style="width:100%;height:100%;object-fit:cover">':'🍀')+'</div><div style="min-width:0"><span class="pill">'+e(c.prefecture||"—")+'</span><h3 style="margin-top:7px">'+e(c.name)+'</h3></div></div><p class="muted small strong">Member: '+e(c.member_count==null?"未取得":Number(c.member_count).toLocaleString("ja-JP"))+' / Coverage: '+e(c.coverage)+'</p><div class="small strong" style="color:#65a30d;margin-top:10px">Community情報を見る →</div></button>'
+        return '<button type="button" class="claim clickable" style="text-align:left;width:100%;position:relative" data-community="'+e(c.id)+'"><span class="pill" style="position:absolute;right:14px;top:14px">✅ 認証済み</span><div class="row" style="align-items:center;padding-right:86px"><div style="width:64px;height:64px;flex:0 0 64px;border-radius:21px;overflow:hidden;border:1px solid #ecfccb;background:#f7fee7;display:grid;place-items:center;font-size:30px">'+(c.avatar_url?'<img src="'+e(c.avatar_url)+'" alt="" style="width:100%;height:100%;object-fit:cover">':'🍀')+'</div><div style="min-width:0"><span class="pill">'+e(c.prefecture||"—")+'</span><h3 style="margin-top:7px">'+e(c.name)+'</h3></div></div><p class="muted small strong">Member: '+e(c.member_count==null?"未取得":Number(c.member_count).toLocaleString("ja-JP"))+'</p>'+(c.coverage!=="complete"?'<div class="notice section">⚠️ 一部の過去データが未取得のため、全期間集計は参考値です</div>':'')+'<div class="small strong" style="color:#65a30d;margin-top:10px">Community情報を見る →</div></button>'
       }).join("")+'</div></section>';
     }
 
@@ -259,8 +259,7 @@
       '<section class="card hero section"><span class="pill">'+e(community.prefecture||"—")+'</span><h1 style="margin-top:10px">'+e(community.name)+'</h1>'+
       '<div class="tags">'+
       cas.map(function(ca){const mine=(profile&&profile.niantic_id?String(profile.niantic_id):"").replace(/^@+/,"").toLowerCase()===String(ca.trainer_name||"").replace(/^@+/,"").toLowerCase();const cls=ca.ca_level==="1st"?"amber":ca.ca_level==="2nd"?"blue":"";return '<span class="pill '+cls+'">'+e(ca.ca_level||"CA")+': '+e(ca.trainer_name)+(mine?'（あなた）':'')+'</span>'}).join("")+
-      '</div><div class="tags"><span class="pill slate">Member: '+e(community.member_count==null?"未取得":Number(community.member_count).toLocaleString("ja-JP"))+'</span>'+
-      '<span class="pill slate">Coverage: '+e(community.coverage||"—")+'</span></div>'+(community.campfire_url?'<p><a href="'+e(community.campfire_url)+'" target="_blank" rel="noreferrer" style="color:#65a30d;font-weight:900">Campfireを開く ↗</a></p>':'')+'</section>'+
+      '</div><div class="tags"><span class="pill slate">Member: '+e(community.member_count==null?"未取得":Number(community.member_count).toLocaleString("ja-JP"))+'</span></div>'+(community.coverage!=="complete"?'<div class="notice section">⚠️ 一部の過去データが未取得のため、全期間集計は参考値です</div>':'')+(community.campfire_url?'<p><a href="'+e(community.campfire_url)+'" target="_blank" rel="noreferrer" style="color:#65a30d;font-weight:900">Campfireを開く ↗</a></p>':'')+'</section>'+
       '<div class="periodbar">'+COMMUNITY_PERIODS.map(function(item){return '<button type="button" class="periodbtn '+(item[1]===period?'active':'')+'" data-community-period="'+(item[1]===null?'all':item[1])+'">'+item[0]+'</button>'}).join("")+'</div>'+
       '<section class="grid g3 section"><div class="metric"><span class="tiny strong muted">🔥 Meetup / '+e(periodLabel)+'</span><b>'+meetupCount.toLocaleString("ja-JP")+'</b></div>'+
       '<div class="metric"><span class="tiny strong muted">🍀 CA Meetup / '+e(periodLabel)+'</span><b>'+caMeetups.toLocaleString("ja-JP")+'</b></div>'+
@@ -274,7 +273,7 @@
         return '<button type="button" class="claim clickable" style="display:block;width:100%;text-align:left;margin-top:10px" data-meetup-index="'+index+'"><div class="row between wraprow"><div><div class="tiny strong" style="color:#65a30d">'+e(fmt(m.starts_at))+'</div><h3 style="margin-top:5px">'+e(m.title)+'</h3><div class="small muted strong" style="margin-top:4px">📍 '+e(m.location||"場所未取得")+'</div></div><div class="tags" style="margin-top:0">'+(m.is_ca_meetup?'<span class="pill">CA Meetup</span>':'')+'<span class="pill">概要を見る →</span></div></div><div class="tags"><span class="pill slate">RSVP '+e(m.rsvp_count==null?"—":m.rsvp_count)+'</span><span class="pill slate">Check-in '+e(m.checkin_count==null?"—":m.checkin_count)+'</span></div></button>';
       }).join("")+'</div>';
     }
-    html+='</section><section class="card section"><h2>🧾 Data Coverage</h2><div class="grid g3 section"><div><div class="tiny muted strong">取得開始</div><div class="strong">'+e(fmt(community.coverage_from))+'</div></div><div><div class="tiny muted strong">取得終了</div><div class="strong">'+e(fmt(community.coverage_to))+'</div></div><div><div class="tiny muted strong">最終同期</div><div class="strong">'+e(fmt(community.fetched_at))+'</div></div></div></section><div class="version">mirror '+VERSION+'</div>';
+    html+='</section><div class="version">mirror '+VERSION+'</div>';
     app.innerHTML=html;
     document.getElementById("backMy").onclick=function(){go("my")};
     app.querySelectorAll("[data-community-period]").forEach(function(b){
