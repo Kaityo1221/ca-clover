@@ -25,7 +25,7 @@ p{line-height:1.65}.muted{color:#64748b}.small{font-size:12px}.tiny{font-size:11
 .btn{border:0;border-radius:15px;padding:12px 15px;font-weight:950;background:#84cc16;color:#1a2e05}.btn.line{background:#fff;border:1px solid #d9f99d;color:#4d7c0f}.btn.rose{background:#fff1f2;border:1px solid #fecdd3;color:#be123c}.btn.dark{background:#365314;color:#fff}.btn:disabled{opacity:.42;cursor:not-allowed}
 .input{width:100%;border:1px solid #d9f99d;border-radius:15px;padding:12px 14px;background:#fff;font-weight:750;outline:none}.input:focus{border-color:#84cc16;box-shadow:0 0 0 4px rgba(132,204,22,.12)}
 .notice{border-radius:18px;padding:13px 15px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12px;font-weight:800;line-height:1.6}.notice.ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534}.notice.err{background:#fff1f2;border-color:#fecdd3;color:#be123c}
-.menu{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.menucard{position:relative;min-height:160px;text-align:left;transition:.18s transform,.18s border-color,.18s box-shadow}.menucard:hover{transform:translateY(-4px);border-color:var(--clover-300);box-shadow:0 20px 45px rgba(77,124,15,.14)}.menucard .icon{display:grid;width:48px;height:48px;place-items:center;border-radius:16px;background:var(--clover-100);font-size:28px}.menucard .count{position:absolute;right:14px;top:14px}
+.menu{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}@keyframes adminAttention{0%,100%{box-shadow:0 14px 40px rgba(245,158,11,.08);border-color:#fde68a;background:#fff}50%{box-shadow:0 0 0 4px rgba(245,158,11,.18),0 20px 46px rgba(245,158,11,.20);border-color:#f59e0b;background:#fffbeb}}.menucard{position:relative;min-height:160px;text-align:left;transition:.18s transform,.18s border-color,.18s box-shadow}.menucard.attention{animation:adminAttention 1.45s ease-in-out infinite}.menucard:hover{transform:translateY(-4px);border-color:var(--clover-300);box-shadow:0 20px 45px rgba(77,124,15,.14)}.menucard .icon{display:grid;width:48px;height:48px;place-items:center;border-radius:16px;background:var(--clover-100);font-size:28px}.menucard .count{position:absolute;right:14px;top:14px}
 .table{width:100%;border-collapse:collapse}.table th,.table td{padding:10px;border-bottom:1px solid #f1f5f9;text-align:left;vertical-align:top;font-size:12px}.table th{color:#64748b;font-size:11px}
 .claim{border:1px solid #ecfccb;border-radius:20px;padding:16px;background:#fff}.claim+.claim{margin-top:10px}.tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
 .actions{display:flex;gap:8px;flex-wrap:wrap}.metric{padding:16px;border-radius:20px;background:#fff;border:1px solid #ecfccb}.metric b{display:block;font-size:26px;color:#365314;margin-top:4px}
@@ -70,6 +70,8 @@ async function logout(){await client.auth.signOut();location.href=ROOT}
 document.getElementById("homeBtn").onclick=()=>go("home");
 document.getElementById("logoutBtn").onclick=logout;
 window.addEventListener("hashchange",render);
+window.addEventListener("focus",()=>{if(route()==="assignments") void assignments();});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&route()==="assignments") void assignments();});
 
 async function guard(){
  if(!session){app.innerHTML='<section class="card center" style="max-width:480px;margin:8vh auto"><div style="font-size:50px">🍀</div><h1 class="section">CA Clover ADMIN</h1><p class="muted strong">ログインが必要です。</p><button id="loginBtn" class="btn section">Googleでログイン</button></section>';document.getElementById("loginBtn").onclick=login;return false}
@@ -100,7 +102,7 @@ async function dashboard(){
   ["windows","🕐","イベント時間マスター","公式イベント時間窓",0],
   ["general","🏠","ホームへ","カテゴリホームに戻る",0],
  ];
- app.innerHTML+= '<div class="menu section">'+items.map(x=>'<button class="card menucard" data-route="'+x[0]+'"><div class="icon">'+x[1]+'</div><h3 class="section">'+x[2]+'</h3><p class="small muted strong">'+x[3]+'</p>'+(x[4]?'<span class="pill amber count">'+x[4]+'</span>':'')+'</button>').join("")+'</div>';
+ app.innerHTML+= '<div class="menu section">'+items.map(x=>'<button class="card menucard '+(x[4]?'attention':'')+'" data-route="'+x[0]+'"><div class="icon">'+x[1]+'</div><h3 class="section">'+x[2]+'</h3><p class="small muted strong">'+x[3]+'</p>'+(x[4]?'<span class="pill amber count">'+x[4]+'</span>':'')+'</button>').join("")+'</div>';
  app.querySelectorAll("[data-route]").forEach(b=>b.onclick=()=>{if(b.dataset.route==="general")location.href="./";else go(b.dataset.route)});
 }
 
@@ -136,13 +138,13 @@ async function assignments(){
   client.from("community_memberships").select("user_id,community_id")
  ]);
  const profiles=p.data||[],communities=c.data||[],memberships=m.data||[];
- const sel=document.getElementById("userSel");sel.innerHTML=profiles.map(x=>'<option value="'+x.id+'">'+e(x.email||x.niantic_id||x.id)+' ('+e(x.role)+')</option>').join("");
+ const sel=document.getElementById("userSel");sel.innerHTML=profiles.map(x=>{const count=memberships.filter(m=>m.user_id===x.id).length;return '<option value="'+x.id+'">'+(count?'✅ ':'')+e(x.email||x.niantic_id||x.id)+' ('+e(x.role)+')'+(count?' / '+count+' Community':'')+'</option>'}).join("");
  function draw(){
   const uid=sel.value,q=document.getElementById("assnSearch").value.trim().toLowerCase();
   const assigned=new Set(memberships.filter(x=>x.user_id===uid).map(x=>x.community_id));
   document.getElementById("assnMeta").textContent="割当 "+assigned.size+" Community";
   const filtered=communities.filter(x=>!q||(x.name+" "+(x.prefecture||"")).toLowerCase().includes(q));
-  document.getElementById("assnList").innerHTML=filtered.map(x=>'<button class="card" style="text-align:left" data-cid="'+x.id+'"><span class="pill '+(assigned.has(x.id)?"":"slate")+'">'+(assigned.has(x.id)?"割当済み":"未割当")+'</span><h3 class="section">'+e(x.name)+'</h3><div class="small muted strong">'+e(x.prefecture||"—")+'</div></button>').join("");
+  document.getElementById("assnList").innerHTML=filtered.map(x=>'<button class="card" style="text-align:left" data-cid="'+x.id+'"><span class="pill '+(assigned.has(x.id)?"":"slate")+'">'+(assigned.has(x.id)?"✅ 割当済み":"未割当")+'</span><h3 class="section">'+e(x.name)+'</h3><div class="small muted strong">'+e(x.prefecture||"—")+'</div></button>').join("");
   document.querySelectorAll("[data-cid]").forEach(b=>b.onclick=async()=>{const cid=b.dataset.cid,on=assigned.has(cid);b.disabled=true;const r=await client.functions.invoke("admin-manage",{body:{action:"set_membership",userId:uid,communityId:cid,assigned:!on}});if(r.error){alert(r.error.message);return}if(on){const i=memberships.findIndex(x=>x.user_id===uid&&x.community_id===cid);if(i>=0)memberships.splice(i,1)}else memberships.push({user_id:uid,community_id:cid});draw()});
  }
  sel.onchange=draw;document.getElementById("assnSearch").oninput=draw;draw();
