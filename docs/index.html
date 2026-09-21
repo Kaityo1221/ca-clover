@@ -131,8 +131,12 @@
       html+='<section class="notice section"><div class="tiny strong">初回CA登録</div><h3 style="margin-top:5px;color:#78350f">Campfire URLでCA確認をします</h3><p>Niantic IDを登録してから、コミュニティ招待URLまたは自分が主催したミートアップ共有URLを提出してください。会長が承認するとCAアカウント化とCommunity割当が同時に完了します。</p>'+(profile.niantic_id?'<span class="pill amber">Niantic ID: '+e(profile.niantic_id)+' ✓</span>':'<button id="toAccount" class="btn line">先にNiantic IDを登録 →</button>')+'</section>';
     }
 
-    if(profile.role==="pending"||(profile.role==="ca"&&!communities.length)){
+    if(profile.role==="pending"){
       html+='<section class="card section"><div class="row"><div style="font-size:30px">🔥</div><div><h2>Campfire URLからCommunityを申請</h2><p class="muted small strong">コミュニティ招待URL、または自分が主催したミートアップ共有URLを貼り付けてください。Niantic ID、Community、日本CA地図の1st/2ndを照合します。ミートアップ共有URLでは紫色CAバッジも確認します。</p></div></div><input id="claimUrl" class="input section" placeholder="コミュニティ招待URL / ミートアップ共有URL"><button id="submitClaim" class="btn section" '+((profile.role==="pending"&&!profile.niantic_id)?"disabled":"")+'>Communityを確認して申請</button><div id="claimResult"></div></section>';
+    }
+
+    if(profile.role==="ca"&&!communities.length){
+      html+='<section class="notice section"><div class="tiny strong">Community情報を確認中</div><p>認証済みなのにCommunityが表示されない場合は、再申請せず管理者へお問い合わせください。</p></section>';
     }
 
     if(communities.length){
