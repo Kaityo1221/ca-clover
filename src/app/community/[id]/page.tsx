@@ -129,6 +129,24 @@ export default function Page(){
     return()=>{alive=false;};
   },[id,loading,user,profile?.role,period,notFound,supabase]);
 
+  async function openMeetup(m:MeetupRow){
+    setCopied(false);
+    if(m.details?.trim()){
+      setSelectedMeetup(m);
+      return;
+    }
+
+    setSelectedMeetup(m);
+    const {data,error}=await supabase.functions.invoke("meetup-detail",{
+      body:{meetupId:m.id},
+    });
+    if(error||!data?.meetup) return;
+
+    const refreshed=data.meetup as MeetupRow;
+    setSelectedMeetup(refreshed);
+    setMeetups(current=>current.map(row=>row.id===refreshed.id?{...row,...refreshed}:row));
+  }
+
   function meetupOverview(m:MeetupRow){
     const lines=[
       "【"+m.title+"】",
@@ -217,7 +235,7 @@ export default function Page(){
         {meetups.map(m=><button
           key={m.id}
           type="button"
-          onClick={()=>{setSelectedMeetup(m);setCopied(false);}}
+          onClick={()=>{void openMeetup(m);}}
           className="block w-full p-5 text-left transition hover:bg-lime-50/70"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
