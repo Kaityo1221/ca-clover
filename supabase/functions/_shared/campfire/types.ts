@@ -62,6 +62,7 @@ export type CampfirePublicEvent={
   name:string;
   clubId?:string|null;
   clubName?:string|null;
+  clubAvatarUrl?:string|null;
   address?:string|null;
   eventTime?:string|null;
   eventEndTime?:string|null;
