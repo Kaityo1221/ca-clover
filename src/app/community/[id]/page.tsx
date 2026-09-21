@@ -41,7 +41,14 @@ type SummaryRow={
 };
 type MonthlyRow={month:string;meetup_count:number;rsvp_count:number;checkin_count:number};
 
-const periods=[30,90,180,365] as const;
+type PeriodValue=30|90|180|365|null;
+const periods=[
+  {label:"1か月",days:30},
+  {label:"3か月",days:90},
+  {label:"6か月",days:180},
+  {label:"1年",days:365},
+  {label:"全期間",days:null},
+] as const satisfies ReadonlyArray<{label:string;days:PeriodValue}>;
 
 export default function Page(){
   const params=useParams<{id:string}>();
@@ -53,7 +60,7 @@ export default function Page(){
   const [meetups,setMeetups]=useState<MeetupRow[]>([]);
   const [summary,setSummary]=useState<SummaryRow>({meetup_count:0,ca_meetup_count:0,rsvp_count:0,checkin_count:0,last_event_at:null});
   const [monthly,setMonthly]=useState<MonthlyRow[]>([]);
-  const [period,setPeriod]=useState<number>(30);
+  const [period,setPeriod]=useState<PeriodValue>(30);
   const [dataLoading,setDataLoading]=useState(false);
   const [notFound,setNotFound]=useState(false);
   const [selectedMeetup,setSelectedMeetup]=useState<MeetupRow|null>(null);
@@ -108,16 +115,18 @@ export default function Page(){
     if(loading||!user||!profile||profile.role==="pending"||!id||notFound) return;
     let alive=true;
     setDataLoading(true);
-    const since=new Date(Date.now()-period*24*60*60*1000).toISOString();
+    const since=period===null?null:new Date(Date.now()-period*24*60*60*1000).toISOString();
+
+    let meetupQuery=supabase.from("meetups")
+      .select("id,title,starts_at,ends_at,location,event_url,details,is_ca_meetup,rsvp_count,checkin_count")
+      .eq("community_id",id)
+      .order("starts_at",{ascending:false})
+      .limit(period===null?500:50);
+    if(since) meetupQuery=meetupQuery.gte("starts_at",since);
 
     Promise.all([
       supabase.rpc("community_activity_summary",{p_community_id:id,p_days:period} as never),
-      supabase.from("meetups")
-        .select("id,title,starts_at,ends_at,location,event_url,details,is_ca_meetup,rsvp_count,checkin_count")
-        .eq("community_id",id)
-        .gte("starts_at",since)
-        .order("starts_at",{ascending:false})
-        .limit(50),
+      meetupQuery,
     ]).then(([summaryResult,meetupResult])=>{
       if(!alive) return;
       const first=((summaryResult.data as SummaryRow[]|null)??[])[0];
@@ -181,6 +190,8 @@ export default function Page(){
     return result;
   },[monthly]);
 
+  const selectedPeriodLabel=periods.find(item=>item.days===period)?.label??"1か月";
+
   if(loading) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 読み込み中...</main>;
   if(!user) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><h1 className="text-2xl font-black text-lime-950">ログインが必要です</h1><Link href="/login" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black">Googleでログイン</Link></div></main>;
   if(profile?.role==="pending") return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><div className="text-5xl">🌱</div><h1 className="mt-3 text-2xl font-black text-lime-950">アカウント確認中</h1></div></main>;
@@ -201,7 +212,7 @@ export default function Page(){
     </section>
 
     <div className="mt-5 flex flex-wrap gap-2">
-      {periods.map(days=><button key={days} onClick={()=>setPeriod(days)} className={period===days?"clover-pill active":"clover-pill"}>{days}日</button>)}
+      {periods.map(item=><button key={item.label} onClick={()=>setPeriod(item.days)} className={period===item.days?"clover-pill active":"clover-pill"}>{item.label}</button>)}
     </div>
 
     <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -211,7 +222,7 @@ export default function Page(){
         ["📨","RSVP",summary.rsvp_count],
         ["✅","Check-in",summary.checkin_count],
         ["🗓️","最終開催",summary.last_event_at?new Date(summary.last_event_at).toLocaleDateString("ja-JP"):"—"],
-      ].map(([icon,label,value])=><div key={String(label)} className="clover-card p-5"><div className="text-2xl">{icon}</div><div className="mt-2 text-xs font-black text-slate-500">{label}{label!=="最終開催"?" / "+period+"日":""}</div><div className="mt-1 text-2xl font-black text-lime-950">{typeof value==="number"?value.toLocaleString("ja-JP"):value}</div></div>)}
+      ].map(([icon,label,value])=><div key={String(label)} className="clover-card p-5"><div className="text-2xl">{icon}</div><div className="mt-2 text-xs font-black text-slate-500">{label}{label!=="最終開催"?" / "+selectedPeriodLabel:""}</div><div className="mt-1 text-2xl font-black text-lime-950">{typeof value==="number"?value.toLocaleString("ja-JP"):value}</div></div>)}
     </div>
 
     <section className="clover-card mt-5 p-5">
@@ -229,7 +240,7 @@ export default function Page(){
     </section>
 
     <section className="clover-card mt-5 overflow-hidden">
-      <div className="border-b border-lime-100 px-5 py-4"><h2 className="font-black text-lime-950">🔥 Meetup履歴 / {period}日</h2><p className="mt-1 text-[11px] font-semibold text-slate-400">最新50件まで表示</p></div>
+      <div className="border-b border-lime-100 px-5 py-4"><h2 className="font-black text-lime-950">🔥 Meetup履歴 / {selectedPeriodLabel}</h2><p className="mt-1 text-[11px] font-semibold text-slate-400">{period===null?"最大500件まで表示":"最新50件まで表示"}</p></div>
       {meetups.length===0&&!dataLoading?<div className="p-8 text-center text-sm font-semibold text-slate-500">この期間のMeetupデータはありません。</div>:null}
       <div className="divide-y divide-lime-50">
         {meetups.map(m=><button
