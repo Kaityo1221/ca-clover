@@ -111,7 +111,6 @@ async function dashboard(){
  const items=[
   ["map","🗾","Activity Map","全国Communityの活動を地図で確認",0],
   ["icons","🖼️","アイコン一覧","アイコン一覧とCommunity詳細",icons.count||0],
-  ["stamp-rally","🍀","CA Stamp Rally LAB","全国スタンプシートUIを確認",0],
   ["watch","🔍","要確認Meetup",(watch.count||0)+"件の未確認",watch.count||0],
   ["claims","🛎️","Community申請",(claims.count||0)+"件の承認待ち",claims.count||0],
   ["ca","🏕️","CA一覧",(caCount.count||0)+" CA / 1st・2nd切替",0],
@@ -124,6 +123,7 @@ async function dashboard(){
   ["coverage","📊","Data Coverage","全国取得状態・未解決CAを確認",0],
   ["windows","🕐","イベント時間マスター","公式イベント時間窓",0],
   ["general","🏠","ホームへ","カテゴリホームに戻る",0],
+  ["stamp-rally","🍀","CA Stamp Rally LAB","全国スタンプシートUIを確認",0],
  ];
  app.innerHTML+='<div class="menu section">'+items.map(x=>'<button class="card menucard '+((x[0]==="watch"||x[0]==="claims"||x[0]==="icons")&&x[4]?'attention':'')+'" data-route="'+x[0]+'"><div class="icon">'+x[1]+'</div><h3 class="section">'+x[2]+'</h3><p class="small muted strong">'+x[3]+'</p>'+(x[4]?'<span class="pill '+(x[0]==="assignments"?'slate':'amber')+' count">'+(x[0]==="assignments"?'未割当 ':x[0]==="icons"?'要確認 ':'')+x[4]+'</span>':'')+'</button>').join("")+'</div>';
  app.innerHTML+='<div class="section center"><a href="./changelog.html" class="tiny muted strong">更新履歴</a></div>';
