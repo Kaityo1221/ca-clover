@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#84cc16">\n<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">\n<meta http-equiv="Pragma" content="no-cache">\n<meta http-equiv="Expires" content="0">
 <title>CA Clover ADMIN v1408</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>\n<script src="./community-icon.js"></script>
 <style>
 :root{--clover-50:#f7fee7;--clover-100:#ecfccb;--clover-200:#d9f99d;--clover-300:#bef264;--clover-400:#a3e635;--clover-700:#4d7c0f;--ink:#213018;--line:#e5eed7;--bg:#f8fce9;font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:var(--ink);background:var(--bg)}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;color:var(--ink);background:radial-gradient(circle at 0 0,rgba(190,242,100,.30),transparent 30rem),linear-gradient(180deg,#fbfff4 0%,var(--bg) 100%)}
@@ -162,12 +162,13 @@ async function caList(){
 }
 
 async function icons(){
- app.innerHTML=title("home","ICON REVIEW","🖼️ アイコン一覧","アイコンから全国のCommunityを探して詳細を確認できます。実際のアイコン変更だけ要確認として表示します。")+'<div id="iconSummary" class="section"></div><div class="iconsearch"><input id="iconSearch" class="input" placeholder="Community名・都道府県で検索"></div><div id="iconGroups" class="section">'+msg("読み込み中...")+'</div>';
- const [cr,ir]=await Promise.all([
+ app.innerHTML=title("home","ICON REVIEW","🖼️ アイコン一覧","アイコンから全国のCommunityを探して詳細を確認できます。実際のアイコン変更だけ要確認として表示します。")+'<div id="iconSummary" class="section"></div><div id="iconAssetProgress"></div><div class="iconsearch"><input id="iconSearch" class="input" placeholder="Community名・都道府県で検索"></div><div id="iconGroups" class="section">'+msg("読み込み中...")+'</div>';
+ const [cr,ir,vr]=await Promise.all([
   client.from("communities").select("id,name,prefecture,avatar_url,avatar_thumbnail_path,avatar_last_changed_at"),
-  client.from("community_icon_changes").select("id,community_id,change_type,detection_method,previous_avatar_url,new_avatar_url,detected_at,reviewed_at").order("detected_at",{ascending:false})
+  client.from("community_icon_changes").select("id,community_id,change_type,detection_method,previous_avatar_url,new_avatar_url,detected_at,reviewed_at").order("detected_at",{ascending:false}),
+  client.from("community_icon_versions").select("id,community_id,content_hash,source_avatar_url,archive_path,thumbnail_path,first_seen_at,last_seen_at,is_current").order("first_seen_at",{ascending:false})
  ]);
- const communities=cr.data||[],changes=ir.data||[];
+ const communities=cr.data||[],changes=ir.data||[],versions=vr.data||[];
  const pending=new Map();
  changes.filter(x=>!x.reviewed_at&&x.change_type==="changed").forEach(x=>{const a=pending.get(x.community_id)||[];a.push(x);pending.set(x.community_id,a)});
  const order=["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県","茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県","新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県","静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県","鳥取県","島根県","岡山県","広島県","山口県","徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県"];
@@ -175,41 +176,58 @@ async function icons(){
  const cmpPref=(a,b)=>{const ai=pIndex.has(a)?pIndex.get(a):999,bi=pIndex.has(b)?pIndex.get(b):999;return ai-bi||String(a||"").localeCompare(String(b||""),"ja")};
  const norm=v=>String(v||"").normalize("NFKC").toLocaleLowerCase("ja");
  const sorted=[...communities].sort((a,b)=>cmpPref(a.prefecture,b.prefecture)||String(a.name||"").localeCompare(String(b.name||""),"ja"));
- const thumbUrl=c=>{
-  if(!c.avatar_thumbnail_path)return c.avatar_url||"";
-  const u=client.storage.from("community-icon-thumbs").getPublicUrl(c.avatar_thumbnail_path).data.publicUrl;
-  return u+(c.avatar_last_changed_at?"?v="+encodeURIComponent(c.avatar_last_changed_at):"");
+ const thumbUrl=c=>window.CACommunityIcon.url(client,c);
+ const versionUrl=v=>{
+  if(v.thumbnail_path)return client.storage.from("community-icon-thumbs").getPublicUrl(v.thumbnail_path).data.publicUrl;
+  if(v.archive_path)return client.storage.from("community-icon-archive").getPublicUrl(v.archive_path).data.publicUrl;
+  return v.source_avatar_url||"";
  };
- document.getElementById("iconSummary").innerHTML='<div class="tags"><span class="pill">全国 '+communities.length+'</span><span class="pill '+(pending.size?"amber":"")+'">要確認 '+pending.size+'</span></div>';
+ document.getElementById("iconSummary").innerHTML='<div class="tags"><span class="pill">全国 '+communities.length+'</span><span class="pill '+(pending.size?"amber":"")+'">要確認 '+pending.size+'</span><button id="iconAssetBackfill" class="btn line">🧰 画像資産を一括補完</button></div>';
+ document.getElementById("iconAssetBackfill").onclick=async()=>{
+  const button=document.getElementById("iconAssetBackfill"),progress=document.getElementById("iconAssetProgress");
+  button.disabled=true;let offset=0,total=0,thumbs=0,archived=0,failed=0;
+  progress.innerHTML=msg("画像資産を確認しています...");
+  try{
+   while(true){
+    const r=await client.functions.invoke("backfill-community-icon-assets",{body:{offset,limit:8}});
+    if(r.error)throw r.error;
+    const d=r.data||{};if(d.error)throw new Error(d.error);
+    total=Number(d.total||total);thumbs+=Number(d.thumbnailBackfilled||0);archived+=Number(d.archiveEnsured||0);failed+=Number(d.failed||0);
+    const done=Math.min(total,Number(d.nextOffset==null?total:d.nextOffset));
+    progress.innerHTML=msg("補完中 "+done+" / "+total+" ・サムネイル +"+thumbs+" ・永久保存 "+archived);
+    if(d.nextOffset==null)break;
+    offset=Number(d.nextOffset);
+   }
+   progress.innerHTML=msg("完了：サムネイル +"+thumbs+" / 永久保存 "+archived+(failed?" / 失敗 "+failed:""),failed?"warn":"ok");
+   await icons();
+  }catch(error){
+   progress.innerHTML=msg("補完エラー: "+(error.message||String(error)),"err");
+   button.disabled=false;
+  }
+ };
 
  function draw(){
   const q=norm(document.getElementById("iconSearch").value.trim());
   const visible=q?sorted.filter(c=>norm((c.name||"")+" "+(c.prefecture||"")).includes(q)):sorted;
   const groups=new Map();
   visible.forEach(c=>{const k=c.prefecture||"都道府県未設定",a=groups.get(k)||[];a.push(c);groups.set(k,a)});
-  document.getElementById("iconGroups").innerHTML=visible.length?[...groups.entries()].map(([pref,rows])=>'<section class="icongroup"><div class="icongrouptitle"><h2>'+e(pref)+'</h2><span class="pill">'+rows.length+'</span></div><div class="iconstamps">'+rows.map(c=>{const src=thumbUrl(c);return '<button class="iconstamp '+(pending.has(c.id)?"pending":"")+'" data-icon-id="'+c.id+'">'+(pending.has(c.id)?'<span class="pill amber" style="position:absolute;right:8px;top:8px">要確認</span>':'')+'<div class="avatar"><span class="icon-fallback">🍀</span>'+(src?'<img loading="lazy" decoding="async" src="'+e(src)+'" data-fallback="'+e(c.avatar_url||"")+'" alt="">':'')+'</div><div class="stampname">'+e(c.name)+'</div><div class="stamparea">'+e(c.prefecture||"—")+'</div><div class="stampdetail">詳細を見る →</div></button>'}).join("")+'</div></section>').join(""):'<section class="card center">該当するCommunityはありません 🍀</section>';
+  document.getElementById("iconGroups").innerHTML=visible.length?[...groups.entries()].map(([pref,rows])=>'<section class="icongroup"><div class="icongrouptitle"><h2>'+e(pref)+'</h2><span class="pill">'+rows.length+'</span></div><div class="iconstamps">'+rows.map(c=>{return '<button class="iconstamp '+(pending.has(c.id)?"pending":"")+'" data-icon-id="'+c.id+'">'+(pending.has(c.id)?'<span class="pill amber" style="position:absolute;right:8px;top:8px">要確認</span>':'')+'<div class="avatar"><span class="icon-fallback">🍀</span>'+window.CACommunityIcon.img(client,c,'loading="lazy" decoding="async" alt=""')+'</div><div class="stampname">'+e(c.name)+'</div><div class="stamparea">'+e(c.prefecture||"—")+'</div><div class="stampdetail">詳細を見る →</div></button>'}).join("")+'</div></section>').join(""):'<section class="card center">該当するCommunityはありません 🍀</section>';
   document.querySelectorAll("[data-icon-id]").forEach(b=>b.onclick=()=>openIcon(b.dataset.iconId));
-  document.querySelectorAll(".iconstamp img[data-fallback]").forEach(img=>img.addEventListener("error",()=>{
-   const fallback=img.dataset.fallback||"";
-   if(fallback&&img.dataset.triedFallback!=="1"&&img.src!==fallback){
-    img.dataset.triedFallback="1";
-    img.src=fallback;
-    return;
-   }
-   img.style.display="none";
-  }));
+  window.CACommunityIcon.bind(document.getElementById("iconGroups"));
  }
  document.getElementById("iconSearch").oninput=draw;
  draw();
 
  function openIcon(id){
   const c=communities.find(x=>x.id===id),list=pending.get(id)||[],change=list[0];
+  const history=versions.filter(v=>v.community_id===id);
   if(!c)return;
   const old=document.getElementById("iconModal");if(old)old.remove();
   const back=document.createElement("div");back.id="iconModal";back.className="adminmodalback";
   const current='<div class="comparebox"><div class="tiny strong muted">現在</div><div class="avatar">'+(c.avatar_url?'<img decoding="async" src="'+e(c.avatar_url)+'" alt="">':'🍀')+'</div></div>';
   const compare=change?'<div class="compareicons section">'+current+'<div class="comparebox"><div class="tiny strong muted">変更前</div><div class="avatar">'+(change.previous_avatar_url?'<img decoding="async" src="'+e(change.previous_avatar_url)+'" alt="">':'<span class="muted strong">画像なし</span>')+'</div></div></div>':'<div class="comparebox section" style="background:#f7fee7"><div class="avatar">'+(c.avatar_url?'<img decoding="async" src="'+e(c.avatar_url)+'" alt="">':'🍀')+'</div><div class="small strong" style="color:#4d7c0f;margin-top:12px">🍀 アイコン変更なし</div></div>';
-  back.innerHTML='<section class="adminmodal"><div class="row between"><div><div class="tiny strong muted">アイコン一覧 ＞ '+e(c.name)+'</div><div class="tiny strong" style="color:#65a30d;margin-top:8px">'+e(c.prefecture||"—")+'</div><h2 class="section">'+e(c.name)+'</h2></div><button id="iconClose" class="btn line">×</button></div>'+compare+(change?'<div class="notice section"><b>アイコンの変更を検知しました</b><div class="small section">検知: '+e(fmt(change.detected_at))+'</div><div class="tiny">比較方式: '+(change.detection_method==="content_sha256"?"画像内容":"URL（代替）")+'</div></div>':'')+'<div class="actions section">'+(list.length?'<button id="iconReview" class="btn" style="background:#fcd34d;color:#78350f">✓ 確認済みにする</button>':'')+'<a class="btn" href="./#community:'+encodeURIComponent(c.id)+'">Community詳細を見る →</a></div></section>';
+  const historyHtml=history.length?'<div class="section"><div class="tiny strong muted">保存済みデザイン履歴 '+history.length+'件</div><div class="row section" style="overflow-x:auto;gap:10px">'+history.map(v=>{const src=versionUrl(v);return '<div style="min-width:82px;text-align:center"><div class="avatar" style="width:72px;height:72px">'+(src?'<img loading="lazy" src="'+e(src)+'" alt="">':'🍀')+'</div><div class="tiny strong muted">'+(v.is_current?"現在":"過去")+'</div></div>'}).join("")+'</div></div>':'';
+  back.innerHTML='<section class="adminmodal"><div class="row between"><div><div class="tiny strong muted">アイコン一覧 ＞ '+e(c.name)+'</div><div class="tiny strong" style="color:#65a30d;margin-top:8px">'+e(c.prefecture||"—")+'</div><h2 class="section">'+e(c.name)+'</h2></div><button id="iconClose" class="btn line">×</button></div>'+compare+historyHtml+(change?'<div class="notice section"><b>アイコンの変更を検知しました</b><div class="small section">検知: '+e(fmt(change.detected_at))+'</div><div class="tiny">比較方式: '+(change.detection_method==="content_sha256"?"画像内容":"URL（代替）")+'</div></div>':'')+'<div class="actions section">'+(list.length?'<button id="iconReview" class="btn" style="background:#fcd34d;color:#78350f">✓ 確認済みにする</button>':'')+'<a class="btn" href="./#community:'+encodeURIComponent(c.id)+'">Community詳細を見る →</a></div></section>';
   document.body.appendChild(back);back.onclick=ev=>{if(ev.target===back)back.remove()};document.getElementById("iconClose").onclick=()=>back.remove();
   const review=document.getElementById("iconReview");if(review)review.onclick=async()=>{review.disabled=true;for(const x of list){await client.functions.invoke("admin-manage",{body:{action:"review_icon_change",changeId:x.id}})}back.remove();await icons()};
  }
