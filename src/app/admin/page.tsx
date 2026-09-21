@@ -40,7 +40,6 @@ export default function Page(){
   const buttons=[
     ["🗾","Activity Map","全国Communityの活動を地図で確認","/map"],
     ["🖼️","アイコン一覧","アイコン一覧とCommunity詳細","/admin/icons"],
-    ["🍀","CA Stamp Rally LAB","全国スタンプシートUIを確認","/lab/stamp-rally"],
     ["🔍","要確認Meetup",watchCount?watchCount+"件の未確認があります":"未確認はありません","/admin/meetup-watch"],
     ["🛎️","Community申請",pendingClaims?pendingClaims+"件の承認待ちがあります":"承認待ちはありません","/admin/claims"],
     ["🔐","Campfire接続","ADMIN tokenと接続状態を管理","/admin/campfire"],
@@ -51,6 +50,7 @@ export default function Page(){
     ["🧾","同期履歴","取得件数・失敗・部分取得を確認","/admin/sync-runs"],
     ["🧾","Data Coverage","全国の取得状態を確認","/data"],
     ["🏠","ホームへ","カテゴリホームに戻る","/"],
+    ["🍀","CA Stamp Rally LAB","全国スタンプシートUIを確認","/lab/stamp-rally"],
   ];
 
   return <main className="mx-auto max-w-5xl px-4 py-8 md:px-8">
