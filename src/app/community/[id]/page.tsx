@@ -288,9 +288,10 @@ export default function Page(){
       </div>
     </section>
 
-    {selectedMeetup?<div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4" onClick={()=>setSelectedMeetup(null)}>
-      <section className="w-full max-w-2xl rounded-[28px] border border-lime-100 bg-white p-6 shadow-2xl" onClick={event=>event.stopPropagation()}>
-        <div className="flex items-start justify-between gap-4">
+    {selectedMeetup?<div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-slate-950/45 p-4" onClick={()=>setSelectedMeetup(null)}>
+      <div className="mx-auto flex min-h-full max-w-2xl items-center justify-center py-2">
+      <section className="max-h-[calc(100dvh-2rem)] w-full overflow-y-auto overscroll-contain rounded-[28px] border border-lime-100 bg-white p-6 shadow-2xl" onClick={event=>event.stopPropagation()}>
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 bg-white pb-3">
           <div>
             <span className="rounded-full bg-lime-100 px-3 py-1 text-[11px] font-black text-lime-800">MEETUP OVERVIEW</span>
             <h2 className="mt-3 text-2xl font-black text-lime-950">{selectedMeetup.title}</h2>
@@ -312,6 +313,7 @@ export default function Page(){
           {selectedMeetup.event_url?<a href={selectedMeetup.event_url} target="_blank" rel="noreferrer" className="rounded-2xl border border-lime-200 bg-white px-5 py-3 text-center text-sm font-black text-lime-700">Campfireを開く ↗</a>:<button type="button" disabled className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-black text-slate-400">Campfire URLなし</button>}
         </div>
       </section>
+      </div>
     </div>:null}
 
     <section className="clover-card mt-5 p-5">
