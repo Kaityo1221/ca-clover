@@ -124,7 +124,7 @@
       const cr=await client.from("communities").select("id,name,prefecture,member_count,coverage").in("id",ids).order("name");
       communities=cr.data||[];
     }
-    let html='<section class="card hero"><span class="pill">MY COMMUNITY</span><h1 style="margin-top:12px">🍀 自分のCommunity</h1><p class="muted strong">'+communities.length+' Community</p></section>';
+    let html='<section class="card hero"><span class="pill">MY COMMUNITY</span><h1 style="margin-top:12px">🍀 自分のCommunity</h1><p class="muted strong">'+(communities.length?'✅ 認証済み '+communities.length+' Community':'0 Community')+'</p></section>';
     html+=flashHtml();
 
     if(profile.role==="pending"){
@@ -136,8 +136,8 @@
     }
 
     if(communities.length){
-      html+='<section class="section"><h2>割り当て済みCommunity</h2><div class="grid g2 section">'+communities.map(function(c){
-        return '<button type="button" class="claim clickable" style="text-align:left;width:100%" data-community="'+e(c.id)+'"><span class="pill">'+e(c.prefecture||"—")+'</span><h3 style="margin-top:9px">'+e(c.name)+'</h3><p class="muted small strong">Member: '+e(c.member_count==null?"未取得":Number(c.member_count).toLocaleString("ja-JP"))+' / Coverage: '+e(c.coverage)+'</p><div class="small strong" style="color:#65a30d;margin-top:10px">Community情報を見る →</div></button>'
+      html+='<section class="section"><h2>✅ 認証済みCommunity</h2><div class="grid g2 section">'+communities.map(function(c){
+        return '<button type="button" class="claim clickable" style="text-align:left;width:100%;position:relative" data-community="'+e(c.id)+'"><span class="pill">'+e(c.prefecture||"—")+'</span><span class="pill" style="position:absolute;right:14px;top:14px">✅ 認証済み</span><h3 style="margin-top:9px;padding-right:88px">'+e(c.name)+'</h3><p class="muted small strong">Member: '+e(c.member_count==null?"未取得":Number(c.member_count).toLocaleString("ja-JP"))+' / Coverage: '+e(c.coverage)+'</p><div class="small strong" style="color:#65a30d;margin-top:10px">Community情報を見る →</div></button>'
       }).join("")+'</div></section>';
     }
 
