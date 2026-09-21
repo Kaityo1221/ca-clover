@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {observeCommunityIcon} from "../_shared/community-icon.ts";
 
 const corsHeaders={
   "Access-Control-Allow-Origin":"*",
@@ -75,6 +76,21 @@ async function getActor(admin:any,userId:string){
     ca_level:caResult.data.ca_level,
     community:communityResult.data,
   };
+}
+
+async function ensureActorDesign(admin:any,actor:any){
+  const community=actor?.community;
+  if(!community?.id||!community?.avatar_url) return;
+  await observeCommunityIcon(
+    admin,
+    community.id,
+    community.avatar_url,
+    {
+      generateMissingThumbnail:!community.avatar_thumbnail_path,
+      ensureArchive:true,
+      allowUrlFallbackChange:false,
+    },
+  );
 }
 
 async function getSessionDto(admin:any,sessionId:string,actorUserId:string){
@@ -165,6 +181,7 @@ Deno.serve(async(req:Request)=>{
 
     if(action==="create"){
       const actor=await getActor(admin,actorUserId);
+      await ensureActorDesign(admin,actor);
 
       await admin.from("stamp_exchange_sessions")
         .update({status:"expired"})
@@ -192,6 +209,7 @@ Deno.serve(async(req:Request)=>{
 
     if(action==="claim"){
       const actor=await getActor(admin,actorUserId);
+      await ensureActorDesign(admin,actor);
       const token=String(body.token??"").trim();
       if(!token) return json({error:"QRコードを読み取れませんでした"},400);
       const tokenHash=await sha256(token);
