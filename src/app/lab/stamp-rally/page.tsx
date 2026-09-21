@@ -29,6 +29,18 @@ type StampCommunity = CommunityRow & {
   cas: Array<CaRow & { acquired: boolean }>;
 };
 
+type StampCatalogRow = {
+  community_id: string;
+  community_name: string;
+  prefecture: string | null;
+  avatar_url: string | null;
+  avatar_thumbnail_path: string | null;
+  avatar_last_changed_at: string | null;
+  ca_member_id: string | null;
+  trainer_name: string | null;
+  ca_level: "1st" | "2nd" | null;
+};
+
 const REGION_GROUPS = [
   { name: "北海道・東北", prefectures: ["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県"] },
   { name: "関東", prefectures: ["茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県"] },
@@ -64,27 +76,45 @@ export default function Page() {
     let alive = true;
     setDataLoading(true);
 
-    Promise.all([
-      supabase
-        .from("communities")
-        .select("id,name,prefecture,avatar_url,avatar_thumbnail_path,avatar_last_changed_at"),
-      supabase
-        .from("community_ca_members")
-        .select("community_id,ca_member_id"),
-      supabase
-        .from("ca_members")
-        .select("id,trainer_name,ca_level"),
-    ]).then(([communityResult, linkResult, caResult]) => {
+    supabase.rpc("stamp_rally_catalog").then(({data,error}) => {
       if (!alive) return;
 
-      const firstError = communityResult.error ?? linkResult.error ?? caResult.error;
-      if (firstError) {
-        setError(firstError.message);
-      } else {
-        setCommunities((communityResult.data as CommunityRow[] | null) ?? []);
-        setLinks((linkResult.data as CommunityCaLink[] | null) ?? []);
-        setCas((caResult.data as CaRow[] | null) ?? []);
+      if (error) {
+        setError(error.message);
+        setDataLoading(false);
+        return;
       }
+
+      const rows=(data as StampCatalogRow[]|null)??[];
+      const communityMap=new Map<string,CommunityRow>();
+      const caMap=new Map<string,CaRow>();
+      const linkRows:CommunityCaLink[]=[];
+
+      for(const row of rows){
+        communityMap.set(row.community_id,{
+          id:row.community_id,
+          name:row.community_name,
+          prefecture:row.prefecture,
+          avatar_url:row.avatar_url,
+          avatar_thumbnail_path:row.avatar_thumbnail_path,
+          avatar_last_changed_at:row.avatar_last_changed_at,
+        });
+        if(row.ca_member_id&&row.trainer_name){
+          caMap.set(row.ca_member_id,{
+            id:row.ca_member_id,
+            trainer_name:row.trainer_name,
+            ca_level:row.ca_level,
+          });
+          linkRows.push({
+            community_id:row.community_id,
+            ca_member_id:row.ca_member_id,
+          });
+        }
+      }
+
+      setCommunities([...communityMap.values()]);
+      setCas([...caMap.values()]);
+      setLinks(linkRows);
       setDataLoading(false);
     });
 
