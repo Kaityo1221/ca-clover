@@ -19,7 +19,7 @@ export default function Page(){
     Promise.all([
       supabase.from("community_access_requests").select("id",{count:"exact",head:true}).eq("status","pending"),
       supabase.from("meetup_watch_cases").select("id",{count:"exact",head:true}).eq("review_required",true).eq("status","unreviewed"),
-      supabase.from("community_icon_changes").select("id",{count:"exact",head:true}).is("reviewed_at",null),
+      supabase.from("community_icon_changes").select("id",{count:"exact",head:true}).eq("change_type","changed").is("reviewed_at",null),
       supabase.from("communities").select("id"),
       supabase.from("community_memberships").select("community_id"),
     ]).then(([claims,watch,icons,communities,memberships])=>{
@@ -38,10 +38,10 @@ export default function Page(){
   if (profile?.role !== "admin") return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><div className="text-5xl">🔒</div><h1 className="mt-3 text-2xl font-black text-lime-950">ADMIN専用です</h1></div></main>;
 
   const buttons=[
+    ["🗾","Activity Map","全国Communityの活動を地図で確認","/map"],
     ["🔍","要確認Meetup",watchCount?watchCount+"件の未確認があります":"未確認はありません","/admin/meetup-watch"],
     ["🛎️","Community申請",pendingClaims?pendingClaims+"件の承認待ちがあります":"承認待ちはありません","/admin/claims"],
     ["🖼️","アイコン一覧",iconReviewCount?iconReviewCount+"件の要確認があります":"全国Communityのアイコンを確認","/admin/icons"],
-    ["🗾","Activity Map","全国Communityの活動を地図で確認","/map"],
     ["🔐","Campfire接続","ADMIN tokenと接続状態を管理","/admin/campfire"],
     ["🔄","データ同期","Campfire Activityを全国更新","/admin/sync"],
     ["🔗","Community権限調整","通常は自動割当 / 手動補正用","/admin/assignments"],
