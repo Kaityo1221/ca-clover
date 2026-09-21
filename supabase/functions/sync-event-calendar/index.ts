@@ -9,6 +9,14 @@ const corsHeaders={
   "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type, x-ca-clover-cron-secret",
 };
 
+function errorMessage(error:unknown){
+  if(error instanceof Error) return error.message;
+  if(error&&typeof error==="object"&&"message" in error){
+    return String((error as {message?:unknown}).message??"Unknown error");
+  }
+  return String(error);
+}
+
 function json(data:unknown,status=200){
   return new Response(JSON.stringify(data),{
     status,
@@ -284,6 +292,11 @@ Deno.serve(async(req:Request)=>{
       .lt("ends_at",new Date(now-120*24*60*60*1000).toISOString());
     if(pruneError) throw pruneError;
 
+    await admin.from("sync_automation_state").update({
+      last_event_calendar_at:seenAt,
+      updated_at:seenAt,
+    }).eq("id",1);
+
     return json({
       ok:true,
       source:SOURCE,
@@ -296,6 +309,6 @@ Deno.serve(async(req:Request)=>{
       maxWatchWindowMinutes:maxWindowMinutes,
     });
   }catch(error){
-    return json({error:error instanceof Error?error.message:String(error)},500);
+    return json({error:errorMessage(error)},500);
   }
 });
