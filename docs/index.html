@@ -27,7 +27,7 @@
     .metric{padding:16px;border-radius:20px;background:#fff;border:1px solid #ecfccb}.metric b{display:block;font-size:26px;color:#365314;margin-top:4px}
     .claim{border:1px solid #ecfccb;border-radius:20px;padding:16px;background:white}.claim+.claim{margin-top:10px}.claim.clickable{cursor:pointer;transition:.18s transform,.18s border-color,.18s box-shadow}.claim.clickable:hover{transform:translateY(-2px);border-color:#bef264;box-shadow:0 12px 30px rgba(77,124,15,.10)}.tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
     .actions{display:flex;gap:8px;flex-wrap:wrap}.actions .btn{width:auto;min-width:90px;padding:10px 14px}.linkbtn{border:0;background:none;color:#65a30d;font-weight:900;padding:0}
-    .center{text-align:center}.spacer{height:8px}.version{font-size:10px;color:#94a3b8;text-align:center;margin-top:18px}
+    .center{text-align:center}.spacer{height:8px}.version{font-size:10px;color:#94a3b8;text-align:center;margin-top:18px}.modalback{position:fixed;inset:0;z-index:100;background:rgba(15,23,42,.46);display:grid;place-items:center;padding:16px}.modal{width:min(680px,100%);max-height:88vh;overflow:auto;background:#fff;border:1px solid #ecfccb;border-radius:28px;padding:22px;box-shadow:0 30px 80px rgba(15,23,42,.24)}.modalgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#f7fee7;border-radius:18px;padding:14px}.modaltext{white-space:pre-wrap;border:1px solid #e2e8f0;background:#f8fafc;border-radius:18px;padding:14px;line-height:1.7}.closebtn{border:0;width:40px;height:40px;border-radius:999px;background:#f1f5f9;font-weight:950;font-size:18px}.extbtn{display:flex;align-items:center;justify-content:center;text-decoration:none;border-radius:16px;padding:13px 16px;font-weight:950;background:#fff;border:1px solid #d9f99d;color:#4d7c0f}
     .login{max-width:470px;margin:8vh auto 0}.login .logo{margin:0 auto;width:78px;height:78px;border-radius:26px;font-size:38px}
     @media(max-width:760px){.g2,.g3{grid-template-columns:1fr}.topin{align-items:flex-start}.nav{max-width:55vw;justify-content:flex-end}.brandblock{display:none}.wrap{padding-top:14px}.card{padding:18px}}
   </style>
@@ -35,7 +35,7 @@
 <body>
   <header class="top"><div class="topin">
     <div class="logo">🍀</div>
-    <div class="brandblock"><div class="brand">CA Clover</div><div class="sub">GitHub Pages test mirror</div></div>
+    <div class="brandblock"><div class="brand">CA Clover</div><div class="sub">My Community Management</div></div>
     <div class="grow"></div><nav id="nav" class="nav"></nav>
   </div></header>
   <main id="app" class="wrap"></main>
@@ -46,7 +46,7 @@
   const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
   const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
   const ROOT="https://kaityo1221.github.io/ca-clover/";
-  const VERSION="b948201";
+  const VERSION="7fff45a";
   const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}
   });
@@ -171,7 +171,7 @@
     const community=base.data;
     const since=new Date(Date.now()-30*24*60*60*1000).toISOString();
     const results=await Promise.all([
-      client.from("meetups").select("id,title,starts_at,location,event_url,is_ca_meetup,rsvp_count,checkin_count").eq("community_id",id).gte("starts_at",since).order("starts_at",{ascending:false}).limit(50),
+      client.from("meetups").select("id,title,starts_at,ends_at,location,event_url,details,is_ca_meetup,rsvp_count,checkin_count").eq("community_id",id).gte("starts_at",since).order("starts_at",{ascending:false}).limit(50),
       client.from("community_ca_members").select("ca_member_id").eq("community_id",id)
     ]);
     const meetups=results[0].data||[];
@@ -197,13 +197,62 @@
     if(!meetups.length){
       html+='<div class="notice section">この期間のMeetupデータはありません。</div>';
     }else{
-      html+='<div class="section">'+meetups.map(function(m){
-        return '<div class="claim"><div class="row between wraprow"><div><div class="tiny strong" style="color:#65a30d">'+e(fmt(m.starts_at))+'</div><h3 style="margin-top:5px">'+e(m.title)+'</h3><div class="small muted strong" style="margin-top:4px">📍 '+e(m.location||"場所未取得")+'</div></div>'+(m.is_ca_meetup?'<span class="pill">CA Meetup</span>':'')+'</div><div class="tags"><span class="pill slate">RSVP '+e(m.rsvp_count==null?"—":m.rsvp_count)+'</span><span class="pill slate">Check-in '+e(m.checkin_count==null?"—":m.checkin_count)+'</span></div>'+(m.event_url?'<p class="small"><a href="'+e(m.event_url)+'" target="_blank" rel="noreferrer" style="color:#65a30d;font-weight:900">Campfire Meetupを開く ↗</a></p>':'')+'</div>';
+      html+='<div class="section">'+meetups.map(function(m,index){
+        return '<button type="button" class="claim clickable" style="display:block;width:100%;text-align:left;margin-top:10px" data-meetup-index="'+index+'"><div class="row between wraprow"><div><div class="tiny strong" style="color:#65a30d">'+e(fmt(m.starts_at))+'</div><h3 style="margin-top:5px">'+e(m.title)+'</h3><div class="small muted strong" style="margin-top:4px">📍 '+e(m.location||"場所未取得")+'</div></div><div class="tags" style="margin-top:0">'+(m.is_ca_meetup?'<span class="pill">CA Meetup</span>':'')+'<span class="pill">概要を見る →</span></div></div><div class="tags"><span class="pill slate">RSVP '+e(m.rsvp_count==null?"—":m.rsvp_count)+'</span><span class="pill slate">Check-in '+e(m.checkin_count==null?"—":m.checkin_count)+'</span></div></button>';
       }).join("")+'</div>';
     }
     html+='</section><section class="card section"><h2>🧾 Data Coverage</h2><div class="grid g3 section"><div><div class="tiny muted strong">取得開始</div><div class="strong">'+e(fmt(community.coverage_from))+'</div></div><div><div class="tiny muted strong">取得終了</div><div class="strong">'+e(fmt(community.coverage_to))+'</div></div><div><div class="tiny muted strong">最終同期</div><div class="strong">'+e(fmt(community.fetched_at))+'</div></div></div></section><div class="version">mirror '+VERSION+'</div>';
     app.innerHTML=html;
     document.getElementById("backMy").onclick=function(){go("my")};
+    app.querySelectorAll("[data-meetup-index]").forEach(function(b){
+      b.onclick=function(){
+        const index=Number(b.dataset.meetupIndex);
+        if(Number.isInteger(index)&&meetups[index])openMeetupOverview(meetups[index]);
+      };
+    });
+  }
+
+  function meetupOverviewText(m){
+    const lines=[
+      "【"+String(m.title||"Meetup")+"】",
+      "日時: "+fmt(m.starts_at)+(m.ends_at?" 〜 "+fmt(m.ends_at):""),
+      "場所: "+String(m.location||"未取得"),
+      "RSVP: "+String(m.rsvp_count==null?"—":m.rsvp_count),
+      "Check-in: "+String(m.checkin_count==null?"—":m.checkin_count),
+      "CA Meetup: "+(m.is_ca_meetup?"はい":"いいえ")
+    ];
+    if(m.details&&String(m.details).trim())lines.push("",String(m.details).trim());
+    if(m.event_url)lines.push("","Campfire: "+String(m.event_url));
+    return lines.join("\n");
+  }
+
+  function openMeetupOverview(m){
+    const old=document.getElementById("meetupModal");
+    if(old)old.remove();
+    const back=document.createElement("div");
+    back.id="meetupModal";
+    back.className="modalback";
+    const description=m.details&&String(m.details).trim()
+      ?'<div class="modaltext section">'+e(String(m.details).trim())+'</div>'
+      :'<div class="notice section">概要文はありません。</div>';
+    back.innerHTML='<section class="modal"><div class="row between"><div><span class="pill">MEETUP OVERVIEW</span><h2 style="margin-top:10px">'+e(m.title||"Meetup")+'</h2></div><button id="meetupClose" class="closebtn" type="button">×</button></div>'+
+      '<div class="modalgrid section"><div><div class="tiny strong muted">日時</div><div class="small strong" style="margin-top:4px">'+e(fmt(m.starts_at)+(m.ends_at?" 〜 "+fmt(m.ends_at):""))+'</div></div><div><div class="tiny strong muted">場所</div><div class="small strong" style="margin-top:4px">'+e(m.location||"未取得")+'</div></div><div><div class="tiny strong muted">RSVP</div><div class="strong" style="margin-top:4px">'+e(m.rsvp_count==null?"—":m.rsvp_count)+'</div></div><div><div class="tiny strong muted">Check-in</div><div class="strong" style="margin-top:4px">'+e(m.checkin_count==null?"—":m.checkin_count)+'</div></div></div>'+
+      description+
+      '<div class="grid g2 section"><button id="copyMeetup" class="btn" type="button">📋 概要をコピー</button>'+(m.event_url?'<a class="extbtn" target="_blank" rel="noreferrer" href="'+e(m.event_url)+'">Campfireで開く ↗</a>':'<button class="btn line" type="button" disabled>Campfire URLなし</button>')+'</div></section>';
+    document.body.appendChild(back);
+    function close(){back.remove()}
+    back.onclick=function(ev){if(ev.target===back)close()};
+    document.getElementById("meetupClose").onclick=close;
+    document.getElementById("copyMeetup").onclick=async function(){
+      try{
+        await navigator.clipboard.writeText(meetupOverviewText(m));
+        this.textContent="✓ コピーしました";
+        const button=this;
+        setTimeout(function(){if(document.body.contains(button))button.textContent="📋 概要をコピー"},1600);
+      }catch(_e){
+        this.textContent="コピーできませんでした";
+      }
+    };
   }
 
   async function submitClaim(){
