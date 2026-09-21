@@ -82,7 +82,7 @@
     const items=[["my","My Community"],["account","アカウント"]];
     nav.innerHTML=items.map(function(x){
       return '<button data-go="'+x[0]+'" class="'+(route()===x[0]?"on":"")+'">'+x[1]+'</button>'
-    }).join("")+(profile&&profile.role==="admin"?'<a href="./admin.html" style="border:0;border-radius:999px;padding:9px 13px;background:#ede9fe;color:#6d28d9;font-weight:900;text-decoration:none">管理画面</a>':"");
+    }).join("")+(profile&&profile.role==="admin"?'<a href="./admin.html?v=20260921-1408" style="border:0;border-radius:999px;padding:9px 13px;background:#ede9fe;color:#6d28d9;font-weight:900;text-decoration:none">管理画面</a>':"");
     nav.querySelectorAll("[data-go]").forEach(function(b){b.onclick=function(){flash=null;go(b.dataset.go)}})
   }
   async function login(){
