@@ -46,7 +46,16 @@ let currentSession=null,currentToken=null,currentUser=null,pollTimer=null,countT
 function e(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c])}
 async function invoke(body){
  const r=await client.functions.invoke("stamp-exchange",{body});
- if(r.error)throw new Error(r.error.message);
+ if(r.error){
+  let detail=r.error.message;
+  try{
+   if(r.error.context){
+    const payload=await r.error.context.clone().json();
+    if(payload&&payload.error)detail=String(payload.error);
+   }
+  }catch{}
+  throw new Error(detail);
+ }
  if(r.data&&r.data.error)throw new Error(r.data.error);
  return r.data;
 }
