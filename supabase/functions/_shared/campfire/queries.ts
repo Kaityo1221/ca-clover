@@ -4,7 +4,7 @@ const EVENT_FIELDS=`
   details
   createdAt
   clubId
-  club { id name avatarUrl }
+  club { id name }
   address
   location
   eventTime
