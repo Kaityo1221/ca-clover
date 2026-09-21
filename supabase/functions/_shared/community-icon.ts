@@ -68,6 +68,7 @@ export async function observeCommunityIcon(
   admin:AdminClient,
   communityId:string,
   rawAvatarUrl:unknown,
+  options:{generateMissingThumbnail?:boolean}={},
 ){
   const avatarUrl=typeof rawAvatarUrl==="string"?rawAvatarUrl.trim():"";
   const checkedAt=new Date().toISOString();
@@ -90,7 +91,7 @@ export async function observeCommunityIcon(
   if(sameHash){
     let thumbnailPath=current?.avatar_thumbnail_path??null;
     let thumbnailError:string|null=null;
-    if(!thumbnailPath){
+    if(!thumbnailPath&&options.generateMissingThumbnail===true){
       const thumbnail=await ensureThumbnail(admin,communityId,observed.buffer);
       thumbnailPath=thumbnail.path;
       thumbnailError=thumbnail.error;
