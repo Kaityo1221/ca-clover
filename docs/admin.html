@@ -40,7 +40,7 @@ pre.json{white-space:pre-wrap;word-break:break-word;background:#0f172a;color:#e2
 .iconstamp:nth-child(3n+1){transform:rotate(-.6deg)}.iconstamp:nth-child(3n+2){transform:rotate(.6deg)}
 .iconstamp.pending{border:2px solid #fbbf24;background:#fffbeb;animation:adminAttention 1.45s ease-in-out infinite}
 .iconstamp .avatar{width:92px;height:92px;margin:0 auto;border-radius:999px;overflow:hidden;border:4px solid #fff;background:#f7fee7;display:grid;place-items:center;font-size:38px;box-shadow:0 8px 22px rgba(77,124,15,.14)}
-.iconstamp .avatar img{width:100%;height:100%;object-fit:cover}.stampname{font-weight:950;color:#365314;margin-top:10px;line-height:1.3}.stamparea{font-size:11px;font-weight:800;color:#65a30d;margin-top:4px}
+.iconstamp .avatar img{width:100%;height:100%;object-fit:cover}.stampname{font-weight:950;color:#365314;margin-top:10px;line-height:1.3}.stamparea{font-size:11px;font-weight:800;color:#65a30d;margin-top:4px}.stampdetail{font-size:11px;font-weight:950;color:#4d7c0f;margin-top:10px}.icongroup+.icongroup{margin-top:30px}.icongrouptitle{display:flex;align-items:center;gap:8px;margin:0 0 12px}.iconsearch{margin-top:16px}
 .adminmodalback{position:fixed;inset:0;z-index:120;background:rgba(15,23,42,.48);overflow-y:auto;padding:16px;display:flex;align-items:center;justify-content:center}
 .adminmodal{width:min(680px,100%);max-height:calc(100dvh - 32px);overflow-y:auto;background:#fff;border-radius:30px;padding:22px;box-shadow:0 30px 80px rgba(15,23,42,.28)}
 .compareicons{display:grid;grid-template-columns:1fr 1fr;gap:14px}.comparebox{background:#f8fafc;border-radius:22px;padding:14px;text-align:center}.comparebox .avatar{width:132px;height:132px;margin:10px auto 0;border-radius:999px;overflow:hidden;border:4px solid #fff;background:#fff;display:grid;place-items:center}.comparebox img{width:100%;height:100%;object-fit:cover}
@@ -110,9 +110,9 @@ async function dashboard(){
  const unassignedCount=(communityRows.data||[]).filter(x=>!assignedCommunityIds.has(x.id)).length;
  const items=[
   ["map","🗾","Activity Map","全国Communityの活動を地図で確認",0],
+  ["icons","🖼️","アイコン一覧","アイコン一覧とCommunity詳細",icons.count||0],
   ["watch","🔍","要確認Meetup",(watch.count||0)+"件の未確認",watch.count||0],
   ["claims","🛎️","Community申請",(claims.count||0)+"件の承認待ち",claims.count||0],
-  ["icons","🖼️","アイコン一覧",(icons.count||0)?(icons.count+"件の要確認"):"全国Communityのアイコンを確認",icons.count||0],
   ["ca","🏕️","CA一覧",(caCount.count||0)+" CA / 1st・2nd切替",0],
   ["campfire","🔐","Campfire接続","tokenと接続状態を管理",0],
   ["sync","🔄","データ同期","Campfire Activityを全国更新",0],
@@ -161,23 +161,45 @@ async function caList(){
 }
 
 async function icons(){
- app.innerHTML=title("home","ICON REVIEW","🖼️ アイコン一覧","Campfire Communityのアイコンをスタンプ帳のように確認します。変更があるものは光ります。")+'<div id="iconSummary" class="section"></div><div id="iconGrid" class="iconstamps section">'+msg("読み込み中...")+'</div>';
+ app.innerHTML=title("home","ICON REVIEW","🖼️ アイコン一覧","アイコンから全国のCommunityを探して詳細を確認できます。実際のアイコン変更だけ要確認として表示します。")+'<div id="iconSummary" class="section"></div><div class="iconsearch"><input id="iconSearch" class="input" placeholder="Community名・都道府県で検索"></div><div id="iconGroups" class="section">'+msg("読み込み中...")+'</div>';
  const [cr,ir]=await Promise.all([
-  client.from("communities").select("id,name,prefecture,avatar_url,avatar_last_changed_at").order("prefecture").order("name"),
+  client.from("communities").select("id,name,prefecture,avatar_url,avatar_thumbnail_path,avatar_last_changed_at"),
   client.from("community_icon_changes").select("id,community_id,change_type,detection_method,previous_avatar_url,new_avatar_url,detected_at,reviewed_at").order("detected_at",{ascending:false})
  ]);
  const communities=cr.data||[],changes=ir.data||[];
  const pending=new Map();
  changes.filter(x=>!x.reviewed_at&&x.change_type==="changed").forEach(x=>{const a=pending.get(x.community_id)||[];a.push(x);pending.set(x.community_id,a)});
+ const order=["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県","茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県","新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県","静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県","鳥取県","島根県","岡山県","広島県","山口県","徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県"];
+ const pIndex=new Map(order.map((x,i)=>[x,i]));
+ const cmpPref=(a,b)=>{const ai=pIndex.has(a)?pIndex.get(a):999,bi=pIndex.has(b)?pIndex.get(b):999;return ai-bi||String(a||"").localeCompare(String(b||""),"ja")};
+ const norm=v=>String(v||"").normalize("NFKC").toLocaleLowerCase("ja");
+ const sorted=[...communities].sort((a,b)=>cmpPref(a.prefecture,b.prefecture)||String(a.name||"").localeCompare(String(b.name||""),"ja"));
+ const thumbUrl=c=>{
+  if(!c.avatar_thumbnail_path)return c.avatar_url||"";
+  const u=client.storage.from("community-icon-thumbs").getPublicUrl(c.avatar_thumbnail_path).data.publicUrl;
+  return u+(c.avatar_last_changed_at?"?v="+encodeURIComponent(c.avatar_last_changed_at):"");
+ };
  document.getElementById("iconSummary").innerHTML='<div class="tags"><span class="pill">全国 '+communities.length+'</span><span class="pill '+(pending.size?"amber":"")+'">要確認 '+pending.size+'</span></div>';
- document.getElementById("iconGrid").innerHTML=communities.map(c=>'<button class="iconstamp '+(pending.has(c.id)?"pending":"")+'" data-icon-id="'+c.id+'">'+(pending.has(c.id)?'<span class="pill amber" style="position:absolute;right:8px;top:8px">要確認</span>':'')+'<div class="avatar">'+(c.avatar_url?'<img src="'+e(c.avatar_url)+'" alt="">':'🍀')+'</div><div class="stampname">'+e(c.name)+'</div><div class="stamparea">'+e(c.prefecture||"—")+'</div></button>').join("");
- document.querySelectorAll("[data-icon-id]").forEach(b=>b.onclick=()=>openIcon(b.dataset.iconId));
+
+ function draw(){
+  const q=norm(document.getElementById("iconSearch").value.trim());
+  const visible=q?sorted.filter(c=>norm((c.name||"")+" "+(c.prefecture||"")).includes(q)):sorted;
+  const groups=new Map();
+  visible.forEach(c=>{const k=c.prefecture||"都道府県未設定",a=groups.get(k)||[];a.push(c);groups.set(k,a)});
+  document.getElementById("iconGroups").innerHTML=visible.length?[...groups.entries()].map(([pref,rows])=>'<section class="icongroup"><div class="icongrouptitle"><h2>'+e(pref)+'</h2><span class="pill">'+rows.length+'</span></div><div class="iconstamps">'+rows.map(c=>{const src=thumbUrl(c);return '<button class="iconstamp '+(pending.has(c.id)?"pending":"")+'" data-icon-id="'+c.id+'">'+(pending.has(c.id)?'<span class="pill amber" style="position:absolute;right:8px;top:8px">要確認</span>':'')+'<div class="avatar">'+(src?'<img loading="lazy" decoding="async" src="'+e(src)+'" alt="">':'🍀')+'</div><div class="stampname">'+e(c.name)+'</div><div class="stamparea">'+e(c.prefecture||"—")+'</div><div class="stampdetail">詳細を見る →</div></button>'}).join("")+'</div></section>').join(""):'<section class="card center">該当するCommunityはありません 🍀</section>';
+  document.querySelectorAll("[data-icon-id]").forEach(b=>b.onclick=()=>openIcon(b.dataset.iconId));
+ }
+ document.getElementById("iconSearch").oninput=draw;
+ draw();
+
  function openIcon(id){
   const c=communities.find(x=>x.id===id),list=pending.get(id)||[],change=list[0];
   if(!c)return;
   const old=document.getElementById("iconModal");if(old)old.remove();
   const back=document.createElement("div");back.id="iconModal";back.className="adminmodalback";
-  back.innerHTML='<section class="adminmodal"><div class="row between"><div><div class="tiny strong" style="color:#65a30d">'+e(c.prefecture||"—")+'</div><h2 class="section">'+e(c.name)+'</h2></div><button id="iconClose" class="btn line">×</button></div><div class="compareicons section"><div class="comparebox"><div class="tiny strong muted">現在</div><div class="avatar">'+(c.avatar_url?'<img src="'+e(c.avatar_url)+'" alt="">':'🍀')+'</div></div><div class="comparebox"><div class="tiny strong muted">変更前</div><div class="avatar">'+(change&&change.previous_avatar_url?'<img src="'+e(change.previous_avatar_url)+'" alt="">':'<span class="muted strong">初回取得</span>')+'</div></div></div>'+(change?'<div class="notice section"><b>'+(change.change_type==="initial"?"アイコンを初回取得しました":"アイコンの変更を検知しました")+'</b><div class="small section">検知: '+e(fmt(change.detected_at))+'</div><div class="tiny">比較方式: '+(change.detection_method==="content_sha256"?"画像内容":"URL（代替）")+'</div></div>':'<div class="notice ok section">確認待ちの変更はありません 🍀</div>')+'<div class="actions section">'+(list.length?'<button id="iconReview" class="btn">✓ 確認済みにする</button>':'')+'<a class="btn line" href="./#community:'+encodeURIComponent(c.id)+'">Community詳細 →</a></div></section>';
+  const current='<div class="comparebox"><div class="tiny strong muted">現在</div><div class="avatar">'+(c.avatar_url?'<img decoding="async" src="'+e(c.avatar_url)+'" alt="">':'🍀')+'</div></div>';
+  const compare=change?'<div class="compareicons section">'+current+'<div class="comparebox"><div class="tiny strong muted">変更前</div><div class="avatar">'+(change.previous_avatar_url?'<img decoding="async" src="'+e(change.previous_avatar_url)+'" alt="">':'<span class="muted strong">画像なし</span>')+'</div></div></div>':'<div class="comparebox section" style="background:#f7fee7"><div class="avatar">'+(c.avatar_url?'<img decoding="async" src="'+e(c.avatar_url)+'" alt="">':'🍀')+'</div><div class="small strong" style="color:#4d7c0f;margin-top:12px">🍀 アイコン変更なし</div></div>';
+  back.innerHTML='<section class="adminmodal"><div class="row between"><div><div class="tiny strong muted">アイコン一覧 ＞ '+e(c.name)+'</div><div class="tiny strong" style="color:#65a30d;margin-top:8px">'+e(c.prefecture||"—")+'</div><h2 class="section">'+e(c.name)+'</h2></div><button id="iconClose" class="btn line">×</button></div>'+compare+(change?'<div class="notice section"><b>アイコンの変更を検知しました</b><div class="small section">検知: '+e(fmt(change.detected_at))+'</div><div class="tiny">比較方式: '+(change.detection_method==="content_sha256"?"画像内容":"URL（代替）")+'</div></div>':'')+'<div class="actions section">'+(list.length?'<button id="iconReview" class="btn" style="background:#fcd34d;color:#78350f">✓ 確認済みにする</button>':'')+'<a class="btn" href="./#community:'+encodeURIComponent(c.id)+'">Community詳細を見る →</a></div></section>';
   document.body.appendChild(back);back.onclick=ev=>{if(ev.target===back)back.remove()};document.getElementById("iconClose").onclick=()=>back.remove();
   const review=document.getElementById("iconReview");if(review)review.onclick=async()=>{review.disabled=true;for(const x of list){await client.functions.invoke("admin-manage",{body:{action:"review_icon_change",changeId:x.id}})}back.remove();await icons()};
  }
