@@ -11,6 +11,7 @@ export default function Page(){
   const { supabase,user, profile, loading } = useAuthProfile();
   const [pendingClaims,setPendingClaims]=useState(0);
   const [watchCount,setWatchCount]=useState(0);
+  const [iconReviewCount,setIconReviewCount]=useState(0);
   const [unassignedCount,setUnassignedCount]=useState(0);
 
   useEffect(()=>{
@@ -18,11 +19,13 @@ export default function Page(){
     Promise.all([
       supabase.from("community_access_requests").select("id",{count:"exact",head:true}).eq("status","pending"),
       supabase.from("meetup_watch_cases").select("id",{count:"exact",head:true}).eq("review_required",true).eq("status","unreviewed"),
+      supabase.from("community_icon_changes").select("id",{count:"exact",head:true}).is("reviewed_at",null),
       supabase.from("communities").select("id"),
       supabase.from("community_memberships").select("community_id"),
-    ]).then(([claims,watch,communities,memberships])=>{
+    ]).then(([claims,watch,icons,communities,memberships])=>{
       setPendingClaims(claims.count??0);
       setWatchCount(watch.count??0);
+      setIconReviewCount(icons.count??0);
       const membershipRows=(memberships.data as MembershipCommunityRow[]|null)??[];
       const communityRows=(communities.data as CommunityIdRow[]|null)??[];
       const assigned=new Set(membershipRows.map(row=>row.community_id));
@@ -37,6 +40,7 @@ export default function Page(){
   const buttons=[
     ["🔍","要確認Meetup",watchCount?watchCount+"件の未確認があります":"未確認はありません","/admin/meetup-watch"],
     ["🛎️","Community申請",pendingClaims?pendingClaims+"件の承認待ちがあります":"承認待ちはありません","/admin/claims"],
+    ["🖼️","アイコン一覧",iconReviewCount?iconReviewCount+"件の要確認があります":"全国Communityのアイコンを確認","/admin/icons"],
     ["🔐","Campfire接続","ADMIN tokenと接続状態を管理","/admin/campfire"],
     ["🔄","データ同期","Campfire Activityを全国更新","/admin/sync"],
     ["🔗","Community権限調整","通常は自動割当 / 手動補正用","/admin/assignments"],
@@ -57,12 +61,14 @@ export default function Page(){
     </Link> : null}
     <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {buttons.map(([i,t,d,href])=>{
-        const attention=(href==="/admin/meetup-watch"&&watchCount>0)||(href==="/admin/claims"&&pendingClaims>0);
+        const attention=(href==="/admin/meetup-watch"&&watchCount>0)||(href==="/admin/claims"&&pendingClaims>0)||(href==="/admin/icons"&&iconReviewCount>0);
         const assignmentCard=href==="/admin/assignments";
+        const iconCard=href==="/admin/icons";
         return <Link key={t} href={href} className={(attention
           ?"clover-card relative min-h-40 animate-pulse border-amber-300 bg-amber-50 p-5 text-left ring-2 ring-amber-200 transition hover:-translate-y-1 hover:border-amber-400"
           :"clover-card relative min-h-40 p-5 text-left transition hover:-translate-y-1 hover:border-lime-300")}>
           {assignmentCard?<span className="absolute right-4 top-4 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-600">未割当 {unassignedCount}</span>:null}
+          {iconCard&&iconReviewCount>0?<span className="absolute right-4 top-4 rounded-full bg-amber-200 px-2.5 py-1 text-[11px] font-black text-amber-900">要確認 {iconReviewCount}</span>:null}
           <div className="text-3xl">{i}</div><div className="mt-4 font-black text-lime-950">{t}</div><div className="mt-1 text-xs font-semibold text-slate-500">{d}</div><div className="mt-4 text-xs font-black text-lime-700">開く →</div>
         </Link>;
       })}
