@@ -448,16 +448,28 @@ export default function Page() {
         </div>
       </section>
 
-      <Link
-        href="/lab/stamp-rally/exchange"
-        className="mt-4 flex items-center justify-between rounded-[22px] border border-[#d9c4ad] bg-white px-5 py-4 shadow-[0_8px_22px_rgba(92,69,45,.06)]"
-      >
-        <div>
-          <div className="text-sm font-black text-[#45663a]">🤝 スタンプ交換</div>
-          <div className="mt-0.5 text-[10px] font-bold text-[#938478]">QRで1対1交換する</div>
-        </div>
-        <span className="text-xl font-black text-[#6a8d59]">→</span>
-      </Link>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <Link
+          href="/lab/stamp-rally/events"
+          className="flex items-center justify-between rounded-[22px] border border-[#e1c9aa] bg-[#fffaf1] px-5 py-4 shadow-[0_8px_22px_rgba(92,69,45,.06)]"
+        >
+          <div>
+            <div className="text-sm font-black text-[#7a5c35]">🎪 イベントモード</div>
+            <div className="mt-0.5 text-[10px] font-bold text-[#938478]">参加イベントと日替わりミッション</div>
+          </div>
+          <span className="text-xl font-black text-[#9a7444]">→</span>
+        </Link>
+        <Link
+          href="/lab/stamp-rally/exchange"
+          className="flex items-center justify-between rounded-[22px] border border-[#d9c4ad] bg-white px-5 py-4 shadow-[0_8px_22px_rgba(92,69,45,.06)]"
+        >
+          <div>
+            <div className="text-sm font-black text-[#45663a]">🤝 スタンプ交換</div>
+            <div className="mt-0.5 text-[10px] font-bold text-[#938478]">QRで1対1交換する</div>
+          </div>
+          <span className="text-xl font-black text-[#6a8d59]">→</span>
+        </Link>
+      </div>
 
       {error ? <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-700">{error}</div> : null}
 
