@@ -1,11 +1,15 @@
-type MonthlyActivityPoint = {
-  month: string;
+type ActivityBucket = "day" | "week" | "month" | "year";
+
+type ActivityPoint = {
+  bucket: string;
   meetup_count: number;
   checkin_count: number;
 };
 
 type Props = {
-  data: MonthlyActivityPoint[];
+  data: ActivityPoint[];
+  bucket: ActivityBucket;
+  periodLabel: string;
 };
 
 const WIDTH = 980;
@@ -34,12 +38,19 @@ function compact(value: number) {
   }).format(value);
 }
 
-function monthLabel(value: string) {
-  const month = value.slice(5, 7).replace(/^0/, "");
-  return month + "月";
+function bucketLabel(value: string, bucket: ActivityBucket, pointCount: number) {
+  const parts = value.slice(0, 10).split("-").map(Number);
+  const year = parts[0] || 0;
+  const month = parts[1] || 1;
+  const day = parts[2] || 1;
+
+  if (bucket === "day") return month + "/" + day;
+  if (bucket === "week") return month + "/" + day;
+  if (bucket === "year") return String(year);
+  return pointCount > 12 ? String(year).slice(-2) + "/" + month : month + "月";
 }
 
-export default function MonthlyActivityChart({ data }: Props) {
+export default function ActivityTrendChart({ data, bucket, periodLabel }: Props) {
   const points = data.map((row) => ({
     ...row,
     meetup_count: Number(row.meetup_count) || 0,
@@ -50,7 +61,8 @@ export default function MonthlyActivityChart({ data }: Props) {
   const checkinMax = niceMax(Math.max(1, ...points.map((row) => row.checkin_count)));
   const tickCount = 5;
   const xStep = PLOT_WIDTH / Math.max(1, points.length);
-  const barWidth = Math.min(28, xStep * 0.34);
+  const barWidth = Math.min(28, Math.max(5, xStep * 0.34));
+  const labelEvery = points.length <= 14 ? 1 : Math.ceil(points.length / 10);
 
   const xAt = (index: number) => MARGIN.left + xStep * index + xStep / 2;
   const meetupY = (value: number) =>
@@ -84,7 +96,7 @@ export default function MonthlyActivityChart({ data }: Props) {
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
           className="block min-w-[820px] w-full"
           role="img"
-          aria-label="過去12か月のMeetup回数とCheck-in数の推移"
+          aria-label={periodLabel + "のMeetup回数とCheck-in数の推移"}
         >
           <rect x="0" y="0" width={WIDTH} height={HEIGHT} fill="white" />
 
@@ -146,31 +158,34 @@ export default function MonthlyActivityChart({ data }: Props) {
             const x = xAt(index);
             const y = meetupY(row.meetup_count);
             const height = MARGIN.top + PLOT_HEIGHT - y;
+            const showLabel = index % labelEvery === 0 || index === points.length - 1;
 
             return (
-              <g key={row.month}>
+              <g key={row.bucket}>
                 <rect
                   x={x - barWidth / 2}
                   y={y}
                   width={barWidth}
                   height={Math.max(0, height)}
-                  rx="5"
+                  rx="4"
                   fill="#fcd34d"
                 >
                   <title>
-                    {monthLabel(row.month) + " Meetup " + row.meetup_count + "回"}
+                    {bucketLabel(row.bucket, bucket, points.length) + " Meetup " + row.meetup_count + "回"}
                   </title>
                 </rect>
-                <text
-                  x={x}
-                  y={HEIGHT - 28}
-                  textAnchor="middle"
-                  fontSize="11"
-                  fontWeight="700"
-                  fill="#475569"
-                >
-                  {monthLabel(row.month)}
-                </text>
+                {showLabel ? (
+                  <text
+                    x={x}
+                    y={HEIGHT - 28}
+                    textAnchor="middle"
+                    fontSize="11"
+                    fontWeight="700"
+                    fill="#475569"
+                  >
+                    {bucketLabel(row.bucket, bucket, points.length)}
+                  </text>
+                ) : null}
               </g>
             );
           })}
@@ -191,7 +206,7 @@ export default function MonthlyActivityChart({ data }: Props) {
             const y = checkinY(row.checkin_count);
 
             return (
-              <g key={"checkin-" + row.month}>
+              <g key={"checkin-" + row.bucket}>
                 <circle
                   cx={x}
                   cy={y}
@@ -201,7 +216,7 @@ export default function MonthlyActivityChart({ data }: Props) {
                   strokeWidth="2"
                 >
                   <title>
-                    {monthLabel(row.month) +
+                    {bucketLabel(row.bucket, bucket, points.length) +
                       " Check-in " +
                       row.checkin_count.toLocaleString("ja-JP")}
                   </title>
@@ -232,22 +247,26 @@ export default function MonthlyActivityChart({ data }: Props) {
         </svg>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-        {points.map((row) => (
-          <div
-            key={"summary-" + row.month}
-            className="rounded-xl bg-lime-50/70 px-3 py-2"
-          >
-            <div className="font-black text-slate-500">{monthLabel(row.month)}</div>
-            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-bold">
-              <span className="text-amber-700">🔥 {row.meetup_count}回</span>
-              <span className="text-lime-700">
-                ✅ {row.checkin_count.toLocaleString("ja-JP")}
-              </span>
+      {points.length <= 16 ? (
+        <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+          {points.map((row) => (
+            <div
+              key={"summary-" + row.bucket}
+              className="rounded-xl bg-lime-50/70 px-3 py-2"
+            >
+              <div className="font-black text-slate-500">
+                {bucketLabel(row.bucket, bucket, points.length)}
+              </div>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-bold">
+                <span className="text-amber-700">🔥 {row.meetup_count}回</span>
+                <span className="text-lime-700">
+                  ✅ {row.checkin_count.toLocaleString("ja-JP")}
+                </span>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
