@@ -141,7 +141,7 @@ export default function Page() {
     <Link href="/" className="text-sm font-black text-lime-700">← CA Clover Home</Link>
     <span className="mt-4 block w-fit rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900">MY COMMUNITY</span>
     <h1 className="mt-3 text-3xl font-black text-lime-950">🍀 自分のCommunity</h1>
-    <p className="mt-2 text-sm font-semibold text-slate-500">{dataLoading ? "読み込み中..." : communities.length + " Community"}</p>
+    <p className="mt-2 text-sm font-semibold text-slate-500">{dataLoading ? "読み込み中..." : communities.length ? "✅ 認証済み " + communities.length + " Community" : "0 Community"}</p>
 
     {profile?.role==="pending" ? <section className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5">
       <div className="text-xs font-black text-amber-700">初回CA登録</div>
@@ -193,9 +193,11 @@ export default function Page() {
         <div className="clover-card p-5"><div className="text-2xl">📨</div><div className="mt-2 text-xs font-black text-slate-500">30日RSVP</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.rsvp}</div></div>
         <div className="clover-card p-5"><div className="text-2xl">✅</div><div className="mt-2 text-xs font-black text-slate-500">30日Check-in</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.checkin}</div></div>
       </div>
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        {communities.map(c => <Link key={c.id} href={"/community/"+c.id} className="clover-card p-6 transition hover:-translate-y-1 hover:border-lime-300">
-          <div className="text-xs font-black text-lime-700">{c.prefecture ?? "—"}</div>
+      <h2 className="mt-7 text-lg font-black text-lime-950">✅ 認証済みCommunity</h2>
+      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+        {communities.map(c => <Link key={c.id} href={"/community/"+c.id} className="clover-card relative p-6 transition hover:-translate-y-1 hover:border-lime-300">
+          <span className="absolute right-4 top-4 rounded-full bg-lime-100 px-3 py-1 text-[11px] font-black text-lime-800">✅ 認証済み</span>
+          <div className="pr-24 text-xs font-black text-lime-700">{c.prefecture ?? "—"}</div>
           <h2 className="mt-2 text-xl font-black text-lime-950">{c.name}</h2>
           <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold text-slate-500">
             <span className="rounded-full bg-lime-50 px-3 py-2">Member: {c.member_count?.toLocaleString("ja-JP") ?? "未取得"}</span>
