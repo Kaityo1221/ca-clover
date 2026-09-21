@@ -35,12 +35,39 @@ type StampCollectionRow = {
   first_location: string | null;
   first_event_name: string | null;
   acquisition_source: "normal" | "event" | "bulk" | "admin" | "import";
+  acquisition_icon_version_id: string | null;
+};
+
+type StampDesignLinkRow = {
+  collection_id: string;
+  icon_version_id: string;
+  grant_source: "acquisition" | "acquisition_backfill" | "auto_new_design" | "admin" | "import";
+  granted_at: string;
+};
+
+type StampPreferenceRow = {
+  collection_id: string;
+  icon_version_id: string;
+  updated_at: string;
+};
+
+type IconVersionRow = {
+  id: string;
+  community_id: string;
+  content_hash: string;
+  source_avatar_url: string | null;
+  archive_path: string | null;
+  thumbnail_path: string | null;
+  first_seen_at: string;
+  last_seen_at: string;
+  is_current: boolean;
 };
 
 type StampCommunity = CommunityRow & {
   cas: Array<CaRow & {
     acquired: boolean;
     collection: StampCollectionRow | null;
+    designs: IconVersionRow[];
   }>;
 };
 
@@ -73,36 +100,44 @@ export default function Page() {
   const [links, setLinks] = useState<CommunityCaLink[]>([]);
   const [cas, setCas] = useState<CaRow[]>([]);
   const [collections, setCollections] = useState<StampCollectionRow[]>([]);
+  const [designLinks, setDesignLinks] = useState<StampDesignLinkRow[]>([]);
+  const [designVersions, setDesignVersions] = useState<IconVersionRow[]>([]);
+  const [preferences, setPreferences] = useState<StampPreferenceRow[]>([]);
   const [openRegions, setOpenRegions] = useState<Set<string>>(new Set());
   const [openPrefectures, setOpenPrefectures] = useState<Set<string>>(new Set());
   const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedCommunity, setSelectedCommunity] = useState<StampCommunity | null>(null);
+  const [selectedCaId, setSelectedCaId] = useState<string | null>(null);
+  const [selectedDesignId, setSelectedDesignId] = useState<string | null>(null);
+  const [preferenceBusy, setPreferenceBusy] = useState(false);
 
   useEffect(() => {
     if (loading || !user || !canAccessStamp) return;
     let alive = true;
-    setDataLoading(true);
 
-    setError(null);
+    void (async () => {
+      setDataLoading(true);
+      setError(null);
 
-    Promise.all([
-      supabase.rpc("stamp_rally_catalog"),
-      supabase
-        .from("stamp_collections")
-        .select("id,stamp_ca_member_id,community_id,role_at_acquisition,first_acquired_at,first_location,first_event_name,acquisition_source")
-        .eq("owner_user_id", user.id),
-    ]).then(([catalogResult, collectionResult]) => {
+      const [catalogResult, collectionResult] = await Promise.all([
+        supabase.rpc("stamp_rally_catalog"),
+        supabase
+          .from("stamp_collections")
+          .select("id,stamp_ca_member_id,community_id,role_at_acquisition,first_acquired_at,first_location,first_event_name,acquisition_source,acquisition_icon_version_id")
+          .eq("owner_user_id", user.id),
+      ]);
+
       if (!alive) return;
-
       const firstError=catalogResult.error??collectionResult.error;
-      if (firstError) {
+      if(firstError){
         setError(firstError.message);
         setDataLoading(false);
         return;
       }
 
       const rows=(catalogResult.data as StampCatalogRow[]|null)??[];
+      const collectionRows=(collectionResult.data as StampCollectionRow[]|null)??[];
       const communityMap=new Map<string,CommunityRow>();
       const caMap=new Map<string,CaRow>();
       const linkRows:CommunityCaLink[]=[];
@@ -129,12 +164,59 @@ export default function Page() {
         }
       }
 
+      let designRows:StampDesignLinkRow[]=[];
+      let preferenceRows:StampPreferenceRow[]=[];
+      let versionRows:IconVersionRow[]=[];
+
+      const collectionIds=collectionRows.map(row=>row.id);
+      if(collectionIds.length){
+        const [designResult,preferenceResult]=await Promise.all([
+          supabase
+            .from("stamp_collection_designs")
+            .select("collection_id,icon_version_id,grant_source,granted_at")
+            .in("collection_id",collectionIds),
+          supabase
+            .from("stamp_collection_preferences")
+            .select("collection_id,icon_version_id,updated_at")
+            .in("collection_id",collectionIds),
+        ]);
+
+        if(!alive) return;
+        const designError=designResult.error??preferenceResult.error;
+        if(designError){
+          setError(designError.message);
+          setDataLoading(false);
+          return;
+        }
+
+        designRows=(designResult.data as StampDesignLinkRow[]|null)??[];
+        preferenceRows=(preferenceResult.data as StampPreferenceRow[]|null)??[];
+
+        const versionIds=[...new Set(designRows.map(row=>row.icon_version_id))];
+        if(versionIds.length){
+          const versionResult=await supabase
+            .from("community_icon_versions")
+            .select("id,community_id,content_hash,source_avatar_url,archive_path,thumbnail_path,first_seen_at,last_seen_at,is_current")
+            .in("id",versionIds);
+          if(!alive) return;
+          if(versionResult.error){
+            setError(versionResult.error.message);
+            setDataLoading(false);
+            return;
+          }
+          versionRows=(versionResult.data as IconVersionRow[]|null)??[];
+        }
+      }
+
       setCommunities([...communityMap.values()]);
       setCas([...caMap.values()]);
       setLinks(linkRows);
-      setCollections((collectionResult.data as StampCollectionRow[]|null)??[]);
+      setCollections(collectionRows);
+      setDesignLinks(designRows);
+      setPreferences(preferenceRows);
+      setDesignVersions(versionRows);
       setDataLoading(false);
-    });
+    })();
 
     return () => {
       alive = false;
@@ -143,6 +225,15 @@ export default function Page() {
 
   const stampCommunities = useMemo<StampCommunity[]>(() => {
     const caById = new Map(cas.map((ca) => [ca.id, ca]));
+    const versionById = new Map(designVersions.map((version) => [version.id, version]));
+    const designIdsByCollection = new Map<string,string[]>();
+
+    for(const design of designLinks){
+      const list=designIdsByCollection.get(design.collection_id)??[];
+      list.push(design.icon_version_id);
+      designIdsByCollection.set(design.collection_id,list);
+    }
+
     const collectionByCaAndCommunity = new Map(
       collections.map((collection) => [
         collection.stamp_ca_member_id + ":" + collection.community_id,
@@ -179,14 +270,101 @@ export default function Page() {
           })
           .map((ca) => {
             const collection=collectionByCaAndCommunity.get(ca.id+":"+community.id)??null;
+            const designs=collection
+              ?(designIdsByCollection.get(collection.id)??[])
+                .map(id=>versionById.get(id))
+                .filter((version):version is IconVersionRow=>Boolean(version))
+                .sort((a,b)=>new Date(a.first_seen_at).getTime()-new Date(b.first_seen_at).getTime())
+              :[];
             return {
               ...ca,
               acquired:Boolean(collection),
               collection,
+              designs,
             };
           }),
       }));
-  }, [cas, collections, communities, links]);
+  }, [cas, collections, communities, designLinks, designVersions, links]);
+
+  const preferenceByCollection=useMemo(
+    ()=>new Map(preferences.map(preference=>[preference.collection_id,preference.icon_version_id])),
+    [preferences],
+  );
+
+  function newestDesign(ca:StampCommunity["cas"][number]){
+    if(!ca.designs.length) return null;
+    const current=ca.designs.find(design=>design.is_current);
+    return current??ca.designs[ca.designs.length-1]??null;
+  }
+
+  function displayDesign(ca:StampCommunity["cas"][number]){
+    if(!ca.collection) return null;
+    const preferredId=preferenceByCollection.get(ca.collection.id);
+    return ca.designs.find(design=>design.id===preferredId)??newestDesign(ca);
+  }
+
+  function designUrl(design:IconVersionRow|null){
+    if(!design) return null;
+    if(design.thumbnail_path){
+      return supabase.storage.from("community-icon-thumbs").getPublicUrl(design.thumbnail_path).data.publicUrl;
+    }
+    if(design.archive_path){
+      return supabase.storage.from("community-icon-archive").getPublicUrl(design.archive_path).data.publicUrl;
+    }
+    return design.source_avatar_url;
+  }
+
+  function openCommunity(community:StampCommunity){
+    const firstCa=community.cas.find(ca=>ca.acquired)??community.cas[0]??null;
+    const firstDesign=firstCa?displayDesign(firstCa):null;
+    setSelectedCommunity(community);
+    setSelectedCaId(firstCa?.id??null);
+    setSelectedDesignId(firstDesign?.id??null);
+  }
+
+  function selectCa(ca:StampCommunity["cas"][number]){
+    setSelectedCaId(ca.id);
+    setSelectedDesignId(displayDesign(ca)?.id??null);
+  }
+
+  async function togglePinnedDesign(ca:StampCommunity["cas"][number],design:IconVersionRow){
+    if(!ca.collection||preferenceBusy) return;
+    setPreferenceBusy(true);
+    setError(null);
+    const pinnedId=preferenceByCollection.get(ca.collection.id)??null;
+
+    if(pinnedId===design.id){
+      const {error}=await supabase
+        .from("stamp_collection_preferences")
+        .delete()
+        .eq("collection_id",ca.collection.id);
+      if(error){
+        setError(error.message);
+      }else{
+        setPreferences(current=>current.filter(row=>row.collection_id!==ca.collection!.id));
+        setSelectedDesignId(newestDesign(ca)?.id??null);
+      }
+    }else{
+      const now=new Date().toISOString();
+      const {error}=await supabase
+        .from("stamp_collection_preferences")
+        .upsert({
+          collection_id:ca.collection.id,
+          icon_version_id:design.id,
+          updated_at:now,
+        },{onConflict:"collection_id"});
+      if(error){
+        setError(error.message);
+      }else{
+        setPreferences(current=>[
+          ...current.filter(row=>row.collection_id!==ca.collection!.id),
+          {collection_id:ca.collection!.id,icon_version_id:design.id,updated_at:now},
+        ]);
+      }
+    }
+    setPreferenceBusy(false);
+  }
+
 
   const totalProgress = useMemo(() => {
     const all = stampCommunities.flatMap((community) => community.cas);
@@ -338,7 +516,7 @@ export default function Page() {
                           return <button
                             key={community.id}
                             type="button"
-                            onClick={() => setSelectedCommunity(community)}
+                            onClick={() => openCommunity(community)}
                             className="group min-w-0 text-center"
                           >
                             <div className={"relative mx-auto grid size-[78px] place-items-center rounded-full p-[5px] transition-transform group-hover:-translate-y-1 sm:size-[96px] " + (
@@ -346,12 +524,20 @@ export default function Page() {
                                 ? "bg-gradient-to-br from-[#f9e8c7] via-white to-[#efd0a4] shadow-[0_8px_18px_rgba(115,78,38,.18)]"
                                 : "border-2 border-dashed border-[#cfc9c3] bg-[#f2f0ed]"
                             )}>
-                              <CommunityIcon
-                                supabase={supabase}
-                                community={community}
-                                className={"h-full w-full rounded-full bg-[#eef2e9] "+(!anyAcquired?"grayscale opacity-35":"")}
-                                fallbackClassName="text-3xl text-[#9caf90]"
-                              />
+                              {(() => {
+                                const coverCa=community.cas.find(ca=>ca.acquired)??null;
+                                const coverDesign=coverCa?displayDesign(coverCa):null;
+                                const coverSrc=designUrl(coverDesign);
+                                return coverSrc?<div className={"relative h-full w-full overflow-hidden rounded-full bg-[#eef2e9] "+(!anyAcquired?"grayscale opacity-35":"")}>
+                                  <span className="absolute inset-0 grid place-items-center text-3xl text-[#9caf90]">🍀</span>
+                                  <img src={coverSrc} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" onError={event=>{event.currentTarget.style.display="none";}}/>
+                                </div>:<CommunityIcon
+                                  supabase={supabase}
+                                  community={community}
+                                  className={"h-full w-full rounded-full bg-[#eef2e9] "+(!anyAcquired?"grayscale opacity-35":"")}
+                                  fallbackClassName="text-3xl text-[#9caf90]"
+                                />;
+                              })()}
                               {allAcquired ? <span className="absolute -right-1 -top-1 grid size-6 place-items-center rounded-full border-2 border-white bg-[#6e9959] text-[10px] text-white">✓</span> : null}
                             </div>
 
@@ -382,58 +568,153 @@ export default function Page() {
         })}
       </section>
 
-      {selectedCommunity ? <div
-        className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-5 backdrop-blur-sm"
-        onClick={() => setSelectedCommunity(null)}
-      >
-        <section
-          className="w-full max-w-sm rounded-[30px] border border-[#ead5bf] bg-[#fffaf4] p-5 text-center shadow-2xl"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <button
-            type="button"
-            onClick={() => setSelectedCommunity(null)}
-            className="ml-auto grid size-9 place-items-center rounded-full bg-white text-lg font-black text-[#75695f] shadow-sm"
-            aria-label="閉じる"
-          >×</button>
-          <div className="mx-auto mt-1 grid size-56 place-items-center rounded-full bg-gradient-to-br from-[#f8e3bf] via-white to-[#edc993] p-2 shadow-[0_18px_45px_rgba(112,73,35,.22)]">
-            <CommunityIcon
-              supabase={supabase}
-              community={selectedCommunity}
-              className="h-full w-full rounded-full bg-[#eef2e9]"
-              fallbackClassName="text-6xl text-[#9caf90]"
-              loading="eager"
-            />
-          </div>
-          <h2 className="mt-5 text-xl font-black leading-snug text-[#443c35]">{selectedCommunity.name}</h2>
-          <p className="mt-1 text-xs font-bold text-[#8a7d72]">{selectedCommunity.prefecture ?? "—"}</p>
+      {selectedCommunity ? (() => {
+        const selectedCa=selectedCommunity.cas.find(ca=>ca.id===selectedCaId)
+          ??selectedCommunity.cas.find(ca=>ca.acquired)
+          ??selectedCommunity.cas[0]
+          ??null;
+        const selectedDesign=selectedCa?.designs.find(design=>design.id===selectedDesignId)
+          ??(selectedCa?displayDesign(selectedCa):null);
+        const selectedDesignIndex=selectedCa&&selectedDesign
+          ?selectedCa.designs.findIndex(design=>design.id===selectedDesign.id)
+          :-1;
+        const selectedDesignSrc=designUrl(selectedDesign);
+        const pinnedId=selectedCa?.collection
+          ?preferenceByCollection.get(selectedCa.collection.id)??null
+          :null;
+        const isAcquisitionDesign=Boolean(
+          selectedCa?.collection
+          && selectedDesign
+          && selectedCa.collection.acquisition_icon_version_id===selectedDesign.id
+        );
 
-          {selectedCommunity.cas.length ? <div className="mt-4 space-y-2 text-left">
-            {selectedCommunity.cas.map((ca) => <div
-              key={ca.id}
-              className={ca.acquired
-                ?"rounded-2xl border border-[#d7e7ce] bg-[#eef6e9] px-3 py-2.5"
-                :"rounded-2xl border border-dashed border-[#ded8d2] bg-white/70 px-3 py-2.5"}
+        return <div
+          className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/55 p-5 backdrop-blur-sm"
+          onClick={() => setSelectedCommunity(null)}
+        >
+          <div className="mx-auto flex min-h-full max-w-sm items-center justify-center py-4">
+            <section
+              className="w-full rounded-[30px] border border-[#ead5bf] bg-[#fffaf4] p-5 text-center shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
             >
-              <div className="flex items-center justify-between gap-3">
-                <div className="truncate text-xs font-black text-[#514941]">
-                  {ca.acquired ? "● " : "○ "}{ca.trainer_name}
-                </div>
-                <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[9px] font-black text-[#6d855f]">
-                  {ca.ca_level ?? "CA"}
-                </span>
+              <button
+                type="button"
+                onClick={() => setSelectedCommunity(null)}
+                className="ml-auto grid size-9 place-items-center rounded-full bg-white text-lg font-black text-[#75695f] shadow-sm"
+                aria-label="閉じる"
+              >×</button>
+
+              <div className="mx-auto mt-1 grid size-56 place-items-center rounded-full bg-gradient-to-br from-[#f8e3bf] via-white to-[#edc993] p-2 shadow-[0_18px_45px_rgba(112,73,35,.22)]">
+                {selectedDesignSrc?<div className="relative h-full w-full overflow-hidden rounded-full bg-[#eef2e9]">
+                  <span className="absolute inset-0 grid place-items-center text-6xl text-[#9caf90]">🍀</span>
+                  <img
+                    src={selectedDesignSrc}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover"
+                    onError={event=>{event.currentTarget.style.display="none";}}
+                  />
+                </div>:<CommunityIcon
+                  supabase={supabase}
+                  community={selectedCommunity}
+                  className="h-full w-full rounded-full bg-[#eef2e9]"
+                  fallbackClassName="text-6xl text-[#9caf90]"
+                  loading="eager"
+                />}
               </div>
-              {ca.collection ? <div className="mt-1 text-[9px] font-bold text-[#7c7066]">
-                取得 {new Date(ca.collection.first_acquired_at).toLocaleDateString("ja-JP")}
-                {ca.collection.first_event_name ? " ・ "+ca.collection.first_event_name : ""}
-              </div> : <div className="mt-1 text-[9px] font-bold text-[#aaa29a]">未取得</div>}
-            </div>)}
-          </div> : null}
-        </section>
-      </div> : null}
+
+              <h2 className="mt-5 text-xl font-black leading-snug text-[#443c35]">{selectedCommunity.name}</h2>
+              <p className="mt-1 text-xs font-bold text-[#8a7d72]">{selectedCommunity.prefecture ?? "—"}</p>
+
+              {selectedCommunity.cas.length?<div className="mt-4 flex flex-wrap justify-center gap-2">
+                {selectedCommunity.cas.map(ca=><button
+                  key={ca.id}
+                  type="button"
+                  onClick={()=>selectCa(ca)}
+                  className={"rounded-full px-3 py-2 text-[10px] font-black transition "+(
+                    selectedCa?.id===ca.id
+                      ?"bg-[#5f8e50] text-white shadow-sm"
+                      :ca.acquired
+                        ?"bg-[#eaf4e4] text-[#567848]"
+                        :"border border-dashed border-[#d5d0ca] bg-white text-[#aaa39d]"
+                  )}
+                >
+                  {ca.ca_level??"CA"} ・ {ca.trainer_name}
+                </button>)}
+              </div>:null}
+
+              {selectedCa?.collection?<div className="mt-4 rounded-[22px] border border-[#e4d7ca] bg-white/75 p-4 text-left">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-xs font-black text-[#514941]">取得済み ・ {selectedCa.trainer_name}</div>
+                    <div className="mt-1 text-[9px] font-bold text-[#8b7e73]">
+                      {new Date(selectedCa.collection.first_acquired_at).toLocaleDateString("ja-JP")}
+                      {selectedCa.collection.first_event_name?" ・ "+selectedCa.collection.first_event_name:""}
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-[#eef5e8] px-2 py-1 text-[9px] font-black text-[#5e7d51]">{selectedCa.ca_level??"CA"}</span>
+                </div>
+
+                {selectedCa.designs.length?<div className="mt-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      disabled={selectedCa.designs.length<2}
+                      onClick={()=>{
+                        const nextIndex=(selectedDesignIndex-1+selectedCa.designs.length)%selectedCa.designs.length;
+                        setSelectedDesignId(selectedCa.designs[nextIndex]?.id??null);
+                      }}
+                      className="grid size-9 place-items-center rounded-full bg-[#f4eee8] text-lg font-black text-[#75695f] disabled:opacity-30"
+                    >‹</button>
+                    <div className="text-center">
+                      <div className="text-[10px] font-black text-[#6b625b]">デザイン {selectedDesignIndex+1} / {selectedCa.designs.length}</div>
+                      <div className="mt-1 flex justify-center gap-1">
+                        {isAcquisitionDesign?<span className="rounded-full bg-[#f4dfbd] px-2 py-0.5 text-[8px] font-black text-[#8a6536]">取得時</span>:null}
+                        {selectedDesign?.is_current?<span className="rounded-full bg-[#e8f3e3] px-2 py-0.5 text-[8px] font-black text-[#567848]">最新</span>:null}
+                        {pinnedId===selectedDesign?.id?<span className="rounded-full bg-[#e8eef8] px-2 py-0.5 text-[8px] font-black text-[#55709a]">📌 固定中</span>:null}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={selectedCa.designs.length<2}
+                      onClick={()=>{
+                        const nextIndex=(selectedDesignIndex+1)%selectedCa.designs.length;
+                        setSelectedDesignId(selectedCa.designs[nextIndex]?.id??null);
+                      }}
+                      className="grid size-9 place-items-center rounded-full bg-[#f4eee8] text-lg font-black text-[#75695f] disabled:opacity-30"
+                    >›</button>
+                  </div>
+
+                  {selectedDesign?<button
+                    type="button"
+                    disabled={preferenceBusy}
+                    onClick={()=>void togglePinnedDesign(selectedCa,selectedDesign)}
+                    className={"mt-3 w-full rounded-xl px-3 py-2 text-[10px] font-black disabled:opacity-50 "+(
+                      pinnedId===selectedDesign.id
+                        ?"bg-[#e8eef8] text-[#55709a]"
+                        :"border border-[#cdd8c6] bg-white text-[#567848]"
+                    )}
+                  >
+                    {preferenceBusy
+                      ?"保存中..."
+                      :pinnedId===selectedDesign.id
+                        ?"📌 固定を解除して最新デザインへ"
+                        :"📌 このデザインを表紙に固定"}
+                  </button>:null}
+
+                  <div className="mt-2 text-center text-[9px] font-bold text-[#9a8d82]">
+                    新デザインは既取得者へ自動追加され、再会回数には入りません。
+                  </div>
+                </div>:<div className="mt-3 text-[9px] font-bold text-[#9a8d82]">デザイン履歴を準備中です。</div>}
+              </div>:selectedCa?<div className="mt-4 rounded-2xl border border-dashed border-[#ded8d2] bg-white/70 p-3 text-xs font-bold text-[#aaa29a]">
+                このCAスタンプは未取得です
+              </div>:null}
+            </section>
+          </div>
+        </div>;
+      })() : null}
 
       <div className="mt-6 rounded-[22px] border border-dashed border-[#d8c7b5] bg-white/60 p-4 text-center text-[11px] font-bold leading-5 text-[#8d7c6c]">
-        🍀 スタンプシートは実取得データに接続済みです。交換が成立すると、この一覧へ反映されます。
+        🍀 取得時デザインを保存し、新デザインは既取得者へ自動追加します。お気に入りの旧デザインは表紙に固定できます。
       </div>
     </div>
   </main>;
