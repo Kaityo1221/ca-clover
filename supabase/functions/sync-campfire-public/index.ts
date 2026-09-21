@@ -178,6 +178,7 @@ Deno.serve(async(req:Request)=>{
 
     const sources=await campfire.getRealityChannelSources(REALITY_CHANNEL_ID);
     const eventIds=new Set<string>();
+    const publicMapObjectIds=new Set<string>();
     let scannedCommunities=0;
     let skippedNoCoordinates=0;
     let scanFailures=0;
@@ -210,7 +211,12 @@ Deno.serve(async(req:Request)=>{
         const ids=objects
           .map(item=>item.event?.id)
           .filter((id):id is string=>Boolean(id));
-        ids.forEach(id=>eventIds.add(id));
+        for(const item of objects){
+          if(item.event?.id){
+            eventIds.add(item.event.id);
+            if(item.id) publicMapObjectIds.add(item.id);
+          }
+        }
         scannedCommunities++;
         scanResults.push({
           community_id:community.id,
@@ -230,10 +236,10 @@ Deno.serve(async(req:Request)=>{
     }
 
     const avatarByClubId=new Map<string,string>();
-    const discoveredIds=[...eventIds];
-    for(let start=0;start<discoveredIds.length;start+=100){
+    const publicObjectIds=[...publicMapObjectIds];
+    for(let start=0;start<publicObjectIds.length;start+=100){
       try{
-        const metadata=await campfire.getPublicEvents(discoveredIds.slice(start,start+100));
+        const metadata=await campfire.getPublicEvents(publicObjectIds.slice(start,start+100));
         for(const publicEvent of metadata){
           if(publicEvent.clubId&&publicEvent.clubAvatarUrl){
             avatarByClubId.set(publicEvent.clubId,publicEvent.clubAvatarUrl);
@@ -365,6 +371,9 @@ Deno.serve(async(req:Request)=>{
       scannedCommunities,
       skippedNoCoordinates,
       discoveredEvents:eventIds.size,
+      publicMapObjectIds:publicMapObjectIds.size,
+      avatarMetadataCommunities:avatarByClubId.size,
+      iconsObserved:iconObservedCommunityIds.size,
       importedEvents:diff.written,
       newEvents:diff.newEvents,
       structureUpdates:diff.structureUpdates,
