@@ -26,7 +26,7 @@
     .ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534}.err{background:#fff1f2;border-color:#fecdd3;color:#be123c}.row{display:flex;align-items:flex-start;gap:12px}.between{justify-content:space-between}.wraprow{flex-wrap:wrap}
     .metric{padding:16px;border-radius:20px;background:#fff;border:1px solid #ecfccb}.metric b{display:block;font-size:26px;color:#365314;margin-top:4px}
     .claim{border:1px solid #ecfccb;border-radius:20px;padding:16px;background:white}.claim+.claim{margin-top:10px}.claim.clickable{cursor:pointer;transition:.18s transform,.18s border-color,.18s box-shadow}.claim.clickable:hover{transform:translateY(-2px);border-color:#bef264;box-shadow:0 12px 30px rgba(77,124,15,.10)}.tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
-    .actions{display:flex;gap:8px;flex-wrap:wrap}.actions .btn{width:auto;min-width:90px;padding:10px 14px}.linkbtn{border:0;background:none;color:#65a30d;font-weight:900;padding:0}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}.actions .btn{width:auto;min-width:90px;padding:10px 14px}.linkbtn{border:0;background:none;color:#65a30d;font-weight:900;padding:0}.periodbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.periodbtn{border:1px solid #d9f99d;background:#fff;color:#4d7c0f;border-radius:999px;padding:10px 16px;font-weight:950}.periodbtn.active{background:#a3e635;border-color:#84cc16;color:#365314}
     .center{text-align:center}.spacer{height:8px}.version{font-size:10px;color:#94a3b8;text-align:center;margin-top:18px}.modalback{position:fixed;inset:0;z-index:100;background:rgba(15,23,42,.46);display:grid;place-items:center;padding:16px}.modal{width:min(680px,100%);max-height:88vh;overflow:auto;background:#fff;border:1px solid #ecfccb;border-radius:28px;padding:22px;box-shadow:0 30px 80px rgba(15,23,42,.24)}.modalgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#f7fee7;border-radius:18px;padding:14px}.modaltext{white-space:pre-wrap;border:1px solid #e2e8f0;background:#f8fafc;border-radius:18px;padding:14px;line-height:1.7}.closebtn{border:0;width:40px;height:40px;border-radius:999px;background:#f1f5f9;font-weight:950;font-size:18px}.extbtn{display:flex;align-items:center;justify-content:center;text-decoration:none;border-radius:16px;padding:13px 16px;font-weight:950;background:#fff;border:1px solid #d9f99d;color:#4d7c0f}
     .login{max-width:470px;margin:8vh auto 0}.login .logo{margin:0 auto;width:78px;height:78px;border-radius:26px;font-size:38px}
     @media(max-width:760px){.g2,.g3{grid-template-columns:1fr}.topin{align-items:flex-start}.nav{max-width:55vw;justify-content:flex-end}.brandblock{display:none}.wrap{padding-top:14px}.card{padding:18px}}
@@ -51,7 +51,8 @@
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}
   });
 
-  let session=null, profile=null, busy=false, flash=null;
+  let session=null, profile=null, busy=false, flash=null, communityPeriod=30;
+  const COMMUNITY_PERIODS=[["1か月",30],["3か月",90],["6か月",180],["1年",365],["全期間",null]];
   const app=document.getElementById("app");
   const nav=document.getElementById("nav");
 
@@ -169,31 +170,45 @@
       return;
     }
     const community=base.data;
-    const since=new Date(Date.now()-30*24*60*60*1000).toISOString();
+    const period=communityPeriod;
+    const periodLabel=(COMMUNITY_PERIODS.find(function(item){return item[1]===period})||["1か月"])[0];
+    const since=period===null?null:new Date(Date.now()-period*24*60*60*1000).toISOString();
+
+    let meetupQuery=client.from("meetups")
+      .select("id,title,starts_at,ends_at,location,event_url,details,is_ca_meetup,rsvp_count,checkin_count")
+      .eq("community_id",id)
+      .order("starts_at",{ascending:false})
+      .limit(period===null?500:50);
+    if(since) meetupQuery=meetupQuery.gte("starts_at",since);
+
     const results=await Promise.all([
-      client.from("meetups").select("id,title,starts_at,ends_at,location,event_url,details,is_ca_meetup,rsvp_count,checkin_count").eq("community_id",id).gte("starts_at",since).order("starts_at",{ascending:false}).limit(50),
-      client.from("community_ca_members").select("ca_member_id").eq("community_id",id)
+      meetupQuery,
+      client.from("community_ca_members").select("ca_member_id").eq("community_id",id),
+      client.rpc("community_activity_summary",{p_community_id:id,p_days:period})
     ]);
     const meetups=results[0].data||[];
     const links=results[1].data||[];
+    const summary=(results[2].data&&results[2].data[0])||{meetup_count:0,ca_meetup_count:0,rsvp_count:0,checkin_count:0,last_event_at:null};
     let cas=[];
     if(links.length){
       const cr=await client.from("ca_members").select("id,trainer_name,ca_level").in("id",links.map(function(x){return x.ca_member_id})).order("ca_level");
       cas=cr.data||[];
     }
-    const totalRsvp=meetups.reduce(function(sum,x){return sum+(x.rsvp_count||0)},0);
-    const totalCheckin=meetups.reduce(function(sum,x){return sum+(x.checkin_count||0)},0);
-    const caMeetups=meetups.filter(function(x){return x.is_ca_meetup===true}).length;
+    const totalRsvp=Number(summary.rsvp_count||0);
+    const totalCheckin=Number(summary.checkin_count||0);
+    const caMeetups=Number(summary.ca_meetup_count||0);
+    const meetupCount=Number(summary.meetup_count||0);
     let html='<button id="backMy" class="linkbtn">← My Community</button>'+
       '<section class="card hero section"><span class="pill">'+e(community.prefecture||"—")+'</span><h1 style="margin-top:10px">'+e(community.name)+'</h1>'+
       '<div class="tags"><span class="pill slate">Member: '+e(community.member_count==null?"未取得":Number(community.member_count).toLocaleString("ja-JP"))+'</span>'+
       '<span class="pill slate">Coverage: '+e(community.coverage||"—")+'</span>'+
       cas.map(function(ca){return '<span class="pill">'+e(ca.ca_level||"CA")+': '+e(ca.trainer_name)+'</span>'}).join("")+
       '</div>'+(community.campfire_url?'<p><a href="'+e(community.campfire_url)+'" target="_blank" rel="noreferrer" style="color:#65a30d;font-weight:900">Campfireを開く ↗</a></p>':'')+'</section>'+
-      '<section class="grid g3 section"><div class="metric"><span class="tiny strong muted">🔥 Meetup / 30日</span><b>'+meetups.length+'</b></div>'+
-      '<div class="metric"><span class="tiny strong muted">🍀 CA Meetup / 30日</span><b>'+caMeetups+'</b></div>'+
-      '<div class="metric"><span class="tiny strong muted">✅ Check-in / 30日</span><b>'+totalCheckin.toLocaleString("ja-JP")+'</b></div></section>'+
-      '<section class="card section"><h2>🔥 Meetup履歴 / 30日</h2><p class="muted small strong">RSVP '+totalRsvp.toLocaleString("ja-JP")+' / Check-in '+totalCheckin.toLocaleString("ja-JP")+'</p>';
+      '<div class="periodbar">'+COMMUNITY_PERIODS.map(function(item){return '<button type="button" class="periodbtn '+(item[1]===period?'active':'')+'" data-community-period="'+(item[1]===null?'all':item[1])+'">'+item[0]+'</button>'}).join("")+'</div>'+
+      '<section class="grid g3 section"><div class="metric"><span class="tiny strong muted">🔥 Meetup / '+e(periodLabel)+'</span><b>'+meetupCount.toLocaleString("ja-JP")+'</b></div>'+
+      '<div class="metric"><span class="tiny strong muted">🍀 CA Meetup / '+e(periodLabel)+'</span><b>'+caMeetups.toLocaleString("ja-JP")+'</b></div>'+
+      '<div class="metric"><span class="tiny strong muted">✅ Check-in / '+e(periodLabel)+'</span><b>'+totalCheckin.toLocaleString("ja-JP")+'</b></div></section>'+
+      '<section class="card section"><h2>🔥 Meetup履歴 / '+e(periodLabel)+'</h2><p class="muted small strong">RSVP '+totalRsvp.toLocaleString("ja-JP")+' / Check-in '+totalCheckin.toLocaleString("ja-JP")+' · '+(period===null?'最大500件':'最新50件')+'表示</p>';
     if(!meetups.length){
       html+='<div class="notice section">この期間のMeetupデータはありません。</div>';
     }else{
@@ -204,6 +219,12 @@
     html+='</section><section class="card section"><h2>🧾 Data Coverage</h2><div class="grid g3 section"><div><div class="tiny muted strong">取得開始</div><div class="strong">'+e(fmt(community.coverage_from))+'</div></div><div><div class="tiny muted strong">取得終了</div><div class="strong">'+e(fmt(community.coverage_to))+'</div></div><div><div class="tiny muted strong">最終同期</div><div class="strong">'+e(fmt(community.fetched_at))+'</div></div></div></section><div class="version">mirror '+VERSION+'</div>';
     app.innerHTML=html;
     document.getElementById("backMy").onclick=function(){go("my")};
+    app.querySelectorAll("[data-community-period]").forEach(function(b){
+      b.onclick=function(){
+        communityPeriod=b.dataset.communityPeriod==="all"?null:Number(b.dataset.communityPeriod);
+        void renderCommunity(id);
+      };
+    });
     app.querySelectorAll("[data-meetup-index]").forEach(function(b){
       b.onclick=function(){
         const index=Number(b.dataset.meetupIndex);
