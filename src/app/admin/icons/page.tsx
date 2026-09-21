@@ -51,7 +51,7 @@ export default function Page(){
   const pendingByCommunity=useMemo(()=>{
     const map=new Map<string,IconChangeRow[]>();
     for(const change of changes){
-      if(change.reviewed_at) continue;
+      if(change.reviewed_at || change.change_type!=="changed") continue;
       const list=map.get(change.community_id)??[];
       list.push(change);
       map.set(change.community_id,list);
