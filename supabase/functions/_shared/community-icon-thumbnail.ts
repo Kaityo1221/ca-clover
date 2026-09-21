@@ -27,19 +27,20 @@ async function ensureImageMagick(){
   await initialization;
 }
 
-export async function createCommunityIconThumbnail(
-  admin:StorageAdminClient,
-  communityId:string,
-  source:ArrayBuffer,
-){
+async function renderThumbnail(source:ArrayBuffer){
   await ensureImageMagick();
-
-  const result=ImageMagick.read(new Uint8Array(source),(image):Uint8Array=>{
+  return ImageMagick.read(new Uint8Array(source),(image):Uint8Array=>{
     image.resize(256,256);
     return image.write(MagickFormat.WebP,(data)=>data);
   });
+}
 
-  const path=communityId+".webp";
+async function uploadThumbnail(
+  admin:StorageAdminClient,
+  path:string,
+  source:ArrayBuffer,
+){
+  const result=await renderThumbnail(source);
   const {error}=await admin.storage
     .from("community-icon-thumbs")
     .upload(path,result,{
@@ -49,4 +50,21 @@ export async function createCommunityIconThumbnail(
     });
   if(error) throw error;
   return path;
+}
+
+export async function createCommunityIconThumbnail(
+  admin:StorageAdminClient,
+  communityId:string,
+  source:ArrayBuffer,
+){
+  return uploadThumbnail(admin,communityId+".webp",source);
+}
+
+export async function createCommunityIconVersionThumbnail(
+  admin:StorageAdminClient,
+  communityId:string,
+  contentHash:string,
+  source:ArrayBuffer,
+){
+  return uploadThumbnail(admin,"versions/"+communityId+"/"+contentHash+".webp",source);
 }
