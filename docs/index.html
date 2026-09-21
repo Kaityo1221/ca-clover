@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#84cc16">
+  <title>CA Clover | GitHub Pages Mirror</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{font-family:Inter,"Noto Sans JP",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1f2937;background:#f7fee7}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:linear-gradient(180deg,#f7fee7 0,#fff 28rem)}
+    button,input{font:inherit}button{cursor:pointer}.wrap{max-width:1080px;margin:0 auto;padding:20px 16px 64px}
+    .top{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border-bottom:1px solid #ecfccb}
+    .topin{max-width:1080px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:12px}
+    .logo{width:46px;height:46px;border-radius:16px;background:#bef264;display:grid;place-items:center;font-size:24px;box-shadow:0 8px 24px rgba(77,124,15,.12)}
+    .brand{font-weight:950;color:#365314}.sub{font-size:11px;font-weight:800;color:#65a30d}.grow{flex:1}
+    .nav{display:flex;gap:8px;flex-wrap:wrap}.nav button{border:0;border-radius:999px;padding:9px 13px;background:#f7fee7;color:#4d7c0f;font-weight:900}
+    .nav button.on{background:#84cc16;color:#1a2e05}.card{background:#fff;border:1px solid #ecfccb;border-radius:24px;padding:22px;box-shadow:0 14px 40px rgba(77,124,15,.08)}
+    .hero{background:linear-gradient(135deg,#ecfccb,#fff,#ecfdf5)}h1,h2,h3{color:#365314;margin:0}h1{font-size:clamp(28px,5vw,44px);letter-spacing:-.03em}h2{font-size:23px}p{line-height:1.7}
+    .muted{color:#64748b}.small{font-size:12px}.tiny{font-size:11px}.strong{font-weight:900}.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:6px 10px;background:#ecfccb;color:#4d7c0f;font-size:12px;font-weight:900}
+    .pill.amber{background:#fef3c7;color:#92400e}.pill.violet{background:#ede9fe;color:#6d28d9}.pill.blue{background:#e0f2fe;color:#075985}.pill.rose{background:#ffe4e6;color:#be123c}.pill.slate{background:#f1f5f9;color:#475569}
+    .grid{display:grid;gap:14px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .btn{border:0;border-radius:16px;padding:13px 16px;font-weight:950;background:#84cc16;color:#1a2e05;width:100%}.btn.dark{background:#365314;color:white}.btn.line{background:white;border:1px solid #d9f99d;color:#4d7c0f}.btn.rose{background:#fff1f2;border:1px solid #fecdd3;color:#be123c}.btn:disabled{opacity:.45;cursor:not-allowed}
+    .input{width:100%;border:1px solid #d9f99d;border-radius:16px;padding:13px 14px;background:#fff;font-weight:750;outline:none}.input:focus{border-color:#84cc16;box-shadow:0 0 0 4px rgba(132,204,22,.12)}
+    .section{margin-top:18px}.notice{border-radius:18px;padding:14px 16px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12px;font-weight:800;line-height:1.6}
+    .ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534}.err{background:#fff1f2;border-color:#fecdd3;color:#be123c}.row{display:flex;align-items:flex-start;gap:12px}.between{justify-content:space-between}.wraprow{flex-wrap:wrap}
+    .metric{padding:16px;border-radius:20px;background:#fff;border:1px solid #ecfccb}.metric b{display:block;font-size:26px;color:#365314;margin-top:4px}
+    .claim{border:1px solid #ecfccb;border-radius:20px;padding:16px;background:white}.claim+.claim{margin-top:10px}.tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}.actions .btn{width:auto;min-width:90px;padding:10px 14px}.linkbtn{border:0;background:none;color:#65a30d;font-weight:900;padding:0}
+    .center{text-align:center}.spacer{height:8px}.version{font-size:10px;color:#94a3b8;text-align:center;margin-top:18px}
+    .login{max-width:470px;margin:8vh auto 0}.login .logo{margin:0 auto;width:78px;height:78px;border-radius:26px;font-size:38px}
+    @media(max-width:760px){.g2,.g3{grid-template-columns:1fr}.topin{align-items:flex-start}.nav{max-width:55vw;justify-content:flex-end}.brandblock{display:none}.wrap{padding-top:14px}.card{padding:18px}}
+  </style>
+</head>
+<body>
+  <header class="top"><div class="topin">
+    <div class="logo">🍀</div>
+    <div class="brandblock"><div class="brand">CA Clover</div><div class="sub">GitHub Pages test mirror</div></div>
+    <div class="grow"></div><nav id="nav" class="nav"></nav>
+  </div></header>
+  <main id="app" class="wrap"></main>
+
+<script>
+(function(){
+  "use strict";
+  const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
+  const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
+  const ROOT="https://kaityo1221.github.io/ca-clover/";
+  const VERSION="b948201";
+  const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
+    auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}
+  });
+
+  let session=null, profile=null, busy=false, flash=null;
+  const app=document.getElementById("app");
+  const nav=document.getElementById("nav");
+
+  function e(v){
+    return String(v==null?"":v).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]});
+  }
+  function fmt(v){if(!v)return "—";const d=new Date(v);return Number.isFinite(d.getTime())?d.toLocaleString("ja-JP"):"—"}
+  function route(){return (location.hash||"#my").slice(1)}
+  function go(v){location.hash=v}
+  function setFlash(text,type){flash={text:text,type:type||"ok"};render()}
+  function flashHtml(){
+    if(!flash)return "";
+    const cls=flash.type==="err"?"notice err":"notice ok";
+    return '<div class="'+cls+' section">'+e(flash.text)+'</div>';
+  }
+  async function loadProfile(){
+    if(!session){profile=null;return}
+    const r=await client.from("profiles").select("role,niantic_id,email").eq("id",session.user.id).maybeSingle();
+    profile=r.data||{role:"pending",niantic_id:null,email:session.user.email||null};
+  }
+  function header(){
+    if(!session){
+      nav.innerHTML='<button id="loginTop">ログイン</button>';
+      document.getElementById("loginTop").onclick=function(){login()};
+      return;
+    }
+    const items=[["my","My Community"],["account","アカウント"]];
+    if(profile&&profile.role==="admin")items.push(["admin","申請管理"]);
+    nav.innerHTML=items.map(function(x){
+      return '<button data-go="'+x[0]+'" class="'+(route()===x[0]?"on":"")+'">'+x[1]+'</button>'
+    }).join("");
+    nav.querySelectorAll("[data-go]").forEach(function(b){b.onclick=function(){flash=null;go(b.dataset.go)}})
+  }
+  async function login(){
+    flash=null;
+    const r=await client.auth.signInWithOAuth({provider:"google",options:{redirectTo:ROOT}});
+    if(r.error)setFlash(r.error.message,"err");
+  }
+  async function logout(){
+    await client.auth.signOut(); session=null;profile=null;flash=null;location.hash="";render();
+  }
+  async function init(){
+    const got=await client.auth.getSession();
+    session=got.data.session||null;
+    if(session)await loadProfile();
+    client.auth.onAuthStateChange(async function(_event,newSession){
+      session=newSession||null;
+      if(session)await loadProfile();else profile=null;
+      render();
+    });
+    window.addEventListener("hashchange",function(){flash=null;render()});
+    render();
+  }
+  function loginView(){
+    app.innerHTML='<section class="card login center"><div class="logo">🍀</div><h1 style="margin-top:18px">CA Clover</h1><p class="muted strong">Japan Community Activity Dashboard</p><div class="notice section">Vercel停止中のテスト用GitHub Pagesミラーです。データと認証は本番Supabaseを使用します。</div><button id="google" class="btn section">G　Googleでログイン</button>'+flashHtml()+'<div class="version">mirror '+VERSION+'</div></section>';
+    document.getElementById("google").onclick=login;
+  }
+  async function renderMy(){
+    app.innerHTML='<section class="card hero"><span class="pill">MY COMMUNITY</span><h1 style="margin-top:12px">🍀 自分のCommunity</h1><p class="muted strong">読み込み中...</p></section>';
+    const uid=session.user.id;
+    const results=await Promise.all([
+      client.from("community_memberships").select("community_id").eq("user_id",uid),
+      client.from("community_access_requests").select("id,meetup_title,request_source,community_name_snapshot,community_prefecture_snapshot,master_match,creator_display_name,creator_username,creator_username_matches_profile,creator_ca_badge_verified,ca_level_snapshot,ca_role_verified,ca_map_status,status,requested_at,reviewed_at").eq("user_id",uid).order("requested_at",{ascending:false})
+    ]);
+    const memberships=results[0].data||[];
+    const claims=results[1].data||[];
+    let communities=[];
+    if(memberships.length){
+      const ids=memberships.map(function(x){return x.community_id});
+      const cr=await client.from("communities").select("id,name,prefecture,member_count,coverage").in("id",ids).order("name");
+      communities=cr.data||[];
+    }
+    let html='<section class="card hero"><span class="pill">MY COMMUNITY</span><h1 style="margin-top:12px">🍀 自分のCommunity</h1><p class="muted strong">'+communities.length+' Community</p></section>';
+    html+=flashHtml();
+
+    if(profile.role==="pending"){
+      html+='<section class="notice section"><div class="tiny strong">初回CA登録</div><h3 style="margin-top:5px;color:#78350f">Campfire URLでCA確認をします</h3><p>Niantic IDを登録してから、コミュニティ招待URLまたは自分が主催したミートアップ共有URLを提出してください。会長が承認するとCAアカウント化とCommunity割当が同時に完了します。</p>'+(profile.niantic_id?'<span class="pill amber">Niantic ID: '+e(profile.niantic_id)+' ✓</span>':'<button id="toAccount" class="btn line">先にNiantic IDを登録 →</button>')+'</section>';
+    }
+
+    if(profile.role==="pending"||profile.role==="ca"){
+      html+='<section class="card section"><div class="row"><div style="font-size:30px">🔥</div><div><h2>Campfire URLからCommunityを申請</h2><p class="muted small strong">コミュニティ招待URL、または自分が主催したミートアップ共有URLを貼り付けてください。Niantic ID、Community、日本CA地図の1st/2ndを照合します。ミートアップ共有URLでは紫色CAバッジも確認します。</p></div></div><input id="claimUrl" class="input section" placeholder="コミュニティ招待URL / ミートアップ共有URL"><button id="submitClaim" class="btn section" '+((profile.role==="pending"&&!profile.niantic_id)?"disabled":"")+'>Communityを確認して申請</button><div id="claimResult"></div></section>';
+    }
+
+    if(communities.length){
+      html+='<section class="section"><h2>割り当て済みCommunity</h2><div class="grid g2 section">'+communities.map(function(c){
+        return '<div class="claim"><span class="pill">'+e(c.prefecture||"—")+'</span><h3 style="margin-top:9px">'+e(c.name)+'</h3><p class="muted small strong">Member: '+e(c.member_count==null?"未取得":Number(c.member_count).toLocaleString("ja-JP"))+' / Coverage: '+e(c.coverage)+'</p></div>'
+      }).join("")+'</div></section>';
+    }
+
+    if(claims.length){
+      html+='<section class="section"><h2>申請履歴</h2><div class="section">'+claims.map(function(c){
+        const status=c.status==="approved"?'<span class="pill">承認済み</span>':c.status==="rejected"?'<span class="pill rose">却下</span>':'<span class="pill amber">承認待ち</span>';
+        const source=c.request_source==="community_invite"?'<span class="pill">コミュニティ招待URL</span>':'<span class="pill violet">ミートアップ共有URL</span>';
+        return '<div class="claim"><div class="row between wraprow"><div><div class="tiny strong" style="color:#65a30d">'+e(c.community_prefecture_snapshot||"—")+'</div><h3 style="margin-top:4px">'+e(c.community_name_snapshot)+'</h3><div class="small muted strong" style="margin-top:4px">'+e(c.request_source==="community_invite"?"コミュニティ招待URLから申請":(c.meetup_title||"ミートアップ共有URLから申請"))+'</div></div>'+status+'</div><div class="tags">'+source+'<span class="pill slate">Niantic ID '+(c.creator_username_matches_profile===true?"一致":"未確認")+'</span><span class="pill slate">CA地図 '+e(c.ca_map_status||"要確認")+'</span></div><div class="tiny muted" style="margin-top:10px">申請 '+e(fmt(c.requested_at))+'</div></div>';
+      }).join("")+'</div></section>';
+    }
+
+    app.innerHTML=html+'<div class="version">mirror '+VERSION+'</div>';
+    const toAccount=document.getElementById("toAccount");if(toAccount)toAccount.onclick=function(){go("account")};
+    const submit=document.getElementById("submitClaim");
+    if(submit)submit.onclick=submitClaim;
+  }
+  async function submitClaim(){
+    const input=document.getElementById("claimUrl");
+    const out=document.getElementById("claimResult");
+    const value=input.value.trim();if(!value)return;
+    busy=true;input.disabled=true;document.getElementById("submitClaim").disabled=true;
+    out.innerHTML='<div class="notice section">Communityを確認中...</div>';
+    const r=await client.functions.invoke("community-claim",{body:{action:"submit",url:value}});
+    busy=false;
+    if(r.error){
+      let msg="申請に失敗しました。コミュニティ招待URL / ミートアップ共有URLを確認してください。";
+      try{const ctx=r.error.context;if(ctx&&typeof ctx.clone==="function"){const p=await ctx.clone().json();if(p&&p.error)msg=String(p.error)}}catch(_e){}
+      out.innerHTML='<div class="notice err section">'+e(msg)+'</div>';
+      input.disabled=false;document.getElementById("submitClaim").disabled=false;return;
+    }
+    setFlash(r.data&&r.data.communityName?r.data.communityName+" の承認申請を送りました 🍀":"承認申請を送りました 🍀","ok");
+    await renderMy();
+  }
+  function renderAccount(){
+    const id=profile&&profile.niantic_id?profile.niantic_id:"";
+    app.innerHTML='<section class="card"><span class="pill">ACCOUNT</span><h1 style="margin-top:12px">👤 アカウント</h1><div class="section"><div class="tiny strong muted">Google account</div><div class="strong" style="margin-top:4px">'+e(session.user.email||"—")+'</div><div class="tiny strong muted" style="margin-top:18px">Role</div><span class="pill" style="margin-top:5px">'+e(profile.role||"pending")+'</span><label class="tiny strong muted" style="display:block;margin-top:20px">Niantic ID</label><input id="niantic" class="input" style="margin-top:7px" value="'+e(id)+'" placeholder="Niantic IDを入力"><button id="saveNiantic" class="btn section">Niantic IDを保存</button><p class="tiny muted strong center">先頭の「@」は保存時に自動で外します。</p>'+(profile.role==="pending"&&id?'<button id="continue" class="btn dark section">CA登録を続ける →</button>':'')+'<button id="logout" class="btn line section">ログアウト</button>'+flashHtml()+'</div></section><div class="version">mirror '+VERSION+'</div>';
+    document.getElementById("saveNiantic").onclick=saveNiantic;
+    document.getElementById("logout").onclick=logout;
+    const c=document.getElementById("continue");if(c)c.onclick=function(){go("my")};
+  }
+  async function saveNiantic(){
+    const el=document.getElementById("niantic");
+    const value=el.value.trim().replace(/^@+/,"");
+    const r=await client.from("profiles").update({niantic_id:value||null}).eq("id",session.user.id);
+    if(r.error){setFlash(r.error.message,"err");return}
+    await loadProfile();
+    setFlash("保存しました 🍀","ok");
+  }
+  async function renderAdmin(){
+    app.innerHTML='<section class="card hero"><span class="pill violet">ADMIN</span><h1 style="margin-top:12px">🛎️ Community申請</h1><p class="muted strong">読み込み中...</p></section>';
+    const r=await client.from("community_access_requests")
+      .select("id,user_id,meetup_title,meetup_url,input_url,request_source,community_name_snapshot,community_prefecture_snapshot,is_ca_meetup,master_match,creator_display_name,creator_username,creator_username_matches_profile,creator_ca_badge_verified,ca_level_snapshot,ca_role_verified,ca_map_status,status,requested_at,reviewed_at")
+      .order("requested_at",{ascending:false}).limit(100);
+    const rows=r.data||[];
+    const ids=[...new Set(rows.map(function(x){return x.user_id}).filter(Boolean))];
+    let profiles={};
+    if(ids.length){
+      const pr=await client.from("profiles").select("id,email,niantic_id,role").in("id",ids);
+      (pr.data||[]).forEach(function(x){profiles[x.id]=x});
+    }
+    const pending=rows.filter(function(x){return x.status==="pending"});
+    let html='<section class="card hero"><span class="pill violet">ADMIN</span><h1 style="margin-top:12px">🛎️ Community申請</h1><p class="muted strong">承認待ち '+pending.length+' 件</p></section>'+flashHtml();
+    if(!rows.length)html+='<section class="card section center"><h2>申請はありません</h2></section>';
+    rows.forEach(function(c){
+      const p=profiles[c.user_id]||{};
+      const invite=c.request_source==="community_invite";
+      const can=c.status==="pending"&&(invite||c.creator_ca_badge_verified===true)&&c.creator_username_matches_profile===true&&c.ca_role_verified===true&&c.ca_map_status==="matched";
+      const status=c.status==="approved"?'<span class="pill">承認済み</span>':c.status==="rejected"?'<span class="pill rose">却下</span>':'<span class="pill amber">承認待ち</span>';
+      html+='<section class="claim section"><div class="row between wraprow"><div><div class="tiny strong" style="color:#65a30d">'+e(c.community_prefecture_snapshot||"—")+'</div><h2 style="margin-top:5px">'+e(c.community_name_snapshot)+'</h2><div class="small muted strong" style="margin-top:5px">'+e(invite?"コミュニティ招待URLから申請":(c.meetup_title||"ミートアップ共有URLから申請"))+'</div></div>'+status+'</div><div class="tags">'+(invite?'<span class="pill">コミュニティ招待URL</span>':'<span class="pill violet">'+(c.creator_ca_badge_verified===true?"🟣 CAバッジ確認済み":"CAバッジ未確認")+'</span>')+'<span class="pill '+(c.creator_username_matches_profile===true?"blue":"rose")+'">Niantic ID '+(c.creator_username_matches_profile===true?"一致":"不一致")+'</span><span class="pill '+(c.ca_role_verified===true?"":"rose")+'">CA地図 '+e(c.ca_level_snapshot||"未確認")+'</span><span class="pill '+(c.ca_map_status==="matched"?"":"rose")+'">'+e(c.ca_map_status||"要確認")+'</span></div><p class="small muted strong">申請者: '+e(p.email||"—")+' / Niantic ID: '+e(p.niantic_id||"未登録")+'</p>'+(c.input_url?'<p class="small"><a href="'+e(c.input_url)+'" target="_blank" rel="noreferrer" style="color:#65a30d;font-weight:900">Campfireを確認 ↗</a></p>':'')+(c.status==="pending"?'<div class="actions"><button class="btn rose" data-review="reject" data-id="'+e(c.id)+'">却下</button><button class="btn" data-review="approve" data-id="'+e(c.id)+'" '+(can?"":"disabled")+'>承認</button></div>':'')+'<div class="tiny muted" style="margin-top:10px">申請 '+e(fmt(c.requested_at))+'</div></section>';
+    });
+    app.innerHTML=html+'<div class="version">mirror '+VERSION+'</div>';
+    app.querySelectorAll("[data-review]").forEach(function(b){b.onclick=function(){reviewClaim(b.dataset.id,b.dataset.review)}});
+  }
+  async function reviewClaim(id,action){
+    if(busy)return;busy=true;
+    const r=await client.functions.invoke("community-claim",{body:{action:action,requestId:id}});
+    busy=false;
+    if(r.error){
+      let msg="処理に失敗しました";
+      try{const ctx=r.error.context;if(ctx&&typeof ctx.clone==="function"){const p=await ctx.clone().json();if(p&&p.error)msg=String(p.error)}}catch(_e){}
+      setFlash(msg,"err");return;
+    }
+    setFlash(action==="approve"?"承認しました 🍀":"却下しました","ok");
+    await renderAdmin();
+  }
+  async function render(){
+    header();
+    if(!session){loginView();return}
+    if(!profile)await loadProfile();
+    header();
+    let v=route();
+    if(v==="admin"&&profile.role!=="admin"){v="my";location.hash="my"}
+    if(v==="account"){renderAccount();return}
+    if(v==="admin"){await renderAdmin();return}
+    await renderMy();
+  }
+  init();
+})();
+</script>
+</body>
+</html>
