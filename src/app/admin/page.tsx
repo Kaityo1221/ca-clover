@@ -74,5 +74,8 @@ export default function Page(){
         </Link>;
       })}
     </div>
+    <div className="mt-8 text-right">
+      <Link href="/admin/changelog" className="text-[11px] font-bold text-slate-400 hover:text-lime-700">更新履歴</Link>
+    </div>
   </main>;
 }
