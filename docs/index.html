@@ -157,7 +157,7 @@
     render();
   }
   function loginView(){
-    app.innerHTML='<section class="card login center"><div class="logo">🍀</div><h1 style="margin-top:18px">CA Clover</h1><p class="muted strong">Japan Community Activity Dashboard</p><div class="notice section">Vercel停止中のテスト用GitHub Pagesミラーです。データと認証は本番Supabaseを使用します。</div><button id="google" class="btn section">G　Googleでログイン</button>'+flashHtml()+'<div class="version">mirror '+VERSION+'</div></section>';
+    app.innerHTML='<section class="card login center"><div class="logo">🍀</div><h1 style="margin-top:18px">CA Clover</h1><p class="muted strong">Japan Community Activity Dashboard</p><button id="google" class="btn section">G　Googleでログイン</button>'+flashHtml()+'<div class="version">mirror '+VERSION+'</div></section>';
     document.getElementById("google").onclick=login;
   }
   async function renderMy(){
