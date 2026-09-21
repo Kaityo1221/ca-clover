@@ -138,18 +138,35 @@ async function authGuard(){
 }
 async function load(){
  if(!await authGuard())return;
- const [cr,lr,ar]=await Promise.all([
-  client.from("communities").select("id,name,prefecture,avatar_url,avatar_thumbnail_path,avatar_last_changed_at"),
-  client.from("community_ca_members").select("community_id,ca_member_id"),
-  client.from("ca_members").select("id,trainer_name,ca_level")
- ]);
- const err=cr.error||lr.error||ar.error;if(err){status.className="error";status.textContent=err.message;return}
- const caById=new Map((ar.data||[]).map(x=>[x.id,x]));
- const idsByCommunity=new Map();
- (lr.data||[]).forEach(x=>{const list=idsByCommunity.get(x.community_id)||[];list.push(x.ca_member_id);idsByCommunity.set(x.community_id,list)});
- const communities=(cr.data||[]).map(c=>({
+ const catalog=await client.rpc("stamp_rally_catalog");
+ if(catalog.error){status.className="error";status.textContent=catalog.error.message;return}
+ const communityMap=new Map();
+ (catalog.data||[]).forEach(row=>{
+  let community=communityMap.get(row.community_id);
+  if(!community){
+   community={
+    id:row.community_id,
+    name:row.community_name,
+    prefecture:row.prefecture,
+    avatar_url:row.avatar_url,
+    avatar_thumbnail_path:row.avatar_thumbnail_path,
+    avatar_last_changed_at:row.avatar_last_changed_at,
+    cas:[]
+   };
+   communityMap.set(row.community_id,community);
+  }
+  if(row.ca_member_id&&row.trainer_name){
+   community.cas.push({
+    id:row.ca_member_id,
+    trainer_name:row.trainer_name,
+    ca_level:row.ca_level,
+    acquired:demoAcquired(row.ca_member_id)
+   });
+  }
+ });
+ const communities=[...communityMap.values()].map(c=>({
   ...c,
-  cas:(idsByCommunity.get(c.id)||[]).map(id=>caById.get(id)).filter(Boolean).sort((a,b)=>a.ca_level===b.ca_level?a.trainer_name.localeCompare(b.trainer_name,"ja"):a.ca_level==="1st"?-1:b.ca_level==="1st"?1:0).map(ca=>({...ca,acquired:demoAcquired(ca.id)}))
+  cas:c.cas.sort((a,b)=>a.ca_level===b.ca_level?a.trainer_name.localeCompare(b.trainer_name,"ja"):a.ca_level==="1st"?-1:b.ca_level==="1st"?1:0)
  })).sort((a,b)=>{
   const ai=prefectureOrder.indexOf(a.prefecture),bi=prefectureOrder.indexOf(b.prefecture);
   return (ai<0?999:ai)-(bi<0?999:bi)||a.name.localeCompare(b.name,"ja")
