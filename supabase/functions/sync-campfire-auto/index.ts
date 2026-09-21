@@ -66,10 +66,15 @@ Deno.serve(async(req:Request)=>{
     let notificationResult:Record<string,unknown>|null=null;
     let claimNotificationResult:Record<string,unknown>|null=null;
     let eventCalendarResult:Record<string,unknown>|null=null;
+    let iconResult:Record<string,unknown>|null=null;
     let historyCommunity:{id:string;name:string}|null=null;
     let currentPublicOffset=Math.max(0,Number(state.public_offset??0)||0);
     let nextOffset=currentPublicOffset;
+    let currentIconOffset=Math.max(0,Number(state.icon_offset??0)||0);
+    let nextIconOffset=currentIconOffset;
     let publicImported=0;
+    let iconProcessed=0;
+    let iconChanged=0;
     let historyImported=0;
     const hotResults:Array<Record<string,unknown>>=[];
 
@@ -202,6 +207,26 @@ Deno.serve(async(req:Request)=>{
         }).eq("id",1);
       }
       if(tokenUsable){
+        try{
+          iconResult=await invokeInternal(
+            supabaseUrl,
+            anonKey,
+            suppliedSecret,
+            "sync-community-icons",
+            {
+              offset:currentIconOffset,
+              limit:Math.max(1,Math.min(10,Number(state.icon_batch_size??10)||10)),
+            },
+          );
+          iconProcessed=Math.max(0,Number(iconResult.processed??0)||0);
+          iconChanged=Math.max(0,Number(iconResult.changed??0)||0);
+          const iconTotal=Math.max(0,Number(iconResult.total??0)||0);
+          if(iconProcessed===0||iconTotal===0||currentIconOffset+iconProcessed>=iconTotal) nextIconOffset=0;
+          else nextIconOffset=currentIconOffset+iconProcessed;
+        }catch(error){
+          errors.push("icons: "+(error instanceof Error?error.message:String(error)));
+        }
+
         const {data:candidate,error:candidateError}=await admin
           .from("communities")
           .select("id,name")
@@ -245,9 +270,13 @@ Deno.serve(async(req:Request)=>{
     const finishedAt=new Date().toISOString();
     await admin.from("sync_automation_state").update({
       public_offset:nextOffset,
+      icon_offset:nextIconOffset,
       last_finished_at:finishedAt,
       last_public_at:publicResult?finishedAt:state.last_public_at,
       last_public_imported:publicResult?publicImported:state.last_public_imported,
+      last_icon_at:iconResult?finishedAt:state.last_icon_at,
+      last_icon_processed:iconResult?iconProcessed:state.last_icon_processed,
+      last_icon_changed:iconResult?iconChanged:state.last_icon_changed,
       last_history_at:historyResult?finishedAt:state.last_history_at,
       last_history_imported:historyResult?historyImported:state.last_history_imported,
       last_event_calendar_at:eventCalendarResult?finishedAt:state.last_event_calendar_at,
@@ -267,6 +296,9 @@ Deno.serve(async(req:Request)=>{
         ca_master_result:masterResult,
         hot_results:hotResults,
         public_result:publicResult,
+        icon_offset_before:currentIconOffset,
+        icon_offset_after:nextIconOffset,
+        icon_result:iconResult,
         history_community:historyCommunity,
         history_result:historyResult,
         notification_result:notificationResult,
@@ -285,6 +317,8 @@ Deno.serve(async(req:Request)=>{
       masterResult,
       hotResults,
       publicResult,
+      iconResult,
+      nextIconOffset,
       historyCommunity,
       historyResult,
       notificationResult,
