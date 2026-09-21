@@ -52,7 +52,7 @@
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}
   });
 
-  let session=null, profile=null, busy=false, flash=null, communityPeriod=30;
+  let session=null, profile=null, permissions=new Set(), busy=false, flash=null, communityPeriod=30;
   const COMMUNITY_PERIODS=[["1か月",30],["3か月",90],["6か月",180],["1年",365],["全期間",null]];
   const app=document.getElementById("app");
   const nav=document.getElementById("nav");
@@ -120,9 +120,13 @@
     return '<div class="'+cls+' section">'+e(flash.text)+'</div>';
   }
   async function loadProfile(){
-    if(!session){profile=null;return}
-    const r=await client.from("profiles").select("role,niantic_id,email").eq("id",session.user.id).maybeSingle();
-    profile=r.data||{role:"pending",niantic_id:null,email:session.user.email||null};
+    if(!session){profile=null;permissions=new Set();return}
+    const results=await Promise.all([
+      client.from("profiles").select("role,niantic_id,email").eq("id",session.user.id).maybeSingle(),
+      client.from("user_permissions").select("permission_code").eq("user_id",session.user.id)
+    ]);
+    profile=results[0].data||{role:"pending",niantic_id:null,email:session.user.email||null};
+    permissions=new Set((results[1].data||[]).map(function(x){return x.permission_code}));
   }
   function header(){
     if(!session){
@@ -131,10 +135,15 @@
       return;
     }
     const items=[["my","My Community"],["account","アカウント"]];
+    if((profile&&profile.role==="admin")||permissions.has("S"))items.splice(1,0,["stamp","スタンプラリー"]);
     nav.innerHTML=items.map(function(x){
       return '<button data-go="'+x[0]+'" class="'+(route()===x[0]?"on":"")+'">'+x[1]+'</button>'
     }).join("")+(profile&&profile.role==="admin"?'<a href="./admin.html?v=20260921-1815" style="border:0;border-radius:999px;padding:9px 13px;background:#ede9fe;color:#6d28d9;font-weight:900;text-decoration:none">管理画面</a>':"");
-    nav.querySelectorAll("[data-go]").forEach(function(b){b.onclick=function(){flash=null;go(b.dataset.go)}})
+    nav.querySelectorAll("[data-go]").forEach(function(b){b.onclick=function(){
+      flash=null;
+      if(b.dataset.go==="stamp"){location.href="./stamp-rally.html";return}
+      go(b.dataset.go)
+    }})
   }
   async function login(){
     flash=null;
@@ -142,7 +151,7 @@
     if(r.error)setFlash(r.error.message,"err");
   }
   async function logout(){
-    await client.auth.signOut(); session=null;profile=null;flash=null;location.hash="";render();
+    await client.auth.signOut(); session=null;profile=null;permissions=new Set();flash=null;location.hash="";render();
   }
   async function init(){
     const got=await client.auth.getSession();
@@ -150,7 +159,7 @@
     if(session)await loadProfile();
     client.auth.onAuthStateChange(async function(_event,newSession){
       session=newSession||null;
-      if(session)await loadProfile();else profile=null;
+      if(session)await loadProfile();else {profile=null;permissions=new Set()}
       render();
     });
     window.addEventListener("hashchange",function(){flash=null;render()});
@@ -177,6 +186,10 @@
     }
     let html='<section class="card hero"><span class="pill">MY COMMUNITY</span><h1 style="margin-top:12px">🍀 自分のCommunity</h1><p class="muted strong">'+(communities.length?'✅ 認証済み '+communities.length+' Community':'0 Community')+'</p></section>';
     html+=flashHtml();
+
+    if(profile.role==="admin"||permissions.has("S")){
+      html+='<section class="card section" style="border-color:#f0d7bd;background:linear-gradient(135deg,#fff8ef,#fff,#edf7e8)"><div class="row"><div style="font-size:34px">🍀</div><div><span class="pill">S / STAMP RALLY LAB</span><h2 style="margin-top:8px">CA Stamp Rally LAB</h2><p class="muted small strong">全国スタンプシートのテストページを開きます。</p></div></div><a class="btn section" href="./stamp-rally.html">スタンプラリーを開く →</a></section>';
+    }
 
     if(profile.role==="pending"){
       html+='<section class="notice section"><div class="tiny strong">初回CA登録</div><h3 style="margin-top:5px;color:#78350f">Campfire URLでCA確認をします</h3><p>Niantic IDを登録してから、コミュニティ招待URLまたは自分が主催したミートアップ共有URLを提出してください。会長が承認するとCAアカウント化とCommunity割当が同時に完了します。</p>'+(profile.niantic_id?'<span class="pill amber">Niantic ID: '+e(profile.niantic_id)+' ✓</span>':'<button id="toAccount" class="btn line">先にNiantic IDを登録 →</button>')+'</section>';
