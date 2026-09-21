@@ -66,7 +66,7 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
     </div>
   </section>\n  <a class="exchange-card" href="./stamp-exchange.html"><span><strong>🤝 スタンプ交換</strong><small>QRで1対1交換する</small></span><span class="arrow">→</span></a>\n  <div id="status" class="loading">スタンプシートを準備中... 🍀</div>
   <section id="regions" class="regions" hidden></section>
-  <div class="footer">🍀 スタンプシートは実取得データに接続済みです。交換が成立すると、この一覧へ反映されます。</div>
+  <div class="footer">🍀 取得時デザインを保存し、新デザインは既取得者へ自動追加します。お気に入りの旧デザインは表紙に固定できます。</div>
 </main>
 <div id="stampModalBack" class="stampmodalback" aria-hidden="true">
   <section class="stampmodal" role="dialog" aria-modal="true" aria-labelledby="stampZoomTitle">
@@ -74,6 +74,7 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
     <div class="stampzoom"><div class="medalinner"><span class="fallback">🍀</span><img id="stampZoomImg" alt=""></div></div>
     <h2 id="stampZoomTitle" class="stampzoomtitle"></h2>
     <p id="stampZoomArea" class="stampzoomarea"></p>
+    <div id="stampDesignControls"></div>
   </section>
 </div>
 <script>
@@ -92,6 +93,7 @@ const stampClose=document.getElementById("stampClose");
 const stampZoomImg=document.getElementById("stampZoomImg");
 const stampZoomTitle=document.getElementById("stampZoomTitle");
 const stampZoomArea=document.getElementById("stampZoomArea");
+const stampDesignControls=document.getElementById("stampDesignControls");
 let stampCommunityById=new Map();
 let currentUserId=null;
 const prefectureOrder=["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県","茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県","新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県","静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県","鳥取県","島根県","岡山県","広島県","山口県","徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県"];
@@ -132,15 +134,70 @@ async function authGuard(){
 }
 async function load(){
  if(!await authGuard())return;
+
  const [catalog,collectionsResult]=await Promise.all([
   client.rpc("stamp_rally_catalog"),
   client.from("stamp_collections")
-    .select("id,stamp_ca_member_id,community_id,role_at_acquisition,first_acquired_at,first_location,first_event_name,acquisition_source")
+    .select("id,stamp_ca_member_id,community_id,role_at_acquisition,first_acquired_at,first_location,first_event_name,acquisition_source,acquisition_icon_version_id")
     .eq("owner_user_id",currentUserId)
  ]);
  const firstError=catalog.error||collectionsResult.error;
  if(firstError){status.className="error";status.textContent=firstError.message;return}
- const collectionMap=new Map((collectionsResult.data||[]).map(x=>[x.stamp_ca_member_id+":"+x.community_id,x]));
+
+ const collectionRows=collectionsResult.data||[];
+ const collectionMap=new Map(collectionRows.map(x=>[x.stamp_ca_member_id+":"+x.community_id,x]));
+ const collectionIds=collectionRows.map(x=>x.id);
+
+ let designRows=[],preferenceRows=[],versionRows=[];
+ if(collectionIds.length){
+  const [dr,pr]=await Promise.all([
+   client.from("stamp_collection_designs")
+    .select("collection_id,icon_version_id,grant_source,granted_at")
+    .in("collection_id",collectionIds),
+   client.from("stamp_collection_preferences")
+    .select("collection_id,icon_version_id,updated_at")
+    .in("collection_id",collectionIds)
+  ]);
+  const designError=dr.error||pr.error;
+  if(designError){status.className="error";status.textContent=designError.message;return}
+  designRows=dr.data||[];
+  preferenceRows=pr.data||[];
+
+  const versionIds=[...new Set(designRows.map(x=>x.icon_version_id))];
+  if(versionIds.length){
+   const vr=await client.from("community_icon_versions")
+    .select("id,community_id,content_hash,source_avatar_url,archive_path,thumbnail_path,first_seen_at,last_seen_at,is_current")
+    .in("id",versionIds);
+   if(vr.error){status.className="error";status.textContent=vr.error.message;return}
+   versionRows=vr.data||[];
+  }
+ }
+
+ const versionById=new Map(versionRows.map(x=>[x.id,x]));
+ const designIdsByCollection=new Map();
+ designRows.forEach(x=>{
+  const list=designIdsByCollection.get(x.collection_id)||[];
+  list.push(x.icon_version_id);
+  designIdsByCollection.set(x.collection_id,list);
+ });
+ const preferenceMap=new Map(preferenceRows.map(x=>[x.collection_id,x.icon_version_id]));
+
+ const designUrl=v=>{
+  if(!v)return"";
+  if(v.thumbnail_path)return client.storage.from("community-icon-thumbs").getPublicUrl(v.thumbnail_path).data.publicUrl;
+  if(v.archive_path)return client.storage.from("community-icon-archive").getPublicUrl(v.archive_path).data.publicUrl;
+  return v.source_avatar_url||"";
+ };
+ const newestDesign=ca=>{
+  if(!ca||!ca.designs||!ca.designs.length)return null;
+  return ca.designs.find(x=>x.is_current)||ca.designs[ca.designs.length-1]||null;
+ };
+ const displayDesign=ca=>{
+  if(!ca||!ca.collection)return null;
+  const preferred=preferenceMap.get(ca.collection.id);
+  return ca.designs.find(x=>x.id===preferred)||newestDesign(ca);
+ };
+
  const communityMap=new Map();
  (catalog.data||[]).forEach(row=>{
   let community=communityMap.get(row.community_id);
@@ -158,15 +215,23 @@ async function load(){
   }
   if(row.ca_member_id&&row.trainer_name){
    const collection=collectionMap.get(row.ca_member_id+":"+row.community_id)||null;
+   const designs=collection
+    ?(designIdsByCollection.get(collection.id)||[])
+      .map(id=>versionById.get(id))
+      .filter(Boolean)
+      .sort((a,b)=>new Date(a.first_seen_at)-new Date(b.first_seen_at))
+    :[];
    community.cas.push({
     id:row.ca_member_id,
     trainer_name:row.trainer_name,
     ca_level:row.ca_level,
     acquired:Boolean(collection),
-    collection
+    collection,
+    designs
    });
   }
  });
+
  const communities=[...communityMap.values()].map(c=>({
   ...c,
   cas:c.cas.sort((a,b)=>a.ca_level===b.ca_level?a.trainer_name.localeCompare(b.trainer_name,"ja"):a.ca_level==="1st"?-1:b.ca_level==="1st"?1:0)
@@ -174,43 +239,137 @@ async function load(){
   const ai=prefectureOrder.indexOf(a.prefecture),bi=prefectureOrder.indexOf(b.prefecture);
   return (ai<0?999:ai)-(bi<0?999:bi)||a.name.localeCompare(b.name,"ja")
  });
+
  stampCommunityById=new Map(communities.map(c=>[c.id,c]));
- const all=communities.flatMap(c=>c.cas);const got=all.filter(c=>c.acquired).length;
+ const all=communities.flatMap(c=>c.cas),got=all.filter(c=>c.acquired).length;
  totalScore.innerHTML=got+' <span>/ '+all.length+'</span>';
- const byPref=new Map();communities.forEach(c=>{const k=c.prefecture||"都道府県未設定";const l=byPref.get(k)||[];l.push(c);byPref.set(k,l)});
+
+ const byPref=new Map();
+ communities.forEach(c=>{
+  const k=c.prefecture||"都道府県未設定",l=byPref.get(k)||[];
+  l.push(c);byPref.set(k,l);
+ });
+
  regionsEl.innerHTML=groups.map(([region,prefs])=>{
   const rc=prefs.reduce((n,p)=>n+(byPref.get(p)||[]).length,0);
   const prefHtml=prefs.map(p=>{
-    const rows=byPref.get(p)||[];const cas=rows.flatMap(c=>c.cas);const acquired=cas.filter(c=>c.acquired).length;
+    const rows=byPref.get(p)||[],cas=rows.flatMap(c=>c.cas),acquired=cas.filter(c=>c.acquired).length;
     const stamps=rows.length?rows.map(c=>{
-      const gotCount=c.cas.filter(x=>x.acquired).length,any=gotCount>0,allGot=c.cas.length>0&&gotCount===c.cas.length,url=thumb(c);
-      return '<button type="button" class="stamp" data-community="'+esc(c.id)+'"><div class="medal '+(any?'':'unowned')+'"><div class="medalinner"><span class="fallback">🍀</span>'+window.CACommunityIcon.img(client,c,'alt="" loading="lazy"')+'</div>'+(allGot?'<span class="check">✓</span>':'')+'</div><div class="cname">'+esc(c.name)+'</div><div class="canames">'+(c.cas.length?c.cas.slice(0,2).map(x=>'<div class="caname '+(x.acquired?'on':'off')+'">'+(x.acquired?'● ':'○ ')+esc(x.trainer_name)+'</div>').join(""):'<div class="caname off">CA未設定</div>')+(c.cas.length>2?'<div class="caname off">+'+(c.cas.length-2)+'</div>':'')+'</div></button>'
+      const gotCount=c.cas.filter(x=>x.acquired).length,any=gotCount>0,allGot=c.cas.length>0&&gotCount===c.cas.length;
+      const coverCa=c.cas.find(x=>x.acquired)||null,coverDesign=coverCa?displayDesign(coverCa):null,coverSrc=designUrl(coverDesign);
+      const picture=coverSrc
+       ?'<img src="'+esc(coverSrc)+'" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
+       :window.CACommunityIcon.img(client,c,'alt="" loading="lazy"');
+      return '<button type="button" class="stamp" data-community="'+esc(c.id)+'"><div class="medal '+(any?'':'unowned')+'"><div class="medalinner"><span class="fallback">🍀</span>'+picture+'</div>'+(allGot?'<span class="check">✓</span>':'')+'</div><div class="cname">'+esc(c.name)+'</div><div class="canames">'+(c.cas.length?c.cas.slice(0,2).map(x=>'<div class="caname '+(x.acquired?'on':'off')+'">'+(x.acquired?'● ':'○ ')+esc(x.trainer_name)+'</div>').join(""):'<div class="caname off">CA未設定</div>')+(c.cas.length>2?'<div class="caname off">+'+(c.cas.length-2)+'</div>':'')+'</div></button>';
     }).join(""):'<div class="empty">Communityはありません</div>';
-    return '<div class="pref"><button class="prefbtn"><div><div class="prefname">'+esc(p)+'</div><div class="sub">'+rows.length+' Community</div></div><span class="progress">'+acquired+' / '+cas.length+'</span><span class="chev">⌄</span></button><div class="stamps">'+stamps+'</div></div>'
+    return '<div class="pref"><button class="prefbtn"><div><div class="prefname">'+esc(p)+'</div><div class="sub">'+rows.length+' Community</div></div><span class="progress">'+acquired+' / '+cas.length+'</span><span class="chev">⌄</span></button><div class="stamps">'+stamps+'</div></div>';
   }).join("");
-  return '<div class="region"><button class="regionbtn"><span class="leaf">🍀</span><div><div class="regiontitle">'+esc(region)+'</div><div class="sub">'+rc+' Community</div></div><div class="grow"></div><span class="chev">⌄</span></button><div class="prefwrap">'+prefHtml+'</div></div>'
+  return '<div class="region"><button class="regionbtn"><span class="leaf">🍀</span><div><div class="regiontitle">'+esc(region)+'</div><div class="sub">'+rc+' Community</div></div><div class="grow"></div><span class="chev">⌄</span></button><div class="prefwrap">'+prefHtml+'</div></div>';
  }).join("");
- status.hidden=true;regionsEl.hidden=false;
+
+ status.hidden=true;
+ regionsEl.hidden=false;
  document.querySelectorAll(".regionbtn").forEach(b=>b.onclick=()=>b.parentElement.classList.toggle("open"));
  document.querySelectorAll(".prefbtn").forEach(b=>b.onclick=()=>b.parentElement.classList.toggle("open"));
  window.CACommunityIcon.bind(regionsEl);
+
  regionsEl.querySelectorAll(".stamp[data-community]").forEach(btn=>btn.addEventListener("click",()=>{
   const c=stampCommunityById.get(btn.dataset.community);
   if(!c)return;
-  stampZoomTitle.textContent=c.name||"";
-  const acquiredDetails=c.cas.filter(x=>x.acquired&&x.collection).map(x=>{
-   const d=new Date(x.collection.first_acquired_at).toLocaleDateString("ja-JP");
-   return x.trainer_name+" ・ "+d+(x.collection.first_event_name?" ・ "+x.collection.first_event_name:"");
-  });
-  stampZoomArea.textContent=(c.prefecture||"")+(acquiredDetails.length?"\n"+acquiredDetails.join("\n"):"");
-  stampZoomArea.style.whiteSpace="pre-line";
-  const url=thumb(c);
-  stampZoomImg.style.display=url?"block":"none";
-  stampZoomImg.dataset.original=c.avatar_url||"";
-  stampZoomImg.dataset.caCommunityIcon="1";
-  stampZoomImg.dataset.caBound="";
-  if(url)stampZoomImg.src=url;
-  window.CACommunityIcon.bind(stampModalBack);
+
+  let selectedCa=c.cas.find(x=>x.acquired)||c.cas[0]||null;
+  let selectedDesign=selectedCa?displayDesign(selectedCa):null;
+
+  const renderModal=()=>{
+   stampZoomTitle.textContent=c.name||"";
+
+   const lines=[c.prefecture||""];
+   if(selectedCa){
+    lines.push((selectedCa.ca_level||"CA")+" ・ "+selectedCa.trainer_name);
+    if(selectedCa.collection){
+     lines.push("取得 "+new Date(selectedCa.collection.first_acquired_at).toLocaleDateString("ja-JP")+(selectedCa.collection.first_event_name?" ・ "+selectedCa.collection.first_event_name:""));
+    }else{
+     lines.push("未取得");
+    }
+   }
+   stampZoomArea.textContent=lines.filter(Boolean).join("\n");
+   stampZoomArea.style.whiteSpace="pre-line";
+
+   const src=selectedDesign?designUrl(selectedDesign):thumb(c);
+   stampZoomImg.style.display=src?"block":"none";
+   stampZoomImg.dataset.original=selectedDesign?"":c.avatar_url||"";
+   stampZoomImg.dataset.caCommunityIcon=selectedDesign?"":"1";
+   stampZoomImg.dataset.caBound="";
+   if(src)stampZoomImg.src=src;
+   window.CACommunityIcon.bind(stampModalBack);
+
+   const caButtons=c.cas.map(x=>'<button type="button" class="btn '+(selectedCa&&selectedCa.id===x.id?"":"line")+'" data-modal-ca="'+esc(x.id)+'" style="font-size:10px;padding:8px 10px">'+esc(x.ca_level||"CA")+' ・ '+esc(x.trainer_name)+'</button>').join("");
+   let designHtml="";
+
+   if(selectedCa&&selectedCa.collection){
+    if(selectedCa.designs.length){
+     if(!selectedDesign)selectedDesign=displayDesign(selectedCa);
+     const index=Math.max(0,selectedCa.designs.findIndex(x=>selectedDesign&&x.id===selectedDesign.id));
+     const pinnedId=preferenceMap.get(selectedCa.collection.id)||null;
+     const acquisition=selectedDesign&&selectedCa.collection.acquisition_icon_version_id===selectedDesign.id;
+     const badges=(acquisition?'<span class="pill" style="background:#f4dfbd;color:#8a6536">取得時</span>':'')
+      +(selectedDesign&&selectedDesign.is_current?'<span class="pill">最新</span>':'')
+      +(selectedDesign&&pinnedId===selectedDesign.id?'<span class="pill blue">📌 固定中</span>':'');
+     designHtml='<div class="section" style="border:1px solid #e4d7ca;border-radius:18px;background:#fff;padding:12px">'
+      +'<div class="row between"><button class="btn line" data-design-dir="-1" '+(selectedCa.designs.length<2?"disabled":"")+'>‹</button>'
+      +'<div class="center"><div class="tiny strong">デザイン '+(index+1)+' / '+selectedCa.designs.length+'</div><div class="tags" style="justify-content:center;margin-top:6px">'+badges+'</div></div>'
+      +'<button class="btn line" data-design-dir="1" '+(selectedCa.designs.length<2?"disabled":"")+'>›</button></div>'
+      +(selectedDesign?'<button class="btn line" data-pin-design="1" style="width:100%;margin-top:10px">'+(pinnedId===selectedDesign.id?"📌 固定を解除して最新デザインへ":"📌 このデザインを表紙に固定")+'</button>':'')
+      +'<div class="tiny muted strong" style="margin-top:8px">新デザインは既取得者へ自動追加され、再会回数には入りません。</div>'
+      +'</div>';
+    }else{
+     designHtml='<div class="notice section">デザイン履歴を準備中です。</div>';
+    }
+   }else if(selectedCa){
+    designHtml='<div class="notice section">このCAスタンプは未取得です。</div>';
+   }
+
+   stampDesignControls.innerHTML='<div class="actions section" style="justify-content:center">'+caButtons+'</div>'+designHtml;
+
+   stampDesignControls.querySelectorAll("[data-modal-ca]").forEach(button=>button.onclick=()=>{
+    selectedCa=c.cas.find(x=>x.id===button.dataset.modalCa)||null;
+    selectedDesign=selectedCa?displayDesign(selectedCa):null;
+    renderModal();
+   });
+
+   stampDesignControls.querySelectorAll("[data-design-dir]").forEach(button=>button.onclick=()=>{
+    if(!selectedCa||!selectedCa.designs.length)return;
+    const current=Math.max(0,selectedCa.designs.findIndex(x=>selectedDesign&&x.id===selectedDesign.id));
+    const dir=Number(button.dataset.designDir)||1;
+    const next=(current+dir+selectedCa.designs.length)%selectedCa.designs.length;
+    selectedDesign=selectedCa.designs[next]||null;
+    renderModal();
+   });
+
+   const pin=stampDesignControls.querySelector("[data-pin-design]");
+   if(pin)pin.onclick=async()=>{
+    if(!selectedCa||!selectedCa.collection||!selectedDesign)return;
+    pin.disabled=true;
+    const pinnedId=preferenceMap.get(selectedCa.collection.id)||null;
+    if(pinnedId===selectedDesign.id){
+     const r=await client.from("stamp_collection_preferences").delete().eq("collection_id",selectedCa.collection.id);
+     if(r.error){alert(r.error.message);pin.disabled=false;return}
+     preferenceMap.delete(selectedCa.collection.id);
+     selectedDesign=newestDesign(selectedCa);
+    }else{
+     const r=await client.from("stamp_collection_preferences").upsert({
+      collection_id:selectedCa.collection.id,
+      icon_version_id:selectedDesign.id,
+      updated_at:new Date().toISOString()
+     },{onConflict:"collection_id"});
+     if(r.error){alert(r.error.message);pin.disabled=false;return}
+     preferenceMap.set(selectedCa.collection.id,selectedDesign.id);
+    }
+    renderModal();
+   };
+  };
+
+  renderModal();
   stampModalBack.classList.add("show");
   stampModalBack.setAttribute("aria-hidden","false");
  }));
