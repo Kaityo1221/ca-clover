@@ -28,9 +28,9 @@
     .trendbox{overflow-x:auto;border:1px solid #ecfccb;border-radius:18px;background:#fff;margin-top:14px}.trendsvg{display:block;width:100%;min-width:760px}.trendlegend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:11px;font-weight:900;color:#64748b}.trendlegend span{display:inline-flex;align-items:center;gap:6px}
     .claim{border:1px solid #ecfccb;border-radius:20px;padding:16px;background:white}.claim+.claim{margin-top:10px}.claim.clickable{cursor:pointer;transition:.18s transform,.18s border-color,.18s box-shadow}.claim.clickable:hover{transform:translateY(-2px);border-color:#bef264;box-shadow:0 12px 30px rgba(77,124,15,.10)}.tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
     .actions{display:flex;gap:8px;flex-wrap:wrap}.actions .btn{width:auto;min-width:90px;padding:10px 14px}.linkbtn{border:0;background:none;color:#65a30d;font-weight:900;padding:0}.periodbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.periodbtn{border:1px solid #d9f99d;background:#fff;color:#4d7c0f;border-radius:999px;padding:10px 16px;font-weight:950;white-space:nowrap}.periodbtn.active{background:#a3e635;border-color:#84cc16;color:#365314}@media(max-width:480px){.periodbar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.periodbtn{width:100%;min-width:0;padding:8px 2px;font-size:11px;line-height:1.1;text-align:center}}
-    .center{text-align:center}.spacer{height:8px}.version{font-size:10px;color:#94a3b8;text-align:center;margin-top:18px}.modalback{position:fixed;inset:0;z-index:100;background:rgba(15,23,42,.46);display:grid;place-items:center;padding:16px}.modal{width:min(680px,100%);max-height:88vh;overflow:auto;background:#fff;border:1px solid #ecfccb;border-radius:28px;padding:22px;box-shadow:0 30px 80px rgba(15,23,42,.24)}.modalgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#f7fee7;border-radius:18px;padding:14px}.modaltext{white-space:pre-wrap;border:1px solid #e2e8f0;background:#f8fafc;border-radius:18px;padding:14px;line-height:1.7}.closebtn{border:0;width:40px;height:40px;border-radius:999px;background:#f1f5f9;font-weight:950;font-size:18px}.extbtn{display:flex;align-items:center;justify-content:center;text-decoration:none;border-radius:16px;padding:13px 16px;font-weight:950;background:#fff;border:1px solid #d9f99d;color:#4d7c0f}
+    .center{text-align:center}.spacer{height:8px}.version{font-size:10px;color:#94a3b8;text-align:center;margin-top:18px}.modalback{position:fixed;inset:0;z-index:100;background:rgba(15,23,42,.46);overflow-y:auto;overscroll-behavior:contain;padding:16px;display:flex;align-items:center;justify-content:center}.modal{width:min(680px,100%);max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:#fff;border:1px solid #ecfccb;border-radius:28px;padding:22px;box-shadow:0 30px 80px rgba(15,23,42,.24)}.modalgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#f7fee7;border-radius:18px;padding:14px}.modaltext{white-space:pre-wrap;border:1px solid #e2e8f0;background:#f8fafc;border-radius:18px;padding:14px;line-height:1.7}.closebtn{border:0;width:40px;height:40px;border-radius:999px;background:#f1f5f9;font-weight:950;font-size:18px}.extbtn{display:flex;align-items:center;justify-content:center;text-decoration:none;border-radius:16px;padding:13px 16px;font-weight:950;background:#fff;border:1px solid #d9f99d;color:#4d7c0f}
     .login{max-width:470px;margin:8vh auto 0}.login .logo{margin:0 auto;width:78px;height:78px;border-radius:26px;font-size:38px}
-    @media(max-width:760px){.g2,.g3{grid-template-columns:1fr}.topin{align-items:flex-start}.nav{max-width:55vw;justify-content:flex-end}.brandblock{display:none}.wrap{padding-top:14px}.card{padding:18px}}
+    @media(max-width:760px){.g2,.g3{grid-template-columns:1fr}.topin{align-items:flex-start}.nav{max-width:55vw;justify-content:flex-end}.brandblock{display:none}.wrap{padding-top:14px}.card{padding:18px}.modalback{align-items:flex-start;padding:12px}.modal{max-height:calc(100dvh - 24px);padding:18px}.modal>.row:first-child{position:sticky;top:-18px;z-index:5;background:#fff;padding:18px 0 10px}}
   </style>
 </head>
 <body>
@@ -47,7 +47,7 @@
   const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
   const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
   const ROOT="https://kaityo1221.github.io/ca-clover/";
-  const VERSION="7fff45a";
+  const VERSION="94079b9";
   const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}
   });
@@ -172,7 +172,7 @@
     let communities=[];
     if(memberships.length){
       const ids=memberships.map(function(x){return x.community_id});
-      const cr=await client.from("communities").select("id,name,prefecture,member_count,coverage").in("id",ids).order("name");
+      const cr=await client.from("communities").select("id,name,prefecture,member_count,avatar_url,coverage").in("id",ids).order("name");
       communities=cr.data||[];
     }
     let html='<section class="card hero"><span class="pill">MY COMMUNITY</span><h1 style="margin-top:12px">🍀 自分のCommunity</h1><p class="muted strong">'+(communities.length?'✅ 認証済み '+communities.length+' Community':'0 Community')+'</p></section>';
@@ -192,7 +192,7 @@
 
     if(communities.length){
       html+='<section class="section"><h2>✅ 認証済みCommunity</h2><div class="grid g2 section">'+communities.map(function(c){
-        return '<button type="button" class="claim clickable" style="text-align:left;width:100%;position:relative" data-community="'+e(c.id)+'"><span class="pill">'+e(c.prefecture||"—")+'</span><span class="pill" style="position:absolute;right:14px;top:14px">✅ 認証済み</span><h3 style="margin-top:9px;padding-right:88px">'+e(c.name)+'</h3><p class="muted small strong">Member: '+e(c.member_count==null?"未取得":Number(c.member_count).toLocaleString("ja-JP"))+' / Coverage: '+e(c.coverage)+'</p><div class="small strong" style="color:#65a30d;margin-top:10px">Community情報を見る →</div></button>'
+        return '<button type="button" class="claim clickable" style="text-align:left;width:100%;position:relative" data-community="'+e(c.id)+'"><span class="pill" style="position:absolute;right:14px;top:14px">✅ 認証済み</span><div class="row" style="align-items:center;padding-right:86px"><div style="width:64px;height:64px;flex:0 0 64px;border-radius:21px;overflow:hidden;border:1px solid #ecfccb;background:#f7fee7;display:grid;place-items:center;font-size:30px">'+(c.avatar_url?'<img src="'+e(c.avatar_url)+'" alt="" style="width:100%;height:100%;object-fit:cover">':'🍀')+'</div><div style="min-width:0"><span class="pill">'+e(c.prefecture||"—")+'</span><h3 style="margin-top:7px">'+e(c.name)+'</h3></div></div><p class="muted small strong">Member: '+e(c.member_count==null?"未取得":Number(c.member_count).toLocaleString("ja-JP"))+' / Coverage: '+e(c.coverage)+'</p><div class="small strong" style="color:#65a30d;margin-top:10px">Community情報を見る →</div></button>'
       }).join("")+'</div></section>';
     }
 
