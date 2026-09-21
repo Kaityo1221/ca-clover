@@ -7,6 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>CA Clover スタンプ交換</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./community-icon.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <style>
@@ -17,7 +18,7 @@ a{text-decoration:none;color:inherit}button{font:inherit;cursor:pointer}.wrap{ma
 .card{margin-top:18px;border:1px solid #ead6bf;border-radius:30px;background:rgba(255,255,255,.88);padding:20px;box-shadow:0 18px 44px rgba(98,70,40,.10)}
 .center{text-align:center}.hero{font-size:40px}.title{margin:6px 0 0;font-size:25px;font-weight:950}.desc{margin:8px 0 0;font-size:12px;line-height:1.65;font-weight:800;color:#88786a}
 .grid{display:grid;gap:12px;margin-top:22px}.btn{border:0;border-radius:18px;padding:15px;font-size:14px;font-weight:950}.primary{background:#5f8e50;color:white}.outline{border:2px solid #a9c89c;background:white;color:#537647}.mutedbtn{background:#eee9e4;color:#6d655f}.btn:disabled{opacity:.5}
-.notice{margin-top:14px;border-radius:16px;padding:12px;font-size:12px;font-weight:850}.warn{background:#fff6da;color:#80641d}.error{background:#fff0f2;color:#b4233b}
+.notice{margin-top:14px;border-radius:16px;padding:12px;font-size:12px;font-weight:850}.warn{background:#fff6da;color:#80641d}.error{background:#fff0f2;color:#b4233b}.net{margin-top:14px;border:1px solid #f5d28a;background:#fff8df;color:#805d14}.phase{margin-top:14px;background:#eff8ff;color:#17638f}
 .qrbox{margin:22px auto 0;width:272px;border-radius:24px;background:#fff;padding:16px;box-shadow:0 12px 30px rgba(73,58,43,.12)}#qr{display:grid;place-items:center}.timer{margin-top:14px;font-size:14px;font-weight:950;color:#4f7045}.small{font-size:11px;font-weight:800;color:#9b8d82}
 .person{margin-top:22px;border:1px solid #ead8c6;border-radius:26px;background:#fffaf4;padding:20px;text-align:center}.avatar{position:relative;margin:auto;width:112px;height:112px;border:4px solid white;border-radius:999px;background:#edf4e8;display:grid;place-items:center;font-size:38px;overflow:hidden;box-shadow:0 8px 22px rgba(80,60,40,.12)}.avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.name{margin-top:12px;font-size:20px;font-weight:950}.community{margin-top:4px;font-size:14px;font-weight:950;color:#5b7e4e}.pref{margin-top:3px;font-size:11px;font-weight:800;color:#94877c}
 .confirm{margin-top:15px;font-size:18px;font-weight:950}.twocol{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
@@ -30,9 +31,11 @@ video{width:100%;aspect-ratio:3/4;object-fit:cover;background:#111;border-radius
   <div class="head"><a href="./stamp-rally.html" class="back">← スタンプ一覧</a><span class="pill">1対1交換</span></div>
   <section class="card">
     <div class="center"><div class="hero">🍀</div><h1 class="title">CAスタンプ交換</h1><p class="desc">QRを見せる人と、読み取る人。ふたりがOKしたら交換成立です。</p></div>
+    <div id="netState"></div>
+    <div id="phaseState"></div>
     <div id="app"></div>
   </section>
-  <div class="foot">QRは60秒で失効します。読み取り後は、その2人だけの確認画面に切り替わります。</div>
+  <div class="foot">通信が切れても交換セッションと相手情報を保持します。保存結果が不明な場合は再接続後に確認します。</div>
 </main>
 <script>
 (function(){
@@ -42,9 +45,10 @@ const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
 const ROOT="https://kaityo1221.github.io/ca-clover/";
 const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
 const app=document.getElementById("app");
-let currentSession=null,currentToken=null,currentUser=null,pollTimer=null,countTimer=null,stream=null,scanFrame=null,busy=false,message="";
+let currentSession=null,currentToken=null,currentUser=null,pollTimer=null,countTimer=null,stream=null,scanFrame=null,busy=false,message="",online=navigator.onLine,phase="idle";
 function e(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c])}
-async function invoke(body){
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function invokeOnce(body){
  const r=await client.functions.invoke("stamp-exchange",{body});
  if(r.error){
   let detail=r.error.message;
@@ -58,6 +62,34 @@ async function invoke(body){
  }
  if(r.data&&r.data.error)throw new Error(r.data.error);
  return r.data;
+}
+async function invoke(body,options){
+ const retry=options&&options.retry===true,attempts=Math.max(1,(options&&options.attempts)||3);
+ let last=null;
+ for(let attempt=1;attempt<=attempts;attempt++){
+  if(!navigator.onLine)last=new Error("通信がオフラインです");
+  else{
+   try{return await invokeOnce(body)}catch(error){last=error}
+  }
+  if(!retry||attempt===attempts)break;
+  phase="retrying";renderNet();await sleep(500*Math.pow(2,attempt-1));
+ }
+ throw last instanceof Error?last:new Error(String(last||"通信エラー"));
+}
+function cacheKey(){return currentUser?"ca-clover-stamp-exchange:"+currentUser.id:null}
+function rememberSession(s){
+ currentSession=s;
+ const key=cacheKey();
+ if(key){
+  if(s)sessionStorage.setItem(key,JSON.stringify(s));
+  else sessionStorage.removeItem(key);
+ }
+}
+function renderNet(){
+ const net=document.getElementById("netState"),ph=document.getElementById("phaseState");
+ if(net)net.innerHTML=online?"":'<div class="notice net center">📡 オフラインです。交換画面は保持しています。再接続後に結果を確認できます。</div>';
+ const label=phase==="saving"?"交換を保存中...":phase==="checking"?"保存結果を確認中...":phase==="retrying"?"通信を再試行中...":phase==="connecting"?"接続中...":"";
+ if(ph)ph.innerHTML=label?'<div class="notice phase center">'+(phase==="retrying"?"🔄 ":"⏳ ")+label+'</div>':"";
 }
 function stopCamera(){
  if(scanFrame)cancelAnimationFrame(scanFrame);scanFrame=null;
@@ -77,43 +109,55 @@ function tokenFrom(raw){
  const m=String(raw).match(/^CACLOVER:S1:([A-Za-z0-9_-]{20,})$/);return m?m[1]:"";
 }
 function clearTimers(){if(pollTimer)clearInterval(pollTimer);pollTimer=null;if(countTimer)clearInterval(countTimer);countTimer=null}
-function setSession(s){currentSession=s;render();startPolling()}
+function setSession(s){rememberSession(s);render();startPolling()}
 async function createQr(){
- if(busy)return;busy=true;message="";render();stopCamera();
+ if(busy||!online)return;busy=true;phase="connecting";message="";renderNet();render();stopCamera();
  try{const d=await invoke({action:"create"});currentToken=d.token;setSession(d.session)}
  catch(err){message=err.message||String(err);render()}
- finally{busy=false;render()}
+ finally{busy=false;phase="idle";renderNet();render()}
 }
 async function claimToken(token){
- if(busy)return;busy=true;message="";stopCamera();render();
- try{const d=await invoke({action:"claim",token});currentToken=null;history.replaceState({},"",location.pathname);setSession(d.session)}
+ if(busy)return;busy=true;phase="connecting";message="";stopCamera();renderNet();render();
+ try{const d=await invoke({action:"claim",token},{retry:true});currentToken=null;history.replaceState({},"",location.pathname);setSession(d.session)}
  catch(err){message=err.message||String(err);render()}
- finally{busy=false;render()}
+ finally{busy=false;phase="idle";renderNet();render()}
 }
-async function refresh(){
- if(!currentSession)return;
- try{const d=await invoke({action:"status",sessionId:currentSession.id});currentSession=d.session;render()}
- catch(err){message=err.message||String(err);render()}
+async function refresh(showPhase){
+ if(!currentSession||!online)return;
+ if(showPhase){phase="checking";renderNet()}
+ try{const d=await invoke({action:"status",sessionId:currentSession.id},{retry:true});rememberSession(d.session);if(showPhase)message=null;render()}
+ catch(err){if(showPhase){message=err.message||String(err);render()}}
+ finally{if(showPhase){phase="idle";renderNet()}}
 }
 async function confirmExchange(){
- if(!currentSession||busy)return;busy=true;message="";render();
- try{const d=await invoke({action:"confirm",sessionId:currentSession.id});setSession(d.session)}
- catch(err){message=err.message||String(err);render()}
- finally{busy=false;render()}
+ if(!currentSession||busy||!online)return;busy=true;phase="saving";message="";renderNet();render();
+ try{const d=await invoke({action:"confirm",sessionId:currentSession.id},{retry:true});setSession(d.session)}
+ catch(err){
+  phase="checking";renderNet();
+  try{
+   const d=await invoke({action:"status",sessionId:currentSession.id},{retry:true});setSession(d.session);
+   if(d.session&&d.session.status!=="completed"&&!d.session.my_confirmed)message="保存結果を確認できませんでした。通信回復後に「状態を再確認」を押してください。";
+  }catch{
+   message="交換結果を確認できません。画面は保持しています。通信回復後に状態を再確認してください。";
+  }
+  render();
+ }
+ finally{busy=false;phase="idle";renderNet();render()}
 }
 async function cancelExchange(){
- if(!currentSession||busy)return;busy=true;render();
- try{const d=await invoke({action:"cancel",sessionId:currentSession.id});setSession(d.session)}
+ if(!currentSession||busy)return;busy=true;phase="connecting";renderNet();render();
+ try{const d=await invoke({action:"cancel",sessionId:currentSession.id},{retry:true});setSession(d.session)}
  catch(err){message=err.message||String(err);render()}
- finally{busy=false;render()}
+ finally{busy=false;phase="idle";renderNet();render()}
 }
 function startPolling(){
  clearTimers();
  if(!currentSession)return;
- if(["open","paired"].includes(currentSession.status))pollTimer=setInterval(refresh,1500);
+ if(online&&["open","paired"].includes(currentSession.status))pollTimer=setInterval(()=>refresh(false),2000);
  countTimer=setInterval(render,250);
 }
 async function startScanner(){
+ if(!online){message="QRの読み取りには通信接続が必要です。";render();return}
  message="";render();
  try{
   stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});
@@ -157,9 +201,9 @@ function render(){
  }else if(currentSession.status==="open"&&currentSession.my_role==="issuer"){
   html=qrHtml();
  }else if(currentSession.status==="paired"&&currentSession.partner){
-  const p=currentSession.partner,src=thumb(p);
-  html='<div class="person"><div class="avatar"><span>🍀</span>'+(src?'<img src="'+e(src)+'" alt="" onerror="this.style.display=\'none\'">':'')+'</div><div class="name">'+e(p.trainer_name)+'</div><div class="community">'+e(p.community.name)+'</div><div class="pref">'+e(p.community.prefecture||"")+'</div></div>';
-  if(!currentSession.my_confirmed)html+='<div class="confirm center">交換しますか？</div><div class="twocol"><button id="cancelExchange" class="btn mutedbtn">やめる</button><button id="confirmExchange" class="btn primary" '+(busy?"disabled":"")+'>OK</button></div>';
+  const p=currentSession.partner;
+  html='<div class="person"><div class="avatar"><span>🍀</span>'+window.CACommunityIcon.img(client,p.community,'alt=""')+'</div><div class="name">'+e(p.trainer_name)+'</div><div class="community">'+e(p.community.name)+'</div><div class="pref">'+e(p.community.prefecture||"")+'</div></div>';
+  if(!currentSession.my_confirmed)html+='<div class="confirm center">交換しますか？</div><div class="twocol"><button id="cancelExchange" class="btn mutedbtn" '+(busy||!online?"disabled":"")+'>やめる</button><button id="confirmExchange" class="btn primary" '+(busy||!online?"disabled":"")+'>'+(phase==="saving"?"保存中...":"OK")+'</button></div>';
   else html+='<div class="wait">あなたはOK済みです。相手の確認を待っています 🍀</div>';
  }else if(currentSession.status==="completed"){
   html='<div class="center" style="margin-top:24px"><div style="font-size:54px">🎉</div><h2 class="title">'+e(resultTitle())+'</h2><p class="desc">'+e(currentSession.partner?currentSession.partner.trainer_name:"相手")+'さんとの交換を保存しました。</p><a class="btn primary" style="display:block;margin-top:18px" href="./stamp-rally.html">スタンプ一覧へ戻る</a></div>';
@@ -168,14 +212,16 @@ function render(){
  }else if(currentSession.status==="expired"){
   html='<div class="notice warn center">QRコードの有効期限が切れました。</div>'+(currentSession.my_role==="issuer"?'<button id="reissue" class="btn primary" style="width:100%;margin-top:12px">再発行</button>':'<button id="reset" class="btn outline" style="width:100%;margin-top:12px">別のQRを読む</button>');
  }
- if(message)html+='<div class="notice error">'+e(message)+'</div>';
+ if(message)html+='<div class="notice error">'+e(message)+(currentSession&&online?'<button id="checkState" class="btn outline" style="width:100%;margin-top:8px">状態を再確認</button>':'')+'</div>';
  app.innerHTML=html;
  const show=document.getElementById("showQr");if(show)show.onclick=createQr;
  const scan=document.getElementById("scanQr");if(scan)scan.onclick=startScanner;
  const re=document.getElementById("reissue");if(re)re.onclick=createQr;
  const co=document.getElementById("confirmExchange");if(co)co.onclick=confirmExchange;
  const ca=document.getElementById("cancelExchange");if(ca)ca.onclick=cancelExchange;
- const reset=document.getElementById("reset");if(reset)reset.onclick=()=>{currentSession=null;currentToken=null;message="";render()};
+ const reset=document.getElementById("reset");if(reset)reset.onclick=()=>{rememberSession(null);currentToken=null;message="";render()};
+ const check=document.getElementById("checkState");if(check)check.onclick=()=>refresh(true);
+ window.CACommunityIcon.bind(app);
  if(currentToken&&currentSession&&currentSession.status==="open"&&document.getElementById("qr")){
   const q=document.getElementById("qr");q.innerHTML="";
   const url=ROOT+"stamp-exchange.html?t="+encodeURIComponent(currentToken);
@@ -194,9 +240,23 @@ async function boot(){
  const ok=p.data&&p.data.role==="admin"||(u.data||[]).some(x=>x.permission_code==="S");
  if(!ok){app.innerHTML='<div class="notice error center">S権限が必要です。</div>';return}
  if(!i.data){app.innerHTML='<div class="notice error center">交換用CA本人情報が設定されていません。</div>';return}
- render();
- const t=new URLSearchParams(location.search).get("t");if(t)claimToken(t.trim());
+
+ const cached=sessionStorage.getItem(cacheKey());
+ if(cached){try{rememberSession(JSON.parse(cached))}catch{sessionStorage.removeItem(cacheKey())}}
+ renderNet();render();
+
+ const t=new URLSearchParams(location.search).get("t");
+ if(t){claimToken(t.trim());return}
+
+ if(online){
+  phase="checking";renderNet();
+  try{const d=await invoke({action:"resume"},{retry:true});if(d.session)setSession(d.session)}
+  catch{}
+  finally{phase="idle";renderNet()}
+ }
 }
+window.addEventListener("online",()=>{online=true;message="";renderNet();if(currentSession)refresh(true);startPolling()});
+window.addEventListener("offline",()=>{online=false;renderNet();clearTimers()});
 window.addEventListener("beforeunload",stopCamera);
 boot();
 })();
