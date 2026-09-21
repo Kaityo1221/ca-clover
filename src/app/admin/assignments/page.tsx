@@ -125,7 +125,7 @@ export default function Page(){
                 :ownedByOther
                   ?"rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-black text-sky-800"
                   :"rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-500"
-            }>{on?"✅ このCAに割当済み":ownedByOther?"✅ 認証済み":"未割当"}</span>
+            }>{on?"✅ 認証済み":ownedByOther?"✅ 認証済み":"未割当"}</span>
           </div>
         </button>;
       })}
