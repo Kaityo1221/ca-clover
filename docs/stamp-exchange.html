@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#fff8ef">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>CA Clover スタンプ交換</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<style>
+:root{font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#403a35;background:#fff8ef}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:linear-gradient(180deg,#fffaf4,#fff4e8)}
+a{text-decoration:none;color:inherit}button{font:inherit;cursor:pointer}.wrap{max-width:430px;margin:auto;padding:20px 16px 52px}
+.head{display:flex;justify-content:space-between;align-items:center}.back{font-size:13px;font-weight:900;color:#567d48}.pill{border-radius:999px;background:#eef5e8;padding:6px 11px;font-size:10px;font-weight:950;color:#587848}
+.card{margin-top:18px;border:1px solid #ead6bf;border-radius:30px;background:rgba(255,255,255,.88);padding:20px;box-shadow:0 18px 44px rgba(98,70,40,.10)}
+.center{text-align:center}.hero{font-size:40px}.title{margin:6px 0 0;font-size:25px;font-weight:950}.desc{margin:8px 0 0;font-size:12px;line-height:1.65;font-weight:800;color:#88786a}
+.grid{display:grid;gap:12px;margin-top:22px}.btn{border:0;border-radius:18px;padding:15px;font-size:14px;font-weight:950}.primary{background:#5f8e50;color:white}.outline{border:2px solid #a9c89c;background:white;color:#537647}.mutedbtn{background:#eee9e4;color:#6d655f}.btn:disabled{opacity:.5}
+.notice{margin-top:14px;border-radius:16px;padding:12px;font-size:12px;font-weight:850}.warn{background:#fff6da;color:#80641d}.error{background:#fff0f2;color:#b4233b}
+.qrbox{margin:22px auto 0;width:272px;border-radius:24px;background:#fff;padding:16px;box-shadow:0 12px 30px rgba(73,58,43,.12)}#qr{display:grid;place-items:center}.timer{margin-top:14px;font-size:14px;font-weight:950;color:#4f7045}.small{font-size:11px;font-weight:800;color:#9b8d82}
+.person{margin-top:22px;border:1px solid #ead8c6;border-radius:26px;background:#fffaf4;padding:20px;text-align:center}.avatar{position:relative;margin:auto;width:112px;height:112px;border:4px solid white;border-radius:999px;background:#edf4e8;display:grid;place-items:center;font-size:38px;overflow:hidden;box-shadow:0 8px 22px rgba(80,60,40,.12)}.avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.name{margin-top:12px;font-size:20px;font-weight:950}.community{margin-top:4px;font-size:14px;font-weight:950;color:#5b7e4e}.pref{margin-top:3px;font-size:11px;font-weight:800;color:#94877c}
+.confirm{margin-top:15px;font-size:18px;font-weight:950}.twocol{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.wait{margin-top:15px;border-radius:18px;background:#edf5e8;padding:14px;text-align:center;font-size:13px;font-weight:950;color:#587848}
+video{width:100%;aspect-ratio:3/4;object-fit:cover;background:#111;border-radius:24px}.hidden{display:none}.foot{margin-top:14px;text-align:center;font-size:10px;line-height:1.5;font-weight:800;color:#9a8b7e}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="head"><a href="./stamp-rally.html" class="back">← スタンプ一覧</a><span class="pill">1対1交換</span></div>
+  <section class="card">
+    <div class="center"><div class="hero">🍀</div><h1 class="title">CAスタンプ交換</h1><p class="desc">QRを見せる人と、読み取る人。ふたりがOKしたら交換成立です。</p></div>
+    <div id="app"></div>
+  </section>
+  <div class="foot">QRは60秒で失効します。読み取り後は、その2人だけの確認画面に切り替わります。</div>
+</main>
+<script>
+(function(){
+"use strict";
+const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
+const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
+const ROOT="https://kaityo1221.github.io/ca-clover/";
+const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
+const app=document.getElementById("app");
+let currentSession=null,currentToken=null,currentUser=null,pollTimer=null,countTimer=null,stream=null,scanFrame=null,busy=false,message="";
+function e(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c])}
+async function invoke(body){
+ const r=await client.functions.invoke("stamp-exchange",{body});
+ if(r.error)throw new Error(r.error.message);
+ if(r.data&&r.data.error)throw new Error(r.data.error);
+ return r.data;
+}
+function stopCamera(){
+ if(scanFrame)cancelAnimationFrame(scanFrame);scanFrame=null;
+ if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;
+}
+function thumb(person){
+ if(!person)return"";
+ const c=person.community;
+ if(c.avatar_thumbnail_path){
+  const d=client.storage.from("community-icon-thumbs").getPublicUrl(c.avatar_thumbnail_path).data;
+  return d.publicUrl+(c.avatar_last_changed_at?"?v="+encodeURIComponent(c.avatar_last_changed_at):"");
+ }
+ return c.avatar_url||"";
+}
+function tokenFrom(raw){
+ try{return new URL(raw).searchParams.get("t")||""}catch{}
+ const m=String(raw).match(/^CACLOVER:S1:([A-Za-z0-9_-]{20,})$/);return m?m[1]:"";
+}
+function clearTimers(){if(pollTimer)clearInterval(pollTimer);pollTimer=null;if(countTimer)clearInterval(countTimer);countTimer=null}
+function setSession(s){currentSession=s;render();startPolling()}
+async function createQr(){
+ if(busy)return;busy=true;message="";render();stopCamera();
+ try{const d=await invoke({action:"create"});currentToken=d.token;setSession(d.session)}
+ catch(err){message=err.message||String(err);render()}
+ finally{busy=false;render()}
+}
+async function claimToken(token){
+ if(busy)return;busy=true;message="";stopCamera();render();
+ try{const d=await invoke({action:"claim",token});currentToken=null;history.replaceState({},"",location.pathname);setSession(d.session)}
+ catch(err){message=err.message||String(err);render()}
+ finally{busy=false;render()}
+}
+async function refresh(){
+ if(!currentSession)return;
+ try{const d=await invoke({action:"status",sessionId:currentSession.id});currentSession=d.session;render()}
+ catch(err){message=err.message||String(err);render()}
+}
+async function confirmExchange(){
+ if(!currentSession||busy)return;busy=true;message="";render();
+ try{const d=await invoke({action:"confirm",sessionId:currentSession.id});setSession(d.session)}
+ catch(err){message=err.message||String(err);render()}
+ finally{busy=false;render()}
+}
+async function cancelExchange(){
+ if(!currentSession||busy)return;busy=true;render();
+ try{const d=await invoke({action:"cancel",sessionId:currentSession.id});setSession(d.session)}
+ catch(err){message=err.message||String(err);render()}
+ finally{busy=false;render()}
+}
+function startPolling(){
+ clearTimers();
+ if(!currentSession)return;
+ if(["open","paired"].includes(currentSession.status))pollTimer=setInterval(refresh,1500);
+ countTimer=setInterval(render,250);
+}
+async function startScanner(){
+ message="";render();
+ try{
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});
+  renderScanner();
+ }catch(err){message=err.message||String(err);render()}
+}
+function renderScanner(){
+ clearTimers();
+ app.innerHTML='<div class="grid"><video id="cam" muted playsinline></video><canvas id="cv" class="hidden"></canvas><div class="small center">相手のQRコードを枠内に入れてください</div><button id="cancelScan" class="btn mutedbtn">キャンセル</button></div>';
+ const video=document.getElementById("cam"),canvas=document.getElementById("cv");
+ video.srcObject=stream;video.play();
+ document.getElementById("cancelScan").onclick=()=>{stopCamera();currentSession=null;render()};
+ const loop=()=>{
+  if(!stream||!window.jsQR)return;
+  if(video.readyState>=2&&video.videoWidth>0){
+   const w=Math.min(720,video.videoWidth),scale=w/video.videoWidth,h=Math.max(1,Math.round(video.videoHeight*scale));
+   canvas.width=w;canvas.height=h;
+   const ctx=canvas.getContext("2d",{willReadFrequently:true});ctx.drawImage(video,0,0,w,h);
+   const image=ctx.getImageData(0,0,w,h),found=window.jsQR(image.data,w,h,{inversionAttempts:"dontInvert"});
+   if(found&&found.data){const t=tokenFrom(found.data);if(t){stopCamera();claimToken(t);return}}
+  }
+  scanFrame=requestAnimationFrame(loop);
+ };scanFrame=requestAnimationFrame(loop);
+}
+function qrHtml(){
+ const left=Math.max(0,Math.ceil((new Date(currentSession.expires_at)-Date.now())/1000));
+ if(left<=0)return '<div class="notice warn center">QRコードの有効期限が切れました</div><button id="reissue" class="btn primary" style="width:100%;margin-top:12px">再発行</button>';
+ return '<div class="qrbox"><div id="qr"></div></div><div class="timer center">有効時間 '+left+'秒</div><div class="small center">相手が読み取るまでお待ちください</div>';
+}
+function resultTitle(){
+ const arr=currentSession&&currentSession.result&&currentSession.result.participants;
+ if(!Array.isArray(arr)||!currentUser)return"スタンプ交換完了！";
+ const mine=arr.find(x=>x&&x.user_id===currentUser.id);
+ return mine&&mine.status==="reunion"?"また会えた！":mine&&mine.status==="duplicate_same_day"?"本日の再会は記録済み":"スタンプ交換完了！";
+}
+function render(){
+ if(!currentUser){app.innerHTML='<div class="notice warn center">ログインを確認中...</div>';return}
+ let html="";
+ if(!currentSession){
+  html='<div class="grid"><button id="showQr" class="btn primary" '+(busy?"disabled":"")+'>QRを見せる</button><button id="scanQr" class="btn outline" '+(busy?"disabled":"")+'>QRを読み取る</button></div>';
+ }else if(currentSession.status==="open"&&currentSession.my_role==="issuer"){
+  html=qrHtml();
+ }else if(currentSession.status==="paired"&&currentSession.partner){
+  const p=currentSession.partner,src=thumb(p);
+  html='<div class="person"><div class="avatar"><span>🍀</span>'+(src?'<img src="'+e(src)+'" alt="" onerror="this.style.display=\'none\'">':'')+'</div><div class="name">'+e(p.trainer_name)+'</div><div class="community">'+e(p.community.name)+'</div><div class="pref">'+e(p.community.prefecture||"")+'</div></div>';
+  if(!currentSession.my_confirmed)html+='<div class="confirm center">交換しますか？</div><div class="twocol"><button id="cancelExchange" class="btn mutedbtn">やめる</button><button id="confirmExchange" class="btn primary" '+(busy?"disabled":"")+'>OK</button></div>';
+  else html+='<div class="wait">あなたはOK済みです。相手の確認を待っています 🍀</div>';
+ }else if(currentSession.status==="completed"){
+  html='<div class="center" style="margin-top:24px"><div style="font-size:54px">🎉</div><h2 class="title">'+e(resultTitle())+'</h2><p class="desc">'+e(currentSession.partner?currentSession.partner.trainer_name:"相手")+'さんとの交換を保存しました。</p><a class="btn primary" style="display:block;margin-top:18px" href="./stamp-rally.html">スタンプ一覧へ戻る</a></div>';
+ }else if(currentSession.status==="cancelled"){
+  html='<div class="notice warn center">この交換はキャンセルされました。</div><button id="reset" class="btn outline" style="width:100%;margin-top:12px">最初に戻る</button>';
+ }else if(currentSession.status==="expired"){
+  html='<div class="notice warn center">QRコードの有効期限が切れました。</div>'+(currentSession.my_role==="issuer"?'<button id="reissue" class="btn primary" style="width:100%;margin-top:12px">再発行</button>':'<button id="reset" class="btn outline" style="width:100%;margin-top:12px">別のQRを読む</button>');
+ }
+ if(message)html+='<div class="notice error">'+e(message)+'</div>';
+ app.innerHTML=html;
+ const show=document.getElementById("showQr");if(show)show.onclick=createQr;
+ const scan=document.getElementById("scanQr");if(scan)scan.onclick=startScanner;
+ const re=document.getElementById("reissue");if(re)re.onclick=createQr;
+ const co=document.getElementById("confirmExchange");if(co)co.onclick=confirmExchange;
+ const ca=document.getElementById("cancelExchange");if(ca)ca.onclick=cancelExchange;
+ const reset=document.getElementById("reset");if(reset)reset.onclick=()=>{currentSession=null;currentToken=null;message="";render()};
+ if(currentToken&&currentSession&&currentSession.status==="open"&&document.getElementById("qr")){
+  const q=document.getElementById("qr");q.innerHTML="";
+  const url=ROOT+"stamp-exchange.html?t="+encodeURIComponent(currentToken);
+  new QRCode(q,{text:url,width:240,height:240,correctLevel:QRCode.CorrectLevel.M});
+ }
+}
+async function boot(){
+ const s=await client.auth.getSession();const session=s.data.session;
+ if(!session){location.href=ROOT;return}
+ currentUser=session.user;
+ const [p,u,i]=await Promise.all([
+  client.from("profiles").select("role").eq("id",session.user.id).maybeSingle(),
+  client.from("user_permissions").select("permission_code").eq("user_id",session.user.id).eq("permission_code","S"),
+  client.from("user_ca_identities").select("ca_member_id").eq("user_id",session.user.id).eq("is_primary",true).maybeSingle()
+ ]);
+ const ok=p.data&&p.data.role==="admin"||(u.data||[]).some(x=>x.permission_code==="S");
+ if(!ok){app.innerHTML='<div class="notice error center">S権限が必要です。</div>';return}
+ if(!i.data){app.innerHTML='<div class="notice error center">交換用CA本人情報が設定されていません。</div>';return}
+ render();
+ const t=new URLSearchParams(location.search).get("t");if(t)claimToken(t.trim());
+}
+window.addEventListener("beforeunload",stopCamera);
+boot();
+})();
+</script>
+</body>
+</html>
