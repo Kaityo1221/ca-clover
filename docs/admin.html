@@ -135,7 +135,7 @@ async function accounts(){
 }
 
 async function assignments(){
- app.innerHTML=title("home","ASSIGNMENTS","🛠️ Community権限調整","通常は申請承認時に自動割当されます。ここは手動補正・追加担当・解除用です。")+'<section class="card section"><label class="tiny strong muted">対象アカウント</label><select id="userSel" class="input section"></select><div id="assnMeta" class="small muted strong section"></div></section><input id="assnSearch" class="input section" placeholder="Community名・都道府県で検索"><div id="assnList" class="grid g3 section"></div>';
+ app.innerHTML=title("home","ASSIGNMENTS","🛠️ Community権限調整","通常は申請承認時に自動割当されます。ここは手動補正・追加担当・解除用です。")+'<section class="card section"><label class="tiny strong muted">対象アカウント</label><select id="userSel" class="input section"></select><div id="assnMeta" class="small muted strong section"></div></section><div class="tiny strong muted section">変更先Communityを検索</div><input id="assnSearch" class="input section" placeholder="Community名・都道府県で検索"><div id="assnList" class="grid g3 section"></div>';
  const [p,c,m]=await Promise.all([
   client.from("profiles").select("id,email,niantic_id,role").neq("role","pending").order("email"),
   client.from("communities").select("id,name,prefecture").order("prefecture").order("name"),
@@ -146,7 +146,7 @@ async function assignments(){
  function draw(){
   const uid=sel.value,q=document.getElementById("assnSearch").value.trim().toLowerCase();
   const assigned=new Set(memberships.filter(x=>x.user_id===uid).map(x=>x.community_id));
-  document.getElementById("assnMeta").textContent="認証済み "+assigned.size+" Community";
+  const currentId=[...assigned][0]||null;const currentCommunity=currentId?communities.find(x=>x.id===currentId):null;document.getElementById("assnMeta").innerHTML='<div class="tiny strong muted">現在の認証済みCommunity</div><div class="strong" style="margin-top:5px">'+e(currentCommunity?currentCommunity.name:"未設定")+'</div>'+(assigned.size>1?'<div class="tiny strong" style="margin-top:7px;color:#92400e">⚠ 複数設定を検出しました。次回変更時に1つへ整理されます。</div>':'');
   const filtered=communities.filter(x=>!q||(x.name+" "+(x.prefecture||"")).toLowerCase().includes(q));
   document.getElementById("assnList").innerHTML=filtered.map(x=>{
     const owners=profiles.filter(p=>memberships.some(m=>m.community_id===x.id&&m.user_id===p.id));
@@ -159,13 +159,13 @@ async function assignments(){
         ?"text-align:left;border-color:#bae6fd;background:#f0f9ff"
         :"text-align:left";
     const badge=on
-      ?'<span class="pill">✅ 認証済み</span>'
+      ?'<span class="pill">✅ 現在のCommunity</span>'
       :ownedByOther
-        ?'<span class="pill blue">✅ 認証済み</span>'
-        :'<span class="pill slate">未割当</span>';
-    return '<button class="card" style="'+style+'" data-cid="'+x.id+'">'+badge+'<h3 class="section">'+e(x.name)+'</h3><div class="small muted strong">'+e(x.prefecture||"—")+'</div>'+(owners.length?'<div class="tiny muted strong section">CA Clover: '+e(ownerLabel)+'</div>':'')+'</button>';
+        ?'<span class="pill blue">✅ 他CAが認証済み</span>'
+        :'<span class="pill slate">変更先に選択</span>';
+    return '<button class="card" style="'+style+'" data-cid="'+x.id+'" '+(on?'disabled':'')+'>'+badge+'<h3 class="section">'+e(x.name)+'</h3><div class="small muted strong">'+e(x.prefecture||"—")+'</div>'+(owners.length?'<div class="tiny muted strong section">CA Clover: '+e(ownerLabel)+'</div>':'')+'</button>';
   }).join("");
-  document.querySelectorAll("[data-cid]").forEach(b=>b.onclick=async()=>{const cid=b.dataset.cid,on=assigned.has(cid);b.disabled=true;const r=await client.functions.invoke("admin-manage",{body:{action:"set_membership",userId:uid,communityId:cid,assigned:!on}});if(r.error){alert(r.error.message);return}if(on){const i=memberships.findIndex(x=>x.user_id===uid&&x.community_id===cid);if(i>=0)memberships.splice(i,1)}else memberships.push({user_id:uid,community_id:cid});draw()});
+  document.querySelectorAll("[data-cid]").forEach(b=>b.onclick=async()=>{const cid=b.dataset.cid;if(assigned.has(cid))return;b.disabled=true;const currentIds=[...assigned];for(const currentId of currentIds){const rr=await client.functions.invoke("admin-manage",{body:{action:"set_membership",userId:uid,communityId:currentId,assigned:false}});if(rr.error){alert(rr.error.message);b.disabled=false;return}}const r=await client.functions.invoke("admin-manage",{body:{action:"set_membership",userId:uid,communityId:cid,assigned:true}});if(r.error){alert(r.error.message);b.disabled=false;return}for(let i=memberships.length-1;i>=0;i--){if(memberships[i].user_id===uid)memberships.splice(i,1)}memberships.push({user_id:uid,community_id:cid});draw()});
  }
  sel.onchange=draw;document.getElementById("assnSearch").oninput=draw;draw();
 }
