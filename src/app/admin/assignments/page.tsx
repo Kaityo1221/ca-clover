@@ -63,15 +63,31 @@ export default function Page(){
   },[communities,search]);
 
   async function toggle(communityId:string){
-    if(!selected) return;
-    const next=!assigned.has(communityId);
+    if(!selected || assigned.has(communityId)) return;
     setBusy(communityId);
-    const {error}=await supabase.functions.invoke("admin-manage",{body:{action:"set_membership",userId:selected,communityId,assigned:next}});
-    if(!error){
-      setMemberships(current=>{
-        if(next) return [...current,{user_id:selected,community_id:communityId}];
-        return current.filter(m=>!(m.user_id===selected&&m.community_id===communityId));
+
+    const currentIds=[...assigned];
+    let failed=false;
+
+    for(const currentId of currentIds){
+      const {error}=await supabase.functions.invoke("admin-manage",{
+        body:{action:"set_membership",userId:selected,communityId:currentId,assigned:false},
       });
+      if(error){ failed=true; break; }
+    }
+
+    if(!failed){
+      const {error}=await supabase.functions.invoke("admin-manage",{
+        body:{action:"set_membership",userId:selected,communityId,assigned:true},
+      });
+      failed=Boolean(error);
+    }
+
+    if(!failed){
+      setMemberships(current=>[
+        ...current.filter(m=>m.user_id!==selected),
+        {user_id:selected,community_id:communityId},
+      ]);
     }
     setBusy(null);
   }
@@ -95,9 +111,19 @@ export default function Page(){
           return <option key={p.id} value={p.id}>{count>0?"✅ ":""}{p.email??p.niantic_id??p.id} ({p.role}){count>0?" / "+count+" Community":""}</option>;
         })}
       </select>
-      {selectedProfile ? <div className="mt-3 text-xs font-semibold text-slate-500">Niantic ID: {selectedProfile.niantic_id??"未登録"} / 割当 {assigned.size} Community</div> : null}
+      {selectedProfile ? <div className="mt-3 text-xs font-semibold text-slate-500">Niantic ID: {selectedProfile.niantic_id??"未登録"}</div> : null}
+      <div className="mt-4 rounded-2xl border border-lime-100 bg-lime-50 p-4">
+        <div className="text-[11px] font-black text-lime-700">現在の認証済みCommunity</div>
+        <div className="mt-1 font-black text-lime-950">
+          {[...assigned].length
+            ? communities.find(c=>c.id===[...assigned][0])?.name??"確認中"
+            : "未設定"}
+        </div>
+        {[...assigned].length>1?<div className="mt-2 text-[11px] font-black text-amber-700">⚠ 複数設定を検出しました。次回変更時に1つへ整理されます。</div>:null}
+      </div>
     </section>
 
+    <div className="mt-5 text-xs font-black text-slate-500">変更先Communityを検索</div>
     <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Community名・都道府県で検索" className="mt-5 w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-lime-400"/>
 
     <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -106,7 +132,7 @@ export default function Page(){
         const owners=ownersByCommunity.get(c.id)??[];
         const ownedByOther=!on&&owners.length>0;
         const ownerLabel=owners.map(owner=>owner.niantic_id??owner.email??"CA").join(" / ");
-        return <button key={c.id} disabled={!selected||busy===c.id} onClick={()=>toggle(c.id)} className={
+        return <button key={c.id} disabled={!selected||busy===c.id||on} onClick={()=>toggle(c.id)} className={
           on
             ?"clover-card min-h-32 border-lime-400 bg-lime-50 p-5 text-left"
             :ownedByOther
@@ -125,7 +151,7 @@ export default function Page(){
                 :ownedByOther
                   ?"rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-black text-sky-800"
                   :"rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-500"
-            }>{on?"✅ 認証済み":ownedByOther?"✅ 認証済み":"未割当"}</span>
+            }>{on?"✅ 現在のCommunity":ownedByOther?"✅ 他CAが認証済み":"変更先に選択"}</span>
           </div>
         </button>;
       })}
