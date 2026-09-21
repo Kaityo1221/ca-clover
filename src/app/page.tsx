@@ -138,9 +138,11 @@ export default function Page() {
 
       {!loading && user && profile?.role === "pending" ? <section className="clover-card mt-7 p-8 text-center">
         <div className="text-5xl">🌱</div>
-        <h2 className="mt-3 text-xl font-black text-lime-950">アカウント確認中</h2>
-        <p className="mt-2 text-sm font-semibold text-slate-500">Niantic IDを登録して、Community割当を待ってください。</p>
-        <Link href="/account" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black text-lime-950">アカウント設定へ</Link>
+        <h2 className="mt-3 text-xl font-black text-lime-950">CA登録を進める</h2>
+        <p className="mx-auto mt-2 max-w-xl text-sm font-semibold leading-6 text-slate-500">
+          まずNiantic IDを登録してください。そのあと、自分が主催したMeetupを1件提出すると、CA確認とCommunity割当の申請へ進めます。
+        </p>
+        <Link href="/account" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black text-lime-950">Niantic IDを登録する →</Link>
       </section> : null}
 
       {sections.length ? <div className="mt-7 space-y-7">
