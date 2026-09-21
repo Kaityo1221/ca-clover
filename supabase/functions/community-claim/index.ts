@@ -139,14 +139,22 @@ Deno.serve(async(req:Request)=>{
 
       const campfireCommunityIdSnapshot=String(request.campfire_community_id_snapshot??"").trim();
       if(campfireCommunityIdSnapshot){
-        const {data:idHistory,error:idHistoryError}=await admin.from("community_campfire_ids")
-          .select("id")
-          .eq("community_id",request.community_id)
-          .eq("campfire_community_id",campfireCommunityIdSnapshot)
-          .maybeSingle();
-        if(idHistoryError) throw idHistoryError;
-        if(!idHistory){
-          return json({error:"申請時のCampfire Community IDが現在このCommunityの履歴に属していないため承認できません",code:"COMMUNITY_ID_RELATION_CHANGED"},409);
+        const [historyResult,currentCommunityResult]=await Promise.all([
+          admin.from("community_campfire_ids")
+            .select("id")
+            .eq("community_id",request.community_id)
+            .eq("campfire_community_id",campfireCommunityIdSnapshot)
+            .maybeSingle(),
+          admin.from("communities")
+            .select("campfire_community_id")
+            .eq("id",request.community_id)
+            .single(),
+        ]);
+        if(historyResult.error) throw historyResult.error;
+        if(currentCommunityResult.error) throw currentCommunityResult.error;
+        const currentMatches=String(currentCommunityResult.data?.campfire_community_id??"")===campfireCommunityIdSnapshot;
+        if(!historyResult.data && !currentMatches){
+          return json({error:"申請時のCampfire Community IDが現在このCommunityに属していないため承認できません",code:"COMMUNITY_ID_RELATION_CHANGED"},409);
         }
       }
 
