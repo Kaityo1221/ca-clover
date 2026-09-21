@@ -56,6 +56,7 @@ export default function Page() {
   const [openPrefectures, setOpenPrefectures] = useState<Set<string>>(new Set());
   const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCommunity, setSelectedCommunity] = useState<StampCommunity | null>(null);
 
   useEffect(() => {
     if (loading || !user || profile?.role !== "admin") return;
@@ -268,9 +269,10 @@ export default function Page() {
                           const anyAcquired = acquiredCountForCommunity > 0;
                           const allAcquired = community.cas.length > 0 && acquiredCountForCommunity === community.cas.length;
 
-                          return <Link
+                          return <button
                             key={community.id}
-                            href={"/community/" + community.id}
+                            type="button"
+                            onClick={() => setSelectedCommunity(community)}
                             className="group min-w-0 text-center"
                           >
                             <div className={"relative mx-auto grid size-[78px] place-items-center rounded-full p-[5px] transition-transform group-hover:-translate-y-1 sm:size-[96px] " + (
@@ -318,7 +320,7 @@ export default function Page() {
                               </div>)}
                               {community.cas.length > 2 ? <div className="text-[9px] font-black text-[#aaa39d]">+{community.cas.length - 2}</div> : null}
                             </div> : <div className="mt-1.5 text-[9px] font-bold text-[#b2aaa3]">CA未設定</div>}
-                          </Link>;
+                          </button>;
                         })}
                       </div> : <div className="py-5 text-center text-xs font-bold text-[#a79b90]">Communityはありません</div>}
                     </div> : null}
@@ -329,6 +331,45 @@ export default function Page() {
           </div>;
         })}
       </section>
+
+      {selectedCommunity ? <div
+        className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-5 backdrop-blur-sm"
+        onClick={() => setSelectedCommunity(null)}
+      >
+        <section
+          className="w-full max-w-sm rounded-[30px] border border-[#ead5bf] bg-[#fffaf4] p-5 text-center shadow-2xl"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={() => setSelectedCommunity(null)}
+            className="ml-auto grid size-9 place-items-center rounded-full bg-white text-lg font-black text-[#75695f] shadow-sm"
+            aria-label="閉じる"
+          >×</button>
+          <div className="mx-auto mt-1 grid size-56 place-items-center rounded-full bg-gradient-to-br from-[#f8e3bf] via-white to-[#edc993] p-2 shadow-[0_18px_45px_rgba(112,73,35,.22)]">
+            <div className="relative h-full w-full overflow-hidden rounded-full bg-[#eef2e9]">
+              <div className="grid h-full place-items-center text-6xl text-[#9caf90]">🍀</div>
+              {thumbnailUrl(selectedCommunity) ? <img
+                src={thumbnailUrl(selectedCommunity) ?? ""}
+                alt=""
+                className="absolute inset-0 z-10 h-full w-full object-cover"
+                onError={(event) => {
+                  const image = event.currentTarget;
+                  const fallback = selectedCommunity.avatar_url;
+                  if (fallback && image.dataset.fallback !== "done" && image.src !== fallback) {
+                    image.dataset.fallback = "done";
+                    image.src = fallback;
+                    return;
+                  }
+                  image.style.display = "none";
+                }}
+              /> : null}
+            </div>
+          </div>
+          <h2 className="mt-5 text-xl font-black leading-snug text-[#443c35]">{selectedCommunity.name}</h2>
+          <p className="mt-1 text-xs font-bold text-[#8a7d72]">{selectedCommunity.prefecture ?? "—"}</p>
+        </section>
+      </div> : null}
 
       <div className="mt-6 rounded-[22px] border border-dashed border-[#d8c7b5] bg-white/60 p-4 text-center text-[11px] font-bold leading-5 text-[#8d7c6c]">
         🍀 このLABでは見た目と操作感だけを確認します。実際のスタンプ取得DB・交換機能・S権限は次の段階で接続します。
