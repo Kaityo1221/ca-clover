@@ -18,14 +18,19 @@ export default function Page(){
     if (!user) return;
     setSaving(true);
     setMessage(null);
-    const value = nianticId.trim();
+    const value = nianticId.trim().replace(/^@+/, "");
     const { error } = await supabase
       .from("profiles")
       .update({ niantic_id: value || null } as never)
       .eq("id", user.id);
 
     setSaving(false);
-    setMessage(error ? error.message : "保存しました 🍀");
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+    setNianticId(value);
+    setMessage("保存しました 🍀");
   }
 
   async function signOut(){
@@ -52,6 +57,16 @@ export default function Page(){
 
       <button onClick={save} disabled={saving} className="mt-4 w-full rounded-2xl bg-lime-400 px-5 py-3 text-sm font-black text-lime-950 disabled:opacity-50">{saving ? "保存中..." : "Niantic IDを保存"}</button>
       {message ? <p className="mt-3 text-center text-xs font-bold text-lime-700">{message}</p> : null}
+
+      {profile?.role==="pending" && nianticId.trim() ? (
+        <Link href="/my" className="mt-4 flex w-full items-center justify-center rounded-2xl bg-lime-950 px-5 py-3 text-sm font-black text-white">
+          CA登録を続ける →
+        </Link>
+      ) : null}
+
+      <p className="mt-3 text-center text-[11px] font-semibold text-slate-400">
+        先頭の「@」は保存時に自動で外します。
+      </p>
 
       <button onClick={signOut} className="mt-6 w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-600">ログアウト</button>
     </section>
