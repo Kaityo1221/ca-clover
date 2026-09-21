@@ -26,8 +26,22 @@ type CaRow = {
   ca_level: "1st" | "2nd" | null;
 };
 
+type StampCollectionRow = {
+  id: string;
+  stamp_ca_member_id: string;
+  community_id: string;
+  role_at_acquisition: "1st" | "2nd" | null;
+  first_acquired_at: string;
+  first_location: string | null;
+  first_event_name: string | null;
+  acquisition_source: "normal" | "event" | "bulk" | "admin" | "import";
+};
+
 type StampCommunity = CommunityRow & {
-  cas: Array<CaRow & { acquired: boolean }>;
+  cas: Array<CaRow & {
+    acquired: boolean;
+    collection: StampCollectionRow | null;
+  }>;
 };
 
 type StampCatalogRow = {
@@ -52,20 +66,13 @@ const REGION_GROUPS = [
   { name: "九州・沖縄", prefectures: ["福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県"] },
 ] as const;
 
-function demoAcquired(id: string) {
-  let score = 0;
-  for (let index = 0; index < id.length; index += 1) {
-    score = (score * 33 + id.charCodeAt(index)) % 9973;
-  }
-  return score % 10 < 4;
-}
-
 export default function Page() {
   const { supabase, user, profile, permissions, loading } = useAuthProfile();
   const canAccessStamp = profile?.role === "admin" || permissions.includes("S");
   const [communities, setCommunities] = useState<CommunityRow[]>([]);
   const [links, setLinks] = useState<CommunityCaLink[]>([]);
   const [cas, setCas] = useState<CaRow[]>([]);
+  const [collections, setCollections] = useState<StampCollectionRow[]>([]);
   const [openRegions, setOpenRegions] = useState<Set<string>>(new Set());
   const [openPrefectures, setOpenPrefectures] = useState<Set<string>>(new Set());
   const [dataLoading, setDataLoading] = useState(false);
@@ -77,16 +84,25 @@ export default function Page() {
     let alive = true;
     setDataLoading(true);
 
-    supabase.rpc("stamp_rally_catalog").then(({data,error}) => {
+    setError(null);
+
+    Promise.all([
+      supabase.rpc("stamp_rally_catalog"),
+      supabase
+        .from("stamp_collections")
+        .select("id,stamp_ca_member_id,community_id,role_at_acquisition,first_acquired_at,first_location,first_event_name,acquisition_source")
+        .eq("owner_user_id", user.id),
+    ]).then(([catalogResult, collectionResult]) => {
       if (!alive) return;
 
-      if (error) {
-        setError(error.message);
+      const firstError=catalogResult.error??collectionResult.error;
+      if (firstError) {
+        setError(firstError.message);
         setDataLoading(false);
         return;
       }
 
-      const rows=(data as StampCatalogRow[]|null)??[];
+      const rows=(catalogResult.data as StampCatalogRow[]|null)??[];
       const communityMap=new Map<string,CommunityRow>();
       const caMap=new Map<string,CaRow>();
       const linkRows:CommunityCaLink[]=[];
@@ -116,6 +132,7 @@ export default function Page() {
       setCommunities([...communityMap.values()]);
       setCas([...caMap.values()]);
       setLinks(linkRows);
+      setCollections((collectionResult.data as StampCollectionRow[]|null)??[]);
       setDataLoading(false);
     });
 
@@ -126,6 +143,12 @@ export default function Page() {
 
   const stampCommunities = useMemo<StampCommunity[]>(() => {
     const caById = new Map(cas.map((ca) => [ca.id, ca]));
+    const collectionByCaAndCommunity = new Map(
+      collections.map((collection) => [
+        collection.stamp_ca_member_id + ":" + collection.community_id,
+        collection,
+      ])
+    );
     const caIdsByCommunity = new Map<string, string[]>();
 
     for (const link of links) {
@@ -154,9 +177,16 @@ export default function Page() {
             if (b.ca_level === "1st") return 1;
             return a.trainer_name.localeCompare(b.trainer_name, "ja");
           })
-          .map((ca) => ({ ...ca, acquired: demoAcquired(ca.id) })),
+          .map((ca) => {
+            const collection=collectionByCaAndCommunity.get(ca.id+":"+community.id)??null;
+            return {
+              ...ca,
+              acquired:Boolean(collection),
+              collection,
+            };
+          }),
       }));
-  }, [cas, communities, links]);
+  }, [cas, collections, communities, links]);
 
   const totalProgress = useMemo(() => {
     const all = stampCommunities.flatMap((community) => community.cas);
@@ -236,7 +266,7 @@ export default function Page() {
             <div className="text-[10px] font-black text-[#7d736b]">出会ったCA</div>
             <div className="mt-0.5 text-2xl font-black text-[#3d3a36]">{totalProgress.acquired} <span className="text-sm text-[#8f857d]">/ {totalProgress.total}</span></div>
           </div>
-          <div className="max-w-[180px] text-right text-[10px] font-bold leading-4 text-[#8a6d51]">※ LAB版の取得状況はUI確認用のサンプル表示です</div>
+          <div className="max-w-[180px] text-right text-[10px] font-bold leading-4 text-[#8a6d51]">実際に交換して取得したスタンプだけを表示しています</div>
         </div>
       </section>
 
@@ -377,11 +407,33 @@ export default function Page() {
           </div>
           <h2 className="mt-5 text-xl font-black leading-snug text-[#443c35]">{selectedCommunity.name}</h2>
           <p className="mt-1 text-xs font-bold text-[#8a7d72]">{selectedCommunity.prefecture ?? "—"}</p>
+
+          {selectedCommunity.cas.length ? <div className="mt-4 space-y-2 text-left">
+            {selectedCommunity.cas.map((ca) => <div
+              key={ca.id}
+              className={ca.acquired
+                ?"rounded-2xl border border-[#d7e7ce] bg-[#eef6e9] px-3 py-2.5"
+                :"rounded-2xl border border-dashed border-[#ded8d2] bg-white/70 px-3 py-2.5"}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="truncate text-xs font-black text-[#514941]">
+                  {ca.acquired ? "● " : "○ "}{ca.trainer_name}
+                </div>
+                <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[9px] font-black text-[#6d855f]">
+                  {ca.ca_level ?? "CA"}
+                </span>
+              </div>
+              {ca.collection ? <div className="mt-1 text-[9px] font-bold text-[#7c7066]">
+                取得 {new Date(ca.collection.first_acquired_at).toLocaleDateString("ja-JP")}
+                {ca.collection.first_event_name ? " ・ "+ca.collection.first_event_name : ""}
+              </div> : <div className="mt-1 text-[9px] font-bold text-[#aaa29a]">未取得</div>}
+            </div>)}
+          </div> : null}
         </section>
       </div> : null}
 
       <div className="mt-6 rounded-[22px] border border-dashed border-[#d8c7b5] bg-white/60 p-4 text-center text-[11px] font-bold leading-5 text-[#8d7c6c]">
-        🍀 通常1対1交換を追加しました。スタンプシートの実取得データ接続は次の段階で進めます。
+        🍀 スタンプシートは実取得データに接続済みです。交換が成立すると、この一覧へ反映されます。
       </div>
     </div>
   </main>;
