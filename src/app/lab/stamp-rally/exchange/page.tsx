@@ -93,7 +93,17 @@ export default function StampExchangePage(){
 
   async function callExchange(body:Record<string,unknown>){
     const {data,error}=await supabase.functions.invoke("stamp-exchange",{body});
-    if(error) throw new Error(error.message);
+    if(error){
+      let detail=error.message;
+      const context=(error as {context?:Response}).context;
+      if(context){
+        try{
+          const payload=await context.clone().json() as {error?:unknown};
+          if(payload?.error) detail=String(payload.error);
+        }catch{}
+      }
+      throw new Error(detail);
+    }
     if(data?.error) throw new Error(String(data.error));
     return data;
   }
