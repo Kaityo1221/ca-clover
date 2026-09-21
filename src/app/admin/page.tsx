@@ -30,6 +30,7 @@ export default function Page(){
     ["🔐","Campfire接続","ADMIN tokenと接続状態を管理","/admin/campfire"],
     ["🔄","データ同期","Campfire Activityを全国更新","/admin/sync"],
     ["🔗","Community割当","CAアカウントへCommunityを割当","/admin/assignments"],
+    ["👀","一般CAプレビュー","一般CAから見える画面を確認","/admin/preview/general-ca"],
     ["👥","CAアカウント","pending / CA / ADMINを承認・変更","/admin/accounts"],
     ["🧾","同期履歴","取得件数・失敗・部分取得を確認","/admin/sync-runs"],
     ["🧾","Data Coverage","全国の取得状態を確認","/data"],
