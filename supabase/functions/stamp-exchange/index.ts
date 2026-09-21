@@ -93,6 +93,30 @@ async function ensureActorDesign(admin:any,actor:any){
   );
 }
 
+async function getActiveEvent(admin:any,userId:string){
+  const now=new Date().toISOString();
+  const {data:participants,error:participantError}=await admin
+    .from("stamp_event_participants")
+    .select("event_id")
+    .eq("user_id",userId)
+    .is("left_at",null);
+  if(participantError) throw participantError;
+  const ids=(participants??[]).map((row:any)=>row.event_id);
+  if(!ids.length) return null;
+
+  const {data:events,error:eventError}=await admin
+    .from("stamp_events")
+    .select("id,name,location,timezone,starts_at,ends_at,status")
+    .in("id",ids)
+    .eq("status","scheduled")
+    .lte("starts_at",now)
+    .gt("ends_at",now)
+    .order("starts_at",{ascending:false})
+    .limit(1);
+  if(eventError) throw eventError;
+  return events?.[0]??null;
+}
+
 async function getSessionDto(admin:any,sessionId:string,actorUserId:string){
   const {data:session,error}=await admin
     .from("stamp_exchange_sessions")
@@ -136,6 +160,12 @@ async function getSessionDto(admin:any,sessionId:string,actorUserId:string){
     partner_confirmed:myRole==="issuer"?session.scanner_confirmed:session.issuer_confirmed,
     me:myRole==="issuer"?issuer:scanner,
     partner,
+    event:session.event_id?{
+      id:session.event_id,
+      name:session.event_name,
+      location:session.event_location,
+      timezone:session.event_timezone,
+    }:null,
     result:session.result??null,
   };
 }
@@ -182,6 +212,7 @@ Deno.serve(async(req:Request)=>{
     if(action==="create"){
       const actor=await getActor(admin,actorUserId);
       await ensureActorDesign(admin,actor);
+      const activeEvent=await getActiveEvent(admin,actorUserId);
 
       await admin.from("stamp_exchange_sessions")
         .update({status:"expired"})
@@ -197,6 +228,10 @@ Deno.serve(async(req:Request)=>{
         issuer_snapshot:actor,
         expires_at:expiresAt,
         last_client_seen_at:new Date().toISOString(),
+        event_id:activeEvent?.id??null,
+        event_name:activeEvent?.name??null,
+        event_location:activeEvent?.location??null,
+        event_timezone:activeEvent?.timezone??null,
       }).select("id,expires_at").single();
       if(error) throw error;
 
@@ -213,6 +248,24 @@ Deno.serve(async(req:Request)=>{
       const token=String(body.token??"").trim();
       if(!token) return json({error:"QRコードを読み取れませんでした"},400);
       const tokenHash=await sha256(token);
+
+      const {data:targetSession,error:targetSessionError}=await admin
+        .from("stamp_exchange_sessions")
+        .select("id,event_id,event_name,event_location,event_timezone,status,expires_at")
+        .eq("token_hash",tokenHash)
+        .maybeSingle();
+      if(targetSessionError) throw targetSessionError;
+      if(!targetSession) return json({error:"QRコードが無効です"},400);
+
+      if(targetSession.event_id){
+        const scannerEvent=await getActiveEvent(admin,actorUserId);
+        if(!scannerEvent||scannerEvent.id!==targetSession.event_id){
+          return json({
+            error:"このQRは「"+(targetSession.event_name??"イベント")+"」のイベントモードです。先に同じイベントへ参加してください。"
+          },409);
+        }
+      }
+
       const {data:sessionId,error}=await admin.rpc("stamp_exchange_claim_internal",{
         p_token_hash:tokenHash,
         p_scanner_user_id:actorUserId,
