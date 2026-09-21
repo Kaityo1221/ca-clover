@@ -211,7 +211,7 @@ export default function Page(){
       {community.campfire_url?<a href={community.campfire_url} target="_blank" rel="noreferrer" className="mt-4 inline-flex rounded-full border border-lime-200 bg-white px-4 py-2 text-xs font-black text-lime-700">Campfireを開く ↗</a>:null}
     </section>
 
-    <div className="mt-5 flex flex-wrap gap-2">
+    <div className="clover-periods mt-5">
       {periods.map(item=><button key={item.label} onClick={()=>setPeriod(item.days)} className={period===item.days?"clover-pill active":"clover-pill"}>{item.label}</button>)}
     </div>
 
