@@ -26,7 +26,7 @@ const PUBLIC_ACTIVITY_EVENT_FIELDS=`
   details
   createdAt
   clubId
-  club { id name }
+  club { id name avatarUrl }
   address
   location
   eventTime
@@ -138,6 +138,7 @@ export const PUBLIC_EVENTS_QUERY=`query CA_Clover_PublicEvents($ids: [ID!]!) {
       name
       clubId
       clubName
+      clubAvatarUrl
       address
       eventTime
       eventEndTime
