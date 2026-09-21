@@ -199,10 +199,10 @@
     const meetupCount=Number(summary.meetup_count||0);
     let html='<button id="backMy" class="linkbtn">← My Community</button>'+
       '<section class="card hero section"><span class="pill">'+e(community.prefecture||"—")+'</span><h1 style="margin-top:10px">'+e(community.name)+'</h1>'+
-      '<div class="tags"><span class="pill slate">Member: '+e(community.member_count==null?"未取得":Number(community.member_count).toLocaleString("ja-JP"))+'</span>'+
-      '<span class="pill slate">Coverage: '+e(community.coverage||"—")+'</span>'+
-      cas.map(function(ca){return '<span class="pill">'+e(ca.ca_level||"CA")+': '+e(ca.trainer_name)+'</span>'}).join("")+
-      '</div>'+(community.campfire_url?'<p><a href="'+e(community.campfire_url)+'" target="_blank" rel="noreferrer" style="color:#65a30d;font-weight:900">Campfireを開く ↗</a></p>':'')+'</section>'+
+      '<div class="tags">'+
+      cas.map(function(ca){const mine=(profile&&profile.niantic_id?String(profile.niantic_id):"").replace(/^@+/,"").toLowerCase()===String(ca.trainer_name||"").replace(/^@+/,"").toLowerCase();const cls=ca.ca_level==="1st"?"amber":ca.ca_level==="2nd"?"blue":"";return '<span class="pill '+cls+'">'+e(ca.ca_level||"CA")+': '+e(ca.trainer_name)+(mine?'（あなた）':'')+'</span>'}).join("")+
+      '</div><div class="tags"><span class="pill slate">Member: '+e(community.member_count==null?"未取得":Number(community.member_count).toLocaleString("ja-JP"))+'</span>'+
+      '<span class="pill slate">Coverage: '+e(community.coverage||"—")+'</span></div>'+(community.campfire_url?'<p><a href="'+e(community.campfire_url)+'" target="_blank" rel="noreferrer" style="color:#65a30d;font-weight:900">Campfireを開く ↗</a></p>':'')+'</section>'+
       '<div class="periodbar">'+COMMUNITY_PERIODS.map(function(item){return '<button type="button" class="periodbtn '+(item[1]===period?'active':'')+'" data-community-period="'+(item[1]===null?'all':item[1])+'">'+item[0]+'</button>'}).join("")+'</div>'+
       '<section class="grid g3 section"><div class="metric"><span class="tiny strong muted">🔥 Meetup / '+e(periodLabel)+'</span><b>'+meetupCount.toLocaleString("ja-JP")+'</b></div>'+
       '<div class="metric"><span class="tiny strong muted">🍀 CA Meetup / '+e(periodLabel)+'</span><b>'+caMeetups.toLocaleString("ja-JP")+'</b></div>'+
