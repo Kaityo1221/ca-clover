@@ -278,10 +278,27 @@ export default function Page() {
                                 ? "bg-gradient-to-br from-[#f9e8c7] via-white to-[#efd0a4] shadow-[0_8px_18px_rgba(115,78,38,.18)]"
                                 : "border-2 border-dashed border-[#cfc9c3] bg-[#f2f0ed]"
                             )}>
-                              <div className={"h-full w-full overflow-hidden rounded-full bg-[#eef2e9] " + (!anyAcquired ? "grayscale opacity-35" : "")}>
-                                {iconSrc
-                                  ? <img src={iconSrc} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
-                                  : <div className="grid h-full place-items-center text-3xl text-[#9caf90]">🍀</div>}
+                              <div className={"relative h-full w-full overflow-hidden rounded-full bg-[#eef2e9] " + (!anyAcquired ? "grayscale opacity-35" : "")}>
+                                {iconSrc ? <>
+                                  <div className="grid h-full place-items-center text-3xl text-[#9caf90]">🍀</div>
+                                  <img
+                                    src={iconSrc}
+                                    alt=""
+                                    loading="lazy"
+                                    decoding="async"
+                                    className="absolute inset-0 z-10 h-full w-full object-cover"
+                                    onError={(event) => {
+                                      const image = event.currentTarget;
+                                      const fallback = community.avatar_url;
+                                      if (fallback && image.dataset.fallback !== "done" && image.src !== fallback) {
+                                        image.dataset.fallback = "done";
+                                        image.src = fallback;
+                                        return;
+                                      }
+                                      image.style.display = "none";
+                                    }}
+                                  />
+                                </> : <div className="grid h-full place-items-center text-3xl text-[#9caf90]">🍀</div>}
                               </div>
                               {allAcquired ? <span className="absolute -right-1 -top-1 grid size-6 place-items-center rounded-full border-2 border-white bg-[#6e9959] text-[10px] text-white">✓</span> : null}
                             </div>
