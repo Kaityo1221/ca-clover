@@ -53,7 +53,7 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
   <a class="logo" href="./">🍀</a>
   <strong style="font-size:14px;color:#405b36">CA Stamp Rally LAB</strong>
   <div class="grow"></div>
-  <a class="btn" href="./admin.html">管理メニュー</a>
+  <a id="stampBackLink" class="btn" href="./">CA Clover Home</a>
 </div></header>
 <main class="wrap">
   <section class="hero">
@@ -67,7 +67,7 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
   </section>
   <div id="status" class="loading">スタンプシートを準備中... 🍀</div>
   <section id="regions" class="regions" hidden></section>
-  <div class="footer">🍀 このLABでは見た目と操作感を確認します。実際の交換・取得DB・S権限は次の段階で接続します。</div>
+  <div class="footer">🍀 S権限に対応しました。交換機能と取得DBへの画面接続は次の段階で進めます。</div>
 </main>
 <div id="stampModalBack" class="stampmodalback" aria-hidden="true">
   <section class="stampmodal" role="dialog" aria-modal="true" aria-labelledby="stampZoomTitle">
@@ -85,6 +85,7 @@ const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
 const ROOT="https://kaityo1221.github.io/ca-clover/";
 const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
 const status=document.getElementById("status");
+const stampBackLink=document.getElementById("stampBackLink");
 const regionsEl=document.getElementById("regions");
 const totalScore=document.getElementById("totalScore");
 const stampModalBack=document.getElementById("stampModalBack");
@@ -114,9 +115,25 @@ function thumb(c){
 }
 async function authGuard(){
  const s=await client.auth.getSession();const session=s.data.session;
- if(!session){location.href=ROOT+"admin.html";return false}
- const p=await client.from("profiles").select("role").eq("id",session.user.id).maybeSingle();
- if(p.data?.role!=="admin"){status.className="error";status.textContent="現在はADMINテスト中です。";return false}
+ if(!session){location.href=ROOT;return false}
+ const [p,u]=await Promise.all([
+  client.from("profiles").select("role").eq("id",session.user.id).maybeSingle(),
+  client.from("user_permissions").select("permission_code").eq("user_id",session.user.id).eq("permission_code","S")
+ ]);
+ const isAdmin=p.data?.role==="admin";
+ const hasStamp=(u.data||[]).some(x=>x.permission_code==="S");
+ if(isAdmin){
+  stampBackLink.href="./admin.html";
+  stampBackLink.textContent="管理メニュー";
+ }else{
+  stampBackLink.href="./";
+  stampBackLink.textContent="CA Clover Home";
+ }
+ if(!isAdmin&&!hasStamp){
+  status.className="error";
+  status.textContent="このページにはS権限が必要です。";
+  return false;
+ }
  return true;
 }
 async function load(){
