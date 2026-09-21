@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { CampfireClient, type CampfireEvent } from "../_shared/campfire/mod.ts";
+import { resolveCampfireShareUrl } from "../_shared/campfire-share-url.js";
 
 const corsHeaders={
   "Access-Control-Allow-Origin":"*",
@@ -11,39 +12,6 @@ function json(data:unknown,status=200){
     status,
     headers:{...corsHeaders,"Content-Type":"application/json"},
   });
-}
-
-const UUID_RE=/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i;
-
-function extractMeetupId(value:unknown){
-  const raw=String(value??"").trim();
-  return raw.match(UUID_RE)?.[0]??null;
-}
-
-async function resolveMeetupId(value:unknown){
-  const raw=String(value??"").trim();
-  const direct=extractMeetupId(raw);
-  if(direct) return direct;
-
-  let parsed:URL;
-  try{
-    parsed=new URL(raw);
-  }catch{
-    return null;
-  }
-
-  if(parsed.protocol!=="https:" || parsed.hostname.toLowerCase()!=="cmpf.re") return null;
-
-  const response=await fetch(parsed.toString(),{
-    method:"GET",
-    redirect:"follow",
-    headers:{"User-Agent":"CA-Clover/1.0"},
-  });
-
-  const finalUrl=new URL(response.url);
-  if(finalUrl.protocol!=="https:" || finalUrl.hostname.toLowerCase()!=="campfire.scopely.com") return null;
-
-  return extractMeetupId(finalUrl.toString());
 }
 
 function normalizeCommunityName(value:unknown){
@@ -111,15 +79,22 @@ Deno.serve(async(req:Request)=>{
         if(updateError) throw updateError;
         return json({ok:true,status:"rejected"});
       }
+      const requestSource=String(request.request_source??"meetup_share");
+      const requiresMeetupBadge=requestSource==="meetup_share";
       if(
-        request.creator_ca_badge_verified!==true ||
+        (requiresMeetupBadge && request.creator_ca_badge_verified!==true) ||
         request.creator_username_matches_profile!==true ||
         request.ca_role_verified!==true ||
         request.ca_map_status!=="matched" ||
         request.master_match!==true ||
         !["1st","2nd"].includes(String(request.ca_level_snapshot??""))
       ){
-        return json({error:"本人・CAバッジ・Community・1st/2ndの確認が完了していないため承認できません",code:"VERIFICATION_INCOMPLETE"},409);
+        return json({
+          error:requiresMeetupBadge
+            ?"本人・CAバッジ・Community・1st/2ndの確認が完了していないため承認できません"
+            :"本人・Community・1st/2ndの確認が完了していないため承認できません",
+          code:"VERIFICATION_INCOMPLETE",
+        },409);
       }
 
       const {data:requesterProfile,error:requesterProfileError}=await admin.from("profiles")
@@ -128,9 +103,20 @@ Deno.serve(async(req:Request)=>{
         .single();
       if(requesterProfileError||!requesterProfile) throw requesterProfileError??new Error("requester profile not found");
 
-      const currentIdentity=String(requesterProfile.niantic_id??"").trim().toLowerCase();
-      if(!currentIdentity || currentIdentity!==String(request.niantic_id_snapshot??"").trim().toLowerCase() || currentIdentity!==String(request.creator_username??"").trim().toLowerCase()){
-        return json({error:"申請後にNiantic IDが変更されたか、Meetup主催者と一致しないため承認できません",code:"IDENTITY_CHANGED"},409);
+      const currentIdentity=String(requesterProfile.niantic_id??"").trim().replace(/^@+/,"").toLowerCase();
+      const snapshotIdentity=String(request.niantic_id_snapshot??"").trim().replace(/^@+/,"").toLowerCase();
+      const creatorIdentity=String(request.creator_username??"").trim().replace(/^@+/,"").toLowerCase();
+      if(
+        !currentIdentity ||
+        currentIdentity!==snapshotIdentity ||
+        (requestSource==="meetup_share" && currentIdentity!==creatorIdentity)
+      ){
+        return json({
+          error:requestSource==="meetup_share"
+            ?"申請後にNiantic IDが変更されたか、Meetup主催者と一致しないため承認できません"
+            :"申請後にNiantic IDが変更されたため承認できません",
+          code:"IDENTITY_CHANGED",
+        },409);
       }
 
       const {data:currentCa,error:currentCaError}=await admin.from("ca_members")
@@ -153,14 +139,22 @@ Deno.serve(async(req:Request)=>{
 
       const campfireCommunityIdSnapshot=String(request.campfire_community_id_snapshot??"").trim();
       if(campfireCommunityIdSnapshot){
-        const {data:idHistory,error:idHistoryError}=await admin.from("community_campfire_ids")
-          .select("id")
-          .eq("community_id",request.community_id)
-          .eq("campfire_community_id",campfireCommunityIdSnapshot)
-          .maybeSingle();
-        if(idHistoryError) throw idHistoryError;
-        if(!idHistory){
-          return json({error:"申請時のCampfire Community IDが現在このCommunityの履歴に属していないため承認できません",code:"COMMUNITY_ID_RELATION_CHANGED"},409);
+        const [historyResult,currentCommunityResult]=await Promise.all([
+          admin.from("community_campfire_ids")
+            .select("id")
+            .eq("community_id",request.community_id)
+            .eq("campfire_community_id",campfireCommunityIdSnapshot)
+            .maybeSingle(),
+          admin.from("communities")
+            .select("campfire_community_id")
+            .eq("id",request.community_id)
+            .single(),
+        ]);
+        if(historyResult.error) throw historyResult.error;
+        if(currentCommunityResult.error) throw currentCommunityResult.error;
+        const currentMatches=String(currentCommunityResult.data?.campfire_community_id??"")===campfireCommunityIdSnapshot;
+        if(!historyResult.data && !currentMatches){
+          return json({error:"申請時のCampfire Community IDが現在このCommunityに属していないため承認できません",code:"COMMUNITY_ID_RELATION_CHANGED"},409);
         }
       }
 
@@ -178,25 +172,27 @@ Deno.serve(async(req:Request)=>{
       },{onConflict:"user_id,community_id"});
       if(membershipError) throw membershipError;
 
-      const {error:meetupError}=await admin.from("meetups").upsert({
-        campfire_meetup_id:request.campfire_meetup_id,
-        community_id:request.community_id,
-        title:request.meetup_title,
-        starts_at:request.meetup_starts_at,
-        ends_at:request.meetup_ends_at,
-        location:request.meetup_location,
-        event_url:request.meetup_url,
-        details:null,
-        is_ca_meetup:request.is_ca_meetup,
-        rsvp_count:request.rsvp_count,
-        checkin_count:request.checkin_count,
-        accepted_count:null,
-        declined_count:null,
-        campfire_live_event_name:request.campfire_live_event_name,
-        source:"campfire-claim",
-        fetched_at:request.requested_at,
-      },{onConflict:"campfire_meetup_id"});
-      if(meetupError) throw meetupError;
+      if(requestSource==="meetup_share" && request.campfire_meetup_id && request.meetup_title){
+        const {error:meetupError}=await admin.from("meetups").upsert({
+          campfire_meetup_id:request.campfire_meetup_id,
+          community_id:request.community_id,
+          title:request.meetup_title,
+          starts_at:request.meetup_starts_at,
+          ends_at:request.meetup_ends_at,
+          location:request.meetup_location,
+          event_url:request.meetup_url,
+          details:null,
+          is_ca_meetup:request.is_ca_meetup,
+          rsvp_count:request.rsvp_count,
+          checkin_count:request.checkin_count,
+          accepted_count:null,
+          declined_count:null,
+          campfire_live_event_name:request.campfire_live_event_name,
+          source:"campfire-claim",
+          fetched_at:request.requested_at,
+        },{onConflict:"campfire_meetup_id"});
+        if(meetupError) throw meetupError;
+      }
 
       const {error:updateError}=await admin.from("community_access_requests").update({
         status:"approved",
@@ -216,68 +212,23 @@ Deno.serve(async(req:Request)=>{
 
     if(action!=="submit") return json({error:"unknown action"},400);
     if(profile.role!=="ca" && profile.role!=="pending") return json({error:"CA申請を利用できません",code:"CA_ROLE_REQUIRED"},403);
-    const profileNianticId=String(profile.niantic_id??"").trim();
+
+    const profileNianticId=String(profile.niantic_id??"").trim().replace(/^@+/,"");
     if(!profileNianticId){
       return json({error:"先にアカウント設定でNiantic IDを登録してください",code:"NIANTIC_ID_REQUIRED"},422);
     }
 
-    const meetupId=await resolveMeetupId(body.meetup);
-    if(!meetupId) return json({error:"Campfire共有URL / Meetup URL / Meetup IDを確認してください",code:"INVALID_MEETUP"},400);
-
-    const campfire=new CampfireClient({
-      maxRetries:2,
-      retryDelayMs:800,
-      minRequestIntervalMs:500,
-    });
-
-    let event:CampfireEvent;
-    let source="campfire-anonymous";
-    try{
-      event=await campfire.getAnonymousEvent(meetupId);
-    }catch{
-      const publicEvents=await campfire.getPublicEvents([meetupId]);
-      const publicEvent=publicEvents[0];
-      if(!publicEvent) return json({error:"公開Meetupを取得できませんでした",code:"MEETUP_NOT_FOUND"},404);
-      source="campfire-public";
-      event={
-        id:publicEvent.id,
-        name:publicEvent.name,
-        clubId:publicEvent.clubId??null,
-        club:publicEvent.clubId&&publicEvent.clubName?{id:publicEvent.clubId,name:publicEvent.clubName}:null,
-        address:publicEvent.address??publicEvent.place?.formattedAddress??publicEvent.place?.name??null,
-        eventTime:publicEvent.eventTime??null,
-        eventEndTime:publicEvent.eventEndTime??null,
-      };
-    }
-
-    const creatorDisplayName=String(event.creator?.displayName??"").trim();
-    const creatorUsername=String(event.creator?.username??"").trim();
-    const creatorCaBadgeVerified=Boolean(event.creator?.badges?.some(badge=>
-      badge?.badgeType==="PGO_COMMUNITY_AMBASSADOR" ||
-      badge?.alias==="PGO_COMMUNITY_AMBASSADOR"
-    ));
-
-    if(event.createdByCommunityAmbassador!==true || !creatorDisplayName || !creatorUsername || !creatorCaBadgeVerified){
+    const inputUrl=String(body.url??body.meetup??"").trim();
+    const target=await resolveCampfireShareUrl(inputUrl);
+    if(target.kind!=="meetup" && target.kind!=="community"){
       return json({
-        error:"自分が主催したCommunity AmbassadorのMeetupを入力してください。主催者の紫CAバッジまたはNiantic IDを確認できませんでした。",
-        code:"CA_HOST_VERIFICATION_FAILED",
-      },422);
+        error:"コミュニティ招待URL / ミートアップ共有URLを確認してください",
+        code:"INVALID_CAMPFIRE_SHARE_URL",
+        detail:target.reason??null,
+      },400);
     }
 
     const identity=profileNianticId.toLowerCase();
-    const creatorUsernameNormalized=creatorUsername.toLowerCase();
-    const creatorUsernameMatchesProfile=creatorUsernameNormalized===identity;
-    if(!creatorUsernameMatchesProfile){
-      return json({
-        error:"登録したNiantic IDとMeetup主催者のNiantic IDが一致しません。自分が主催したMeetupを入力してください。",
-        code:"CREATOR_ID_MISMATCH",
-        creatorUsername,
-      },422);
-    }
-
-    if(!event.clubId) return json({error:"MeetupからCommunity IDを取得できませんでした",code:"COMMUNITY_ID_MISSING"},422);
-
-    const liveCommunityName=String(event.club?.name??"").trim();
 
     // CA資格は日本CA地図、Communityの現在実体はCampfireをそれぞれ正とする。
     const {data:caMember,error:caMemberError}=await admin.from("ca_members")
@@ -290,8 +241,6 @@ Deno.serve(async(req:Request)=>{
       return json({
         error:"あなたは日本CA地図にまだ掲載されていません。リョータさんに掲載をお願いしてください。",
         code:"CA_MAP_NOT_LISTED",
-        creatorUsername,
-        communityName:liveCommunityName||null,
       },422);
     }
 
@@ -310,12 +259,12 @@ Deno.serve(async(req:Request)=>{
       .select("community_id")
       .eq("ca_member_id",caMember.id);
     if(caLinksError) throw caLinksError;
+
     const linkedCommunityIds=[...new Set((caLinks??[]).map(row=>String(row.community_id)).filter(Boolean))];
     if(linkedCommunityIds.length===0){
       return json({
         error:"日本CA地図で担当Communityを確認できませんでした。",
         code:"CA_COMMUNITY_MISMATCH",
-        creatorUsername,
         caLevel,
       },422);
     }
@@ -325,13 +274,86 @@ Deno.serve(async(req:Request)=>{
       .in("id",linkedCommunityIds);
     if(linkedCommunitiesError) throw linkedCommunitiesError;
 
-    let community=(linkedCommunities??[]).find(row=>row.campfire_community_id===event.clubId)??null;
+    const campfire=new CampfireClient({
+      maxRetries:2,
+      retryDelayMs:800,
+      minRequestIntervalMs:500,
+    });
+
+    let requestSource:"meetup_share"|"community_invite";
+    let event:CampfireEvent|null=null;
+    let source="campfire-share";
+    let campfireCommunityId="";
+    let liveCommunityName="";
+    let creatorDisplayName=String(caMember.trainer_name??"").trim();
+    let creatorUsername=profileNianticId;
+    let creatorUsernameMatchesProfile=true;
+    let creatorCaBadgeVerified:boolean|null=null;
+
+    if(target.kind==="meetup"){
+      requestSource="meetup_share";
+      const meetupId=target.id;
+
+      try{
+        event=await campfire.getAnonymousEvent(meetupId);
+        source="campfire-anonymous";
+      }catch{
+        const publicEvents=await campfire.getPublicEvents([meetupId]);
+        const publicEvent=publicEvents[0];
+        if(!publicEvent) return json({error:"公開ミートアップを取得できませんでした",code:"MEETUP_NOT_FOUND"},404);
+        source="campfire-public";
+        event={
+          id:publicEvent.id,
+          name:publicEvent.name,
+          clubId:publicEvent.clubId??null,
+          club:publicEvent.clubId&&publicEvent.clubName?{id:publicEvent.clubId,name:publicEvent.clubName}:null,
+          address:publicEvent.address??publicEvent.place?.formattedAddress??publicEvent.place?.name??null,
+          eventTime:publicEvent.eventTime??null,
+          eventEndTime:publicEvent.eventEndTime??null,
+        };
+      }
+
+      creatorDisplayName=String(event.creator?.displayName??"").trim();
+      creatorUsername=String(event.creator?.username??"").trim().replace(/^@+/,"");
+      creatorCaBadgeVerified=Boolean(event.creator?.badges?.some(badge=>
+        badge?.badgeType==="PGO_COMMUNITY_AMBASSADOR" ||
+        badge?.alias==="PGO_COMMUNITY_AMBASSADOR"
+      ));
+
+      if(event.createdByCommunityAmbassador!==true || !creatorDisplayName || !creatorUsername || !creatorCaBadgeVerified){
+        return json({
+          error:"自分が主催したCommunity Ambassadorのミートアップ共有URLを入力してください。主催者の紫CAバッジまたはNiantic IDを確認できませんでした。",
+          code:"CA_HOST_VERIFICATION_FAILED",
+        },422);
+      }
+
+      creatorUsernameMatchesProfile=creatorUsername.toLowerCase()===identity;
+      if(!creatorUsernameMatchesProfile){
+        return json({
+          error:"登録したNiantic IDとミートアップ主催者のNiantic IDが一致しません。自分が主催したミートアップ共有URLを入力してください。",
+          code:"CREATOR_ID_MISMATCH",
+          creatorUsername,
+        },422);
+      }
+
+      if(!event.clubId){
+        return json({error:"ミートアップからCommunityを取得できませんでした",code:"COMMUNITY_ID_MISSING"},422);
+      }
+
+      campfireCommunityId=event.clubId;
+      liveCommunityName=String(event.club?.name??"").trim();
+    }else{
+      requestSource="community_invite";
+      campfireCommunityId=target.id;
+    }
+
+    let community=(linkedCommunities??[]).find(row=>row.campfire_community_id===campfireCommunityId)??null;
     let communityIdResolution="current_id";
 
     if(!community){
       const {data:history,error:historyError}=await admin.from("community_campfire_ids")
         .select("community_id,status")
-        .eq("campfire_community_id",event.clubId)
+        .eq("campfire_community_id",campfireCommunityId)
         .maybeSingle();
       if(historyError) throw historyError;
 
@@ -339,29 +361,36 @@ Deno.serve(async(req:Request)=>{
         community=(linkedCommunities??[]).find(row=>row.id===history.community_id)??null;
         if(!community){
           return json({
-            error:"このCampfire Community IDは別のCommunityに紐づいています。",
+            error:"このCampfire Communityは、あなたの担当Communityとして日本CA地図に登録されていません。",
             code:"CA_COMMUNITY_MISMATCH",
-            creatorUsername,
-            campfireCommunityId:event.clubId,
+            campfireCommunityId,
           },422);
         }
         communityIdResolution=history.status==="active"?"history_active":"history_retired";
 
-        if(history.status==="retired" && isRecentMeetup(event)){
+        if(requestSource==="meetup_share" && history.status==="retired" && event && isRecentMeetup(event)){
           const {error:promoteError}=await admin.rpc("internal_set_community_campfire_id",{
             p_community_id:community.id,
-            p_campfire_community_id:event.clubId,
+            p_campfire_community_id:campfireCommunityId,
             p_source:"campfire-claim",
             p_observed_name:liveCommunityName||community.name,
           });
           if(promoteError) throw promoteError;
-          community={...community,campfire_community_id:event.clubId,name:liveCommunityName||community.name};
+          community={...community,campfire_community_id:campfireCommunityId,name:liveCommunityName||community.name};
           communityIdResolution="history_reactivated";
         }
       }
     }
 
-    if(!community){
+    if(!community && requestSource==="community_invite"){
+      return json({
+        error:"コミュニティ招待URLのCommunityと、日本CA地図の担当Communityが一致しません。",
+        code:"CA_COMMUNITY_MISMATCH",
+        campfireCommunityId,
+      },422);
+    }
+
+    if(!community && requestSource==="meetup_share"){
       const normalizedLiveName=normalizeCommunityName(liveCommunityName);
       const nameMatches=normalizedLiveName
         ?(linkedCommunities??[]).filter(row=>normalizeCommunityName(row.name)===normalizedLiveName)
@@ -375,28 +404,28 @@ Deno.serve(async(req:Request)=>{
         communityIdResolution="ca_link_single";
       }else{
         return json({
-          error:"担当Communityが複数あるため、このMeetupのCommunityを一意に特定できませんでした。",
+          error:"担当Communityが複数あるため、このミートアップのCommunityを一意に特定できませんでした。",
           code:"COMMUNITY_ID_AMBIGUOUS",
-          campfireCommunityId:event.clubId,
+          campfireCommunityId,
           campfireCommunityName:liveCommunityName||null,
           candidates:(linkedCommunities??[]).map(row=>({id:row.id,name:row.name,prefecture:row.prefecture})),
         },422);
       }
 
-      if(isRecentMeetup(event)){
+      if(event && isRecentMeetup(event)){
         const {error:promoteError}=await admin.rpc("internal_set_community_campfire_id",{
           p_community_id:community.id,
-          p_campfire_community_id:event.clubId,
+          p_campfire_community_id:campfireCommunityId,
           p_source:"campfire-claim",
           p_observed_name:liveCommunityName||community.name,
         });
         if(promoteError) throw promoteError;
-        community={...community,campfire_community_id:event.clubId,name:liveCommunityName||community.name};
+        community={...community,campfire_community_id:campfireCommunityId,name:liveCommunityName||community.name};
         communityIdResolution+="_promoted";
       }else{
         const {data:existingHistory,error:existingHistoryError}=await admin.from("community_campfire_ids")
           .select("community_id")
-          .eq("campfire_community_id",event.clubId)
+          .eq("campfire_community_id",campfireCommunityId)
           .maybeSingle();
         if(existingHistoryError) throw existingHistoryError;
         if(existingHistory && existingHistory.community_id!==community.id){
@@ -405,7 +434,7 @@ Deno.serve(async(req:Request)=>{
         if(!existingHistory){
           const {error:historyInsertError}=await admin.from("community_campfire_ids").insert({
             community_id:community.id,
-            campfire_community_id:event.clubId,
+            campfire_community_id:campfireCommunityId,
             status:"retired",
             source:"campfire-claim-historical",
             observed_name:liveCommunityName||community.name,
@@ -416,15 +445,17 @@ Deno.serve(async(req:Request)=>{
         }
         communityIdResolution+="_historical";
       }
-    }else{
+    }else if(community){
       await admin.from("community_campfire_ids")
         .update({
           last_seen_at:new Date().toISOString(),
           observed_name:liveCommunityName||community.name,
         })
         .eq("community_id",community.id)
-        .eq("campfire_community_id",event.clubId);
+        .eq("campfire_community_id",campfireCommunityId);
     }
+
+    if(!community) return json({error:"Communityを特定できませんでした",code:"COMMUNITY_NOT_FOUND"},422);
 
     const masterMatch=true;
     const caMapStatus="matched" as const;
@@ -437,9 +468,10 @@ Deno.serve(async(req:Request)=>{
     if(membership) return json({
       ok:true,
       status:"already_assigned",
+      requestSource,
       communityId:community.id,
       communityName:community.name,
-      campfireCommunityId:event.clubId,
+      campfireCommunityId,
       communityIdResolution,
     });
 
@@ -453,33 +485,38 @@ Deno.serve(async(req:Request)=>{
       ok:true,
       status:"pending",
       requestId:pending.id,
+      requestSource,
       communityId:community.id,
       communityName:pending.community_name_snapshot,
       alreadyPending:true,
-      campfireCommunityId:event.clubId,
+      campfireCommunityId,
       communityIdResolution,
     });
 
-    const canonicalUrl="https://campfire.scopely.com/discover/meetup/"+meetupId;
+    const meetupId=requestSource==="meetup_share"&&event?event.id:null;
+    const canonicalMeetupUrl=meetupId?"https://campfire.scopely.com/discover/meetup/"+meetupId:null;
+
     const {data:created,error:createError}=await admin.from("community_access_requests").insert({
       user_id:userData.user.id,
       community_id:community.id,
+      request_source:requestSource,
+      input_url:inputUrl,
       campfire_meetup_id:meetupId,
-      meetup_url:canonicalUrl,
-      meetup_title:event.name,
+      meetup_url:canonicalMeetupUrl,
+      meetup_title:event?.name??null,
       community_name_snapshot:community.name,
       community_prefecture_snapshot:community.prefecture,
-      campfire_community_id_snapshot:event.clubId,
+      campfire_community_id_snapshot:campfireCommunityId,
       campfire_community_name_snapshot:liveCommunityName||community.name,
       community_id_resolution:communityIdResolution,
-      is_ca_meetup:event.createdByCommunityAmbassador??null,
-      meetup_starts_at:event.eventTime??null,
-      meetup_ends_at:event.eventEndTime??null,
-      meetup_location:event.address??event.location??null,
-      rsvp_count:Number.isFinite(event.members?.totalCount)?Number(event.members?.totalCount):null,
-      checkin_count:Number.isFinite(event.checkedInMembersCount)?Number(event.checkedInMembersCount):null,
-      campfire_live_event_name:event.campfireLiveEvent?.eventName??null,
-      creator_display_name:creatorDisplayName,
+      is_ca_meetup:event?.createdByCommunityAmbassador??null,
+      meetup_starts_at:event?.eventTime??null,
+      meetup_ends_at:event?.eventEndTime??null,
+      meetup_location:event?.address??event?.location??null,
+      rsvp_count:Number.isFinite(event?.members?.totalCount)?Number(event?.members?.totalCount):null,
+      checkin_count:Number.isFinite(event?.checkedInMembersCount)?Number(event?.checkedInMembersCount):null,
+      campfire_live_event_name:event?.campfireLiveEvent?.eventName??null,
+      creator_display_name:creatorDisplayName||caMember.trainer_name,
       creator_username:creatorUsername,
       creator_username_matches_profile:creatorUsernameMatchesProfile,
       creator_ca_badge_verified:creatorCaBadgeVerified,
@@ -496,16 +533,16 @@ Deno.serve(async(req:Request)=>{
       ok:true,
       status:"pending",
       source,
+      requestSource,
       requestId:created.id,
       communityId:community.id,
       communityName:community.name,
       communityPrefecture:community.prefecture,
-      campfireCommunityId:event.clubId,
+      campfireCommunityId,
       campfireCommunityName:liveCommunityName||community.name,
       communityIdResolution,
-      meetupId,
-      meetupTitle:event.name,
-      isCaMeetup:event.createdByCommunityAmbassador??null,
+      meetupTitle:event?.name??null,
+      isCaMeetup:event?.createdByCommunityAmbassador??null,
       creatorDisplayName,
       creatorUsername,
       creatorUsernameMatchesProfile,
