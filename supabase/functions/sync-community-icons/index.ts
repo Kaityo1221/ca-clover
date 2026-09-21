@@ -92,7 +92,7 @@ Deno.serve(async(req:Request)=>{
 
     const {data:communities,error:communityError,count}=await admin
       .from("communities")
-      .select("id,name,campfire_community_id",{count:"exact"})
+      .select("id,name,campfire_community_id,avatar_thumbnail_path",{count:"exact"})
       .not("campfire_community_id","is",null)
       .order("name")
       .range(offset,offset+limit-1);
@@ -110,6 +110,7 @@ Deno.serve(async(req:Request)=>{
     let initial=0;
     let unchanged=0;
     let missing=0;
+    let thumbnailBackfilled=0;
     const results:Array<Record<string,unknown>>=[];
 
     for(const community of communities??[]){
@@ -118,7 +119,14 @@ Deno.serve(async(req:Request)=>{
 
       try{
         const club=await campfire.getClub(clubId);
-        const observed=await observeCommunityIcon(admin,community.id,club.avatarUrl??null);
+        const generateMissingThumbnail=!community.avatar_thumbnail_path&&thumbnailBackfilled<2;
+        const observed=await observeCommunityIcon(
+          admin,
+          community.id,
+          club.avatarUrl??null,
+          {generateMissingThumbnail},
+        );
+        if(!community.avatar_thumbnail_path&&observed.thumbnail_path) thumbnailBackfilled++;
         if(observed.changed){
           changed++;
           if(observed.changeType==="initial") initial++;
@@ -159,6 +167,7 @@ Deno.serve(async(req:Request)=>{
       initial,
       unchanged,
       missing,
+      thumbnailBackfilled,
       failed,
       results,
     });
