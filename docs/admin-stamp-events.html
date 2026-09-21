@@ -30,7 +30,7 @@ label{font-size:11px;font-weight:900;color:#475569}.input{width:100%;margin-top:
   <div id="error"></div>
 
   <section class="card orange">
-    <h2>新しいイベント</h2>
+    <div class="row"><h2 id="eventFormTitle">新しいイベント</h2><button id="cancelEdit" class="btn muted" style="display:none">新規に戻る</button></div>
     <div class="grid g2 mt">
       <label>イベント名<input id="eventName" class="input" placeholder="ワイルドエリア仙台 東北"></label>
       <label>場所<input id="eventLocation" class="input" placeholder="仙台市"></label>
@@ -82,7 +82,7 @@ const assignmentsEl=document.getElementById("assignments");
 const assignEvent=document.getElementById("assignEvent");
 const assignMission=document.getElementById("assignMission");
 const assignDate=document.getElementById("assignDate");
-let data={events:[],missions:[],assignments:[]},busy=false;
+let data={events:[],missions:[],assignments:[]},busy=false,editingId=null;
 function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c])}
 function showError(v){errorEl.innerHTML=v?'<div class="error">'+esc(v)+'</div>':""}
 async function invoke(body){
@@ -111,10 +111,11 @@ function renderEvents(){
  eventsEl.innerHTML=rows.length?rows.map(ev=>{
   const cls=ev.phase==="active"?"active":ev.phase==="scheduled"?"scheduled":ev.phase==="cancelled"?"cancelled":"";
   const label=ev.phase==="active"?"開催中":ev.phase==="scheduled"?"開催前":ev.phase==="cancelled"?"中止":"終了";
-  const cancel=ev.status==="scheduled"&&ev.phase!=="ended"?'<button class="btn muted mt" data-cancel="'+esc(ev.id)+'">イベントを中止</button>':"";
+  const cancel=ev.status==="scheduled"&&ev.phase!=="ended"?'<div class="mt" style="display:flex;gap:8px"><button class="btn" style="background:#ecfccb;color:#4d7c0f" data-edit="'+esc(ev.id)+'">編集</button><button class="btn muted" data-cancel="'+esc(ev.id)+'">イベントを中止</button></div>':"";
   return '<article class="event"><div class="row"><div><span class="phase '+cls+'">'+label+'</span><h3>'+esc(ev.name)+'</h3><div class="meta">📍 '+esc(ev.location||"場所未設定")+'<br>'+esc(ev.starts_local.replace("T"," "))+' → '+esc(ev.ends_local.replace("T"," "))+'<br>'+esc(ev.timezone)+'</div></div><div class="count"><b>'+esc(ev.participant_count||0)+'</b><span>参加CA</span></div></div>'+cancel+'</article>';
  }).join(""):'<div class="sub">イベントはありません。</div>';
  eventsEl.querySelectorAll("[data-cancel]").forEach(b=>b.onclick=()=>cancelEvent(b.dataset.cancel));
+ eventsEl.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>startEdit(b.dataset.edit));
  assignEvent.innerHTML='<option value="">イベントを選択</option>'+rows.filter(x=>x.status==="scheduled").map(ev=>'<option value="'+esc(ev.id)+'">'+esc(ev.name)+'</option>').join("");
  if(!assignEvent.value&&rows.length){const first=rows.find(x=>x.status==="scheduled");if(first){assignEvent.value=first.id;assignDate.value=first.starts_local.slice(0,10)}}
 }
@@ -130,10 +131,44 @@ function renderAssignments(){
  assignmentsEl.innerHTML=(data.assignments||[]).slice().sort((a,b)=>a.local_date.localeCompare(b.local_date)).map(x=>'<div class="assignment"><b>'+esc(x.local_date)+'</b> ・ '+esc((evMap.get(x.event_id)||{}).name||"イベント")+' → '+esc((mMap.get(x.mission_template_id)||{}).title||"ミッション")+'</div>').join("");
 }
 async function load(){showError("");try{apply(await invoke({action:"list"}))}catch(err){showError(err.message||String(err))}}
+function clearEventForm(){
+ editingId=null;
+ document.getElementById("eventName").value="";
+ document.getElementById("eventLocation").value="";
+ document.getElementById("eventTimezone").value="Asia/Tokyo";
+ document.getElementById("eventStart").value="";
+ document.getElementById("eventEnd").value="";
+ document.getElementById("eventFormTitle").textContent="新しいイベント";
+ document.getElementById("createEvent").textContent="イベントを作成";
+ document.getElementById("cancelEdit").style.display="none";
+}
+function startEdit(id){
+ const ev=(data.events||[]).find(x=>x.id===id);if(!ev)return;
+ editingId=id;
+ document.getElementById("eventName").value=ev.name||"";
+ document.getElementById("eventLocation").value=ev.location||"";
+ document.getElementById("eventTimezone").value=ev.timezone||"Asia/Tokyo";
+ document.getElementById("eventStart").value=ev.starts_local||"";
+ document.getElementById("eventEnd").value=ev.ends_local||"";
+ document.getElementById("eventFormTitle").textContent="イベントを編集";
+ document.getElementById("createEvent").textContent="変更を保存";
+ document.getElementById("cancelEdit").style.display="inline-block";
+ window.scrollTo({top:0,behavior:"smooth"});
+}
 async function createEvent(){
  if(busy)return;busy=true;showError("");
  try{
-  apply(await invoke({
+  const ev=editingId?(data.events||[]).find(x=>x.id===editingId):null;
+  apply(await invoke(ev?{
+   action:"update_event",
+   eventId:ev.id,
+   name:document.getElementById("eventName").value,
+   location:document.getElementById("eventLocation").value,
+   timezone:document.getElementById("eventTimezone").value||"Asia/Tokyo",
+   startsLocal:document.getElementById("eventStart").value,
+   endsLocal:document.getElementById("eventEnd").value,
+   status:ev.status
+  }:{
    action:"create_event",
    name:document.getElementById("eventName").value,
    location:document.getElementById("eventLocation").value,
@@ -141,10 +176,7 @@ async function createEvent(){
    startsLocal:document.getElementById("eventStart").value,
    endsLocal:document.getElementById("eventEnd").value
   }));
-  document.getElementById("eventName").value="";
-  document.getElementById("eventLocation").value="";
-  document.getElementById("eventStart").value="";
-  document.getElementById("eventEnd").value="";
+  clearEventForm();
  }catch(err){showError(err.message||String(err))}finally{busy=false}
 }
 async function cancelEvent(id){
@@ -166,6 +198,7 @@ async function assign(){
 }
 assignEvent.onchange=()=>{const ev=(data.events||[]).find(x=>x.id===assignEvent.value);if(ev)assignDate.value=ev.starts_local.slice(0,10)};
 document.getElementById("createEvent").onclick=createEvent;
+document.getElementById("cancelEdit").onclick=clearEventForm;
 document.getElementById("refresh").onclick=load;
 document.getElementById("createMission").onclick=createMission;
 document.getElementById("assignButton").onclick=assign;
