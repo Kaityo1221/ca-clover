@@ -27,6 +27,7 @@ export default function AdminStampEventsPage(){
   const [assignments,setAssignments]=useState<Assignment[]>([]);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState<string|null>(null);
+  const [editingId,setEditingId]=useState<string|null>(null);
 
   const [name,setName]=useState("");
   const [location,setLocation]=useState("");
@@ -72,19 +73,41 @@ export default function AdminStampEventsPage(){
     }
   }
 
-  async function createEvent(){
+  async function saveEvent(){
     if(busy) return;
     setBusy(true);setError(null);
     try{
-      const data=await call({
+      const editing=editingId?events.find(event=>event.id===editingId):null;
+      const data=await call(editing?{
+        action:"update_event",
+        eventId:editing.id,
+        name,location,timezone,startsLocal,endsLocal,
+        status:editing.status,
+      }:{
         action:"create_event",
         name,location,timezone,startsLocal,endsLocal,
       });
       apply(data);
+      setEditingId(null);
       setName("");setLocation("");setStartsLocal("");setEndsLocal("");
     }catch(error){
       setError(error instanceof Error?error.message:String(error));
     }finally{setBusy(false);}
+  }
+
+  function startEdit(event:EventRow){
+    setEditingId(event.id);
+    setName(event.name);
+    setLocation(event.location??"");
+    setTimezone(event.timezone);
+    setStartsLocal(event.starts_local);
+    setEndsLocal(event.ends_local);
+    window.scrollTo({top:0,behavior:"smooth"});
+  }
+
+  function cancelEdit(){
+    setEditingId(null);
+    setName("");setLocation("");setTimezone("Asia/Tokyo");setStartsLocal("");setEndsLocal("");
   }
 
   async function cancelEvent(event:EventRow){
@@ -172,7 +195,10 @@ export default function AdminStampEventsPage(){
     {error?<div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-700">{error}</div>:null}
 
     <section className="mt-6 rounded-3xl border border-orange-100 bg-orange-50/60 p-5">
-      <h2 className="text-lg font-black text-slate-900">新しいイベント</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-lg font-black text-slate-900">{editingId?"イベントを編集":"新しいイベント"}</h2>
+        {editingId?<button type="button" onClick={cancelEdit} className="rounded-full bg-white px-3 py-2 text-xs font-black text-slate-500">新規に戻る</button>:null}
+      </div>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <label className="text-xs font-black text-slate-600">イベント名
           <input value={name} onChange={e=>setName(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm" placeholder="ワイルドエリア仙台 東北"/>
@@ -190,7 +216,7 @@ export default function AdminStampEventsPage(){
           <input value={timezone} onChange={e=>setTimezone(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm" placeholder="Asia/Tokyo"/>
         </label>
       </div>
-      <button disabled={busy||!name||!startsLocal||!endsLocal} onClick={()=>void createEvent()} className="mt-4 rounded-xl bg-lime-600 px-5 py-3 text-sm font-black text-white disabled:opacity-50">イベントを作成</button>
+      <button disabled={busy||!name||!startsLocal||!endsLocal} onClick={()=>void saveEvent()} className="mt-4 rounded-xl bg-lime-600 px-5 py-3 text-sm font-black text-white disabled:opacity-50">{editingId?"変更を保存":"イベントを作成"}</button>
     </section>
 
     <section className="mt-6">
@@ -220,7 +246,10 @@ export default function AdminStampEventsPage(){
             {event.starts_local.replace("T"," ")} → {event.ends_local.replace("T"," ")}<br/>
             {event.timezone}
           </div>
-          {event.status==="scheduled"&&event.phase!=="ended"?<button disabled={busy} onClick={()=>void cancelEvent(event)} className="mt-3 rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600 disabled:opacity-50">イベントを中止</button>:null}
+          {event.status==="scheduled"&&event.phase!=="ended"?<div className="mt-3 flex gap-2">
+            <button disabled={busy} onClick={()=>startEdit(event)} className="rounded-xl bg-lime-50 px-3 py-2 text-xs font-black text-lime-700 disabled:opacity-50">編集</button>
+            <button disabled={busy} onClick={()=>void cancelEvent(event)} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600 disabled:opacity-50">イベントを中止</button>
+          </div>:null}
         </article>)}
       </div>
     </section>
