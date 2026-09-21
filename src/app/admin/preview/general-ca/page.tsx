@@ -196,9 +196,9 @@ export default function Page(){
     <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
       <div>
         <span className="inline-flex rounded-full bg-violet-100 px-3 py-1 text-xs font-black text-violet-700">ADMIN PREVIEW</span>
-        <h1 className="mt-3 text-3xl font-black text-lime-950">👀 一般ユーザー用プレビュー</h1>
+        <h1 className="mt-3 text-3xl font-black text-lime-950">👀 一般ユーザーページ</h1>
         <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
-          ADMIN権限のまま、一般ユーザーから見える画面だけを再現します。実際のロール・Community割当・RLSは変更しません。
+          ADMIN権限のまま、一般ユーザーページを再現します。実際のロール・Community割当・RLSは変更しません。
         </p>
       </div>
       <div className="rounded-2xl bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-800">
