@@ -84,7 +84,7 @@ function MenuButton({ item }: { item: MenuItem }) {
 }
 
 export default function Page() {
-  const { supabase, user, profile, loading } = useAuthProfile();
+  const { supabase, user, profile, hasPermission, loading } = useAuthProfile();
   const [counts,setCounts]=useState({communities:0,cas:0,unresolved:0});
 
   useEffect(()=>{
@@ -105,7 +105,18 @@ export default function Page() {
   },[profile?.role,supabase]);
 
   const roleLabel = loading ? "..." : !user ? "GUEST" : profile?.role === "admin" ? "ADMIN" : profile?.role === "ca" ? "CA" : "確認中";
-  const sections = profile?.role === "admin" ? adminSections : profile?.role === "ca" ? caSections : [];
+  const sections = profile?.role === "admin"
+    ? adminSections
+    : profile?.role === "ca"
+      ? caSections.map((section,index)=>index===0 && hasPermission("S")
+        ? {...section,items:[...section.items,{
+            icon:"🍀",
+            title:"CA Stamp Rally LAB",
+            description:"全国スタンプシートをテスト",
+            href:"/lab/stamp-rally",
+          }]}
+        : section)
+      : [];
 
   return <>
     <header className="sticky top-0 z-20 border-b border-lime-100 bg-white/90 backdrop-blur-xl">
