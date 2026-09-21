@@ -33,6 +33,18 @@ Deno.serve(async(req:Request)=>{
       return new Response(JSON.stringify({ok:true}),{headers:{...corsHeaders,"Content-Type":"application/json"}});
     }
 
+    if(body.action==="review_icon_change"){
+      const changeId=String(body.changeId??"");
+      if(!changeId) throw new Error("invalid icon review request");
+      const reviewedAt=new Date().toISOString();
+      const {error}=await admin.from("community_icon_changes").update({
+        reviewed_at:reviewedAt,
+        reviewed_by:userData.user.id,
+      }).eq("id",changeId).is("reviewed_at",null);
+      if(error) throw error;
+      return new Response(JSON.stringify({ok:true,reviewed_at:reviewedAt}),{headers:{...corsHeaders,"Content-Type":"application/json"}});
+    }
+
     if(body.action==="set_membership"){
       const userId=String(body.userId??"");
       const communityId=String(body.communityId??"");

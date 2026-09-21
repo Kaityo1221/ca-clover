@@ -10,6 +10,7 @@ type CommunityRow = {
   name: string;
   prefecture: string | null;
   member_count: number | null;
+  avatar_url: string | null;
   coverage: "complete" | "partial" | "missing";
 };
 type MeetupRow = {
@@ -82,7 +83,7 @@ export default function Page() {
       }
 
       const [{ data: communityRows }, { data: meetupRows }] = await Promise.all([
-        supabase.from("communities").select("id,name,prefecture,member_count,coverage").in("id", ids).order("name"),
+        supabase.from("communities").select("id,name,prefecture,member_count,avatar_url,coverage").in("id", ids).order("name"),
         supabase.from("meetups").select("community_id,starts_at,rsvp_count,checkin_count").in("community_id", ids).order("starts_at", { ascending: false }),
       ]);
 
@@ -197,8 +198,15 @@ export default function Page() {
       <div className="mt-3 grid gap-4 sm:grid-cols-2">
         {communities.map(c => <Link key={c.id} href={"/community/"+c.id} className="clover-card relative p-6 transition hover:-translate-y-1 hover:border-lime-300">
           <span className="absolute right-4 top-4 rounded-full bg-lime-100 px-3 py-1 text-[11px] font-black text-lime-800">✅ 認証済み</span>
-          <div className="pr-24 text-xs font-black text-lime-700">{c.prefecture ?? "—"}</div>
-          <h2 className="mt-2 text-xl font-black text-lime-950">{c.name}</h2>
+          <div className="flex items-center gap-4 pr-24">
+            <div className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-[22px] border border-lime-100 bg-lime-50 text-3xl shadow-sm">
+              {c.avatar_url?<img src={c.avatar_url} alt="" className="h-full w-full object-cover"/>:<span>🍀</span>}
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-black text-lime-700">{c.prefecture ?? "—"}</div>
+              <h2 className="mt-1 truncate text-xl font-black text-lime-950">{c.name}</h2>
+            </div>
+          </div>
           <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold text-slate-500">
             <span className="rounded-full bg-lime-50 px-3 py-2">Member: {c.member_count?.toLocaleString("ja-JP") ?? "未取得"}</span>
             <span className="rounded-full bg-lime-50 px-3 py-2">Data: {c.coverage}</span>

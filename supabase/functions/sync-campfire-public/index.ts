@@ -4,6 +4,7 @@ import {
   type CampfireEvent,
 } from "../_shared/campfire/mod.ts";
 import {processMeetupRows,type MeetupWriteRow} from "../_shared/meetup-watch/mod.ts";
+import {observeCommunityIcon} from "../_shared/community-icon.ts";
 
 const corsHeaders={
   "Access-Control-Allow-Origin":"*",
@@ -228,11 +229,27 @@ Deno.serve(async(req:Request)=>{
       }
     }
 
+    const avatarByClubId=new Map<string,string>();
+    const discoveredIds=[...eventIds];
+    for(let start=0;start<discoveredIds.length;start+=100){
+      try{
+        const metadata=await campfire.getPublicEvents(discoveredIds.slice(start,start+100));
+        for(const publicEvent of metadata){
+          if(publicEvent.clubId&&publicEvent.clubAvatarUrl){
+            avatarByClubId.set(publicEvent.clubId,publicEvent.clubAvatarUrl);
+          }
+        }
+      }catch{
+        // Avatar metadata is optional and must never block Meetup ingestion.
+      }
+    }
+
     const nowIso=new Date().toISOString();
     const rows:Array<Record<string,unknown>>=[];
     const unmatchedClubIds=new Set<string>();
     const promotedCommunityIds:Array<Record<string,string>>=[];
     let detailFailures=0;
+    const iconObservedCommunityIds=new Set<string>();
 
     for(const eventId of eventIds){
       try{
@@ -276,6 +293,15 @@ Deno.serve(async(req:Request)=>{
         if(!community){
           if(clubId) unmatchedClubIds.add(clubId);
           continue;
+        }
+        const observedAvatarUrl=event.club?.avatarUrl??(clubId?avatarByClubId.get(clubId):null);
+        if(observedAvatarUrl && !iconObservedCommunityIds.has(community.id)){
+          try{
+            await observeCommunityIcon(admin,community.id,observedAvatarUrl);
+            iconObservedCommunityIds.add(community.id);
+          }catch{
+            // Icon review must never block Meetup ingestion.
+          }
         }
         rows.push(meetupRow(event,community.id,nowIso));
       }catch{

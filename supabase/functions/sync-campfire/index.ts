@@ -6,6 +6,7 @@ import {
   type CampfireEvent,
 } from "../_shared/campfire/mod.ts";
 import {processMeetupRows,type MeetupWriteRow} from "../_shared/meetup-watch/mod.ts";
+import {observeCommunityIcon} from "../_shared/community-icon.ts";
 
 const corsHeaders={
   "Access-Control-Allow-Origin":"*",
@@ -138,6 +139,8 @@ Deno.serve(async(req:Request)=>{
       if(!clubId) continue;
 
       try{
+        const club=await campfire.getClub(clubId);
+        await observeCommunityIcon(admin,community.id,club.avatarUrl??null);
         const active=await campfire.getActiveFeed(clubId);
         const archived=await campfire.getArchivedFeed(clubId);
 

@@ -20,6 +20,7 @@ export type CampfireEventCreator={
 export type CampfireClub={
   id:string;
   name:string;
+  avatarUrl?:string|null;
   address?:string|null;
   location?:string|null;
   createdByCommunityAmbassador?:boolean|null;
@@ -33,7 +34,7 @@ export type CampfireEvent={
   details?:string|null;
   createdAt?:string|null;
   clubId?:string|null;
-  club?:Pick<CampfireClub,"id"|"name">|null;
+  club?:Pick<CampfireClub,"id"|"name"|"avatarUrl">|null;
   address?:string|null;
   location?:string|null;
   eventTime?:string|null;
@@ -61,6 +62,7 @@ export type CampfirePublicEvent={
   name:string;
   clubId?:string|null;
   clubName?:string|null;
+  clubAvatarUrl?:string|null;
   address?:string|null;
   eventTime?:string|null;
   eventEndTime?:string|null;
