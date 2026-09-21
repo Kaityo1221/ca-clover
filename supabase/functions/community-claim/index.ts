@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { CampfireClient, type CampfireEvent } from "../_shared/campfire/mod.ts";
+import { CampfireClient, VaultTokenProvider, type CampfireEvent } from "../_shared/campfire/mod.ts";
 import { resolveCampfireShareUrl } from "../_shared/campfire-share-url.js";
+import {observeCommunityIcon} from "../_shared/community-icon.ts";
 
 const corsHeaders={
   "Access-Control-Allow-Origin":"*",
@@ -24,6 +25,64 @@ function isRecentMeetup(event:CampfireEvent){
   const time=Date.parse(raw);
   if(!Number.isFinite(time)) return false;
   return time>=Date.now()-60*24*60*60*1000;
+}
+
+async function captureCommunityIcon(
+  admin:any,
+  communityId:string,
+  campfireCommunityId:string,
+  eventAvatarUrl?:string|null,
+){
+  try{
+    let avatarUrl=String(eventAvatarUrl??"").trim();
+    if(!avatarUrl){
+      const tokenProvider=new VaultTokenProvider(async()=>admin.rpc("internal_get_campfire_token"));
+      const client=new CampfireClient({
+        tokenProvider,
+        maxRetries:2,
+        retryDelayMs:500,
+        minRequestIntervalMs:250,
+      });
+      const club=await client.getClub(campfireCommunityId);
+      avatarUrl=String(club.avatarUrl??"").trim();
+    }
+    if(avatarUrl) await observeCommunityIcon(admin,communityId,avatarUrl);
+  }catch{
+    // Icon review is helpful but must never block a CA application.
+  }
+}
+
+async function queueClaimNotification(
+  admin:any,
+  supabaseUrl:string,
+  anonKey:string,
+  requestId:string,
+){
+  try{
+    const {error:queueError}=await admin.from("community_claim_notifications").upsert({
+      request_id:requestId,
+      status:"queued",
+      retry_count:0,
+      next_retry_at:null,
+    },{onConflict:"request_id",ignoreDuplicates:true});
+    if(queueError) return;
+
+    const {data:secret,error:secretError}=await admin.rpc("internal_get_sync_cron_secret");
+    if(secretError||typeof secret!=="string"||!secret) return;
+
+    await fetch(supabaseUrl+"/functions/v1/community-claim-notify",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "apikey":anonKey,
+        "Authorization":"Bearer "+anonKey,
+        "x-ca-clover-cron-secret":secret,
+      },
+      body:JSON.stringify({action:"process"}),
+    }).catch(()=>null);
+  }catch{
+    // A notification failure must never fail the application itself.
+  }
 }
 
 
@@ -298,7 +357,7 @@ Deno.serve(async(req:Request)=>{
           id:publicEvent.id,
           name:publicEvent.name,
           clubId:publicEvent.clubId??null,
-          club:publicEvent.clubId&&publicEvent.clubName?{id:publicEvent.clubId,name:publicEvent.clubName}:null,
+          club:publicEvent.clubId&&publicEvent.clubName?{id:publicEvent.clubId,name:publicEvent.clubName,avatarUrl:publicEvent.clubAvatarUrl??null}:null,
           address:publicEvent.address??publicEvent.place?.formattedAddress??publicEvent.place?.name??null,
           eventTime:publicEvent.eventTime??null,
           eventEndTime:publicEvent.eventEndTime??null,
@@ -390,6 +449,8 @@ Deno.serve(async(req:Request)=>{
         },422);
       }
 
+      await captureCommunityIcon(admin,community.id,campfireCommunityId,event.club?.avatarUrl);
+
       const {data:membership}=await admin.from("community_memberships")
         .select("id")
         .eq("user_id",userData.user.id)
@@ -446,6 +507,7 @@ Deno.serve(async(req:Request)=>{
         status:"pending",
       }).select("id,status,requested_at").single();
       if(createError) throw createError;
+      await queueClaimNotification(admin,url,anon,created.id);
 
       return json({
         ok:true,status:"pending",source,requestSource:"meetup_share",
@@ -522,7 +584,7 @@ Deno.serve(async(req:Request)=>{
           id:publicEvent.id,
           name:publicEvent.name,
           clubId:publicEvent.clubId??null,
-          club:publicEvent.clubId&&publicEvent.clubName?{id:publicEvent.clubId,name:publicEvent.clubName}:null,
+          club:publicEvent.clubId&&publicEvent.clubName?{id:publicEvent.clubId,name:publicEvent.clubName,avatarUrl:publicEvent.clubAvatarUrl??null}:null,
           address:publicEvent.address??publicEvent.place?.formattedAddress??publicEvent.place?.name??null,
           eventTime:publicEvent.eventTime??null,
           eventEndTime:publicEvent.eventEndTime??null,
@@ -673,6 +735,8 @@ Deno.serve(async(req:Request)=>{
 
     if(!community) return json({error:"Communityを特定できませんでした",code:"COMMUNITY_NOT_FOUND"},422);
 
+    await captureCommunityIcon(admin,community.id,campfireCommunityId,event?.club?.avatarUrl);
+
     const masterMatch=true;
     const caMapStatus="matched" as const;
 
@@ -744,6 +808,7 @@ Deno.serve(async(req:Request)=>{
       status:"pending",
     }).select("id,status,requested_at").single();
     if(createError) throw createError;
+    await queueClaimNotification(admin,url,anon,created.id);
 
     return json({
       ok:true,
