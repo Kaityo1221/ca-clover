@@ -30,7 +30,18 @@ export default function Page(){
     setSelected(current=>current || profileRows[0]?.id || "");
   }
 
-  useEffect(()=>{ if(!loading && user && profile?.role==="admin") load(); },[loading,user,profile?.role]);
+  useEffect(()=>{
+    if(loading || !user || profile?.role!=="admin") return;
+    load();
+    const refresh=()=>{ void load(); };
+    const onVisibility=()=>{ if(document.visibilityState==="visible") void load(); };
+    window.addEventListener("focus",refresh);
+    document.addEventListener("visibilitychange",onVisibility);
+    return ()=>{
+      window.removeEventListener("focus",refresh);
+      document.removeEventListener("visibilitychange",onVisibility);
+    };
+  },[loading,user,profile?.role]);
 
   const assigned=useMemo(()=>new Set(memberships.filter(m=>m.user_id===selected).map(m=>m.community_id)),[memberships,selected]);
   const filtered=useMemo(()=>{
@@ -67,7 +78,10 @@ export default function Page(){
     <section className="clover-card mt-6 p-5">
       <label className="text-xs font-black text-slate-500">対象アカウント</label>
       <select value={selected} onChange={e=>setSelected(e.target.value)} className="mt-2 w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-bold">
-        {profiles.map(p=><option key={p.id} value={p.id}>{p.email??p.niantic_id??p.id} ({p.role})</option>)}
+        {profiles.map(p=>{
+          const count=memberships.filter(m=>m.user_id===p.id).length;
+          return <option key={p.id} value={p.id}>{count>0?"✅ ":""}{p.email??p.niantic_id??p.id} ({p.role}){count>0?" / "+count+" Community":""}</option>;
+        })}
       </select>
       {selectedProfile ? <div className="mt-3 text-xs font-semibold text-slate-500">Niantic ID: {selectedProfile.niantic_id??"未登録"} / 割当 {assigned.size} Community</div> : null}
     </section>
@@ -80,7 +94,7 @@ export default function Page(){
         return <button key={c.id} disabled={!selected||busy===c.id} onClick={()=>toggle(c.id)} className={on?"clover-card min-h-32 border-lime-400 bg-lime-50 p-5 text-left":"clover-card min-h-32 p-5 text-left hover:border-lime-300"}>
           <div className="flex items-start justify-between gap-3">
             <div><div className="text-xs font-black text-lime-700">{c.prefecture??"—"}</div><div className="mt-2 font-black text-lime-950">{c.name}</div></div>
-            <span className={on?"rounded-full bg-lime-400 px-2.5 py-1 text-[11px] font-black text-lime-950":"rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-500"}>{on?"割当済み":"未割当"}</span>
+            <span className={on?"rounded-full bg-lime-400 px-2.5 py-1 text-[11px] font-black text-lime-950":"rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-500"}>{on?"✅ 割当済み":"未割当"}</span>
           </div>
         </button>;
       })}
