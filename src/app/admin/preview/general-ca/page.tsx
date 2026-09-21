@@ -278,9 +278,9 @@ export default function Page(){
 
           <section className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5">
             <div className="text-xs font-black text-amber-700">初回CA登録</div>
-            <h3 className="mt-1 text-lg font-black text-amber-950">自分主催のMeetupでCA確認をします</h3>
+            <h3 className="mt-1 text-lg font-black text-amber-950">Campfire URLでCA確認をします</h3>
             <p className="mt-2 text-xs font-semibold leading-5 text-amber-800">
-              Niantic IDを登録してから、自分が主催したMeetupを1件提出してください。会長が承認するとCAアカウント化とCommunity割当が同時に完了します。
+              Niantic IDを登録してから、コミュニティ招待URLまたは自分が主催したミートアップ共有URLを提出してください。会長が承認するとCAアカウント化とCommunity割当が同時に完了します。
             </p>
             <div className="mt-3 text-xs font-black text-amber-900">Niantic ID: preview_ca ✓</div>
           </section>
@@ -289,15 +289,15 @@ export default function Page(){
             <div className="flex items-start gap-3">
               <div className="text-3xl">🔥</div>
               <div>
-                <h3 className="font-black text-lime-950">MeetupからCommunityを申請</h3>
+                <h3 className="font-black text-lime-950">Campfire URLからCommunityを申請</h3>
                 <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-                  必ず自分が主催したMeetupを入力してください。紫色Community Ambassadorバッジ、主催者Niantic ID、Community、日本CA地図の1st/2ndを自動照合します。
+                  コミュニティ招待URL、または自分が主催したミートアップ共有URLを貼り付けてください。Niantic ID、Community、日本CA地図の1st/2ndを照合します。
                 </p>
               </div>
             </div>
             <input
               readOnly
-              value="https://cmpf.re/XXXXXXXX"
+              value="コミュニティ招待URL / ミートアップ共有URL"
               className="mt-5 w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-bold text-slate-500"
             />
             <button type="button" disabled className="mt-3 w-full rounded-2xl bg-lime-400 px-5 py-3 text-sm font-black text-lime-950 opacity-70">
