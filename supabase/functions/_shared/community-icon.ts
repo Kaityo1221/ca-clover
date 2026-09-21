@@ -164,7 +164,11 @@ export async function observeCommunityIcon(
   admin:AdminClient,
   communityId:string,
   rawAvatarUrl:unknown,
-  options:{generateMissingThumbnail?:boolean;ensureArchive?:boolean}={},
+  options:{
+    generateMissingThumbnail?:boolean;
+    ensureArchive?:boolean;
+    allowUrlFallbackChange?:boolean;
+  }={},
 ){
   const avatarUrl=typeof rawAvatarUrl==="string"?rawAvatarUrl.trim():"";
   const checkedAt=new Date().toISOString();
@@ -182,6 +186,28 @@ export async function observeCommunityIcon(
   if(currentError) throw currentError;
 
   const observed=await inspectAvatar(avatarUrl);
+
+  if(
+    observed.method==="url_fallback"
+    && current?.avatar_content_hash
+    && options.allowUrlFallbackChange===false
+  ){
+    await admin.from("communities")
+      .update({avatar_url:avatarUrl,avatar_last_checked_at:checkedAt})
+      .eq("id",communityId);
+    return {
+      changed:false,
+      reason:"source_unavailable",
+      hash:current.avatar_content_hash,
+      method:observed.method,
+      thumbnail_path:current.avatar_thumbnail_path??null,
+      thumbnail_error:"source_unavailable",
+      archive_path:null,
+      version_thumbnail_path:null,
+      version_error:"source_unavailable",
+    };
+  }
+
   const sameHash=String(current?.avatar_content_hash??"")===observed.hash;
 
   let versionArchivePath:string|null=null;
