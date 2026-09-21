@@ -139,6 +139,7 @@ Deno.serve(async(req:Request)=>{
         return json({ok:true,status:"rejected"});
       }
       const requestSource=String(request.request_source??"meetup_share");
+      let verifiedCaMemberId:string|null=null;
       const requiresMeetupBadge=requestSource==="meetup_share";
       const mapFallback=
         requestSource==="meetup_share" &&
@@ -230,6 +231,7 @@ Deno.serve(async(req:Request)=>{
         if(!currentLink){
           return json({error:"日本CA地図で現在このCommunityの担当CAとして確認できないため承認できません",code:"CA_COMMUNITY_CHANGED"},409);
         }
+        verifiedCaMemberId=currentCa.id;
       }
 
       const campfireCommunityIdSnapshot=String(request.campfire_community_id_snapshot??"").trim();
@@ -266,6 +268,27 @@ Deno.serve(async(req:Request)=>{
         community_id:request.community_id,
       },{onConflict:"user_id,community_id"});
       if(membershipError) throw membershipError;
+
+      if(verifiedCaMemberId){
+        const {data:existingPrimary,error:primaryError}=await admin
+          .from("user_ca_identities")
+          .select("user_id")
+          .eq("user_id",request.user_id)
+          .eq("is_primary",true)
+          .maybeSingle();
+        if(primaryError) throw primaryError;
+
+        const {error:identityError}=await admin.from("user_ca_identities").upsert({
+          user_id:request.user_id,
+          ca_member_id:verifiedCaMemberId,
+          community_id:request.community_id,
+          is_primary:!existingPrimary,
+          verification_source:"community_claim_approved",
+          verified_at:reviewedAt,
+          verified_by:userData.user.id,
+        },{onConflict:"user_id,ca_member_id,community_id"});
+        if(identityError) throw identityError;
+      }
 
       if(requestSource==="meetup_share" && request.campfire_meetup_id && request.meetup_title){
         const {error:meetupError}=await admin.from("meetups").upsert({
