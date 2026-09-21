@@ -25,7 +25,7 @@
     .section{margin-top:18px}.notice{border-radius:18px;padding:14px 16px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12px;font-weight:800;line-height:1.6}
     .ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534}.err{background:#fff1f2;border-color:#fecdd3;color:#be123c}.row{display:flex;align-items:flex-start;gap:12px}.between{justify-content:space-between}.wraprow{flex-wrap:wrap}
     .metric{padding:16px;border-radius:20px;background:#fff;border:1px solid #ecfccb}.metric b{display:block;font-size:26px;color:#365314;margin-top:4px}
-    .claim{border:1px solid #ecfccb;border-radius:20px;padding:16px;background:white}.claim+.claim{margin-top:10px}.tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+    .claim{border:1px solid #ecfccb;border-radius:20px;padding:16px;background:white}.claim+.claim{margin-top:10px}.claim.clickable{cursor:pointer;transition:.18s transform,.18s border-color,.18s box-shadow}.claim.clickable:hover{transform:translateY(-2px);border-color:#bef264;box-shadow:0 12px 30px rgba(77,124,15,.10)}.tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
     .actions{display:flex;gap:8px;flex-wrap:wrap}.actions .btn{width:auto;min-width:90px;padding:10px 14px}.linkbtn{border:0;background:none;color:#65a30d;font-weight:900;padding:0}
     .center{text-align:center}.spacer{height:8px}.version{font-size:10px;color:#94a3b8;text-align:center;margin-top:18px}
     .login{max-width:470px;margin:8vh auto 0}.login .logo{margin:0 auto;width:78px;height:78px;border-radius:26px;font-size:38px}
@@ -137,7 +137,7 @@
 
     if(communities.length){
       html+='<section class="section"><h2>割り当て済みCommunity</h2><div class="grid g2 section">'+communities.map(function(c){
-        return '<div class="claim"><span class="pill">'+e(c.prefecture||"—")+'</span><h3 style="margin-top:9px">'+e(c.name)+'</h3><p class="muted small strong">Member: '+e(c.member_count==null?"未取得":Number(c.member_count).toLocaleString("ja-JP"))+' / Coverage: '+e(c.coverage)+'</p></div>'
+        return '<button type="button" class="claim clickable" style="text-align:left;width:100%" data-community="'+e(c.id)+'"><span class="pill">'+e(c.prefecture||"—")+'</span><h3 style="margin-top:9px">'+e(c.name)+'</h3><p class="muted small strong">Member: '+e(c.member_count==null?"未取得":Number(c.member_count).toLocaleString("ja-JP"))+' / Coverage: '+e(c.coverage)+'</p><div class="small strong" style="color:#65a30d;margin-top:10px">Community情報を見る →</div></button>'
       }).join("")+'</div></section>';
     }
 
@@ -153,7 +153,59 @@
     const toAccount=document.getElementById("toAccount");if(toAccount)toAccount.onclick=function(){go("account")};
     const submit=document.getElementById("submitClaim");
     if(submit)submit.onclick=submitClaim;
+    app.querySelectorAll("[data-community]").forEach(function(b){
+      b.onclick=function(){go("community:"+encodeURIComponent(b.dataset.community))}
+    });
   }
+
+  async function renderCommunity(id){
+    app.innerHTML='<section class="card hero"><button id="backMy" class="linkbtn">← My Community</button><h1 style="margin-top:12px">🍀 Community情報</h1><p class="muted strong">読み込み中...</p></section>';
+    const base=await client.from("communities")
+      .select("id,name,prefecture,member_count,coverage,coverage_from,coverage_to,fetched_at,campfire_url")
+      .eq("id",id).maybeSingle();
+    if(base.error||!base.data){
+      app.innerHTML='<section class="card center"><h2>このCommunityは表示できません</h2><p class="muted strong">割り当て外、または存在しないCommunityです。</p><button id="backMy" class="btn line section">My Communityへ戻る</button></section>';
+      document.getElementById("backMy").onclick=function(){go("my")};
+      return;
+    }
+    const community=base.data;
+    const since=new Date(Date.now()-30*24*60*60*1000).toISOString();
+    const results=await Promise.all([
+      client.from("meetups").select("id,title,starts_at,location,event_url,is_ca_meetup,rsvp_count,checkin_count").eq("community_id",id).gte("starts_at",since).order("starts_at",{ascending:false}).limit(50),
+      client.from("community_ca_members").select("ca_member_id").eq("community_id",id)
+    ]);
+    const meetups=results[0].data||[];
+    const links=results[1].data||[];
+    let cas=[];
+    if(links.length){
+      const cr=await client.from("ca_members").select("id,trainer_name,ca_level").in("id",links.map(function(x){return x.ca_member_id})).order("ca_level");
+      cas=cr.data||[];
+    }
+    const totalRsvp=meetups.reduce(function(sum,x){return sum+(x.rsvp_count||0)},0);
+    const totalCheckin=meetups.reduce(function(sum,x){return sum+(x.checkin_count||0)},0);
+    const caMeetups=meetups.filter(function(x){return x.is_ca_meetup===true}).length;
+    let html='<button id="backMy" class="linkbtn">← My Community</button>'+
+      '<section class="card hero section"><span class="pill">'+e(community.prefecture||"—")+'</span><h1 style="margin-top:10px">'+e(community.name)+'</h1>'+
+      '<div class="tags"><span class="pill slate">Member: '+e(community.member_count==null?"未取得":Number(community.member_count).toLocaleString("ja-JP"))+'</span>'+
+      '<span class="pill slate">Coverage: '+e(community.coverage||"—")+'</span>'+
+      cas.map(function(ca){return '<span class="pill">'+e(ca.ca_level||"CA")+': '+e(ca.trainer_name)+'</span>'}).join("")+
+      '</div>'+(community.campfire_url?'<p><a href="'+e(community.campfire_url)+'" target="_blank" rel="noreferrer" style="color:#65a30d;font-weight:900">Campfireを開く ↗</a></p>':'')+'</section>'+
+      '<section class="grid g3 section"><div class="metric"><span class="tiny strong muted">🔥 Meetup / 30日</span><b>'+meetups.length+'</b></div>'+
+      '<div class="metric"><span class="tiny strong muted">🍀 CA Meetup / 30日</span><b>'+caMeetups+'</b></div>'+
+      '<div class="metric"><span class="tiny strong muted">✅ Check-in / 30日</span><b>'+totalCheckin.toLocaleString("ja-JP")+'</b></div></section>'+
+      '<section class="card section"><h2>🔥 Meetup履歴 / 30日</h2><p class="muted small strong">RSVP '+totalRsvp.toLocaleString("ja-JP")+' / Check-in '+totalCheckin.toLocaleString("ja-JP")+'</p>';
+    if(!meetups.length){
+      html+='<div class="notice section">この期間のMeetupデータはありません。</div>';
+    }else{
+      html+='<div class="section">'+meetups.map(function(m){
+        return '<div class="claim"><div class="row between wraprow"><div><div class="tiny strong" style="color:#65a30d">'+e(fmt(m.starts_at))+'</div><h3 style="margin-top:5px">'+e(m.title)+'</h3><div class="small muted strong" style="margin-top:4px">📍 '+e(m.location||"場所未取得")+'</div></div>'+(m.is_ca_meetup?'<span class="pill">CA Meetup</span>':'')+'</div><div class="tags"><span class="pill slate">RSVP '+e(m.rsvp_count==null?"—":m.rsvp_count)+'</span><span class="pill slate">Check-in '+e(m.checkin_count==null?"—":m.checkin_count)+'</span></div>'+(m.event_url?'<p class="small"><a href="'+e(m.event_url)+'" target="_blank" rel="noreferrer" style="color:#65a30d;font-weight:900">Campfire Meetupを開く ↗</a></p>':'')+'</div>';
+      }).join("")+'</div>';
+    }
+    html+='</section><section class="card section"><h2>🧾 Data Coverage</h2><div class="grid g3 section"><div><div class="tiny muted strong">取得開始</div><div class="strong">'+e(fmt(community.coverage_from))+'</div></div><div><div class="tiny muted strong">取得終了</div><div class="strong">'+e(fmt(community.coverage_to))+'</div></div><div><div class="tiny muted strong">最終同期</div><div class="strong">'+e(fmt(community.fetched_at))+'</div></div></div></section><div class="version">mirror '+VERSION+'</div>';
+    app.innerHTML=html;
+    document.getElementById("backMy").onclick=function(){go("my")};
+  }
+
   async function submitClaim(){
     const input=document.getElementById("claimUrl");
     const out=document.getElementById("claimResult");
@@ -232,6 +284,7 @@
     if(v==="admin"&&profile.role!=="admin"){v="my";location.hash="my"}
     if(v==="account"){renderAccount();return}
     if(v==="admin"){await renderAdmin();return}
+    if(v.startsWith("community:")){await renderCommunity(decodeURIComponent(v.slice("community:".length)));return}
     await renderMy();
   }
   init();
