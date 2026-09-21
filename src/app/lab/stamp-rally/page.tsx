@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
 import { PREFECTURE_ORDER } from "@/lib/prefecture-order";
+import { CommunityIcon } from "@/components/community-icon";
 
 type CommunityRow = {
   id: string;
@@ -176,17 +177,6 @@ export default function Page() {
     return map;
   }, [stampCommunities]);
 
-  function thumbnailUrl(community: CommunityRow) {
-    if (!community.avatar_thumbnail_path) return community.avatar_url;
-    const { data } = supabase.storage
-      .from("community-icon-thumbs")
-      .getPublicUrl(community.avatar_thumbnail_path);
-    const version = community.avatar_last_changed_at
-      ? "?v=" + encodeURIComponent(community.avatar_last_changed_at)
-      : "";
-    return data.publicUrl + version;
-  }
-
   function toggleRegion(region: string) {
     setOpenRegions((current) => {
       const next = new Set(current);
@@ -311,7 +301,6 @@ export default function Page() {
                     {prefectureOpen ? <div className="border-t border-[#f3e9df] bg-[#fffdf9] px-3 py-4">
                       {rows.length ? <div className="grid grid-cols-3 gap-x-2 gap-y-5 sm:grid-cols-4 sm:gap-x-4 lg:grid-cols-5">
                         {rows.map((community) => {
-                          const iconSrc = thumbnailUrl(community);
                           const acquiredCountForCommunity = community.cas.filter((ca) => ca.acquired).length;
                           const anyAcquired = acquiredCountForCommunity > 0;
                           const allAcquired = community.cas.length > 0 && acquiredCountForCommunity === community.cas.length;
@@ -327,28 +316,12 @@ export default function Page() {
                                 ? "bg-gradient-to-br from-[#f9e8c7] via-white to-[#efd0a4] shadow-[0_8px_18px_rgba(115,78,38,.18)]"
                                 : "border-2 border-dashed border-[#cfc9c3] bg-[#f2f0ed]"
                             )}>
-                              <div className={"relative h-full w-full overflow-hidden rounded-full bg-[#eef2e9] " + (!anyAcquired ? "grayscale opacity-35" : "")}>
-                                {iconSrc ? <>
-                                  <div className="grid h-full place-items-center text-3xl text-[#9caf90]">🍀</div>
-                                  <img
-                                    src={iconSrc}
-                                    alt=""
-                                    loading="lazy"
-                                    decoding="async"
-                                    className="absolute inset-0 z-10 h-full w-full object-cover"
-                                    onError={(event) => {
-                                      const image = event.currentTarget;
-                                      const fallback = community.avatar_url;
-                                      if (fallback && image.dataset.fallback !== "done" && image.src !== fallback) {
-                                        image.dataset.fallback = "done";
-                                        image.src = fallback;
-                                        return;
-                                      }
-                                      image.style.display = "none";
-                                    }}
-                                  />
-                                </> : <div className="grid h-full place-items-center text-3xl text-[#9caf90]">🍀</div>}
-                              </div>
+                              <CommunityIcon
+                                supabase={supabase}
+                                community={community}
+                                className={"h-full w-full rounded-full bg-[#eef2e9] "+(!anyAcquired?"grayscale opacity-35":"")}
+                                fallbackClassName="text-3xl text-[#9caf90]"
+                              />
                               {allAcquired ? <span className="absolute -right-1 -top-1 grid size-6 place-items-center rounded-full border-2 border-white bg-[#6e9959] text-[10px] text-white">✓</span> : null}
                             </div>
 
@@ -394,24 +367,13 @@ export default function Page() {
             aria-label="閉じる"
           >×</button>
           <div className="mx-auto mt-1 grid size-56 place-items-center rounded-full bg-gradient-to-br from-[#f8e3bf] via-white to-[#edc993] p-2 shadow-[0_18px_45px_rgba(112,73,35,.22)]">
-            <div className="relative h-full w-full overflow-hidden rounded-full bg-[#eef2e9]">
-              <div className="grid h-full place-items-center text-6xl text-[#9caf90]">🍀</div>
-              {thumbnailUrl(selectedCommunity) ? <img
-                src={thumbnailUrl(selectedCommunity) ?? ""}
-                alt=""
-                className="absolute inset-0 z-10 h-full w-full object-cover"
-                onError={(event) => {
-                  const image = event.currentTarget;
-                  const fallback = selectedCommunity.avatar_url;
-                  if (fallback && image.dataset.fallback !== "done" && image.src !== fallback) {
-                    image.dataset.fallback = "done";
-                    image.src = fallback;
-                    return;
-                  }
-                  image.style.display = "none";
-                }}
-              /> : null}
-            </div>
+            <CommunityIcon
+              supabase={supabase}
+              community={selectedCommunity}
+              className="h-full w-full rounded-full bg-[#eef2e9]"
+              fallbackClassName="text-6xl text-[#9caf90]"
+              loading="eager"
+            />
           </div>
           <h2 className="mt-5 text-xl font-black leading-snug text-[#443c35]">{selectedCommunity.name}</h2>
           <p className="mt-1 text-xs font-bold text-[#8a7d72]">{selectedCommunity.prefecture ?? "—"}</p>
