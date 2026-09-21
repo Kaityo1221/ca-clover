@@ -64,6 +64,12 @@ export default function Page(){
 
   const card=(row:ClaimRow)=>{
     const requester=profileMap.get(row.user_id);
+    const mapFallback=
+      row.request_source==="meetup_share" &&
+      row.ca_map_status==="not_listed" &&
+      row.creator_ca_badge_verified===true &&
+      row.creator_username_matches_profile===true &&
+      row.is_ca_meetup===true;
     return <section key={row.id} className="clover-card p-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-start">
         <div className="min-w-0 flex-1">
@@ -82,7 +88,7 @@ export default function Page(){
           <h2 className="mt-3 text-xl font-black text-lime-950">{row.community_name_snapshot}</h2>
           <div className="mt-2 text-sm font-bold text-slate-600">{row.request_source==="community_invite"?"コミュニティ招待URLから申請":row.meetup_title??"ミートアップ共有URLから申請"}</div>
           <div className="mt-3 text-xs font-black text-violet-700">{row.request_source==="community_invite"?"申請者":"ミートアップ主催者"}: {row.creator_display_name??"未取得"} / Niantic ID: {row.creator_username??"未取得"}</div>
-          {row.ca_map_status==="not_listed"?<div className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black text-amber-800">日本CA地図に未掲載です。申請者へ「リョータさんに掲載をお願いしてください」と案内してください。</div>:null}
+          {row.ca_map_status==="not_listed"?<div className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black text-amber-800">{mapFallback?"日本CA地図は未掲載ですが、本人主催Meetup・Niantic ID一致・紫CAバッジをCampfireで確認済みです。ADMIN手動審査で承認できます。":"日本CA地図に未掲載です。本人主催Meetupで追加確認してください。"}</div>:null}
           <div className="mt-3 text-xs font-semibold text-slate-500">申請者: {requester?.email??"—"} / Niantic ID: {requester?.niantic_id??"未登録"}</div>
           <div className="mt-1 text-[11px] font-black text-lime-700">承認すると、pendingアカウントはCA化され、このCommunityが同時に割り当てられます。</div>
           <div className="mt-1 text-[11px] text-slate-400">申請 {new Date(row.requested_at).toLocaleString("ja-JP")}</div>
@@ -90,7 +96,7 @@ export default function Page(){
         </div>
         {row.status==="pending" ? <div className="flex shrink-0 gap-2">
           <button disabled={busy===row.id} onClick={()=>review(row.id,"reject")} className="rounded-full border border-rose-200 bg-white px-4 py-2 text-xs font-black text-rose-700 disabled:opacity-50">却下</button>
-          <button disabled={busy===row.id||(row.request_source==="meetup_share"&&row.creator_ca_badge_verified!==true)||row.creator_username_matches_profile!==true||row.ca_role_verified!==true||row.ca_map_status!=="matched"} onClick={()=>review(row.id,"approve")} className="rounded-full bg-lime-400 px-5 py-2 text-xs font-black text-lime-950 disabled:opacity-50">{busy===row.id?"処理中...":"承認"}</button>
+          <button disabled={busy===row.id||(row.request_source==="meetup_share"&&row.creator_ca_badge_verified!==true)||row.creator_username_matches_profile!==true||(!mapFallback&&(row.ca_role_verified!==true||row.ca_map_status!=="matched"))} onClick={()=>review(row.id,"approve")} className="rounded-full bg-lime-400 px-5 py-2 text-xs font-black text-lime-950 disabled:opacity-50">{busy===row.id?"処理中...":"承認"}</button>
         </div> : <span className={row.status==="approved"?"rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900":"rounded-full bg-rose-100 px-3 py-1 text-xs font-black text-rose-700"}>{row.status==="approved"?"承認済み":"却下"}</span>}
       </div>
     </section>;
