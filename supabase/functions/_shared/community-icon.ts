@@ -32,16 +32,19 @@ async function inspectAvatar(url:string){
     if(Number.isFinite(length)&&length>5*1024*1024) throw new Error("avatar too large");
     const buffer=await response.arrayBuffer();
     if(buffer.byteLength>5*1024*1024) throw new Error("avatar too large");
+    const rawContentType=(response.headers.get("content-type")??"").split(";")[0].trim().toLowerCase();
     return {
       hash:await sha256Bytes(buffer),
       method:"content_sha256" as const,
       buffer,
+      contentType:rawContentType.startsWith("image/")?rawContentType:"application/octet-stream",
     };
   }catch{
     return {
       hash:await sha256Text(url),
       method:"url_fallback" as const,
       buffer:null,
+      contentType:null,
     };
   }
 }
@@ -67,11 +70,101 @@ async function ensureThumbnail(
   }
 }
 
+async function ensureVersionAssets(
+  admin:AdminClient,
+  communityId:string,
+  contentHash:string,
+  buffer:ArrayBuffer|null,
+  contentType:string|null,
+){
+  if(!buffer) return {archivePath:null,thumbnailPath:null,error:"source_unavailable"} as const;
+
+  const archivePath=communityId+"/"+contentHash;
+  try{
+    const archive=admin.storage.from("community-icon-archive");
+    const {error:archiveError}=await archive.upload(archivePath,new Uint8Array(buffer),{
+      contentType:contentType??"application/octet-stream",
+      cacheControl:"31536000",
+      upsert:true,
+    });
+    if(archiveError) throw archiveError;
+
+    let thumbnailPath:string|null=null;
+    let thumbnailError:string|null=null;
+    if(buffer.byteLength<=2*1024*1024){
+      try{
+        const module=await import("./community-icon-thumbnail.ts");
+        thumbnailPath=await module.createCommunityIconVersionThumbnail(
+          admin,
+          communityId,
+          contentHash,
+          buffer,
+        );
+      }catch(error){
+        thumbnailError=error instanceof Error?error.message:String(error);
+      }
+    }else{
+      thumbnailError="source_too_large";
+    }
+
+    return {
+      archivePath,
+      thumbnailPath,
+      error:thumbnailError,
+    } as const;
+  }catch(error){
+    return {
+      archivePath:null,
+      thumbnailPath:null,
+      error:error instanceof Error?error.message:String(error),
+    } as const;
+  }
+}
+
+async function upsertVersion(
+  admin:AdminClient,
+  input:{
+    communityId:string;
+    contentHash:string;
+    avatarUrl:string;
+    method:"content_sha256"|"url_fallback";
+    archivePath:string|null;
+    thumbnailPath:string|null;
+    seenAt:string;
+  },
+){
+  const {communityId,contentHash,avatarUrl,method,archivePath,thumbnailPath,seenAt}=input;
+
+  const {error:resetError}=await admin
+    .from("community_icon_versions")
+    .update({is_current:false})
+    .eq("community_id",communityId)
+    .eq("is_current",true)
+    .neq("content_hash",contentHash);
+  if(resetError) throw resetError;
+
+  const payload:Record<string,unknown>={
+    community_id:communityId,
+    content_hash:contentHash,
+    source_avatar_url:avatarUrl,
+    detection_method:method,
+    last_seen_at:seenAt,
+    is_current:true,
+  };
+  if(archivePath) payload.archive_path=archivePath;
+  if(thumbnailPath) payload.thumbnail_path=thumbnailPath;
+
+  const {error:versionError}=await admin
+    .from("community_icon_versions")
+    .upsert(payload,{onConflict:"community_id,content_hash"});
+  if(versionError) throw versionError;
+}
+
 export async function observeCommunityIcon(
   admin:AdminClient,
   communityId:string,
   rawAvatarUrl:unknown,
-  options:{generateMissingThumbnail?:boolean}={},
+  options:{generateMissingThumbnail?:boolean;ensureArchive?:boolean}={},
 ){
   const avatarUrl=typeof rawAvatarUrl==="string"?rawAvatarUrl.trim():"";
   const checkedAt=new Date().toISOString();
@@ -90,6 +183,42 @@ export async function observeCommunityIcon(
 
   const observed=await inspectAvatar(avatarUrl);
   const sameHash=String(current?.avatar_content_hash??"")===observed.hash;
+
+  let versionArchivePath:string|null=null;
+  let versionThumbnailPath:string|null=null;
+  let versionError:string|null=null;
+
+  if(observed.buffer&&(options.ensureArchive===true||!sameHash)){
+    const versionAssets=await ensureVersionAssets(
+      admin,
+      communityId,
+      observed.hash,
+      observed.buffer,
+      observed.contentType,
+    );
+    versionArchivePath=versionAssets.archivePath;
+    versionThumbnailPath=versionAssets.thumbnailPath;
+    versionError=versionAssets.error;
+  }
+
+  if(options.ensureArchive===true||!sameHash){
+    await upsertVersion(admin,{
+      communityId,
+      contentHash:observed.hash,
+      avatarUrl,
+      method:observed.method,
+      archivePath:versionArchivePath,
+      thumbnailPath:versionThumbnailPath,
+      seenAt:checkedAt,
+    });
+  }else{
+    const {error:touchError}=await admin
+      .from("community_icon_versions")
+      .update({last_seen_at:checkedAt,source_avatar_url:avatarUrl,is_current:true})
+      .eq("community_id",communityId)
+      .eq("content_hash",observed.hash);
+    if(touchError) throw touchError;
+  }
 
   if(sameHash){
     let thumbnailPath=current?.avatar_thumbnail_path??null;
@@ -115,6 +244,9 @@ export async function observeCommunityIcon(
       method:observed.method,
       thumbnail_path:thumbnailPath,
       thumbnail_error:thumbnailError,
+      archive_path:versionArchivePath,
+      version_thumbnail_path:versionThumbnailPath,
+      version_error:versionError,
     };
   }
 
@@ -151,5 +283,8 @@ export async function observeCommunityIcon(
     method:observed.method,
     thumbnail_path:thumbnail.path,
     thumbnail_error:thumbnail.error,
+    archive_path:versionArchivePath,
+    version_thumbnail_path:versionThumbnailPath,
+    version_error:versionError,
   };
 }
