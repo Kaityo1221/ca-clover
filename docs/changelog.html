@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>更新履歴 | CA Clover</title>
+<style>
+:root{font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#213018;background:#f8fce9}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#fbfff4,#f8fce9);min-height:100vh}
+a{color:inherit;text-decoration:none}.wrap{max-width:760px;margin:auto;padding:28px 16px 64px}.back{font-size:13px;font-weight:900;color:#4d7c0f}.tag{display:inline-flex;margin-top:18px;border-radius:999px;background:#f1f5f9;color:#64748b;padding:6px 10px;font-size:10px;font-weight:900}.muted{color:#94a3b8}.card{margin-top:16px;background:#fff;border:1px solid #e5eed7;border-radius:24px;padding:20px;box-shadow:0 14px 40px rgba(77,124,15,.06)}h1{margin:8px 0 0;color:#365314;font-size:28px}h2{margin:4px 0 0;color:#365314;font-size:17px}.date{font-size:11px;color:#65a30d;font-weight:900}ul{padding-left:20px;margin:12px 0 0;color:#475569;font-size:13px;font-weight:700;line-height:1.75}.intro{font-size:12px;font-weight:700;color:#94a3b8;line-height:1.6}
+</style>
+</head>
+<body>
+<main class="wrap">
+<a class="back" href="./admin.html">← 管理メニュー</a>
+<div class="tag">CHANGELOG</div>
+<h1>更新履歴</h1>
+<p class="intro">CA Cloverの主な変更だけを簡潔に記録しています。</p>
+<section class="card"><div class="date">2026/09/21</div><h2>スマホADMIN・Activity Map・Community申請を整理</h2><ul>
+<li>Activity MapをADMINメニュー最上部へ移動</li>
+<li>スマホADMINはMy Communityを先に表示し、管理機能は管理画面へ整理</li>
+<li>全国148 Communityを巡回し、145 Communityのアイコンを取得</li>
+<li>アイコン初回取得は通知せず、実際に変更された時だけ要確認表示</li>
+<li>Community申請をDiscord通知へ連携し、審査画面とCampfire確認へ直接移動可能に</li>
+<li>Meetup Watchの対応ステータスを日本語化</li>
+<li>一般ユーザーではData Coverage詳細を隠し、不足時だけ注意表示</li>
+<li>Campfire自動同期を15分間隔に整理</li>
+</ul></section>
+<section class="card"><div class="date">2026/09/20</div><h2>Activity MapとCommunity管理を強化</h2><ul>
+<li>期間・指標・都道府県・Community検索を追加</li>
+<li>選択期間に合わせてActivity集計を切り替えるよう改善</li>
+<li>Community ID履歴管理と申請判定を整理</li>
+<li>Community割当・未割当確認の管理導線を改善</li>
+</ul></section>
+<section class="card"><div class="date">2026/09/19</div><h2>Campfire同期基盤を更新</h2><ul>
+<li>Campfire公開Meetupと過去履歴の取得経路を分離</li>
+<li>CAマスター同期とCommunity座標取得を自動化</li>
+<li>ADMIN向け同期履歴・Coverage確認を追加</li>
+</ul></section>
+</main>
+</body>
+</html>
