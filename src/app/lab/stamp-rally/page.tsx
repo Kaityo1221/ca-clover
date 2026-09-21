@@ -192,7 +192,12 @@ export default function Page() {
   return <main className="min-h-screen bg-[#fff8ef]">
     <div className="mx-auto max-w-5xl px-3 py-6 sm:px-6 md:py-9">
       <div className="flex items-center justify-between gap-3">
-        <Link href="/admin" className="text-sm font-black text-[#4f7d3b]">← 管理メニュー</Link>
+        <Link
+          href={profile?.role==="admin"?"/admin":"/"}
+          className="text-sm font-black text-[#4f7d3b]"
+        >
+          {profile?.role==="admin"?"← 管理メニュー":"← CA Clover Home"}
+        </Link>
         <span className="rounded-full border border-[#89a97b] bg-white px-3 py-1 text-[10px] font-black tracking-[0.18em] text-[#4f7d3b]">UI LAB</span>
       </div>
 
