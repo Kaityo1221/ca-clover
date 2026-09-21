@@ -41,3 +41,27 @@ a{color:inherit;text-decoration:none}
   border-color:var(--clover-400);
   color:#29430a;
 }
+
+.clover-periods{
+  display:flex;
+  flex-wrap:wrap;
+  gap:.5rem;
+}
+.clover-periods .clover-pill{
+  white-space:nowrap;
+}
+@media (max-width:480px){
+  .clover-periods{
+    display:grid;
+    grid-template-columns:repeat(5,minmax(0,1fr));
+    gap:.35rem;
+  }
+  .clover-periods .clover-pill{
+    width:100%;
+    min-width:0;
+    padding:.48rem .2rem;
+    font-size:.69rem;
+    line-height:1.1;
+    text-align:center;
+  }
+}
