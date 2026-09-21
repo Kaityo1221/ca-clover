@@ -46,9 +46,14 @@ export default function Page(){
       <div><div className="text-xs font-black text-amber-700">新しいCommunity申請</div><div className="mt-1 font-black text-amber-950">{pendingClaims}件の確認が必要です</div></div><div className="text-2xl">🛎️</div>
     </Link> : null}
     <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {buttons.map(([i,t,d,href])=><Link key={t} href={href} className="clover-card min-h-40 p-5 text-left transition hover:-translate-y-1 hover:border-lime-300">
-        <div className="text-3xl">{i}</div><div className="mt-4 font-black text-lime-950">{t}</div><div className="mt-1 text-xs font-semibold text-slate-500">{d}</div><div className="mt-4 text-xs font-black text-lime-700">開く →</div>
-      </Link>)}
+      {buttons.map(([i,t,d,href])=>{
+        const attention=(href==="/admin/meetup-watch"&&watchCount>0)||(href==="/admin/claims"&&pendingClaims>0);
+        return <Link key={t} href={href} className={attention
+          ?"clover-card min-h-40 animate-pulse border-amber-300 bg-amber-50 p-5 text-left ring-2 ring-amber-200 transition hover:-translate-y-1 hover:border-amber-400"
+          :"clover-card min-h-40 p-5 text-left transition hover:-translate-y-1 hover:border-lime-300"}>
+          <div className="text-3xl">{i}</div><div className="mt-4 font-black text-lime-950">{t}</div><div className="mt-1 text-xs font-semibold text-slate-500">{d}</div><div className="mt-4 text-xs font-black text-lime-700">開く →</div>
+        </Link>;
+      })}
     </div>
   </main>;
 }
