@@ -30,7 +30,49 @@ Deno.serve(async(req:Request)=>{
       if(!["pending","ca","admin"].includes(role)||!userId) throw new Error("invalid role request");
       const {error}=await admin.from("profiles").update({role}).eq("id",userId);
       if(error) throw error;
+      if(role==="pending"){
+        const {error:permissionError}=await admin
+          .from("user_permissions")
+          .delete()
+          .eq("user_id",userId)
+          .eq("permission_code","S");
+        if(permissionError) throw permissionError;
+      }
       return new Response(JSON.stringify({ok:true}),{headers:{...corsHeaders,"Content-Type":"application/json"}});
+    }
+
+    if(body.action==="set_permission"){
+      const permissionCode=String(body.permissionCode??"").trim().toUpperCase();
+      const userId=String(body.userId??"");
+      const enabled=Boolean(body.enabled);
+      if(permissionCode!=="S"||!userId) throw new Error("invalid permission request");
+
+      const {data:targetProfile,error:targetError}=await admin
+        .from("profiles")
+        .select("role")
+        .eq("id",userId)
+        .single();
+      if(targetError) throw targetError;
+      if(enabled&&targetProfile?.role==="pending") throw new Error("pending account cannot receive S permission");
+
+      if(enabled){
+        const {error}=await admin.from("user_permissions").upsert({
+          user_id:userId,
+          permission_code:permissionCode,
+          granted_at:new Date().toISOString(),
+          granted_by:userData.user.id,
+        },{onConflict:"user_id,permission_code"});
+        if(error) throw error;
+      }else{
+        const {error}=await admin
+          .from("user_permissions")
+          .delete()
+          .eq("user_id",userId)
+          .eq("permission_code",permissionCode);
+        if(error) throw error;
+      }
+
+      return new Response(JSON.stringify({ok:true,permission_code:permissionCode,enabled}),{headers:{...corsHeaders,"Content-Type":"application/json"}});
     }
 
     if(body.action==="review_icon_change"){
