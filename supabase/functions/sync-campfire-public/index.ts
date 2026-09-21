@@ -229,6 +229,21 @@ Deno.serve(async(req:Request)=>{
       }
     }
 
+    const avatarByClubId=new Map<string,string>();
+    const discoveredIds=[...eventIds];
+    for(let start=0;start<discoveredIds.length;start+=100){
+      try{
+        const metadata=await campfire.getPublicEvents(discoveredIds.slice(start,start+100));
+        for(const publicEvent of metadata){
+          if(publicEvent.clubId&&publicEvent.clubAvatarUrl){
+            avatarByClubId.set(publicEvent.clubId,publicEvent.clubAvatarUrl);
+          }
+        }
+      }catch{
+        // Avatar metadata is optional and must never block Meetup ingestion.
+      }
+    }
+
     const nowIso=new Date().toISOString();
     const rows:Array<Record<string,unknown>>=[];
     const unmatchedClubIds=new Set<string>();
@@ -279,9 +294,10 @@ Deno.serve(async(req:Request)=>{
           if(clubId) unmatchedClubIds.add(clubId);
           continue;
         }
-        if(event.club?.avatarUrl && !iconObservedCommunityIds.has(community.id)){
+        const observedAvatarUrl=event.club?.avatarUrl??(clubId?avatarByClubId.get(clubId):null);
+        if(observedAvatarUrl && !iconObservedCommunityIds.has(community.id)){
           try{
-            await observeCommunityIcon(admin,community.id,event.club.avatarUrl);
+            await observeCommunityIcon(admin,community.id,observedAvatarUrl);
             iconObservedCommunityIds.add(community.id);
           }catch{
             // Icon review must never block Meetup ingestion.
