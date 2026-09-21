@@ -18,7 +18,7 @@ a{text-decoration:none;color:inherit}button{font:inherit;cursor:pointer}.wrap{ma
 .card{margin-top:18px;border:1px solid #ead6bf;border-radius:30px;background:rgba(255,255,255,.88);padding:20px;box-shadow:0 18px 44px rgba(98,70,40,.10)}
 .center{text-align:center}.hero{font-size:40px}.title{margin:6px 0 0;font-size:25px;font-weight:950}.desc{margin:8px 0 0;font-size:12px;line-height:1.65;font-weight:800;color:#88786a}
 .grid{display:grid;gap:12px;margin-top:22px}.btn{border:0;border-radius:18px;padding:15px;font-size:14px;font-weight:950}.primary{background:#5f8e50;color:white}.outline{border:2px solid #a9c89c;background:white;color:#537647}.mutedbtn{background:#eee9e4;color:#6d655f}.btn:disabled{opacity:.5}
-.notice{margin-top:14px;border-radius:16px;padding:12px;font-size:12px;font-weight:850}.warn{background:#fff6da;color:#80641d}.error{background:#fff0f2;color:#b4233b}.net{margin-top:14px;border:1px solid #f5d28a;background:#fff8df;color:#805d14}.phase{margin-top:14px;background:#eff8ff;color:#17638f}
+.notice{margin-top:14px;border-radius:16px;padding:12px;font-size:12px;font-weight:850}.warn{background:#fff6da;color:#80641d}.error{background:#fff0f2;color:#b4233b}.net{margin-top:14px;border:1px solid #f5d28a;background:#fff8df;color:#805d14}.phase{margin-top:14px;background:#eff8ff;color:#17638f}.eventmode{margin-top:14px;border:1px solid #fed7aa;border-radius:18px;background:#fff7ed;padding:13px;color:#9a3412}.eventmode .k{font-size:9px;font-weight:950}.eventmode .n{margin-top:4px;font-size:13px;font-weight:950}.eventmode .m{margin-top:4px;font-size:10px;font-weight:800}
 .qrbox{margin:22px auto 0;width:272px;border-radius:24px;background:#fff;padding:16px;box-shadow:0 12px 30px rgba(73,58,43,.12)}#qr{display:grid;place-items:center}.timer{margin-top:14px;font-size:14px;font-weight:950;color:#4f7045}.small{font-size:11px;font-weight:800;color:#9b8d82}
 .person{margin-top:22px;border:1px solid #ead8c6;border-radius:26px;background:#fffaf4;padding:20px;text-align:center}.avatar{position:relative;margin:auto;width:112px;height:112px;border:4px solid white;border-radius:999px;background:#edf4e8;display:grid;place-items:center;font-size:38px;overflow:hidden;box-shadow:0 8px 22px rgba(80,60,40,.12)}.avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.name{margin-top:12px;font-size:20px;font-weight:950}.community{margin-top:4px;font-size:14px;font-weight:950;color:#5b7e4e}.pref{margin-top:3px;font-size:11px;font-weight:800;color:#94877c}
 .confirm{margin-top:15px;font-size:18px;font-weight:950}.twocol{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
@@ -196,21 +196,24 @@ function resultTitle(){
 function render(){
  if(!currentUser){app.innerHTML='<div class="notice warn center">ログインを確認中...</div>';return}
  let html="";
+ if(currentSession&&currentSession.event){
+  html+='<div class="eventmode"><div class="k">🎪 EVENT MODE ON</div><div class="n">'+e(currentSession.event.name||"イベント")+'</div><div class="m">📍 '+e(currentSession.event.location||"場所未設定")+' ・ '+e(currentSession.event.timezone||"Asia/Tokyo")+'<br>この交換にはイベント名・場所・現地日付が自動で記録されます。</div></div>';
+ }
  if(!currentSession){
-  html='<div class="grid"><button id="showQr" class="btn primary" '+(busy?"disabled":"")+'>QRを見せる</button><button id="scanQr" class="btn outline" '+(busy?"disabled":"")+'>QRを読み取る</button></div>';
+  html+='<div class="grid"><button id="showQr" class="btn primary" '+(busy||!online?"disabled":"")+'>QRを見せる</button><button id="scanQr" class="btn outline" '+(busy||!online?"disabled":"")+'>QRを読み取る</button></div>';
  }else if(currentSession.status==="open"&&currentSession.my_role==="issuer"){
-  html=qrHtml();
+  html+=qrHtml();
  }else if(currentSession.status==="paired"&&currentSession.partner){
   const p=currentSession.partner;
-  html='<div class="person"><div class="avatar"><span>🍀</span>'+window.CACommunityIcon.img(client,p.community,'alt=""')+'</div><div class="name">'+e(p.trainer_name)+'</div><div class="community">'+e(p.community.name)+'</div><div class="pref">'+e(p.community.prefecture||"")+'</div></div>';
+  html+='<div class="person"><div class="avatar"><span>🍀</span>'+window.CACommunityIcon.img(client,p.community,'alt=""')+'</div><div class="name">'+e(p.trainer_name)+'</div><div class="community">'+e(p.community.name)+'</div><div class="pref">'+e(p.community.prefecture||"")+'</div></div>';
   if(!currentSession.my_confirmed)html+='<div class="confirm center">交換しますか？</div><div class="twocol"><button id="cancelExchange" class="btn mutedbtn" '+(busy||!online?"disabled":"")+'>やめる</button><button id="confirmExchange" class="btn primary" '+(busy||!online?"disabled":"")+'>'+(phase==="saving"?"保存中...":"OK")+'</button></div>';
   else html+='<div class="wait">あなたはOK済みです。相手の確認を待っています 🍀</div>';
  }else if(currentSession.status==="completed"){
-  html='<div class="center" style="margin-top:24px"><div style="font-size:54px">🎉</div><h2 class="title">'+e(resultTitle())+'</h2><p class="desc">'+e(currentSession.partner?currentSession.partner.trainer_name:"相手")+'さんとの交換を保存しました。</p><a class="btn primary" style="display:block;margin-top:18px" href="./stamp-rally.html">スタンプ一覧へ戻る</a></div>';
+  html+='<div class="center" style="margin-top:24px"><div style="font-size:54px">🎉</div><h2 class="title">'+e(resultTitle())+'</h2><p class="desc">'+e(currentSession.partner?currentSession.partner.trainer_name:"相手")+'さんとの交換を保存しました。</p>'+(currentSession.event?'<p class="small" style="color:#9a3412;font-weight:900">🎪 '+e(currentSession.event.name||"イベント")+' ・ '+e(currentSession.event.location||"場所未設定")+'</p>':'')+'<a class="btn primary" style="display:block;margin-top:18px" href="./stamp-rally.html">スタンプ一覧へ戻る</a></div>';
  }else if(currentSession.status==="cancelled"){
-  html='<div class="notice warn center">この交換はキャンセルされました。</div><button id="reset" class="btn outline" style="width:100%;margin-top:12px">最初に戻る</button>';
+  html+='<div class="notice warn center">この交換はキャンセルされました。</div><button id="reset" class="btn outline" style="width:100%;margin-top:12px">最初に戻る</button>';
  }else if(currentSession.status==="expired"){
-  html='<div class="notice warn center">QRコードの有効期限が切れました。</div>'+(currentSession.my_role==="issuer"?'<button id="reissue" class="btn primary" style="width:100%;margin-top:12px">再発行</button>':'<button id="reset" class="btn outline" style="width:100%;margin-top:12px">別のQRを読む</button>');
+  html+='<div class="notice warn center">QRコードの有効期限が切れました。</div>'+(currentSession.my_role==="issuer"?'<button id="reissue" class="btn primary" style="width:100%;margin-top:12px">再発行</button>':'<button id="reset" class="btn outline" style="width:100%;margin-top:12px">別のQRを読む</button>');
  }
  if(message)html+='<div class="notice error">'+e(message)+(currentSession&&online?'<button id="checkState" class="btn outline" style="width:100%;margin-top:8px">状態を再確認</button>':'')+'</div>';
  app.innerHTML=html;
