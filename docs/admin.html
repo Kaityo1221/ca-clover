@@ -101,7 +101,7 @@ async function dashboard(){
  const [claims,watch,icons,caCount,communityRows,membershipRows]=await Promise.all([
   client.from("community_access_requests").select("id",{count:"exact",head:true}).eq("status","pending"),
   client.from("meetup_watch_cases").select("id",{count:"exact",head:true}).eq("review_required",true).eq("status","unreviewed"),
-  client.from("community_icon_changes").select("id",{count:"exact",head:true}).is("reviewed_at",null),
+  client.from("community_icon_changes").select("id",{count:"exact",head:true}).eq("change_type","changed").is("reviewed_at",null),
   client.from("ca_members").select("id",{count:"exact",head:true}),
   client.from("communities").select("id"),
   client.from("community_memberships").select("community_id")
@@ -109,10 +109,10 @@ async function dashboard(){
  const assignedCommunityIds=new Set((membershipRows.data||[]).map(x=>x.community_id));
  const unassignedCount=(communityRows.data||[]).filter(x=>!assignedCommunityIds.has(x.id)).length;
  const items=[
+  ["map","🗾","Activity Map","全国Communityの活動を地図で確認",0],
   ["watch","🔍","要確認Meetup",(watch.count||0)+"件の未確認",watch.count||0],
   ["claims","🛎️","Community申請",(claims.count||0)+"件の承認待ち",claims.count||0],
   ["icons","🖼️","アイコン一覧",(icons.count||0)?(icons.count+"件の要確認"):"全国Communityのアイコンを確認",icons.count||0],
-  ["map","🗾","Activity Map","全国Communityの活動を地図で確認",0],
   ["ca","🏕️","CA一覧",(caCount.count||0)+" CA / 1st・2nd切替",0],
   ["campfire","🔐","Campfire接続","tokenと接続状態を管理",0],
   ["sync","🔄","データ同期","Campfire Activityを全国更新",0],
@@ -167,7 +167,7 @@ async function icons(){
  ]);
  const communities=cr.data||[],changes=ir.data||[];
  const pending=new Map();
- changes.filter(x=>!x.reviewed_at).forEach(x=>{const a=pending.get(x.community_id)||[];a.push(x);pending.set(x.community_id,a)});
+ changes.filter(x=>!x.reviewed_at&&x.change_type==="changed").forEach(x=>{const a=pending.get(x.community_id)||[];a.push(x);pending.set(x.community_id,a)});
  document.getElementById("iconSummary").innerHTML='<div class="tags"><span class="pill">全国 '+communities.length+'</span><span class="pill '+(pending.size?"amber":"")+'">要確認 '+pending.size+'</span></div>';
  document.getElementById("iconGrid").innerHTML=communities.map(c=>'<button class="iconstamp '+(pending.has(c.id)?"pending":"")+'" data-icon-id="'+c.id+'">'+(pending.has(c.id)?'<span class="pill amber" style="position:absolute;right:8px;top:8px">要確認</span>':'')+'<div class="avatar">'+(c.avatar_url?'<img src="'+e(c.avatar_url)+'" alt="">':'🍀')+'</div><div class="stampname">'+e(c.name)+'</div><div class="stamparea">'+e(c.prefecture||"—")+'</div></button>').join("");
  document.querySelectorAll("[data-icon-id]").forEach(b=>b.onclick=()=>openIcon(b.dataset.iconId));
