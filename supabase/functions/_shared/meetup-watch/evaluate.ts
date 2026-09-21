@@ -244,8 +244,15 @@ function officialGate(
     return {skip:false,outside:null as FindingDraft|null};
   }
 
+  const preGrace=Math.max(0,Number(settings.rule_config.official_pre_grace_minutes??60)||60);
   const grace=Math.max(0,Number(settings.rule_config.official_grace_minutes??60)||60);
   const strongOutside=Math.max(grace,Number(settings.rule_config.official_strong_outside_minutes??120)||120);
+
+  // 会長運用: 待ち合わせ・受付は公式開始30〜60分前が中心。
+  // 開始60分より前まで無制限に免除しない。
+  if(meetupStart<officialStart-preGrace*60000){
+    return {skip:false,outside:null as FindingDraft|null};
+  }
   if(meetupStart<officialStart) return {skip:true,outside:null as FindingDraft|null};
   if(meetupStart<=officialEnd+grace*60000) return {skip:true,outside:null as FindingDraft|null};
 
