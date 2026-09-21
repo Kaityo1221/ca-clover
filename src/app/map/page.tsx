@@ -282,7 +282,21 @@ export default function Page() {
   const [allTimeRows, setAllTimeRows] = useState<ActivityMapRow[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isMobileMap, setIsMobileMap] = useState(false);
+  const [mapInteractionEnabled, setMapInteractionEnabled] = useState(true);
   const mapElementRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const sync = () => {
+      const mobile = media.matches;
+      setIsMobileMap(mobile);
+      setMapInteractionEnabled(!mobile);
+    };
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     if (loading || !user || !profile || profile.role === "pending") return;
@@ -440,6 +454,8 @@ export default function Page() {
 
     let disposed = false;
     let map: LeafletMap | null = null;
+    const interactionEnabled = !isMobileMap || mapInteractionEnabled;
+    element.style.touchAction = interactionEnabled ? "none" : "pan-y";
 
     loadLeaflet()
       .then((L) => {
@@ -447,7 +463,12 @@ export default function Page() {
 
         map = L.map(mapElementRef.current, {
           zoomControl: true,
-          scrollWheelZoom: true,
+          scrollWheelZoom: interactionEnabled,
+          dragging: interactionEnabled,
+          touchZoom: interactionEnabled,
+          doubleClickZoom: interactionEnabled,
+          boxZoom: interactionEnabled,
+          keyboard: interactionEnabled,
         });
 
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -606,6 +627,8 @@ export default function Page() {
     allTimeLastByCommunity,
     mapMode,
     isAdmin,
+    isMobileMap,
+    mapInteractionEnabled,
   ]);
 
   if (loading) {
@@ -868,11 +891,27 @@ export default function Page() {
           </div>
         </div>
 
-        <div
-          ref={mapElementRef}
-          className="h-[62vh] min-h-[520px] w-full overflow-hidden rounded-[20px] bg-lime-50"
-          aria-label="全国Community Activity Map"
-        />
+        <div className="relative">
+          <div
+            ref={mapElementRef}
+            className="h-[62vh] min-h-[520px] w-full overflow-hidden rounded-[20px] bg-lime-50"
+            aria-label="全国Community Activity Map"
+          />
+          {isMobileMap ? (
+            <button
+              type="button"
+              onClick={() => setMapInteractionEnabled((current) => !current)}
+              className={
+                "absolute right-3 top-3 z-[1000] rounded-full px-4 py-2 text-xs font-black shadow-lg " +
+                (mapInteractionEnabled
+                  ? "bg-slate-900 text-white"
+                  : "bg-lime-300 text-lime-950")
+              }
+            >
+              {mapInteractionEnabled ? "↑ スクロールに戻る" : "🗺️ 地図を操作"}
+            </button>
+          ) : null}
+        </div>
       </section>
 
       {isAdmin ? (
