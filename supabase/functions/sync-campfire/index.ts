@@ -147,7 +147,36 @@ Deno.serve(async(req:Request)=>{
         }
 
         const nowIso=new Date().toISOString();
-        const rows=[...byId.values()].map(event=>({
+
+        // Feed items can omit the Meetup description even though the individual
+        // Event query returns it. Enrich recent/future Meetups only, keeping
+        // historical backfills bounded to avoid excessive Campfire requests.
+        const detailCutoff=Date.now()-90*24*60*60*1000;
+        let detailEnriched=0;
+        let detailFetchFailures=0;
+        const events=[...byId.values()];
+        for(const event of events){
+          const rawTime=event.eventEndTime??event.eventTime;
+          const eventTime=rawTime?Date.parse(rawTime):NaN;
+          const needsDetail=!(typeof event.details==="string"&&event.details.trim());
+          if(!needsDetail||!Number.isFinite(eventTime)||eventTime<detailCutoff||detailEnriched>=50) continue;
+          try{
+            const detailed=await campfire.getEvent(event.id);
+            if(typeof detailed.details==="string"&&detailed.details.trim()){
+              event.details=detailed.details;
+            }
+            if(detailed.address||detailed.location){
+              event.address=detailed.address??event.address;
+              event.location=detailed.location??event.location;
+            }
+            event.creator=detailed.creator??event.creator;
+            detailEnriched++;
+          }catch{
+            detailFetchFailures++;
+          }
+        }
+
+        const rows=events.map(event=>({
           campfire_meetup_id:event.id,
           community_id:community.id,
           title:event.name,
@@ -204,6 +233,8 @@ Deno.serve(async(req:Request)=>{
           archived_events:archived.events.length,
           active_pages:active.pages,
           archived_pages:archived.pages,
+          detail_enriched:detailEnriched,
+          detail_fetch_failures:detailFetchFailures,
         });
       }catch(error){
         failedCommunities++;
