@@ -20,7 +20,8 @@ type MeetupRow = {
 };
 type ClaimRow = {
   id:string;
-  meetup_title:string;
+  meetup_title:string|null;
+  request_source:"meetup_share"|"community_invite";
   community_name_snapshot:string;
   community_prefecture_snapshot:string|null;
   master_match:boolean|null;
@@ -49,7 +50,7 @@ export default function Page() {
   async function loadClaims(){
     if(!user) return;
     const {data}=await supabase.from("community_access_requests")
-      .select("id,meetup_title,community_name_snapshot,community_prefecture_snapshot,master_match,creator_display_name,creator_username,creator_username_matches_profile,creator_ca_badge_verified,ca_level_snapshot,ca_role_verified,ca_map_status,status,requested_at,reviewed_at")
+      .select("id,meetup_title,request_source,community_name_snapshot,community_prefecture_snapshot,master_match,creator_display_name,creator_username,creator_username_matches_profile,creator_ca_badge_verified,ca_level_snapshot,ca_role_verified,ca_map_status,status,requested_at,reviewed_at")
       .eq("user_id",user.id)
       .order("requested_at",{ascending:false});
     setClaims((data as ClaimRow[]|null)??[]);
@@ -65,7 +66,7 @@ export default function Page() {
       const [{data:memberships},{data:claimRows}]=await Promise.all([
         supabase.from("community_memberships").select("community_id").eq("user_id", userId),
         supabase.from("community_access_requests")
-          .select("id,meetup_title,community_name_snapshot,community_prefecture_snapshot,master_match,creator_display_name,creator_username,creator_username_matches_profile,creator_ca_badge_verified,ca_level_snapshot,ca_role_verified,ca_map_status,status,requested_at,reviewed_at")
+          .select("id,meetup_title,request_source,community_name_snapshot,community_prefecture_snapshot,master_match,creator_display_name,creator_username,creator_username_matches_profile,creator_ca_badge_verified,ca_level_snapshot,ca_role_verified,ca_map_status,status,requested_at,reviewed_at")
           .eq("user_id",userId)
           .order("requested_at",{ascending:false}),
       ]);
@@ -100,9 +101,9 @@ export default function Page() {
     if(!value) return;
     setClaimBusy(true);
     setClaimMessage(null);
-    const {data,error}=await supabase.functions.invoke("community-claim",{body:{action:"submit",meetup:value}});
+    const {data,error}=await supabase.functions.invoke("community-claim",{body:{action:"submit",url:value}});
     if(error){
-      let message="申請に失敗しました。自分が主催したMeetupの共有URL / IDを確認してください。";
+      let message="申請に失敗しました。コミュニティ招待URL / ミートアップ共有URLを確認してください。";
       try{
         const context=(error as {context?:Response}).context;
         const payload=context?await context.clone().json():null;
@@ -144,17 +145,17 @@ export default function Page() {
 
     {profile?.role==="pending" ? <section className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5">
       <div className="text-xs font-black text-amber-700">初回CA登録</div>
-      <h2 className="mt-1 text-lg font-black text-amber-950">自分主催のMeetupでCA確認をします</h2>
-      <p className="mt-2 text-xs font-semibold leading-5 text-amber-800">Niantic IDを登録してから、自分が主催したMeetupを1件提出してください。会長が承認するとCAアカウント化とCommunity割当が同時に完了します。</p>
+      <h2 className="mt-1 text-lg font-black text-amber-950">Campfire URLでCA確認をします</h2>
+      <p className="mt-2 text-xs font-semibold leading-5 text-amber-800">Niantic IDを登録してから、コミュニティ招待URLまたは自分が主催したミートアップ共有URLを提出してください。会長が承認するとCAアカウント化とCommunity割当が同時に完了します。</p>
       {!profile.niantic_id?<Link href="/account" className="mt-3 inline-flex rounded-full bg-amber-200 px-4 py-2 text-xs font-black text-amber-950">先にNiantic IDを登録 →</Link>:<div className="mt-3 text-xs font-black text-amber-900">Niantic ID: {profile.niantic_id} ✓</div>}
     </section> : null}
 
     {profile?.role==="ca" || profile?.role==="pending" ? <section className="clover-card mt-6 p-6">
       <div className="flex items-start gap-3">
         <div className="text-3xl">🔥</div>
-        <div><h2 className="font-black text-lime-950">MeetupからCommunityを申請</h2><p className="mt-1 text-xs font-semibold text-slate-500">必ず自分が主催したMeetupを入力してください。紫色Community Ambassadorバッジ、主催者Niantic ID、Community、日本CA地図の1st/2ndを自動照合します。</p></div>
+        <div><h2 className="font-black text-lime-950">Campfire URLからCommunityを申請</h2><p className="mt-1 text-xs font-semibold text-slate-500">コミュニティ招待URL、または自分が主催したミートアップ共有URLを貼り付けてください。Niantic ID、Community、日本CA地図の1st/2ndを照合します。ミートアップ共有URLでは紫色CAバッジも確認します。</p></div>
       </div>
-      <input value={claimInput} onChange={e=>setClaimInput(e.target.value)} placeholder="Campfire共有URL / Meetup URL / Meetup ID" className="mt-5 w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-lime-400"/>
+      <input value={claimInput} onChange={e=>setClaimInput(e.target.value)} placeholder="コミュニティ招待URL / ミートアップ共有URL" className="mt-5 w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-lime-400"/>
       <button onClick={submitClaim} disabled={claimBusy||!claimInput.trim()||(profile?.role==="pending"&&!profile?.niantic_id)} className="mt-3 w-full rounded-2xl bg-lime-400 px-5 py-3 text-sm font-black text-lime-950 disabled:opacity-50">{claimBusy?"Communityを確認中...":"Communityを確認して申請"}</button>
       {claimMessage ? <p className="mt-3 text-center text-xs font-bold text-lime-700">{claimMessage}</p> : null}
     </section> : null}
@@ -163,11 +164,11 @@ export default function Page() {
       <h2 className="text-lg font-black text-lime-950">申請履歴</h2>
       <div className="mt-3 space-y-3">{claims.map(c=><div key={c.id} className="clover-card p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div><div className="text-xs font-black text-lime-700">{c.community_prefecture_snapshot??"—"}</div><div className="mt-1 font-black text-lime-950">{c.community_name_snapshot}</div><div className="mt-1 text-xs font-semibold text-slate-500">{c.meetup_title}</div></div>
+          <div><div className="text-xs font-black text-lime-700">{c.community_prefecture_snapshot??"—"}</div><div className="mt-1 font-black text-lime-950">{c.community_name_snapshot}</div><div className="mt-1 text-xs font-semibold text-slate-500">{c.request_source==="community_invite"?"コミュニティ招待URLから申請":c.meetup_title??"ミートアップ共有URLから申請"}</div></div>
           <span className={c.status==="approved"?"rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900":c.status==="rejected"?"rounded-full bg-rose-100 px-3 py-1 text-xs font-black text-rose-700":"rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800"}>{c.status==="approved"?"承認済み":c.status==="rejected"?"却下":"承認待ち"}</span>
         </div>
         <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-bold">
-          <span className={c.creator_ca_badge_verified===true?"rounded-full bg-violet-100 px-2.5 py-1 text-violet-700":"rounded-full bg-slate-100 px-2.5 py-1 text-slate-500"}>{c.creator_ca_badge_verified===true?"🟣 CAバッジ確認済み":"CAバッジ未確認"}</span>
+          {c.request_source==="meetup_share"?<span className={c.creator_ca_badge_verified===true?"rounded-full bg-violet-100 px-2.5 py-1 text-violet-700":"rounded-full bg-slate-100 px-2.5 py-1 text-slate-500"}>{c.creator_ca_badge_verified===true?"🟣 CAバッジ確認済み":"CAバッジ未確認"}</span>:<span className="rounded-full bg-lime-100 px-2.5 py-1 text-lime-800">コミュニティ招待URL</span>}
           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">主催者: {c.creator_display_name??"未取得"} / {c.creator_username??"ID未取得"}</span>
           <span className={c.creator_username_matches_profile===true?"rounded-full bg-sky-100 px-2.5 py-1 text-sky-800":"rounded-full bg-rose-100 px-2.5 py-1 text-rose-700"}>{c.creator_username_matches_profile===true?"Niantic ID一致":"Niantic ID未確認"}</span>
           <span className={c.ca_role_verified===true?"rounded-full bg-lime-100 px-2.5 py-1 text-lime-800":"rounded-full bg-rose-100 px-2.5 py-1 text-rose-700"}>{c.ca_role_verified===true?"日本CA地図 "+(c.ca_level_snapshot??"")+"確認済み":"1st/2nd未確認"}</span>
@@ -182,7 +183,7 @@ export default function Page() {
       <section className="clover-card mt-6 p-8 text-center">
         <div className="text-5xl">🌱</div>
         <h2 className="mt-3 text-xl font-black text-lime-950">Community未割当です</h2>
-        <p className="mt-2 text-sm font-semibold text-slate-500">{profile?.role==="pending"?"自分が主催したMeetupを提出し、承認されるとCAアカウントとCommunity割当が同時に有効になります。":"上のフォームから自分のMeetupを登録すると、Communityを自動判定して承認申請できます。"}</p>
+        <p className="mt-2 text-sm font-semibold text-slate-500">{profile?.role==="pending"?"コミュニティ招待URLまたは自分が主催したミートアップ共有URLを提出し、承認されるとCAアカウントとCommunity割当が同時に有効になります。":"上のフォームからCampfire URLを登録すると、Communityを自動判定して承認申請できます。"}</p>
       </section>
     ) : null}
 
