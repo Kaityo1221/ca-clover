@@ -1,15 +1,16 @@
 type ActivityBucket = "day" | "week" | "month" | "year";
 
 type ActivityPoint = {
-  bucket: string;
+  bucket?: string;
+  month?: string;
   meetup_count: number;
   checkin_count: number;
 };
 
 type Props = {
   data: ActivityPoint[];
-  bucket: ActivityBucket;
-  periodLabel: string;
+  bucket?: ActivityBucket;
+  periodLabel?: string;
 };
 
 const WIDTH = 980;
@@ -50,9 +51,13 @@ function bucketLabel(value: string, bucket: ActivityBucket, pointCount: number) 
   return pointCount > 12 ? String(year).slice(-2) + "/" + month : month + "月";
 }
 
-export default function ActivityTrendChart({ data, bucket, periodLabel }: Props) {
+export default function ActivityTrendChart({
+  data,
+  bucket = "month",
+  periodLabel = "過去12か月",
+}: Props) {
   const points = data.map((row) => ({
-    ...row,
+    bucket: row.bucket ?? row.month ?? "",
     meetup_count: Number(row.meetup_count) || 0,
     checkin_count: Number(row.checkin_count) || 0,
   }));
