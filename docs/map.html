@@ -9,12 +9,12 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <style>
 :root{font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#213018;background:#f8faf6}
-*{box-sizing:border-box}body{margin:0}.top{position:sticky;top:0;z-index:1500;background:rgba(255,255,255,.94);border-bottom:1px solid #e5efd9;backdrop-filter:blur(12px)}.topin{max-width:1180px;margin:auto;padding:12px 18px;display:flex;align-items:center;gap:12px}.logo{font-size:28px;text-decoration:none}.brand{font-weight:950;color:#365314}.grow{flex:1}.btn,.pillbtn{border:0;border-radius:999px;padding:10px 15px;font-weight:900;cursor:pointer;background:#bef264;color:#365314}.btn.line,.pillbtn{background:#fff;border:1px solid #d9f99d}.pillbtn.on{background:#bef264;border-color:#a3e635}.wrap{max-width:1180px;margin:auto;padding:24px 16px 60px}.card{background:white;border:1px solid #e7f1dc;border-radius:24px;padding:18px;box-shadow:0 10px 28px rgba(54,83,20,.05)}.hero{background:linear-gradient(135deg,#f7fee7,#fff)}.section{margin-top:16px}.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.between{justify-content:space-between}.muted{color:#64748b}.strong{font-weight:800}.tiny{font-size:11px}.small{font-size:12px}.pill{display:inline-flex;border-radius:999px;padding:6px 10px;background:#ecfccb;color:#4d7c0f;font-size:11px;font-weight:900}.pill.slate{background:#f1f5f9;color:#475569}.pill.amber{background:#fef3c7;color:#92400e}.grid{display:grid;gap:12px}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.metric{background:#fff;border:1px solid #e7f1dc;border-radius:20px;padding:15px}.metric b{display:block;font-size:24px;margin-top:6px}.controls{display:flex;flex-wrap:wrap;gap:8px}.input{width:100%;border:1px solid #d9f99d;border-radius:16px;background:#fff;padding:11px 13px;font-weight:800;color:#334155}.controlgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.mapwrap{height:560px;border-radius:24px;overflow:hidden;border:1px solid #d9f99d;background:#eef4e8}.table{width:100%;border-collapse:collapse;font-size:12px}.table th,.table td{text-align:left;padding:10px;border-bottom:1px solid #eef2e8}.table th{color:#64748b;font-size:11px}.notice{border-radius:18px;padding:13px;background:#fef3c7;color:#92400e;font-weight:800}.searchlist{display:grid;gap:7px}.searchitem{width:100%;text-align:left;border:1px solid #e7f1dc;background:#fff;border-radius:14px;padding:10px;cursor:pointer}.leaflet-popup-content a{color:#4d7c0f;font-weight:900}.version{text-align:center;color:#94a3b8;font-size:10px;margin-top:24px}
-@media(max-width:760px){.g3,.controlgrid{grid-template-columns:1fr}.mapwrap{height:62vh}.wrap{padding-top:14px}.card{padding:15px}.topin{align-items:flex-start}.brand{display:none}}
+*{box-sizing:border-box}body{margin:0}.top{position:sticky;top:0;z-index:1500;background:rgba(255,255,255,.94);border-bottom:1px solid #e5efd9;backdrop-filter:blur(12px)}.topin{max-width:1180px;margin:auto;padding:12px 18px;display:flex;align-items:center;gap:12px}.logo{font-size:28px;text-decoration:none}.brand{font-weight:950;color:#365314}.grow{flex:1}.btn,.pillbtn{border:0;border-radius:999px;padding:10px 15px;font-weight:900;cursor:pointer;background:#bef264;color:#365314}.btn.line,.pillbtn{background:#fff;border:1px solid #d9f99d}.pillbtn.on{background:#bef264;border-color:#a3e635}.wrap{max-width:1180px;margin:auto;padding:24px 16px 60px}.card{background:white;border:1px solid #e7f1dc;border-radius:24px;padding:18px;box-shadow:0 10px 28px rgba(54,83,20,.05)}.hero{background:linear-gradient(135deg,#f7fee7,#fff)}.section{margin-top:16px}.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.between{justify-content:space-between}.muted{color:#64748b}.strong{font-weight:800}.tiny{font-size:11px}.small{font-size:12px}.pill{display:inline-flex;border-radius:999px;padding:6px 10px;background:#ecfccb;color:#4d7c0f;font-size:11px;font-weight:900}.pill.slate{background:#f1f5f9;color:#475569}.pill.amber{background:#fef3c7;color:#92400e}.grid{display:grid;gap:12px}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.metric{background:#fff;border:1px solid #e7f1dc;border-radius:20px;padding:15px}.metric b{display:block;font-size:24px;margin-top:6px}.controls{display:flex;flex-wrap:wrap;gap:8px}.input{width:100%;border:1px solid #d9f99d;border-radius:16px;background:#fff;padding:11px 13px;font-weight:800;color:#334155}.controlgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.mapstage{position:relative}.mapwrap{height:560px;border-radius:24px;overflow:hidden;border:1px solid #d9f99d;background:#eef4e8}.mapwrap.scroll-mode{touch-action:pan-y}.mapwrap.interact-mode{touch-action:none}.maptoggle{display:none;position:absolute;right:12px;top:12px;z-index:1200;border:0;border-radius:999px;padding:10px 14px;background:#bef264;color:#365314;font-size:12px;font-weight:900;box-shadow:0 8px 22px rgba(54,83,20,.20)}.maptoggle.on{background:#0f172a;color:#fff}.table{width:100%;border-collapse:collapse;font-size:12px}.table th,.table td{text-align:left;padding:10px;border-bottom:1px solid #eef2e8}.table th{color:#64748b;font-size:11px}.notice{border-radius:18px;padding:13px;background:#fef3c7;color:#92400e;font-weight:800}.searchlist{display:grid;gap:7px}.searchitem{width:100%;text-align:left;border:1px solid #e7f1dc;background:#fff;border-radius:14px;padding:10px;cursor:pointer}.leaflet-popup-content a{color:#4d7c0f;font-weight:900}.version{text-align:center;color:#94a3b8;font-size:10px;margin-top:24px}
+@media(max-width:760px){.g3,.controlgrid{grid-template-columns:1fr}.mapwrap{height:62vh}.maptoggle{display:block}.mapwrap.scroll-mode .leaflet-control-zoom{display:none}.wrap{padding-top:14px}.card{padding:15px}.topin{align-items:flex-start}.brand{display:none}}
 </style>
 </head>
 <body>
-<header class="top"><div class="topin"><a class="logo" href="./admin.html">🍀</a><div class="brand">CA Clover / Activity Map</div><div class="grow"></div><a class="btn line" href="./admin.html">管理画面</a></div></header>
+<header class="top"><div class="topin"><a class="logo" href="./admin.html">🍀</a><div class="brand">CA Clover / Activity Map</div><div class="grow"></div><a class="btn" href="./admin.html">管理画面</a></div></header>
 <main id="app" class="wrap"><section class="card hero"><h1>🗾 Activity Map</h1><p class="muted strong">読み込み中...</p></section></main>
 <script>
 (function(){
@@ -26,7 +26,7 @@ const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persi
 const app=document.getElementById("app");
 const periods=[[30,"30日"],[90,"90日"],[180,"180日"],[365,"1年"],[0,"全期間"]];
 const metrics=[["checkin_count","✅ Check-in"],["meetup_count","🔥 Meetup"],["ca_meetup_count","🍀 CA Meetup"],["rsvp_count","📨 RSVP"]];
-let period=30,metric="checkin_count",mode="activity",pref="all",search="",rows=[],allRows=[],map=null,selected=null;
+let period=30,metric="checkin_count",mode="activity",pref="all",search="",rows=[],allRows=[],map=null,selected=null,mapInteract=false;
 function e(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]})}
 function n(v){return Number(v||0).toLocaleString("ja-JP")}
 function labelFor(list,value){const x=list.find(function(v){return v[0]===value});return x?x[1]:""}
@@ -74,7 +74,7 @@ function render(){
   (searchMatches.length?'<div class="searchlist section">'+searchMatches.map(function(x){return '<button class="searchitem" data-find="'+e(x.community_id)+'"><b>'+e(x.community_name)+'</b><div class="tiny muted">'+e(x.prefecture||"—")+'</div></button>'}).join("")+'</div>':'')+
   '</section>'+
   '<section class="grid g3 section"><div class="metric"><span class="tiny strong muted">対象Community</span><b>'+n(visible.length)+'</b></div><div class="metric"><span class="tiny strong muted">活動あり</span><b>'+n(active)+'</b></div><div class="metric"><span class="tiny strong muted">'+e(labelFor(metrics,metric))+' 合計</span><b>'+n(total)+'</b><div class="tiny muted">最終 '+(latest?new Date(latest).toLocaleDateString("ja-JP"):"—")+'</div></div></section>'+
-  '<div id="map" class="mapwrap section"></div>'+
+  '<div class="mapstage section"><div id="map" class="mapwrap"></div><button id="mapToggle" class="maptoggle">🗺️ 地図を操作</button></div>'+
   '<section class="card section"><h2>📊 上位Community / '+e(labelFor(periods,period))+'</h2><div style="overflow:auto"><table class="table"><thead><tr><th>Community</th><th>都道府県</th><th>'+e(labelFor(metrics,metric))+'</th><th>最終開催</th></tr></thead><tbody>'+top.map(function(x){return '<tr><td><b>'+e(x.community_name)+'</b></td><td>'+e(x.prefecture||"—")+'</td><td>'+n(x[metric])+'</td><td>'+(x.last_event_at?new Date(x.last_event_at).toLocaleDateString("ja-JP"):"—")+'</td></tr>'}).join("")+'</tbody></table></div></section>'+
   '<section class="card section"><h2>🗾 都道府県サマリー</h2><div style="overflow:auto"><table class="table"><thead><tr><th>都道府県</th><th>Community</th><th>活動あり</th><th>'+e(labelFor(metrics,metric))+'</th></tr></thead><tbody>'+Object.keys(grouped).sort(function(a,b){return a.localeCompare(b,"ja")}).map(function(k){const g=grouped[k];return '<tr><td><b>'+e(k)+'</b></td><td>'+n(g.count)+'</td><td>'+n(g.active)+'</td><td>'+n(g.total)+'</td></tr>'}).join("")+'</tbody></table></div></section>'+
   '<div class="version">Pages Activity Map / 2026-09-21</div>';
@@ -89,11 +89,32 @@ function bind(){
  document.getElementById("search").onchange=function(){search=this.value;selected=null;render()};
  document.getElementById("search").onkeydown=function(ev){if(ev.key==="Enter"){search=this.value;selected=null;render()}};
  document.querySelectorAll("[data-find]").forEach(function(b){b.onclick=function(){selected=b.dataset.find;const x=rows.find(function(r){return r.community_id===selected});if(x){search=x.community_name;pref=x.prefecture||"all";render()}}});
+ const toggle=document.getElementById("mapToggle");
+ if(toggle)toggle.onclick=function(){mapInteract=!mapInteract;applyMapInteraction()};
+}
+function isMobile(){return window.matchMedia("(max-width:760px)").matches}
+function applyMapInteraction(){
+ const el=document.getElementById("map"),toggle=document.getElementById("mapToggle");
+ if(!el)return;
+ const active=!isMobile()||mapInteract;
+ el.classList.toggle("interact-mode",active);
+ el.classList.toggle("scroll-mode",!active);
+ if(toggle){
+  toggle.textContent=active&&isMobile()?"↑ スクロールに戻る":"🗺️ 地図を操作";
+  toggle.classList.toggle("on",active&&isMobile());
+ }
+ if(map){
+  ["dragging","touchZoom","doubleClickZoom","boxZoom","keyboard","scrollWheelZoom"].forEach(function(key){
+   const handler=map[key];
+   if(handler&&typeof handler.enable==="function"&&typeof handler.disable==="function"){active?handler.enable():handler.disable()}
+  });
+ }
 }
 function drawMap(visible){
  if(map){map.remove();map=null}
  if(!visible.length){document.getElementById("map").innerHTML='<div style="padding:30px" class="muted strong">条件に一致するCommunityがありません。</div>';return}
- map=L.map("map",{zoomControl:true,scrollWheelZoom:true});
+ const active=!isMobile()||mapInteract;
+ map=L.map("map",{zoomControl:true,scrollWheelZoom:active,dragging:active,touchZoom:active,doubleClickZoom:active,boxZoom:active,keyboard:active});
  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap contributors",maxZoom:18}).addTo(map);
  const pts=visible.map(function(x){return [Number(x.latitude),Number(x.longitude)]}).filter(function(x){return Number.isFinite(x[0])&&Number.isFinite(x[1])});
  if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[28,28],maxZoom:7});
@@ -107,6 +128,7 @@ function drawMap(visible){
   const marker=L.circleMarker([Number(x.latitude),Number(x.longitude)],{radius:radius,color:color,weight:1.5,fillColor:fill,fillOpacity:opacity}).bindPopup(html,{maxWidth:340}).addTo(map);
   if(selected===x.community_id){map.setView([Number(x.latitude),Number(x.longitude)],14);marker.openPopup()}
  });
+ applyMapInteraction();
 }
 (async function(){if(await guard())await load()})();
 })();
