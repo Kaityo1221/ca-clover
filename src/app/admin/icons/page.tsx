@@ -163,8 +163,25 @@ export default function Page(){
                 :"relative rounded-[28px] border border-dashed border-lime-200 bg-white/90 p-4 text-center shadow-[0_10px_24px_rgba(77,124,15,.08)] ") + tilt}
             >
               {pending.length?<span className="absolute right-2 top-2 rounded-full bg-amber-300 px-2 py-1 text-[10px] font-black text-amber-950">要確認</span>:null}
-              <div className="mx-auto grid size-24 place-items-center overflow-hidden rounded-full border-4 border-white bg-lime-50 text-4xl shadow-md">
-                {iconSrc?<img src={iconSrc} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover"/>:<span>🍀</span>}
+              <div className="relative mx-auto grid size-24 place-items-center overflow-hidden rounded-full border-4 border-white bg-lime-50 text-4xl shadow-md">
+                <span>🍀</span>
+                {iconSrc?<img
+                  src={iconSrc}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className="absolute inset-0 h-full w-full object-cover"
+                  onError={event=>{
+                    const image=event.currentTarget;
+                    const fallback=community.avatar_url;
+                    if(fallback&&image.dataset.fallback!=="done"&&image.src!==fallback){
+                      image.dataset.fallback="done";
+                      image.src=fallback;
+                      return;
+                    }
+                    image.style.display="none";
+                  }}
+                />:null}
               </div>
               <div className="mt-3 line-clamp-2 text-sm font-black leading-5 text-lime-950">{community.name}</div>
               <div className="mt-1 text-[11px] font-bold text-lime-600">{community.prefecture??"—"}</div>
