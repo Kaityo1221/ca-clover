@@ -97,8 +97,14 @@ async function getSessionDto(admin:any,sessionId:string,actorUserId:string){
     session.status="expired";
   }
 
-  const issuer=await getActor(admin,session.issuer_user_id);
-  const scanner=session.scanner_user_id?await getActor(admin,session.scanner_user_id):null;
+  const issuer=session.issuer_snapshot??await getActor(admin,session.issuer_user_id);
+  const scanner=session.scanner_user_id
+    ?session.scanner_snapshot??await getActor(admin,session.scanner_user_id)
+    :null;
+
+  await admin.from("stamp_exchange_sessions")
+    .update({last_client_seen_at:new Date().toISOString()})
+    .eq("id",session.id);
   const myRole=session.issuer_user_id===actorUserId?"issuer":"scanner";
   const partner=myRole==="issuer"?scanner:issuer;
 
@@ -141,8 +147,24 @@ Deno.serve(async(req:Request)=>{
     const body=await req.json().catch(()=>({}));
     const action=String(body.action??"");
 
-    if(action==="create"){
+    if(action==="resume"){
       await getActor(admin,actorUserId);
+      const cutoff=new Date(Date.now()-10*60_000).toISOString();
+      const {data:recent,error:recentError}=await admin
+        .from("stamp_exchange_sessions")
+        .select("id,status,created_at")
+        .or("issuer_user_id.eq."+actorUserId+",scanner_user_id.eq."+actorUserId)
+        .in("status",["open","paired","completed"])
+        .gte("created_at",cutoff)
+        .order("created_at",{ascending:false})
+        .limit(1);
+      if(recentError) throw recentError;
+      if(!recent?.length) return json({ok:true,session:null});
+      return json({ok:true,session:await getSessionDto(admin,recent[0].id,actorUserId)});
+    }
+
+    if(action==="create"){
+      const actor=await getActor(admin,actorUserId);
 
       await admin.from("stamp_exchange_sessions")
         .update({status:"expired"})
@@ -155,7 +177,9 @@ Deno.serve(async(req:Request)=>{
       const {data:session,error}=await admin.from("stamp_exchange_sessions").insert({
         token_hash:tokenHash,
         issuer_user_id:actorUserId,
+        issuer_snapshot:actor,
         expires_at:expiresAt,
+        last_client_seen_at:new Date().toISOString(),
       }).select("id,expires_at").single();
       if(error) throw error;
 
@@ -167,7 +191,7 @@ Deno.serve(async(req:Request)=>{
     }
 
     if(action==="claim"){
-      await getActor(admin,actorUserId);
+      const actor=await getActor(admin,actorUserId);
       const token=String(body.token??"").trim();
       if(!token) return json({error:"QRコードを読み取れませんでした"},400);
       const tokenHash=await sha256(token);
@@ -176,6 +200,14 @@ Deno.serve(async(req:Request)=>{
         p_scanner_user_id:actorUserId,
       });
       if(error) throw error;
+      const {error:snapshotError}=await admin.from("stamp_exchange_sessions")
+        .update({
+          scanner_snapshot:actor,
+          last_client_seen_at:new Date().toISOString(),
+        })
+        .eq("id",String(sessionId))
+        .eq("scanner_user_id",actorUserId);
+      if(snapshotError) throw snapshotError;
       return json({ok:true,session:await getSessionDto(admin,String(sessionId),actorUserId)});
     }
 
