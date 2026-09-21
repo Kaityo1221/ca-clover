@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#84cc16">
+<title>CA Clover ADMIN</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{font-family:Inter,"Noto Sans JP",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1f2937;background:#f7fee7}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:linear-gradient(180deg,#f7fee7 0,#fff 26rem)}
+button,input,select,textarea{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
+.top{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.94);backdrop-filter:blur(14px);border-bottom:1px solid #ecfccb}
+.topin{max-width:1180px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:12px}
+.logo{width:46px;height:46px;border-radius:16px;background:#bef264;display:grid;place-items:center;font-size:24px}
+.brand{font-weight:950;color:#365314}.sub{font-size:11px;font-weight:800;color:#65a30d}.grow{flex:1}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 16px 70px}.nav{display:flex;gap:8px;flex-wrap:wrap}.nav button,.nav a{border:0;border-radius:999px;padding:9px 13px;background:#f7fee7;color:#4d7c0f;font-weight:900}
+.card{background:#fff;border:1px solid #ecfccb;border-radius:24px;padding:20px;box-shadow:0 14px 40px rgba(77,124,15,.07)}
+.hero{background:linear-gradient(135deg,#ecfccb,#fff,#eff6ff)}h1,h2,h3{margin:0;color:#365314}h1{font-size:clamp(28px,5vw,42px);letter-spacing:-.03em}h2{font-size:22px}
+p{line-height:1.65}.muted{color:#64748b}.small{font-size:12px}.tiny{font-size:11px}.strong{font-weight:900}
+.grid{display:grid;gap:14px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.section{margin-top:18px}.row{display:flex;align-items:flex-start;gap:12px}.between{justify-content:space-between}.wraprow{flex-wrap:wrap}.center{text-align:center}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:6px 10px;background:#ecfccb;color:#4d7c0f;font-size:12px;font-weight:900}
+.pill.amber{background:#fef3c7;color:#92400e}.pill.rose{background:#ffe4e6;color:#be123c}.pill.blue{background:#e0f2fe;color:#075985}.pill.violet{background:#ede9fe;color:#6d28d9}.pill.slate{background:#f1f5f9;color:#475569}.pill.dark{background:#0f172a;color:#fff}
+.btn{border:0;border-radius:15px;padding:12px 15px;font-weight:950;background:#84cc16;color:#1a2e05}.btn.line{background:#fff;border:1px solid #d9f99d;color:#4d7c0f}.btn.rose{background:#fff1f2;border:1px solid #fecdd3;color:#be123c}.btn.dark{background:#365314;color:#fff}.btn:disabled{opacity:.42;cursor:not-allowed}
+.input{width:100%;border:1px solid #d9f99d;border-radius:15px;padding:12px 14px;background:#fff;font-weight:750;outline:none}.input:focus{border-color:#84cc16;box-shadow:0 0 0 4px rgba(132,204,22,.12)}
+.notice{border-radius:18px;padding:13px 15px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12px;font-weight:800;line-height:1.6}.notice.ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534}.notice.err{background:#fff1f2;border-color:#fecdd3;color:#be123c}
+.menu{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.menucard{position:relative;min-height:155px;text-align:left}.menucard .icon{font-size:30px}.menucard .count{position:absolute;right:14px;top:14px}
+.table{width:100%;border-collapse:collapse}.table th,.table td{padding:10px;border-bottom:1px solid #f1f5f9;text-align:left;vertical-align:top;font-size:12px}.table th{color:#64748b;font-size:11px}
+.claim{border:1px solid #ecfccb;border-radius:20px;padding:16px;background:#fff}.claim+.claim{margin-top:10px}.tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.metric{padding:16px;border-radius:20px;background:#fff;border:1px solid #ecfccb}.metric b{display:block;font-size:26px;color:#365314;margin-top:4px}
+.progress{height:12px;background:#f7fee7;border-radius:999px;overflow:hidden}.bar{height:100%;background:#a3e635;border-radius:999px;transition:.2s width}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}.tab{border:1px solid #d9f99d;background:#fff;color:#4d7c0f;border-radius:999px;padding:9px 14px;font-weight:950}.tab.on{background:#a3e635}
+.previewbox{border-radius:28px;border:1px solid #dbeafe;background:#f8fafc;padding:18px}.device{margin:0 auto;overflow:hidden;border-radius:26px;border:1px solid #dbeafe;background:#fff;box-shadow:0 14px 40px rgba(15,23,42,.08)}.device.desktop{max-width:1000px}.device.mobile{max-width:430px}
+.hl{background:#fecaca;color:#991b1b;padding:0 2px;border-radius:4px}.stickytools{position:sticky;top:75px;z-index:20}
+pre.json{white-space:pre-wrap;word-break:break-word;background:#0f172a;color:#e2e8f0;padding:14px;border-radius:16px;max-height:300px;overflow:auto;font-size:11px}
+@media(max-width:820px){.menu,.g3,.g2{grid-template-columns:1fr}.topin{align-items:flex-start}.brandblock{display:none}.nav{max-width:62vw;justify-content:flex-end}.wrap{padding-top:14px}.card{padding:17px}.table{display:block;overflow:auto}}
+</style>
+</head>
+<body>
+<header class="top"><div class="topin">
+  <a class="logo" href="./">🍀</a>
+  <div class="brandblock"><div class="brand">CA Clover ADMIN</div><div class="sub">GitHub Pages full mirror</div></div>
+  <div class="grow"></div>
+  <nav class="nav"><a href="./">一般ユーザーページ</a><button id="homeBtn">管理メニュー</button><button id="logoutBtn">ログアウト</button></nav>
+</div></header>
+<main id="app" class="wrap"></main>
+<script>
+(function(){
+"use strict";
+const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
+const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
+const ROOT="https://kaityo1221.github.io/ca-clover/";
+const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
+const app=document.getElementById("app");
+let session=null,profile=null,busy=false;
+function e(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c])}
+function fmt(v){if(!v)return "—";const d=new Date(v);return Number.isFinite(d.getTime())?d.toLocaleString("ja-JP"):"—"}
+function num(v){return Number(v||0).toLocaleString("ja-JP")}
+function route(){return (location.hash||"#home").slice(1)}
+function go(r){location.hash=r}
+function statusPill(s){const cls=s==="success"||s==="approved"||s==="ready"?"":s==="pending"||s==="running"||s==="partial"?"amber":"rose";return '<span class="pill '+cls+'">'+e(s)+'</span>'}
+function msg(text,type){return '<div class="notice '+(type||"")+' section">'+e(text)+'</div>'}
+async function loadAuth(){
+ const r=await client.auth.getSession();session=r.data.session||null;
+ if(session){const p=await client.from("profiles").select("role,niantic_id,email").eq("id",session.user.id).maybeSingle();profile=p.data||null}
+}
+async function login(){await client.auth.signInWithOAuth({provider:"google",options:{redirectTo:ROOT+"admin.html"}})}
+async function logout(){await client.auth.signOut();location.href=ROOT}
+document.getElementById("homeBtn").onclick=()=>go("home");
+document.getElementById("logoutBtn").onclick=logout;
+window.addEventListener("hashchange",render);
+
+async function guard(){
+ if(!session){app.innerHTML='<section class="card center" style="max-width:480px;margin:8vh auto"><div style="font-size:50px">🍀</div><h1 class="section">CA Clover ADMIN</h1><p class="muted strong">ログインが必要です。</p><button id="loginBtn" class="btn section">Googleでログイン</button></section>';document.getElementById("loginBtn").onclick=login;return false}
+ if(profile?.role!=="admin"){app.innerHTML='<section class="card center" style="max-width:480px;margin:8vh auto"><div style="font-size:50px">🔒</div><h2 class="section">ADMIN専用です</h2><p class="muted strong">このアカウントにはADMIN権限がありません。</p></section>';return false}
+ return true;
+}
+function title(back,badge,heading,desc){
+ return (back?'<button class="btn line" onclick="location.hash=\''+back+'\'">← 戻る</button>':'')+
+ '<section class="card hero section"><span class="pill '+(badge==="ADMIN"?"violet":"")+'">'+e(badge)+'</span><h1 style="margin-top:10px">'+heading+'</h1>'+(desc?'<p class="muted strong">'+desc+'</p>':'')+'</section>';
+}
+
+async function dashboard(){
+ app.innerHTML=title("","ADMIN","⚙️ 管理メニュー","GitHub Pages非常用フルミラー");
+ const [claims,watch]=await Promise.all([
+  client.from("community_access_requests").select("id",{count:"exact",head:true}).eq("status","pending"),
+  client.from("meetup_watch_cases").select("id",{count:"exact",head:true}).eq("review_required",true).eq("status","unreviewed")
+ ]);
+ const items=[
+  ["watch","🔍","要確認Meetup",(watch.count||0)+"件の未確認",watch.count||0],
+  ["claims","🛎️","Community申請",(claims.count||0)+"件の承認待ち",claims.count||0],
+  ["campfire","🔐","Campfire接続","tokenと接続状態を管理",0],
+  ["sync","🔄","データ同期","Campfire Activityを全国更新",0],
+  ["assignments","🔗","Community割当","CAへCommunityを割当",0],
+  ["preview","👀","一般ユーザーページ","一般ユーザーUIを確認",0],
+  ["accounts","👥","CAアカウント","pending / CA / ADMINを管理",0],
+  ["sync-runs","🧾","同期履歴","最新100件の同期結果",0],
+  ["coverage","📊","Data Coverage","全国取得状態を確認",0],
+  ["windows","🕐","イベント時間マスター","公式イベント時間窓",0],
+ ];
+ app.innerHTML+= '<div class="menu section">'+items.map(x=>'<button class="card menucard" data-route="'+x[0]+'"><div class="icon">'+x[1]+'</div><h3 class="section">'+x[2]+'</h3><p class="small muted strong">'+x[3]+'</p>'+(x[4]?'<span class="pill amber count">'+x[4]+'</span>':'')+'</button>').join("")+'</div>';
+ app.querySelectorAll("[data-route]").forEach(b=>b.onclick=()=>go(b.dataset.route));
+}
+
+async function claims(){
+ app.innerHTML=title("home","CLAIMS","🛎️ Community申請","Community招待URL / ミートアップ共有URLからの申請を審査します。")+'<div id="claimList" class="section">'+msg("読み込み中...")+'</div>';
+ const [rq,pr]=await Promise.all([
+  client.from("community_access_requests").select("id,user_id,meetup_title,meetup_url,input_url,request_source,community_name_snapshot,community_prefecture_snapshot,is_ca_meetup,master_match,creator_display_name,creator_username,creator_username_matches_profile,creator_ca_badge_verified,ca_level_snapshot,ca_role_verified,ca_map_status,status,requested_at,reviewed_at").order("requested_at",{ascending:false}).limit(200),
+  client.from("profiles").select("id,email,niantic_id,role")
+ ]);
+ const profiles={};(pr.data||[]).forEach(x=>profiles[x.id]=x);
+ const rows=rq.data||[];
+ document.getElementById("claimList").innerHTML=rows.length?rows.map(c=>{
+  const p=profiles[c.user_id]||{},invite=c.request_source==="community_invite";
+  const can=c.status==="pending"&&(invite||c.creator_ca_badge_verified===true)&&c.creator_username_matches_profile===true&&c.ca_role_verified===true&&c.ca_map_status==="matched";
+  return '<section class="claim"><div class="row between wraprow"><div><div class="tiny strong" style="color:#65a30d">'+e(c.community_prefecture_snapshot||"—")+'</div><h2 style="margin-top:4px">'+e(c.community_name_snapshot)+'</h2><div class="small muted strong">'+e(p.email||"—")+' / '+e(p.niantic_id||"未登録")+'</div></div>'+statusPill(c.status)+'</div><div class="tags"><span class="pill '+(invite?"":"violet")+'">'+(invite?"コミュニティ招待URL":"ミートアップ共有URL")+'</span><span class="pill '+(c.creator_username_matches_profile===true?"blue":"rose")+'">Niantic ID '+(c.creator_username_matches_profile===true?"一致":"不一致")+'</span><span class="pill '+(c.ca_map_status==="matched"?"":"rose")+'">CA地図 '+e(c.ca_map_status||"未確認")+'</span>'+(invite?"":'<span class="pill '+(c.creator_ca_badge_verified===true?"":"rose")+'">紫CA '+(c.creator_ca_badge_verified===true?"確認済み":"未確認")+'</span>')+'</div>'+(c.input_url?'<p class="small"><a target="_blank" rel="noreferrer" href="'+e(c.input_url)+'" style="color:#65a30d;font-weight:900">Campfireを確認 ↗</a></p>':'')+(c.status==="pending"?'<div class="actions"><button class="btn rose" data-review="reject" data-id="'+c.id+'">却下</button><button class="btn" data-review="approve" data-id="'+c.id+'" '+(can?"":"disabled")+'>承認</button></div>':'')+'<div class="tiny muted section">申請 '+e(fmt(c.requested_at))+'</div></section>';
+ }).join(""):'<section class="card center">申請はありません 🍀</section>';
+ app.querySelectorAll("[data-review]").forEach(b=>b.onclick=async()=>{b.disabled=true;const r=await client.functions.invoke("community-claim",{body:{action:b.dataset.review,requestId:b.dataset.id}});if(r.error)alert(r.error.message);await claims()});
+}
+
+async function accounts(){
+ app.innerHTML=title("home","ACCOUNTS","👥 CAアカウント","Googleログイン後のアカウント権限を管理します。")+'<div id="list" class="section">'+msg("読み込み中...")+'</div>';
+ const r=await client.from("profiles").select("id,email,niantic_id,role,created_at").order("created_at",{ascending:false});
+ document.getElementById("list").innerHTML=(r.data||[]).map(x=>'<section class="claim"><div class="row between wraprow"><div><h3>'+e(x.email||"メール未取得")+'</h3><div class="small muted strong">Niantic ID: '+e(x.niantic_id||"未登録")+'</div><div class="tiny muted">登録 '+e(fmt(x.created_at))+'</div></div><div class="actions">'+["pending","ca","admin"].map(role=>'<button class="btn '+(x.role===role?"":"line")+'" data-role="'+role+'" data-id="'+x.id+'" '+(x.role===role?"disabled":"")+'>'+role.toUpperCase()+'</button>').join("")+'</div></div></section>').join("");
+ app.querySelectorAll("[data-role]").forEach(b=>b.onclick=async()=>{b.disabled=true;const r=await client.functions.invoke("admin-manage",{body:{action:"set_role",userId:b.dataset.id,role:b.dataset.role}});if(r.error)alert(r.error.message);await accounts()});
+}
+
+async function assignments(){
+ app.innerHTML=title("home","ASSIGNMENTS","🔗 Community割当","CAアカウントが閲覧できるCommunityを設定します。")+'<section class="card section"><label class="tiny strong muted">対象アカウント</label><select id="userSel" class="input section"></select><div id="assnMeta" class="small muted strong section"></div></section><input id="assnSearch" class="input section" placeholder="Community名・都道府県で検索"><div id="assnList" class="grid g3 section"></div>';
+ const [p,c,m]=await Promise.all([
+  client.from("profiles").select("id,email,niantic_id,role").neq("role","pending").order("email"),
+  client.from("communities").select("id,name,prefecture").order("prefecture").order("name"),
+  client.from("community_memberships").select("user_id,community_id")
+ ]);
+ const profiles=p.data||[],communities=c.data||[],memberships=m.data||[];
+ const sel=document.getElementById("userSel");sel.innerHTML=profiles.map(x=>'<option value="'+x.id+'">'+e(x.email||x.niantic_id||x.id)+' ('+e(x.role)+')</option>').join("");
+ function draw(){
+  const uid=sel.value,q=document.getElementById("assnSearch").value.trim().toLowerCase();
+  const assigned=new Set(memberships.filter(x=>x.user_id===uid).map(x=>x.community_id));
+  document.getElementById("assnMeta").textContent="割当 "+assigned.size+" Community";
+  const filtered=communities.filter(x=>!q||(x.name+" "+(x.prefecture||"")).toLowerCase().includes(q));
+  document.getElementById("assnList").innerHTML=filtered.map(x=>'<button class="card" style="text-align:left" data-cid="'+x.id+'"><span class="pill '+(assigned.has(x.id)?"":"slate")+'">'+(assigned.has(x.id)?"割当済み":"未割当")+'</span><h3 class="section">'+e(x.name)+'</h3><div class="small muted strong">'+e(x.prefecture||"—")+'</div></button>').join("");
+  document.querySelectorAll("[data-cid]").forEach(b=>b.onclick=async()=>{const cid=b.dataset.cid,on=assigned.has(cid);b.disabled=true;const r=await client.functions.invoke("admin-manage",{body:{action:"set_membership",userId:uid,communityId:cid,assigned:!on}});if(r.error){alert(r.error.message);return}if(on){const i=memberships.findIndex(x=>x.user_id===uid&&x.community_id===cid);if(i>=0)memberships.splice(i,1)}else memberships.push({user_id:uid,community_id:cid});draw()});
+ }
+ sel.onchange=draw;document.getElementById("assnSearch").oninput=draw;draw();
+}
+
+async function campfire(){
+ app.innerHTML=title("home","CAMPFIRE CONNECTION","🔐 Campfire接続","ADMIN tokenと接続状態を管理します。")+'<div id="cfState" class="section">'+msg("読み込み中...")+'</div><section class="card section"><h2>Tokenを登録・更新</h2><p class="small muted strong">生tokenはSupabase Vaultへ保存され、画面には再表示しません。</p><textarea id="token" class="input section" style="min-height:120px" placeholder="eyJ..."></textarea><div class="actions section"><button id="saveToken" class="btn">保存</button><button id="testToken" class="btn line">接続テスト</button><button id="clearToken" class="btn rose">削除</button></div><div id="cfMsg"></div></section>';
+ async function load(){const r=await client.functions.invoke("campfire-token-admin",{body:{action:"status"}});const s=r.data?.state||{};document.getElementById("cfState").innerHTML='<section class="card"><div class="row between wraprow"><div><div class="tiny strong muted">接続状態</div><h2 class="section">'+e((s.status||"missing").toUpperCase())+'</h2></div>'+statusPill(s.status||"missing")+'</div><div class="grid g2 section"><div><div class="tiny muted strong">Token account</div><div class="strong">'+e(s.token_email||"未登録")+'</div></div><div><div class="tiny muted strong">有効期限</div><div class="strong">'+e(fmt(s.expires_at))+'</div></div><div><div class="tiny muted strong">最終確認</div><div class="strong">'+e(fmt(s.last_validated_at))+'</div></div><div><div class="tiny muted strong">最終同期</div><div class="strong">'+e(fmt(s.last_sync_at))+'</div></div></div>'+(s.last_error?msg(s.last_error,"err"):"")+'</section>'}
+ async function run(action){const body={action};if(action==="set")body.token=document.getElementById("token").value.trim();const r=await client.functions.invoke("campfire-token-admin",{body});document.getElementById("cfMsg").innerHTML=r.error?msg(r.error.message,"err"):msg(action==="set"?"保存しました":action==="test"?"接続を確認しました":"削除しました","ok");if(action==="set")document.getElementById("token").value="";await load()}
+ document.getElementById("saveToken").onclick=()=>run("set");document.getElementById("testToken").onclick=()=>run("test");document.getElementById("clearToken").onclick=()=>run("clear");await load();
+}
+
+async function syncPage(){
+ app.innerHTML=title("home","DATA SYNC","🔄 Campfire Activity同期","公開Meetupと過去履歴を同期します。")+'<div id="syncInfo" class="section"></div><section class="card section"><div class="row between wraprow"><div><span class="pill blue">TOKEN不要</span><h2 class="section">🗺️ 公開Meetup同期</h2><p class="small muted strong">公開地図から現在・未来のMeetupを全国取得します。</p></div><button id="runPublic" class="btn">公開Meetupを全国同期</button></div></section><section class="card section"><span class="pill slate">過去履歴 BACKFILL</span><h2 class="section">📚 activeFeed / archivedFeed</h2><select id="syncCommunity" class="input section"></select><div class="actions section"><button id="runOne" class="btn">選択Communityだけ過去同期</button><button id="runAll" class="btn line">全国の過去履歴を同期</button></div></section><section class="card section"><div class="tiny strong muted">同期進捗</div><div class="progress section"><div id="syncBar" class="bar" style="width:0%"></div></div><div id="syncStats" class="tags"></div><div id="syncMsg"></div></section>';
+ const [st,au,co]=await Promise.all([
+  client.functions.invoke("campfire-token-admin",{body:{action:"status"}}),
+  client.from("sync_automation_state").select("*").eq("id",1).maybeSingle(),
+  client.from("communities").select("id,name,prefecture").not("campfire_community_id","is",null).order("name")
+ ]);
+ const state=st.data?.state||{},automation=au.data||{};
+ document.getElementById("syncInfo").innerHTML='<section class="card"><div class="row between wraprow"><div><div class="tiny strong" style="color:#047857">AUTOMATION</div><h2 class="section">'+(automation.enabled?"🟢 自動同期 ON":"⚪ 自動同期 OFF")+'</h2></div>'+statusPill(state.status||"missing")+'</div><div class="tags"><span class="pill slate">最終公開同期 '+e(fmt(automation.last_public_at))+'</span><span class="pill slate">最終Backfill '+e(fmt(automation.last_history_at))+'</span><span class="pill slate">CAマスター '+e(fmt(automation.last_ca_master_at))+'</span></div>'+(automation.last_error?msg(automation.last_error,"err"):"")+'</section>';
+ const sel=document.getElementById("syncCommunity");sel.innerHTML=(co.data||[]).map(x=>'<option value="'+x.id+'">'+e((x.prefecture?x.prefecture+" / ":"")+x.name)+'</option>').join("");
+ function progress(done,total,events,failed,discovered){const pct=total?Math.min(100,Math.round(done/total*100)):0;document.getElementById("syncBar").style.width=pct+"%";document.getElementById("syncStats").innerHTML='<span class="pill">Community '+done+'/'+(total||"?")+'</span><span class="pill blue">発見 '+(discovered||0)+'</span><span class="pill">保存 '+events+'</span><span class="pill rose">失敗 '+failed+'</span>'}
+ async function runPublic(){if(busy)return;busy=true;document.getElementById("runPublic").disabled=true;let offset=0,total=0,events=0,failed=0,disc=0;try{while(true){const r=await client.functions.invoke("sync-campfire-public",{body:{offset,limit:5}});if(r.error)throw r.error;const d=r.data||{};const processed=d.processed||0;total=d.total||total;events+=d.importedEvents||0;failed+=(d.scanFailures||0)+(d.detailFailures||0);disc+=d.discoveredEvents||0;offset+=processed;progress(offset,total,events,failed,disc);if(!processed||offset>=total)break}document.getElementById("syncMsg").innerHTML=msg("公開Meetup同期が完了しました 🍀","ok")}catch(err){document.getElementById("syncMsg").innerHTML=msg(err.message||String(err),"err")}busy=false;document.getElementById("runPublic").disabled=false}
+ async function runHistory(one){if(busy)return;busy=true;document.getElementById("runOne").disabled=true;document.getElementById("runAll").disabled=true;let offset=0,total=0,events=0,failed=0;try{while(true){const body=one?{communityId:sel.value}:{offset,limit:3};const r=await client.functions.invoke("sync-campfire",{body});if(r.error)throw r.error;const d=r.data||{};const processed=d.processed||0;total=one?(processed||1):(d.total||total);events+=d.importedEvents||0;failed+=d.failedCommunities||0;offset+=processed;progress(offset,total,events,failed,0);if(one||!processed||offset>=total)break}document.getElementById("syncMsg").innerHTML=msg("過去履歴同期が完了しました 🍀","ok")}catch(err){document.getElementById("syncMsg").innerHTML=msg(err.message||String(err),"err")}busy=false;document.getElementById("runOne").disabled=false;document.getElementById("runAll").disabled=false}
+ document.getElementById("runPublic").onclick=runPublic;document.getElementById("runOne").onclick=()=>runHistory(true);document.getElementById("runAll").onclick=()=>runHistory(false);
+}
+
+async function syncRuns(){
+ app.innerHTML=title("home","SYNC HISTORY","🧾 同期履歴","最新100件の同期結果です。")+'<div id="runs" class="section">'+msg("読み込み中...")+'</div>';
+ const r=await client.from("sync_runs").select("id,source,status,started_at,finished_at,details").order("started_at",{ascending:false}).limit(100);
+ document.getElementById("runs").innerHTML=(r.data||[]).map(x=>{const d=x.details||{};return '<section class="claim"><div class="row between wraprow"><div><div class="tiny strong" style="color:#65a30d">'+e(x.source)+'</div><div class="strong">'+e(fmt(x.started_at))+'</div></div>'+statusPill(x.status)+'</div><div class="tags"><span class="pill slate">Community '+num(d.processed_communities)+'</span><span class="pill blue">発見 '+num(d.discovered_event_ids)+'</span><span class="pill">Event '+num(d.imported_events)+'</span><span class="pill rose">失敗 '+num((d.failed_communities||0)+(d.scan_failures||0)+(d.detail_failures||0))+'</span></div><details class="section"><summary class="small strong">詳細JSON</summary><pre class="json">'+e(JSON.stringify(d,null,2))+'</pre></details></section>'}).join("");
+}
+
+async function coverage(){
+ app.innerHTML=title("home","DATA COVERAGE","📊 Data Coverage","全国Communityの取得状態を確認します。")+'<input id="covSearch" class="input section" placeholder="Community名・都道府県で検索"><div id="covSummary" class="grid g3 section"></div><div id="covList" class="section"></div>';
+ const [c,links,ca]=await Promise.all([
+  client.from("communities").select("id,name,prefecture,member_count,coverage,coverage_from,coverage_to,fetched_at,campfire_community_id").order("prefecture").order("name"),
+  client.from("community_ca_members").select("community_id,ca_member_id"),
+  client.from("ca_members").select("id,trainer_name,ca_level")
+ ]);
+ const rows=c.data||[],caMap=new Map((ca.data||[]).map(x=>[x.id,x])),byCommunity={};(links.data||[]).forEach(l=>{(byCommunity[l.community_id]??=[]).push(caMap.get(l.ca_member_id))});
+ function draw(){const q=document.getElementById("covSearch").value.trim().toLowerCase(),f=rows.filter(x=>!q||(x.name+" "+(x.prefecture||"")).toLowerCase().includes(q));const complete=rows.filter(x=>x.coverage==="complete").length,partial=rows.filter(x=>x.coverage==="partial").length,missing=rows.filter(x=>x.coverage==="missing").length;document.getElementById("covSummary").innerHTML='<div class="metric"><span class="tiny strong muted">Complete</span><b>'+complete+'</b></div><div class="metric"><span class="tiny strong muted">Partial</span><b>'+partial+'</b></div><div class="metric"><span class="tiny strong muted">Missing</span><b>'+missing+'</b></div>';document.getElementById("covList").innerHTML=f.map(x=>'<section class="claim"><div class="row between wraprow"><div><div class="tiny strong" style="color:#65a30d">'+e(x.prefecture||"—")+'</div><h3>'+e(x.name)+'</h3><div class="small muted strong">Member '+num(x.member_count)+'</div></div>'+statusPill(x.coverage||"missing")+'</div><div class="tags">'+(byCommunity[x.id]||[]).filter(Boolean).map(a=>'<span class="pill">'+e(a.ca_level||"CA")+': '+e(a.trainer_name)+'</span>').join("")+'</div><div class="grid g3 section"><div><div class="tiny muted strong">開始</div>'+e(fmt(x.coverage_from))+'</div><div><div class="tiny muted strong">終了</div>'+e(fmt(x.coverage_to))+'</div><div><div class="tiny muted strong">最終取得</div>'+e(fmt(x.fetched_at))+'</div></div></section>').join("")}
+ document.getElementById("covSearch").oninput=draw;draw();
+}
+
+async function watch(){
+ app.innerHTML=title("home","MEETUP WATCH v1.0","🔍 要確認Meetup","検知した事実と理由を表示し、最終判断はADMINが行います。")+'<div class="actions section"><button id="discordTest" class="btn line">🔔 Discordテスト通知</button><button id="windowsBtn" class="btn line">🕐 イベント時間マスター</button></div><div id="watchMsg"></div><div id="watchList" class="section">'+msg("読み込み中...")+'</div>';
+ document.getElementById("windowsBtn").onclick=()=>go("windows");
+ document.getElementById("discordTest").onclick=async()=>{const r=await client.functions.invoke("meetup-watch-notify",{body:{action:"test"}});document.getElementById("watchMsg").innerHTML=r.error?msg(r.error.message,"err"):msg("Discordテスト通知を送信しました","ok")};
+ const cr=await client.from("meetup_watch_cases").select("id,meetup_id,community_id,status,review_required,score,priority,priority_level,high_priority,discord_candidate,is_hot_trigger,flags,reason_summary,last_evaluated_at").eq("review_required",true).eq("status","unreviewed").order("priority",{ascending:false}).order("score",{ascending:false}).limit(100);
+ const cases=cr.data||[],ids=cases.map(x=>x.meetup_id),cids=[...new Set(cases.map(x=>x.community_id).filter(Boolean))];
+ const [mr,fr,com,hot]=await Promise.all([
+  ids.length?client.from("meetups").select("id,community_id,title,details,starts_at,ends_at,location,event_url,campfire_created_at,rsvp_count,checkin_count").in("id",ids):Promise.resolve({data:[]}),
+  ids.length?client.from("meetup_watch_findings").select("id,meetup_id,flag_code,reason,score_weight,matched_field,matched_text,active").in("meetup_id",ids).eq("active",true):Promise.resolve({data:[]}),
+  cids.length?client.from("communities").select("id,name,prefecture").in("id",cids):Promise.resolve({data:[]}),
+  cids.length?client.from("watch_community_state").select("community_id,hot_until,hot_reasons").in("community_id",cids):Promise.resolve({data:[]})
+ ]);
+ const mm=new Map((mr.data||[]).map(x=>[x.id,x])),cm=new Map((com.data||[]).map(x=>[x.id,x])),hm=new Map((hot.data||[]).map(x=>[x.community_id,x]));
+ function duration(a,b){if(!a||!b)return null;const d=(Date.parse(b)-Date.parse(a))/60000;return Number.isFinite(d)?Math.round(d):null}
+ document.getElementById("watchList").innerHTML=cases.length?cases.map(cs=>{const m=mm.get(cs.meetup_id);if(!m)return"";const community=cm.get(cs.community_id),find=(fr.data||[]).filter(x=>x.meetup_id===m.id),h=hm.get(cs.community_id),hotActive=h?.hot_until&&Date.parse(h.hot_until)>Date.now();return '<section class="claim"><div class="row between wraprow"><div><div class="tiny strong" style="color:#65a30d">'+e(community?.prefecture||"—")+' / '+e(community?.name||"Community未取得")+'</div><h2 class="section">'+e(m.title)+'</h2></div><div class="tags">'+(hotActive?'<span class="pill amber">🔥 HOT監視中</span>':'')+'<span class="pill amber">'+(cs.high_priority?"🟠 高優先":"🟡 要確認")+' / '+e(cs.score)+'点</span>'+(cs.discord_candidate?'<span class="pill dark">Discord対象</span>':'')+'</div></div><div class="section" style="white-space:pre-wrap;background:#f8fafc;border-radius:16px;padding:14px">'+(m.details?e(m.details):'<span class="muted">概要なし</span>')+'</div><div class="grid g3 section small strong muted"><div>🕒 '+e(fmt(m.starts_at))+'</div><div>⏱️ '+e(duration(m.starts_at,m.ends_at)??"—")+'分</div><div>📍 '+e(m.location||"未取得")+'</div><div>📨 RSVP '+e(m.rsvp_count??"—")+'</div><div>✅ Check-in '+e(m.checkin_count??"—")+'</div></div><div class="tags">'+(cs.flags||[]).map(x=>'<span class="pill slate">'+e(x)+'</span>').join("")+'</div><div class="section">'+find.map(x=>'<div class="small muted strong">・'+e(x.reason)+' <b>+'+e(x.score_weight)+'</b></div>').join("")+'</div><div class="actions section"><select class="input" style="max-width:190px" data-case="'+cs.id+'">'+["unreviewed","reviewing","no_issue","contacting","resolved","completed"].map(s=>'<option value="'+s+'" '+(s===cs.status?"selected":"")+'>'+s+'</option>').join("")+'</select>'+(m.event_url?'<a class="btn line" target="_blank" rel="noreferrer" href="'+e(m.event_url)+'">Campfireを開く ↗</a>':'')+'</div></section>'}).join(""):'<section class="card center"><div style="font-size:40px">🍀</div><h3 class="section">現在、要確認Meetupはありません</h3></section>';
+ app.querySelectorAll("[data-case]").forEach(s=>s.onchange=async()=>{s.disabled=true;const r=await client.functions.invoke("meetup-watch-admin",{body:{action:"set_status",caseId:s.dataset.case,status:s.value}});if(r.error)alert(r.error.message);else await watch()});
+}
+
+async function windows(){
+ app.innerHTML=title("watch","EVENT WINDOWS","🕐 イベント時間マスター","みんポケiCal参照データと手動補正を管理します。")+'<div class="actions section"><button id="syncCalendar" class="btn">🔄 みんポケから今すぐ同期</button></div><div id="winMsg"></div><section class="card section"><h2>手動追加・補正</h2><div class="grid g2 section"><input id="evName" class="input" placeholder="イベント名"><input id="evNote" class="input" placeholder="メモ"><input id="evStart" class="input" type="datetime-local"><input id="evEnd" class="input" type="datetime-local"></div><button id="evAdd" class="btn section">登録</button></section><div id="winList" class="section"></div><div id="longList" class="section"></div>';
+ async function load(){const from=new Date(Date.now()-7*86400000).toISOString();const [w,c]=await Promise.all([client.from("official_event_windows").select("id,event_name,starts_at,ends_at,enabled,notes,source,auto_managed").order("starts_at",{ascending:false}),client.from("event_calendar_entries").select("id,event_name,starts_at,ends_at,duration_minutes,watch_window_eligible,is_all_day,last_seen_at").gte("ends_at",from).order("starts_at",{ascending:true}).limit(300)]);document.getElementById("winList").innerHTML='<h2>Watchで使う時間窓</h2><div class="section">'+(w.data||[]).map(x=>'<section class="claim"><div class="row between wraprow"><div><h3>'+e(x.event_name)+'</h3><div class="small muted strong">'+e(fmt(x.starts_at))+' 〜 '+e(fmt(x.ends_at))+'</div><div class="tiny muted">'+e(x.source)+'</div></div><button class="btn '+(x.enabled?"":"line")+'" data-window="'+x.id+'" data-on="'+(x.enabled?"1":"0")+'">'+(x.enabled?"ON":"OFF")+'</button></div></section>').join("")+'</div>';const longs=(c.data||[]).filter(x=>!x.watch_window_eligible);document.getElementById("longList").innerHTML='<h2>長期イベント・参考のみ</h2><div class="section">'+longs.slice(0,60).map(x=>'<section class="claim"><div class="row between"><div><h3>'+e(x.event_name)+'</h3><div class="small muted strong">'+e(fmt(x.starts_at))+' 〜 '+e(fmt(x.ends_at))+'</div></div><span class="pill slate">'+e(x.duration_minutes)+'分</span></div></section>').join("")+'</div>';document.querySelectorAll("[data-window]").forEach(b=>b.onclick=async()=>{await client.from("official_event_windows").update({enabled:b.dataset.on!=="1",updated_at:new Date().toISOString()}).eq("id",b.dataset.window);await load()})}
+ document.getElementById("syncCalendar").onclick=async()=>{const r=await client.functions.invoke("sync-event-calendar",{body:{}});document.getElementById("winMsg").innerHTML=r.error?msg(r.error.message,"err"):msg("同期完了","ok");await load()};
+ document.getElementById("evAdd").onclick=async()=>{const name=document.getElementById("evName").value.trim(),st=document.getElementById("evStart").value,en=document.getElementById("evEnd").value;if(!name||!st||!en)return;const r=await client.from("official_event_windows").insert({event_name:name,starts_at:new Date(st).toISOString(),ends_at:new Date(en).toISOString(),notes:document.getElementById("evNote").value.trim()||null,source:"manual",auto_managed:false,enabled:true,updated_at:new Date().toISOString()});if(r.error)alert(r.error.message);else await load()};await load();
+}
+
+async function preview(){
+ app.innerHTML=title("home","ADMIN PREVIEW","👀 一般ユーザーページ","ADMIN権限のまま一般ユーザーUIを再現します。")+'<section class="card section stickytools"><div class="grid g2"><select id="prevCommunity" class="input"></select><div class="actions"><button class="tab on" data-mode="home">CAホーム</button><button class="tab" data-mode="pending">初回登録前</button><button class="tab" data-mode="my">My Community</button><button class="tab" data-mode="detail">Community詳細</button><button class="tab" data-width="desktop">💻 通常幅</button><button class="tab" data-width="mobile">📱 スマホ幅</button></div></div></section><div class="previewbox section"><div id="previewDevice" class="device desktop"><div id="previewBody"></div></div></div>';
+ const cr=await client.from("communities").select("id,name,prefecture,member_count,campfire_url").order("prefecture").order("name");const rows=cr.data||[],sel=document.getElementById("prevCommunity");sel.innerHTML=rows.map(x=>'<option value="'+x.id+'">'+e((x.prefecture?x.prefecture+" / ":"")+x.name)+'</option>').join("");const tokyo=rows.find(x=>x.name==="Pokémon GO Club Tokyo");if(tokyo)sel.value=tokyo.id;let mode="home",width="desktop";
+ async function draw(){const c=rows.find(x=>x.id===sel.value)||rows[0];let html='<header style="border-bottom:1px solid #ecfccb;padding:14px 18px;display:flex;align-items:center;gap:10px"><span class="logo">🍀</span><div><div class="brand">CA Clover</div><div class="sub">My Community Management</div></div><div class="grow"></div><span class="pill">CA</span></header><div style="padding:22px">';if(mode==="home")html+='<span class="pill">CA CLOVER HOME</span><h1 class="section">My Communityへようこそ。 🍀</h1><p class="muted strong">自分に割り当てられたCommunityの活動だけを確認できます。</p>';if(mode==="pending")html+='<span class="pill amber">CA登録を進める</span><h1 class="section">CA登録を進める</h1><p class="muted strong">Niantic ID登録 → Campfire URL提出 → CA確認 → Community割当</p><button class="btn section">CA登録を続ける →</button>';if(mode==="my")html+='<h1>🍀 自分のCommunity</h1><section class="claim section"><span class="pill">'+e(c.prefecture||"—")+'</span><h2 class="section">'+e(c.name)+'</h2><p class="muted strong">Member '+num(c.member_count)+'</p><button class="btn">Community情報を見る →</button></section>';if(mode==="detail"){const sr=await client.rpc("community_activity_summary",{p_community_id:c.id,p_days:30});const s=sr.data?.[0]||{};html+='<button class="btn line">← My Community</button><section class="card hero section"><span class="pill">'+e(c.prefecture||"—")+'</span><h1 class="section">'+e(c.name)+'</h1></section><div class="tabs section">'+["1か月","3か月","6か月","1年","全期間"].map((x,i)=>'<button class="tab '+(i===0?"on":"")+'">'+x+'</button>').join("")+'</div><div class="grid g3 section"><div class="metric">🔥 Meetup<b>'+num(s.meetup_count)+'</b></div><div class="metric">🍀 CA Meetup<b>'+num(s.ca_meetup_count)+'</b></div><div class="metric">✅ Check-in<b>'+num(s.checkin_count)+'</b></div></div>'}html+='</div>';document.getElementById("previewBody").innerHTML=html}
+ sel.onchange=draw;document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{mode=b.dataset.mode;document.querySelectorAll("[data-mode]").forEach(x=>x.classList.toggle("on",x.dataset.mode===mode));draw()});document.querySelectorAll("[data-width]").forEach(b=>b.onclick=()=>{width=b.dataset.width;document.getElementById("previewDevice").className="device "+width});await draw();
+}
+
+async function render(){
+ if(!(await guard()))return;
+ const r=route();
+ if(r==="home")return dashboard();
+ if(r==="claims")return claims();
+ if(r==="accounts")return accounts();
+ if(r==="assignments")return assignments();
+ if(r==="campfire")return campfire();
+ if(r==="sync")return syncPage();
+ if(r==="sync-runs")return syncRuns();
+ if(r==="coverage")return coverage();
+ if(r==="watch")return watch();
+ if(r==="windows")return windows();
+ if(r==="preview")return preview();
+ go("home");
+}
+(async()=>{await loadAuth();await render()})();
+})();
+</script>
+</body>
+</html>
