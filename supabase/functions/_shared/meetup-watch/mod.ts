@@ -120,22 +120,41 @@ async function loadOfficialWindows(admin:SupabaseClient){
   return (data as OfficialEventWindow[]|null)??[];
 }
 
-function pickOfficialWindow(row:WatchMeetup,windows:OfficialEventWindow[]){
-  if(!row.campfire_live_event_name||!row.starts_at) return null;
-  const name=normalizeEventName(row.campfire_live_event_name);
+function pickOfficialWindow(
+  row:WatchMeetup,
+  windows:OfficialEventWindow[],
+  settings:WatchSettings,
+){
+  if(!row.starts_at) return null;
   const meetupStart=Date.parse(row.starts_at);
-  const candidates=windows
-    .filter(window=>normalizeEventName(window.event_name)===name)
+  if(!Number.isFinite(meetupStart)) return null;
+
+  const preGrace=Math.max(0,Number(settings.rule_config.official_pre_grace_minutes??60)||60);
+  const fallbackAfter=Math.max(
+    120,
+    Number(settings.rule_config.official_calendar_match_after_minutes??360)||360,
+  );
+  const name=normalizeEventName(row.campfire_live_event_name);
+
+  const direct=windows
+    .filter(window=>name&&normalizeEventName(window.event_name)===name)
     .map(window=>({
       window,
       distance:Math.abs(meetupStart-Date.parse(window.starts_at)),
-      near:
-        meetupStart>=Date.parse(window.starts_at)-12*60*60*1000 &&
-        meetupStart<=Date.parse(window.ends_at)+24*60*60*1000,
     }))
-    .filter(item=>item.near)
-    .sort((a,b)=>a.distance-b.distance);
-  return candidates[0]?.window??null;
+    .sort((a,b)=>a.distance-b.distance)[0]?.window;
+  if(direct) return direct;
+
+  // みんポケ等の日本語イベント名とCampfire英語名が一致しない場合は、
+  // 時間帯が一意に特定できる時だけ参照窓へ紐付ける。
+  const timeCandidates=windows.filter(window=>{
+    const start=Date.parse(window.starts_at);
+    const end=Date.parse(window.ends_at);
+    return Number.isFinite(start)&&Number.isFinite(end)
+      && meetupStart>=start-preGrace*60000
+      && meetupStart<=end+fallbackAfter*60000;
+  });
+  return timeCandidates.length===1?timeCandidates[0]:null;
 }
 
 async function upsertHotState(admin:SupabaseClient,row:WatchMeetup,settings:WatchSettings){
@@ -358,7 +377,7 @@ async function evaluateWatch(
     const kind=changeKinds.get(row.campfire_meetup_id);
     if(!kind) continue;
     const related=await loadRelated(admin,row,relatedCache);
-    const officialWindow=pickOfficialWindow(row,windows);
+    const officialWindow=pickOfficialWindow(row,windows,settings);
     const findings:FindingDraft[]=[];
     const sourceClasses:string[]=[];
 
