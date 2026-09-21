@@ -4,6 +4,7 @@ import {
   type CampfireEvent,
 } from "../_shared/campfire/mod.ts";
 import {processMeetupRows,type MeetupWriteRow} from "../_shared/meetup-watch/mod.ts";
+import {observeCommunityIcon} from "../_shared/community-icon.ts";
 
 const corsHeaders={
   "Access-Control-Allow-Origin":"*",
@@ -233,6 +234,7 @@ Deno.serve(async(req:Request)=>{
     const unmatchedClubIds=new Set<string>();
     const promotedCommunityIds:Array<Record<string,string>>=[];
     let detailFailures=0;
+    const iconObservedCommunityIds=new Set<string>();
 
     for(const eventId of eventIds){
       try{
@@ -276,6 +278,14 @@ Deno.serve(async(req:Request)=>{
         if(!community){
           if(clubId) unmatchedClubIds.add(clubId);
           continue;
+        }
+        if(event.club?.avatarUrl && !iconObservedCommunityIds.has(community.id)){
+          try{
+            await observeCommunityIcon(admin,community.id,event.club.avatarUrl);
+            iconObservedCommunityIds.add(community.id);
+          }catch{
+            // Icon review must never block Meetup ingestion.
+          }
         }
         rows.push(meetupRow(event,community.id,nowIso));
       }catch{
