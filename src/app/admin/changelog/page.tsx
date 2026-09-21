@@ -8,10 +8,12 @@ const entries = [
     date: "2026/09/21",
     title: "スマホADMIN・Activity Map・Community申請を整理",
     items: [
-      "Activity MapをADMINメニュー最上部へ移動",
+      "Activity MapをADMINメニュー最上部へ移動。スマホは地図操作時に全画面表示へ切替",
+      "アイコン一覧をActivity Map直下へ移動し、都道府県別表示・Community検索・詳細導線を追加",
       "スマホADMINは普段使うMy Communityを先に表示し、管理機能は管理画面から開く構成へ整理",
       "全国148 Communityのアイコンを巡回。145 Communityのアイコンを取得",
       "アイコン初回取得は通知対象外とし、実際に変更された時だけ要確認表示",
+      "一覧用256px WebPキャッシュと遅延読み込みを追加。巨大原画像は安全に高画質原本へフォールバック",
       "Community申請をDiscord通知へ連携。通知からCA Clover審査画面とCampfire確認へ直接移動",
       "Meetup Watchの対応ステータス表示を日本語化",
       "一般ユーザー向け画面ではData Coverage詳細を隠し、不足時だけ注意表示",
