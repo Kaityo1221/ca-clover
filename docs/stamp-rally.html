@@ -8,7 +8,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>CA Clover Stamp Rally LAB</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>\n<script src="./community-icon.js"></script>
 <style>
 :root{font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#403a35;background:#fff8ef}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 0 0,rgba(244,197,141,.28),transparent 28rem),linear-gradient(180deg,#fffaf4,#fff6eb 70%,#fbf4ea)}
@@ -105,13 +105,7 @@ const groups=[
 ];
 function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c])}
 function demoAcquired(id){let score=0;for(let i=0;i<id.length;i++)score=(score*33+id.charCodeAt(i))%9973;return score%10<4}
-function thumb(c){
- if(c.avatar_thumbnail_path){
-  const data=client.storage.from("community-icon-thumbs").getPublicUrl(c.avatar_thumbnail_path).data;
-  return data.publicUrl+(c.avatar_last_changed_at?"?v="+encodeURIComponent(c.avatar_last_changed_at):"");
- }
- return c.avatar_url||"";
-}
+function thumb(c){return window.CACommunityIcon.url(client,c)}
 async function authGuard(){
  const s=await client.auth.getSession();const session=s.data.session;
  if(!session){location.href=ROOT;return false}
@@ -180,7 +174,7 @@ async function load(){
     const rows=byPref.get(p)||[];const cas=rows.flatMap(c=>c.cas);const acquired=cas.filter(c=>c.acquired).length;
     const stamps=rows.length?rows.map(c=>{
       const gotCount=c.cas.filter(x=>x.acquired).length,any=gotCount>0,allGot=c.cas.length>0&&gotCount===c.cas.length,url=thumb(c);
-      return '<button type="button" class="stamp" data-community="'+esc(c.id)+'"><div class="medal '+(any?'':'unowned')+'"><div class="medalinner"><span class="fallback">🍀</span>'+(url?'<img src="'+esc(url)+'" data-fallback="'+esc(c.avatar_url||"")+'" alt="" loading="lazy">':'')+'</div>'+(allGot?'<span class="check">✓</span>':'')+'</div><div class="cname">'+esc(c.name)+'</div><div class="canames">'+(c.cas.length?c.cas.slice(0,2).map(x=>'<div class="caname '+(x.acquired?'on':'off')+'">'+(x.acquired?'● ':'○ ')+esc(x.trainer_name)+'</div>').join(""):'<div class="caname off">CA未設定</div>')+(c.cas.length>2?'<div class="caname off">+'+(c.cas.length-2)+'</div>':'')+'</div></button>'
+      return '<button type="button" class="stamp" data-community="'+esc(c.id)+'"><div class="medal '+(any?'':'unowned')+'"><div class="medalinner"><span class="fallback">🍀</span>'+window.CACommunityIcon.img(client,c,'alt="" loading="lazy"')+'</div>'+(allGot?'<span class="check">✓</span>':'')+'</div><div class="cname">'+esc(c.name)+'</div><div class="canames">'+(c.cas.length?c.cas.slice(0,2).map(x=>'<div class="caname '+(x.acquired?'on':'off')+'">'+(x.acquired?'● ':'○ ')+esc(x.trainer_name)+'</div>').join(""):'<div class="caname off">CA未設定</div>')+(c.cas.length>2?'<div class="caname off">+'+(c.cas.length-2)+'</div>':'')+'</div></button>'
     }).join(""):'<div class="empty">Communityはありません</div>';
     return '<div class="pref"><button class="prefbtn"><div><div class="prefname">'+esc(p)+'</div><div class="sub">'+rows.length+' Community</div></div><span class="progress">'+acquired+' / '+cas.length+'</span><span class="chev">⌄</span></button><div class="stamps">'+stamps+'</div></div>'
   }).join("");
@@ -189,15 +183,7 @@ async function load(){
  status.hidden=true;regionsEl.hidden=false;
  document.querySelectorAll(".regionbtn").forEach(b=>b.onclick=()=>b.parentElement.classList.toggle("open"));
  document.querySelectorAll(".prefbtn").forEach(b=>b.onclick=()=>b.parentElement.classList.toggle("open"));
- regionsEl.querySelectorAll("img[data-fallback]").forEach(img=>img.addEventListener("error",()=>{
-  const fallback=img.dataset.fallback||"";
-  if(fallback&&img.dataset.triedFallback!=="1"&&img.src!==fallback){
-   img.dataset.triedFallback="1";
-   img.src=fallback;
-   return;
-  }
-  img.style.display="none";
- }));
+ window.CACommunityIcon.bind(regionsEl);
  regionsEl.querySelectorAll(".stamp[data-community]").forEach(btn=>btn.addEventListener("click",()=>{
   const c=stampCommunityById.get(btn.dataset.community);
   if(!c)return;
@@ -205,9 +191,11 @@ async function load(){
   stampZoomArea.textContent=c.prefecture||"";
   const url=thumb(c);
   stampZoomImg.style.display=url?"block":"none";
-  stampZoomImg.dataset.fallback=c.avatar_url||"";
-  stampZoomImg.dataset.triedFallback="";
+  stampZoomImg.dataset.original=c.avatar_url||"";
+  stampZoomImg.dataset.caCommunityIcon="1";
+  stampZoomImg.dataset.caBound="";
   if(url)stampZoomImg.src=url;
+  window.CACommunityIcon.bind(stampModalBack);
   stampModalBack.classList.add("show");
   stampModalBack.setAttribute("aria-hidden","false");
  }));
@@ -215,15 +203,6 @@ async function load(){
 function closeStampModal(){stampModalBack.classList.remove("show");stampModalBack.setAttribute("aria-hidden","true")}
 stampClose.onclick=closeStampModal;
 stampModalBack.addEventListener("click",e=>{if(e.target===stampModalBack)closeStampModal()});
-stampZoomImg.addEventListener("error",()=>{
- const fallback=stampZoomImg.dataset.fallback||"";
- if(fallback&&stampZoomImg.dataset.triedFallback!=="1"&&stampZoomImg.src!==fallback){
-  stampZoomImg.dataset.triedFallback="1";
-  stampZoomImg.src=fallback;
-  return;
- }
- stampZoomImg.style.display="none";
-});
 load();
 })();
 </script>
