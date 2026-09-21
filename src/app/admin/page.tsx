@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
 
+type CommunityIdRow={id:string};
+type MembershipCommunityRow={community_id:string};
+
 export default function Page(){
   const { supabase,user, profile, loading } = useAuthProfile();
   const [pendingClaims,setPendingClaims]=useState(0);
@@ -20,8 +23,10 @@ export default function Page(){
     ]).then(([claims,watch,communities,memberships])=>{
       setPendingClaims(claims.count??0);
       setWatchCount(watch.count??0);
-      const assigned=new Set((memberships.data??[]).map(row=>row.community_id));
-      setUnassignedCount((communities.data??[]).filter(row=>!assigned.has(row.id)).length);
+      const membershipRows=(memberships.data as MembershipCommunityRow[]|null)??[];
+      const communityRows=(communities.data as CommunityIdRow[]|null)??[];
+      const assigned=new Set(membershipRows.map(row=>row.community_id));
+      setUnassignedCount(communityRows.filter(row=>!assigned.has(row.id)).length);
     });
   },[loading,user,profile?.role,supabase]);
 
