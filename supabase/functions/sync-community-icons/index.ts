@@ -141,6 +141,8 @@ Deno.serve(async(req:Request)=>{
           campfire_community_id:clubId,
           status:observed.changed?observed.changeType:observed.reason,
           detection_method:"method" in observed?observed.method:null,
+          thumbnail_path:"thumbnail_path" in observed?observed.thumbnail_path:null,
+          thumbnail_error:"thumbnail_error" in observed?observed.thumbnail_error:null,
         });
       }catch(error){
         failed++;
