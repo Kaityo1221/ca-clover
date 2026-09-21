@@ -52,6 +52,9 @@ async function ensureThumbnail(
   buffer:ArrayBuffer|null,
 ){
   if(!buffer) return {path:null,error:"source_unavailable"} as const;
+  if(buffer.byteLength>2*1024*1024){
+    return {path:null,error:"source_too_large"} as const;
+  }
   try{
     const module=await import("./community-icon-thumbnail.ts");
     const path=await module.createCommunityIconThumbnail(admin,communityId,buffer);
