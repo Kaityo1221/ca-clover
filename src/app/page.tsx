@@ -65,7 +65,7 @@ const caSections = [
 ] satisfies { title: string; subtitle: string; items: MenuItem[] }[];
 
 function MenuButton({ item }: { item: MenuItem }) {
-  return <Link href={item.href} className="group relative min-h-36 rounded-[26px] border border-lime-100 bg-white p-5 shadow-[0_14px_40px_rgba(77,124,15,.08)] transition hover:-translate-y-1 hover:border-lime-300 hover:shadow-[0_20px_45px_rgba(77,124,15,.14)]">
+  return <Link href={item.href} className="group relative block w-full min-h-36 rounded-[26px] border border-lime-100 bg-white p-5 shadow-[0_14px_40px_rgba(77,124,15,.08)] transition hover:-translate-y-1 hover:border-lime-300 hover:shadow-[0_20px_45px_rgba(77,124,15,.14)]">
     {item.badge ? <span className="absolute right-4 top-4 rounded-full bg-lime-100 px-2.5 py-1 text-xs font-black text-lime-800">{item.badge}</span> : null}
     <div className="grid size-12 place-items-center rounded-2xl bg-lime-100 text-2xl transition group-hover:bg-lime-200">{item.icon}</div>
     <div className="mt-4 flex flex-wrap items-center gap-2">
