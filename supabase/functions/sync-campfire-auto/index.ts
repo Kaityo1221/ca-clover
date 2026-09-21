@@ -64,6 +64,7 @@ Deno.serve(async(req:Request)=>{
     let publicResult:Record<string,unknown>|null=null;
     let historyResult:Record<string,unknown>|null=null;
     let notificationResult:Record<string,unknown>|null=null;
+    let eventCalendarResult:Record<string,unknown>|null=null;
     let historyCommunity:{id:string;name:string}|null=null;
     let currentPublicOffset=Math.max(0,Number(state.public_offset??0)||0);
     let nextOffset=currentPublicOffset;
@@ -73,7 +74,7 @@ Deno.serve(async(req:Request)=>{
 
     const {data:watchSettings,error:watchSettingsError}=await admin
       .from("watch_settings")
-      .select("enabled,hot_batch_size,hot_scan_interval_minutes,normal_scan_interval_minutes")
+      .select("enabled,hot_batch_size,hot_scan_interval_minutes,normal_scan_interval_minutes,event_calendar_sync_interval_minutes")
       .eq("id",1)
       .maybeSingle();
     if(watchSettingsError) errors.push("watch settings: "+watchSettingsError.message);
@@ -87,6 +88,29 @@ Deno.serve(async(req:Request)=>{
         if(communitiesCreated>0) currentPublicOffset=0;
       }catch(error){
         errors.push("ca master: "+(error instanceof Error?error.message:String(error)));
+      }
+    }
+
+    const calendarInterval=Math.max(
+      30,
+      Number(watchSettings?.event_calendar_sync_interval_minutes??360)||360,
+    );
+    const lastEventCalendarAt=state.last_event_calendar_at
+      ?new Date(state.last_event_calendar_at).getTime()
+      :0;
+    const eventCalendarDue=!lastEventCalendarAt||now-lastEventCalendarAt>=calendarInterval*60*1000;
+
+    if(eventCalendarDue){
+      try{
+        eventCalendarResult=await invokeInternal(
+          supabaseUrl,
+          anonKey,
+          suppliedSecret,
+          "sync-event-calendar",
+          {},
+        );
+      }catch(error){
+        errors.push("event calendar: "+(error instanceof Error?error.message:String(error)));
       }
     }
 
@@ -217,6 +241,7 @@ Deno.serve(async(req:Request)=>{
       last_public_imported:publicResult?publicImported:state.last_public_imported,
       last_history_at:historyResult?finishedAt:state.last_history_at,
       last_history_imported:historyResult?historyImported:state.last_history_imported,
+      last_event_calendar_at:eventCalendarResult?finishedAt:state.last_event_calendar_at,
       last_error:errors.length?errors.join(" | "):null,
       updated_at:finishedAt,
     }).eq("id",1);
@@ -236,6 +261,8 @@ Deno.serve(async(req:Request)=>{
         history_community:historyCommunity,
         history_result:historyResult,
         notification_result:notificationResult,
+        event_calendar_result:eventCalendarResult,
+        event_calendar_due:eventCalendarDue,
         errors,
       },
     });
@@ -251,6 +278,8 @@ Deno.serve(async(req:Request)=>{
       historyCommunity,
       historyResult,
       notificationResult,
+      eventCalendarResult,
+      eventCalendarDue,
       errors,
     });
   }catch(error){
