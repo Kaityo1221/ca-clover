@@ -250,6 +250,17 @@ export default function Page() {
         </div>
       </section>
 
+      <Link
+        href="/lab/stamp-rally/exchange"
+        className="mt-4 flex items-center justify-between rounded-[22px] border border-[#d9c4ad] bg-white px-5 py-4 shadow-[0_8px_22px_rgba(92,69,45,.06)]"
+      >
+        <div>
+          <div className="text-sm font-black text-[#45663a]">🤝 スタンプ交換</div>
+          <div className="mt-0.5 text-[10px] font-bold text-[#938478]">QRで1対1交換する</div>
+        </div>
+        <span className="text-xl font-black text-[#6a8d59]">→</span>
+      </Link>
+
       {error ? <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-700">{error}</div> : null}
 
       <section className="mt-5 space-y-3">
@@ -408,7 +419,7 @@ export default function Page() {
       </div> : null}
 
       <div className="mt-6 rounded-[22px] border border-dashed border-[#d8c7b5] bg-white/60 p-4 text-center text-[11px] font-bold leading-5 text-[#8d7c6c]">
-        🍀 S権限に対応しました。交換機能と取得DBへの画面接続は次の段階で進めます。
+        🍀 通常1対1交換を追加しました。スタンプシートの実取得データ接続は次の段階で進めます。
       </div>
     </div>
   </main>;
