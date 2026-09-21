@@ -15,6 +15,7 @@ export function useAuthProfile() {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<AuthProfile | null>(null);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,18 +29,29 @@ export function useAuthProfile() {
 
       if (!currentUser) {
         setProfile(null);
+        setPermissions([]);
         setLoading(false);
         return;
       }
 
-      const { data: profileRow } = await supabase
-        .from("profiles")
-        .select("role,niantic_id")
-        .eq("id", currentUser.id)
-        .maybeSingle();
+      const [profileResult, permissionResult] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("role,niantic_id")
+          .eq("id", currentUser.id)
+          .maybeSingle(),
+        supabase
+          .from("user_permissions")
+          .select("permission_code")
+          .eq("user_id", currentUser.id),
+      ]);
 
       if (!alive) return;
-      setProfile((profileRow as AuthProfile | null) ?? null);
+      setProfile((profileResult.data as AuthProfile | null) ?? null);
+      setPermissions(
+        ((permissionResult.data as { permission_code: string }[] | null) ?? [])
+          .map((row) => row.permission_code)
+      );
       setLoading(false);
     }
 
@@ -56,5 +68,8 @@ export function useAuthProfile() {
     };
   }, [supabase]);
 
-  return { supabase, user, profile, loading };
+  const hasPermission = (code: string) =>
+    profile?.role === "admin" || permissions.includes(code.trim().toUpperCase());
+
+  return { supabase, user, profile, permissions, hasPermission, loading };
 }
