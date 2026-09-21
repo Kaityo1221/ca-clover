@@ -378,7 +378,7 @@ export default function Page() {
       </div> : null}
 
       <div className="mt-6 rounded-[22px] border border-dashed border-[#d8c7b5] bg-white/60 p-4 text-center text-[11px] font-bold leading-5 text-[#8d7c6c]">
-        🍀 このLABでは見た目と操作感だけを確認します。実際のスタンプ取得DB・交換機能・S権限は次の段階で接続します。
+        🍀 S権限に対応しました。交換機能と取得DBへの画面接続は次の段階で進めます。
       </div>
     </div>
   </main>;
