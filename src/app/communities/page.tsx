@@ -80,17 +80,27 @@ export default function Page() {
         {dataLoading ? "読み込み中..." : rows.length + " Community"}
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] text-left text-sm">
+        <table className={"w-full text-left text-sm "+(profile?.role==="admin"?"min-w-[760px]":"min-w-[520px]")}>
           <thead className="bg-lime-50 text-[11px] font-black text-lime-800">
-            <tr><th className="px-5 py-3">都道府県</th><th className="px-5 py-3">Community</th><th className="px-5 py-3">Member</th><th className="px-5 py-3">Data</th><th className="px-5 py-3">最終同期</th></tr>
+            <tr>
+              <th className="px-5 py-3">都道府県</th>
+              <th className="px-5 py-3">Community</th>
+              <th className="px-5 py-3">Member</th>
+              {profile?.role==="admin"?<><th className="px-5 py-3">Data</th><th className="px-5 py-3">最終同期</th></>:null}
+            </tr>
           </thead>
           <tbody className="divide-y divide-lime-50">
             {rows.map(c=><tr key={c.id} className="bg-white hover:bg-lime-50/70">
               <td className="px-5 py-4 font-bold">{c.prefecture ?? "—"}</td>
-              <td className="px-5 py-4"><Link href={"/community/"+c.id} className="font-black text-lime-900">{c.name}</Link></td>
+              <td className="px-5 py-4">
+                <Link href={"/community/"+c.id} className="font-black text-lime-900">{c.name}</Link>
+                {profile?.role!=="admin"&&c.coverage!=="complete"?<div className="mt-1 max-w-md text-[11px] font-bold text-amber-700">⚠️ 一部の過去データが未取得のため、全期間集計は参考値です</div>:null}
+              </td>
               <td className="px-5 py-4">{c.member_count?.toLocaleString("ja-JP") ?? "未取得"}</td>
-              <td className="px-5 py-4">{c.coverage==="complete"?"● 取得済み":c.coverage==="partial"?"◐ 一部取得":"○ 未取得"}</td>
-              <td className="px-5 py-4 text-xs text-slate-500">{c.fetched_at ? new Date(c.fetched_at).toLocaleString("ja-JP") : "—"}</td>
+              {profile?.role==="admin"?<>
+                <td className="px-5 py-4">{c.coverage==="complete"?"● 取得済み":c.coverage==="partial"?"◐ 一部取得":"○ 未取得"}</td>
+                <td className="px-5 py-4 text-xs text-slate-500">{c.fetched_at ? new Date(c.fetched_at).toLocaleString("ja-JP") : "—"}</td>
+              </>:null}
             </tr>)}
           </tbody>
         </table>

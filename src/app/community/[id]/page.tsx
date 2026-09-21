@@ -316,7 +316,7 @@ export default function Page(){
       </div>
     </div>:null}
 
-    <section className="clover-card mt-5 p-5">
+    {profile?.role==="admin"?<section className="clover-card mt-5 p-5">
       <h2 className="font-black text-lime-950">🧾 Data Coverage</h2>
       <div className="mt-4 grid gap-4 text-sm sm:grid-cols-4">
         <div><div className="text-xs text-slate-400">取得開始</div><b>{community.coverage_from?new Date(community.coverage_from).toLocaleDateString("ja-JP"):"未取得"}</b></div>
@@ -325,6 +325,8 @@ export default function Page(){
         <div><div className="text-xs text-slate-400">最終同期</div><b>{community.fetched_at?new Date(community.fetched_at).toLocaleString("ja-JP"):"未取得"}</b></div>
       </div>
       {community.coverage==="partial"?<p className="mt-4 text-xs font-semibold text-amber-700">同期が途中で終了したため「一部取得」と表示しています。</p>:null}
-    </section>
+    </section>:community.coverage!=="complete"?<section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">
+      ⚠️ 一部の過去データが未取得のため、全期間集計は参考値です
+    </section>:null}
   </main>;
 }

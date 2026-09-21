@@ -112,7 +112,10 @@ export default function Page() {
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 md:px-8">
         <span className="grid size-11 place-items-center rounded-2xl bg-lime-300 text-2xl">🍀</span>
         <div><div className="font-black text-lime-950">CA Clover</div><div className="text-[11px] font-bold text-lime-700">Japan Community Activity Dashboard</div></div>
-        <div className="ml-auto rounded-full bg-lime-50 px-3 py-2 text-xs font-black text-lime-800">{roleLabel}</div>
+        <div className="ml-auto flex items-center gap-2">
+          <div className="rounded-full bg-lime-50 px-3 py-2 text-xs font-black text-lime-800">{roleLabel}</div>
+          {profile?.role === "admin" ? <Link href="/admin" className="inline-flex rounded-full bg-lime-400 px-3 py-2 text-xs font-black text-lime-950 sm:hidden">管理画面</Link> : null}
+        </div>
       </div>
     </header>
 
@@ -145,7 +148,12 @@ export default function Page() {
         <Link href="/account" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black text-lime-950">Niantic IDを登録する →</Link>
       </section> : null}
 
-      {sections.length ? <div className="mt-7 space-y-7">
+      {profile?.role === "admin" ? <section className="mt-7 sm:hidden">
+        <div className="mb-3"><h2 className="text-lg font-black text-lime-950">自分のCommunity</h2><p className="mt-0.5 text-xs font-semibold text-slate-500">スマホでは普段使う画面を先に表示します</p></div>
+        <MenuButton item={{ icon:"🍀", title:"My Community", description:"自分のCommunity活動を見る", href:"/my" }} />
+      </section> : null}
+
+      {sections.length ? <div className={"mt-7 space-y-7 "+(profile?.role === "admin" ? "hidden sm:block" : "")}>
         {sections.map(section => <section key={section.title}>
           <div className="mb-3"><h2 className="text-lg font-black text-lime-950">{section.title}</h2><p className="mt-0.5 text-xs font-semibold text-slate-500">{section.subtitle}</p></div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{section.items.map(item => <MenuButton key={item.title} item={item} />)}</div>

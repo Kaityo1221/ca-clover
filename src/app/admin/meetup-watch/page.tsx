@@ -62,9 +62,22 @@ const statusLabels={
   unreviewed:"未確認",
   no_issue:"問題なし",
   contact_host:"本人確認",
-  sop_in_progress:"SOP対応中",
+  sop_in_progress:"対応中",
   completed:"完了",
 } as const;
+
+// 表示上の日本語名。内部値は既存の英語値を維持する。
+// 将来/別経路で同義ステータスを受け取った場合も同じ表示に揃える。
+const statusDisplayAliases:Record<string,string>={
+  unreviewed:"未確認",
+  reviewing:"本人確認",
+  contact_host:"本人確認",
+  no_issue:"問題なし",
+  contacting:"対応中",
+  sop_in_progress:"対応中",
+  resolved:"完了",
+  completed:"完了",
+};
 
 function formatDate(value:string|null){
   if(!value) return "—";
@@ -321,7 +334,7 @@ export default function Page(){
               onChange={e=>changeStatus(item.id,e.target.value as CaseRow["status"])}
               className="rounded-xl border border-lime-200 bg-white px-3 py-2 text-xs font-black text-lime-900"
             >
-              {Object.entries(statusLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}
+              {Object.keys(statusLabels).map(value=><option key={value} value={value}>{statusDisplayAliases[value]??value}</option>)}
             </select>
             <button
               type="button"

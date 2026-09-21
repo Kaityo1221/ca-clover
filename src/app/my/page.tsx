@@ -209,7 +209,7 @@ export default function Page() {
           </div>
           <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold text-slate-500">
             <span className="rounded-full bg-lime-50 px-3 py-2">Member: {c.member_count?.toLocaleString("ja-JP") ?? "未取得"}</span>
-            <span className="rounded-full bg-lime-50 px-3 py-2">Data: {c.coverage}</span>
+            {c.coverage!=="complete"?<span className="rounded-full bg-amber-50 px-3 py-2 text-amber-800">⚠️ 一部の過去データが未取得のため、全期間集計は参考値です</span>:null}
           </div>
           <div className="mt-5 text-xs font-black text-lime-700">Activityを見る →</div>
         </Link>)}

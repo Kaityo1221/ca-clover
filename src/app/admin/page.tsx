@@ -41,6 +41,7 @@ export default function Page(){
     ["🔍","要確認Meetup",watchCount?watchCount+"件の未確認があります":"未確認はありません","/admin/meetup-watch"],
     ["🛎️","Community申請",pendingClaims?pendingClaims+"件の承認待ちがあります":"承認待ちはありません","/admin/claims"],
     ["🖼️","アイコン一覧",iconReviewCount?iconReviewCount+"件の要確認があります":"全国Communityのアイコンを確認","/admin/icons"],
+    ["🗾","Activity Map","全国Communityの活動を地図で確認","/map"],
     ["🔐","Campfire接続","ADMIN tokenと接続状態を管理","/admin/campfire"],
     ["🔄","データ同期","Campfire Activityを全国更新","/admin/sync"],
     ["🔗","Community権限調整","通常は自動割当 / 手動補正用","/admin/assignments"],
