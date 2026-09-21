@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f7fee7">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>CA Clover イベント管理</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#18230f;background:#f8fbf5}
+*{box-sizing:border-box}body{margin:0;background:#f8fbf5}a{text-decoration:none;color:inherit}button,input,select{font:inherit}
+.wrap{max-width:980px;margin:auto;padding:24px 16px 60px}.back{font-size:13px;font-weight:900;color:#4d7c0f}.tag{display:inline-block;margin-top:14px;border-radius:999px;background:#ffedd5;padding:6px 10px;font-size:10px;font-weight:950;color:#9a3412}
+h1{margin:10px 0 0;font-size:30px}.sub{margin:8px 0 0;font-size:13px;font-weight:700;color:#64748b}.error{margin-top:16px;border:1px solid #fecdd3;border-radius:16px;background:#fff1f2;padding:13px;color:#be123c;font-size:12px;font-weight:850}
+.card{margin-top:18px;border:1px solid #e5e7eb;border-radius:24px;background:white;padding:18px;box-shadow:0 8px 24px rgba(15,23,42,.04)}.card.orange{border-color:#fed7aa;background:#fff7ed}.card.green{border-color:#d9f99d;background:#f7fee7}.card.sky{border-color:#bae6fd;background:#f0f9ff}
+h2{margin:0;font-size:18px}.grid{display:grid;gap:10px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.mt{margin-top:14px}
+label{font-size:11px;font-weight:900;color:#475569}.input{width:100%;margin-top:6px;border:1px solid #dbe2e8;border-radius:12px;background:#fff;padding:11px 12px;font-size:13px}.btn{border:0;border-radius:12px;padding:11px 14px;font-size:12px;font-weight:950;cursor:pointer}.primary{background:#65a30d;color:#fff}.skybtn{background:#0284c7;color:white}.muted{background:#f1f5f9;color:#475569}.btn:disabled{opacity:.45}
+.events{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}.event{border:1px solid #e5e7eb;border-radius:20px;background:#fff;padding:16px}.row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.phase{display:inline-block;border-radius:999px;padding:5px 9px;font-size:9px;font-weight:950;background:#f1f5f9;color:#64748b}.phase.active{background:#dcfce7;color:#166534}.phase.scheduled{background:#fef3c7;color:#92400e}.phase.cancelled{background:#ffe4e6;color:#be123c}.event h3{margin:8px 0 0;font-size:16px}.meta{margin-top:6px;font-size:10px;line-height:1.7;font-weight:800;color:#64748b}.count{border-radius:14px;background:#f0fdf4;padding:8px 10px;text-align:center;color:#3f6212}.count b{display:block;font-size:18px}.count span{font-size:8px;font-weight:900}
+.missions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px}.mission{border-radius:16px;background:#fff;padding:12px}.mission b{font-size:13px}.mission p{margin:5px 0 0;font-size:10px;line-height:1.6;font-weight:700;color:#64748b}
+.assignments{display:grid;gap:7px;margin-top:12px}.assignment{border-radius:12px;background:#fff;padding:9px 11px;font-size:11px;font-weight:800;color:#475569}
+@media(max-width:720px){.g2,.g3,.events,.missions{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <a class="back" href="./admin.html">← 管理メニュー</a>
+  <span class="tag">STAMP EVENT</span>
+  <h1>🎪 イベント管理</h1>
+  <p class="sub">イベント期間・場所・タイムゾーン・日替わりミッションを設定します。</p>
+  <div id="error"></div>
+
+  <section class="card orange">
+    <h2>新しいイベント</h2>
+    <div class="grid g2 mt">
+      <label>イベント名<input id="eventName" class="input" placeholder="ワイルドエリア仙台 東北"></label>
+      <label>場所<input id="eventLocation" class="input" placeholder="仙台市"></label>
+      <label>開始<input id="eventStart" type="datetime-local" class="input"></label>
+      <label>終了<input id="eventEnd" type="datetime-local" class="input"></label>
+      <label style="grid-column:1/-1">タイムゾーン<input id="eventTimezone" class="input" value="Asia/Tokyo"></label>
+    </div>
+    <button id="createEvent" class="btn primary mt">イベントを作成</button>
+  </section>
+
+  <section class="card">
+    <div class="row"><h2>イベント一覧</h2><button id="refresh" class="btn muted">更新</button></div>
+    <div id="events" class="events"></div>
+  </section>
+
+  <section class="card green">
+    <h2>🎯 ミッションストック</h2>
+    <p class="sub">端末で検知する機能ではなく、その日の交換前にみんなで楽しむ合図です。</p>
+    <div id="missions" class="missions"></div>
+    <div class="grid g3 mt">
+      <input id="missionTitle" class="input" placeholder="ミッション名">
+      <input id="missionInstruction" class="input" placeholder="内容">
+      <button id="createMission" class="btn primary">追加</button>
+    </div>
+  </section>
+
+  <section class="card sky">
+    <h2>📅 日替わりミッション設定</h2>
+    <div class="grid g3 mt">
+      <select id="assignEvent" class="input"></select>
+      <input id="assignDate" type="date" class="input">
+      <select id="assignMission" class="input"></select>
+    </div>
+    <button id="assignButton" class="btn skybtn mt">この日のミッションに設定</button>
+    <div id="assignments" class="assignments"></div>
+  </section>
+</main>
+<script>
+(function(){
+"use strict";
+const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
+const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
+const ROOT="https://kaityo1221.github.io/ca-clover/";
+const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
+const errorEl=document.getElementById("error");
+const eventsEl=document.getElementById("events");
+const missionsEl=document.getElementById("missions");
+const assignmentsEl=document.getElementById("assignments");
+const assignEvent=document.getElementById("assignEvent");
+const assignMission=document.getElementById("assignMission");
+const assignDate=document.getElementById("assignDate");
+let data={events:[],missions:[],assignments:[]},busy=false;
+function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c])}
+function showError(v){errorEl.innerHTML=v?'<div class="error">'+esc(v)+'</div>':""}
+async function invoke(body){
+ const r=await client.functions.invoke("stamp-event",{body});
+ if(r.error){
+  let detail=r.error.message;
+  try{if(r.error.context){const p=await r.error.context.clone().json();if(p&&p.error)detail=String(p.error)}}catch{}
+  throw new Error(detail);
+ }
+ if(r.data&&r.data.error)throw new Error(r.data.error);
+ return r.data;
+}
+async function auth(){
+ const s=await client.auth.getSession(),session=s.data.session;
+ if(!session){location.href=ROOT;return false}
+ const p=await client.from("profiles").select("role").eq("id",session.user.id).maybeSingle();
+ if(!p.data||p.data.role!=="admin"){showError("ADMIN専用です。");return false}
+ return true;
+}
+function apply(d){
+ data=d||{events:[],missions:[],assignments:[]};
+ renderEvents();renderMissions();renderAssignments();
+}
+function renderEvents(){
+ const rows=data.events||[];
+ eventsEl.innerHTML=rows.length?rows.map(ev=>{
+  const cls=ev.phase==="active"?"active":ev.phase==="scheduled"?"scheduled":ev.phase==="cancelled"?"cancelled":"";
+  const label=ev.phase==="active"?"開催中":ev.phase==="scheduled"?"開催前":ev.phase==="cancelled"?"中止":"終了";
+  const cancel=ev.status==="scheduled"&&ev.phase!=="ended"?'<button class="btn muted mt" data-cancel="'+esc(ev.id)+'">イベントを中止</button>':"";
+  return '<article class="event"><div class="row"><div><span class="phase '+cls+'">'+label+'</span><h3>'+esc(ev.name)+'</h3><div class="meta">📍 '+esc(ev.location||"場所未設定")+'<br>'+esc(ev.starts_local.replace("T"," "))+' → '+esc(ev.ends_local.replace("T"," "))+'<br>'+esc(ev.timezone)+'</div></div><div class="count"><b>'+esc(ev.participant_count||0)+'</b><span>参加CA</span></div></div>'+cancel+'</article>';
+ }).join(""):'<div class="sub">イベントはありません。</div>';
+ eventsEl.querySelectorAll("[data-cancel]").forEach(b=>b.onclick=()=>cancelEvent(b.dataset.cancel));
+ assignEvent.innerHTML='<option value="">イベントを選択</option>'+rows.filter(x=>x.status==="scheduled").map(ev=>'<option value="'+esc(ev.id)+'">'+esc(ev.name)+'</option>').join("");
+ if(!assignEvent.value&&rows.length){const first=rows.find(x=>x.status==="scheduled");if(first){assignEvent.value=first.id;assignDate.value=first.starts_local.slice(0,10)}}
+}
+function renderMissions(){
+ const rows=data.missions||[];
+ missionsEl.innerHTML=rows.map(m=>'<div class="mission"><b>'+esc(m.title)+'</b><p>'+esc(m.instruction)+'</p></div>').join("");
+ assignMission.innerHTML='<option value="">ミッションを選択</option>'+rows.map(m=>'<option value="'+esc(m.id)+'">'+esc(m.title)+'</option>').join("");
+ if(!assignMission.value&&rows[0])assignMission.value=rows[0].id;
+}
+function renderAssignments(){
+ const evMap=new Map((data.events||[]).map(x=>[x.id,x]));
+ const mMap=new Map((data.missions||[]).map(x=>[x.id,x]));
+ assignmentsEl.innerHTML=(data.assignments||[]).slice().sort((a,b)=>a.local_date.localeCompare(b.local_date)).map(x=>'<div class="assignment"><b>'+esc(x.local_date)+'</b> ・ '+esc((evMap.get(x.event_id)||{}).name||"イベント")+' → '+esc((mMap.get(x.mission_template_id)||{}).title||"ミッション")+'</div>').join("");
+}
+async function load(){showError("");try{apply(await invoke({action:"list"}))}catch(err){showError(err.message||String(err))}}
+async function createEvent(){
+ if(busy)return;busy=true;showError("");
+ try{
+  apply(await invoke({
+   action:"create_event",
+   name:document.getElementById("eventName").value,
+   location:document.getElementById("eventLocation").value,
+   timezone:document.getElementById("eventTimezone").value||"Asia/Tokyo",
+   startsLocal:document.getElementById("eventStart").value,
+   endsLocal:document.getElementById("eventEnd").value
+  }));
+  document.getElementById("eventName").value="";
+  document.getElementById("eventLocation").value="";
+  document.getElementById("eventStart").value="";
+  document.getElementById("eventEnd").value="";
+ }catch(err){showError(err.message||String(err))}finally{busy=false}
+}
+async function cancelEvent(id){
+ const ev=(data.events||[]).find(x=>x.id===id);if(!ev||busy)return;busy=true;showError("");
+ try{apply(await invoke({action:"update_event",eventId:id,name:ev.name,location:ev.location||"",timezone:ev.timezone,startsLocal:ev.starts_local,endsLocal:ev.ends_local,status:"cancelled"}))}
+ catch(err){showError(err.message||String(err))}finally{busy=false}
+}
+async function createMission(){
+ if(busy)return;busy=true;showError("");
+ try{
+  apply(await invoke({action:"create_mission",title:document.getElementById("missionTitle").value,instruction:document.getElementById("missionInstruction").value}));
+  document.getElementById("missionTitle").value="";document.getElementById("missionInstruction").value="";
+ }catch(err){showError(err.message||String(err))}finally{busy=false}
+}
+async function assign(){
+ if(busy)return;busy=true;showError("");
+ try{apply(await invoke({action:"assign_mission",eventId:assignEvent.value,localDate:assignDate.value,missionId:assignMission.value}))}
+ catch(err){showError(err.message||String(err))}finally{busy=false}
+}
+assignEvent.onchange=()=>{const ev=(data.events||[]).find(x=>x.id===assignEvent.value);if(ev)assignDate.value=ev.starts_local.slice(0,10)};
+document.getElementById("createEvent").onclick=createEvent;
+document.getElementById("refresh").onclick=load;
+document.getElementById("createMission").onclick=createMission;
+document.getElementById("assignButton").onclick=assign;
+(async()=>{if(await auth())await load()})();
+})();
+</script>
+</body>
+</html>
