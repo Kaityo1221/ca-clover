@@ -299,6 +299,15 @@ export default function Page() {
   }, []);
 
   useEffect(() => {
+    if (!isMobileMap || !mapInteractionEnabled) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobileMap, mapInteractionEnabled]);
+
+  useEffect(() => {
     if (loading || !user || !profile || profile.role === "pending") return;
     let alive = true;
     setDataLoading(true);
@@ -891,10 +900,20 @@ export default function Page() {
           </div>
         </div>
 
-        <div className="relative">
+        <div
+          className={
+            isMobileMap && mapInteractionEnabled
+              ? "fixed inset-0 z-[2000] bg-white"
+              : "relative"
+          }
+        >
           <div
             ref={mapElementRef}
-            className="h-[62vh] min-h-[520px] w-full overflow-hidden rounded-[20px] bg-lime-50"
+            className={
+              isMobileMap && mapInteractionEnabled
+                ? "h-[100dvh] w-full overflow-hidden bg-lime-50"
+                : "h-[62vh] min-h-[520px] w-full overflow-hidden rounded-[20px] bg-lime-50"
+            }
             aria-label="全国Community Activity Map"
           />
           {isMobileMap ? (
@@ -902,13 +921,13 @@ export default function Page() {
               type="button"
               onClick={() => setMapInteractionEnabled((current) => !current)}
               className={
-                "absolute right-3 top-3 z-[1000] rounded-full px-4 py-2 text-xs font-black shadow-lg " +
+                "absolute right-3 top-3 z-[2100] rounded-full px-4 py-2 text-xs font-black shadow-lg " +
                 (mapInteractionEnabled
                   ? "bg-slate-900 text-white"
                   : "bg-lime-300 text-lime-950")
               }
             >
-              {mapInteractionEnabled ? "↑ スクロールに戻る" : "🗺️ 地図を操作"}
+              {mapInteractionEnabled ? "× 地図を閉じる" : "🗺️ 地図を操作"}
             </button>
           ) : null}
         </div>
