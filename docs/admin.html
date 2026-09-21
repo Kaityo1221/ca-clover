@@ -146,7 +146,7 @@ async function assignments(){
  function draw(){
   const uid=sel.value,q=document.getElementById("assnSearch").value.trim().toLowerCase();
   const assigned=new Set(memberships.filter(x=>x.user_id===uid).map(x=>x.community_id));
-  document.getElementById("assnMeta").textContent="割当 "+assigned.size+" Community";
+  document.getElementById("assnMeta").textContent="認証済み "+assigned.size+" Community";
   const filtered=communities.filter(x=>!q||(x.name+" "+(x.prefecture||"")).toLowerCase().includes(q));
   document.getElementById("assnList").innerHTML=filtered.map(x=>{
     const owners=profiles.filter(p=>memberships.some(m=>m.community_id===x.id&&m.user_id===p.id));
@@ -159,7 +159,7 @@ async function assignments(){
         ?"text-align:left;border-color:#bae6fd;background:#f0f9ff"
         :"text-align:left";
     const badge=on
-      ?'<span class="pill">✅ このCAに割当済み</span>'
+      ?'<span class="pill">✅ 認証済み</span>'
       :ownedByOther
         ?'<span class="pill blue">✅ 認証済み</span>'
         :'<span class="pill slate">未割当</span>';
