@@ -163,7 +163,7 @@ Deno.serve(async(req:Request)=>{
 
       const source=String(request.request_source??"meetup_share");
       const method=source==="community_invite"?"Community招待URL":"本人主催Meetup";
-      const reviewUrl="https://kaityo1221.github.io/ca-clover/admin.html#community-claims";
+      const reviewUrl="https://kaityo1221.github.io/ca-clover/admin.html#claims";
       const campfireUrl=String(request.input_url??request.meetup_url??"").trim();
       const embed={
         title:"🛎️ CA Clover / 新しいCommunity申請",
