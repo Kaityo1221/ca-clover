@@ -119,12 +119,12 @@ Deno.serve(async(req:Request)=>{
 
       try{
         const club=await campfire.getClub(clubId);
-        const generateMissingThumbnail=!community.avatar_thumbnail_path&&thumbnailBackfilled<2;
+        const generateMissingThumbnail=!community.avatar_thumbnail_path;
         const observed=await observeCommunityIcon(
           admin,
           community.id,
           club.avatarUrl??null,
-          {generateMissingThumbnail},
+          {generateMissingThumbnail,ensureArchive:true},
         );
         if(!community.avatar_thumbnail_path&&observed.thumbnail_path) thumbnailBackfilled++;
         if(observed.changed){
