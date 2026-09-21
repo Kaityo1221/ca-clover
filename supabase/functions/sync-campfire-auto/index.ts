@@ -64,6 +64,7 @@ Deno.serve(async(req:Request)=>{
     let publicResult:Record<string,unknown>|null=null;
     let historyResult:Record<string,unknown>|null=null;
     let notificationResult:Record<string,unknown>|null=null;
+    let claimNotificationResult:Record<string,unknown>|null=null;
     let eventCalendarResult:Record<string,unknown>|null=null;
     let historyCommunity:{id:string;name:string}|null=null;
     let currentPublicOffset=Math.max(0,Number(state.public_offset??0)||0);
@@ -233,6 +234,14 @@ Deno.serve(async(req:Request)=>{
       errors.push("notify: "+(error instanceof Error?error.message:String(error)));
     }
 
+    try{
+      claimNotificationResult=await invokeInternal(
+        supabaseUrl,anonKey,suppliedSecret,"community-claim-notify",{}
+      );
+    }catch(error){
+      errors.push("claim notify: "+(error instanceof Error?error.message:String(error)));
+    }
+
     const finishedAt=new Date().toISOString();
     await admin.from("sync_automation_state").update({
       public_offset:nextOffset,
@@ -261,6 +270,7 @@ Deno.serve(async(req:Request)=>{
         history_community:historyCommunity,
         history_result:historyResult,
         notification_result:notificationResult,
+        claim_notification_result:claimNotificationResult,
         event_calendar_result:eventCalendarResult,
         event_calendar_due:eventCalendarDue,
         errors,
@@ -278,6 +288,7 @@ Deno.serve(async(req:Request)=>{
       historyCommunity,
       historyResult,
       notificationResult,
+      claimNotificationResult,
       eventCalendarResult,
       eventCalendarDue,
       errors,
