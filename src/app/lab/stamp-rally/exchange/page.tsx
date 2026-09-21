@@ -42,6 +42,12 @@ type ExchangeSession={
   partner_confirmed:boolean;
   me:ExchangePerson|null;
   partner:ExchangePerson|null;
+  event:{
+    id:string;
+    name:string|null;
+    location:string|null;
+    timezone:string|null;
+  }|null;
   result:any;
 };
 
@@ -428,6 +434,15 @@ export default function StampExchangePage(){
         {phase==="retrying"?"🔄":"⏳"} {phaseLabel}
       </div>:null}
 
+      {session?.event?<div className="mt-4 rounded-[22px] border border-orange-200 bg-orange-50 p-4">
+        <div className="text-[10px] font-black text-orange-700">🎪 EVENT MODE ON</div>
+        <div className="mt-1 text-sm font-black text-orange-950">{session.event.name??"イベント"}</div>
+        <div className="mt-1 text-[10px] font-bold text-orange-800">
+          📍 {session.event.location??"場所未設定"} ・ {session.event.timezone??"Asia/Tokyo"}
+        </div>
+        <div className="mt-2 text-[9px] font-bold text-orange-700">この交換にはイベント名・場所・現地日付が自動で記録されます。</div>
+      </div>:null}
+
       <section className="mt-5 rounded-[30px] border border-[#ead6bf] bg-white/85 p-5 shadow-[0_18px_44px_rgba(98,70,40,.10)]">
         <div className="text-center">
           <div className="text-4xl">🍀</div>
@@ -493,6 +508,7 @@ export default function StampExchangePage(){
           <div className="text-5xl">🎉</div>
           <h2 className="mt-3 text-2xl font-black text-[#3f3934]">{myResultStatus==="reunion"?"また会えた！":myResultStatus==="duplicate_same_day"?"本日の再会は記録済み":"スタンプ交換完了！"}</h2>
           <p className="mt-2 text-xs font-bold leading-5 text-[#87796d]">{partner?.trainer_name??"相手"}さんとの交換を保存しました。</p>
+          {session.event?<p className="mt-2 text-[10px] font-black text-orange-700">🎪 {session.event.name??"イベント"} ・ {session.event.location??"場所未設定"}</p>:null}
           <Link href="/lab/stamp-rally" className="mt-5 block rounded-2xl bg-[#5f8e50] px-4 py-4 text-sm font-black text-white">スタンプ一覧へ戻る</Link>
         </div> : null}
 
