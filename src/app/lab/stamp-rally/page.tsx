@@ -334,7 +334,7 @@ export default function Page() {
     const pinnedId=preferenceByCollection.get(ca.collection.id)??null;
 
     if(pinnedId===design.id){
-      const {error}=await supabase
+      const {error}=await (supabase as any)
         .from("stamp_collection_preferences")
         .delete()
         .eq("collection_id",ca.collection.id);
@@ -346,7 +346,7 @@ export default function Page() {
       }
     }else{
       const now=new Date().toISOString();
-      const {error}=await supabase
+      const {error}=await (supabase as any)
         .from("stamp_collection_preferences")
         .upsert({
           collection_id:ca.collection.id,
