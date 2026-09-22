@@ -102,6 +102,14 @@ let currentUserId=null;
 let stamp3dCleanup=null;
 let stamp3dToken=0;
 const prefectureOrder=["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県","茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県","新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県","静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県","鳥取県","島根県","岡山県","広島県","山口県","徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県"];
+const prefectureEnglish=["Hokkaido","Aomori","Iwate","Miyagi","Akita","Yamagata","Fukushima","Ibaraki","Tochigi","Gunma","Saitama","Chiba","Tokyo","Kanagawa","Niigata","Toyama","Ishikawa","Fukui","Yamanashi","Nagano","Gifu","Shizuoka","Aichi","Mie","Shiga","Kyoto","Osaka","Hyogo","Nara","Wakayama","Tottori","Shimane","Okayama","Hiroshima","Yamaguchi","Tokushima","Kagawa","Ehime","Kochi","Fukuoka","Saga","Nagasaki","Kumamoto","Oita","Miyazaki","Kagoshima","Okinawa"];
+function prefectureEnglishLabel(name){const i=prefectureOrder.indexOf(name);return i>=0?prefectureEnglish[i]+", Japan":name?name+", Japan":"Japan"}
+function engravingDate(value){
+ const d=new Date(value);if(Number.isNaN(d.getTime()))return"";
+ const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d);
+ const map=Object.fromEntries(parts.map(x=>[x.type,x.value]));
+ return [map.year,map.month,map.day].filter(Boolean).join(".");
+}
 const groups=[
  ["北海道・東北",["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県"]],
  ["関東",["茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県"]],
@@ -120,7 +128,7 @@ function unmountStampMedal3D(){
  stamp3d.innerHTML="";
  stampZoom2D.classList.remove("hidden");
 }
-async function mountStampMedal3D(design,imageUrl,fallbackImageUrl){
+async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines){
  unmountStampMedal3D();
  const token=++stamp3dToken;
  stamp3d.classList.add("show");
@@ -183,6 +191,28 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl){
   const backMaterial=new THREE.MeshPhysicalMaterial({color:0xd7d7d7,metalness:.95,roughness:.16,reflectivity:.85,clearcoat:.4,clearcoatRoughness:.08});
   const brushedMaterial=new THREE.MeshPhysicalMaterial({color:0xd2d2d2,metalness:.65,roughness:.42,reflectivity:.45,clearcoat:.1});
   const pinMaterial=new THREE.MeshPhysicalMaterial({color:0xf0f0f0,metalness:.9,roughness:.22,reflectivity:.8,clearcoat:.2,clearcoatRoughness:.08});
+  let engravingTexture=null;
+  const engravingText=(engravingLines||[]).map(x=>String(x||"").trim()).filter(Boolean).slice(0,4);
+  if(engravingText.length){
+   const canvas=document.createElement("canvas");canvas.width=1024;canvas.height=1024;
+   const ctx=canvas.getContext("2d");
+   if(ctx){
+    ctx.fillStyle="#000";ctx.fillRect(0,0,1024,1024);
+    ctx.fillStyle="#fff";ctx.textAlign="center";ctx.textBaseline="middle";
+    const ys=[390,500,610,720],sizes=[70,58,54,52],weights=[700,650,560,520];
+    engravingText.forEach((line,index)=>{
+     let size=sizes[index]||52,weight=weights[index]||520;
+     do{ctx.font=weight+" "+size+'px Arial, "Helvetica Neue", sans-serif';if(ctx.measureText(line).width<=650)break;size-=2}while(size>30);
+     ctx.fillText(line,512,ys[index]||720);
+    });
+    engravingTexture=new THREE.CanvasTexture(canvas);
+    engravingTexture.colorSpace=THREE.NoColorSpace;
+    engravingTexture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
+    backMaterial.bumpMap=engravingTexture;
+    backMaterial.bumpScale=-.022;
+    backMaterial.needsUpdate=true;
+   }
+  }
 
   const gltf=await new GLTFLoader().loadAsync("./models/medal_template_final.glb?v=6");
   if(token!==stamp3dToken){
@@ -302,6 +332,7 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl){
    observer.disconnect();
    controls.dispose();
    faceTexture?.dispose();
+   engravingTexture?.dispose();
    if(faceObjectUrl)URL.revokeObjectURL(faceObjectUrl);
    if(activeFaceMaterial!==faceMaterial)activeFaceMaterial.dispose();
    goldMaterial.dispose();faceMaterial.dispose();backMaterial.dispose();brushedMaterial.dispose();pinMaterial.dispose();
@@ -535,7 +566,15 @@ async function load(){
    stampZoomImg.dataset.caBound="";
    if(src)stampZoomImg.src=src;
    window.CACommunityIcon.bind(stampModalBack);
-   if(selectedCa&&selectedCa.collection)void mountStampMedal3D(selectedDesign,src,c.avatar_url||"");else unmountStampMedal3D();
+   if(selectedCa&&selectedCa.collection){
+    const engravingLines=[
+     selectedCa.trainer_name,
+     selectedCa.ca_level||selectedCa.collection.role_at_acquisition||"CA",
+     prefectureEnglishLabel(c.prefecture),
+     engravingDate(selectedCa.collection.first_acquired_at)
+    ];
+    void mountStampMedal3D(selectedDesign,src,c.avatar_url||"",engravingLines);
+   }else unmountStampMedal3D();
 
    const caButtons=c.cas.map(x=>'<button type="button" class="btn '+(selectedCa&&selectedCa.id===x.id?"":"line")+'" data-modal-ca="'+esc(x.id)+'" style="font-size:10px;padding:8px 10px">'+esc(x.ca_level||"CA")+' ・ '+esc(x.trainer_name)+'</button>').join("");
    let historyHtml="";
