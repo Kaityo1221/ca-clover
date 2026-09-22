@@ -38,6 +38,17 @@ type StampCollectionRow = {
   acquisition_icon_version_id: string | null;
 };
 
+type StampReunionRow = {
+  id: string;
+  collection_id: string;
+  met_at: string;
+  local_date: string | null;
+  timezone: string | null;
+  location: string | null;
+  event_name: string | null;
+  reunion_source: "normal" | "event" | "bulk" | "admin" | "import";
+};
+
 type StampDesignLinkRow = {
   collection_id: string;
   icon_version_id: string;
@@ -100,6 +111,7 @@ export default function Page() {
   const [links, setLinks] = useState<CommunityCaLink[]>([]);
   const [cas, setCas] = useState<CaRow[]>([]);
   const [collections, setCollections] = useState<StampCollectionRow[]>([]);
+  const [reunions, setReunions] = useState<StampReunionRow[]>([]);
   const [designLinks, setDesignLinks] = useState<StampDesignLinkRow[]>([]);
   const [designVersions, setDesignVersions] = useState<IconVersionRow[]>([]);
   const [preferences, setPreferences] = useState<StampPreferenceRow[]>([]);
@@ -164,13 +176,19 @@ export default function Page() {
         }
       }
 
+      let reunionRows:StampReunionRow[]=[];
       let designRows:StampDesignLinkRow[]=[];
       let preferenceRows:StampPreferenceRow[]=[];
       let versionRows:IconVersionRow[]=[];
 
       const collectionIds=collectionRows.map(row=>row.id);
       if(collectionIds.length){
-        const [designResult,preferenceResult]=await Promise.all([
+        const [reunionResult,designResult,preferenceResult]=await Promise.all([
+          supabase
+            .from("stamp_reunions")
+            .select("id,collection_id,met_at,local_date,timezone,location,event_name,reunion_source")
+            .in("collection_id",collectionIds)
+            .order("met_at",{ascending:false}),
           supabase
             .from("stamp_collection_designs")
             .select("collection_id,icon_version_id,grant_source,granted_at")
@@ -182,13 +200,14 @@ export default function Page() {
         ]);
 
         if(!alive) return;
-        const designError=designResult.error??preferenceResult.error;
+        const designError=reunionResult.error??designResult.error??preferenceResult.error;
         if(designError){
           setError(designError.message);
           setDataLoading(false);
           return;
         }
 
+        reunionRows=(reunionResult.data as StampReunionRow[]|null)??[];
         designRows=(designResult.data as StampDesignLinkRow[]|null)??[];
         preferenceRows=(preferenceResult.data as StampPreferenceRow[]|null)??[];
 
@@ -212,6 +231,7 @@ export default function Page() {
       setCas([...caMap.values()]);
       setLinks(linkRows);
       setCollections(collectionRows);
+      setReunions(reunionRows);
       setDesignLinks(designRows);
       setPreferences(preferenceRows);
       setDesignVersions(versionRows);
@@ -290,6 +310,29 @@ export default function Page() {
     ()=>new Map(preferences.map(preference=>[preference.collection_id,preference.icon_version_id])),
     [preferences],
   );
+
+  const reunionsByCollection=useMemo(()=>{
+    const map=new Map<string,StampReunionRow[]>();
+    for(const reunion of reunions){
+      const list=map.get(reunion.collection_id)??[];
+      list.push(reunion);
+      map.set(reunion.collection_id,list);
+    }
+    for(const list of map.values()){
+      list.sort((a,b)=>new Date(b.met_at).getTime()-new Date(a.met_at).getTime());
+    }
+    return map;
+  },[reunions]);
+
+  function formatReunionDate(reunion:StampReunionRow){
+    if(reunion.local_date){
+      const [year,month,day]=reunion.local_date.split("-").map(Number);
+      if(year&&month&&day) return year+"/"+month+"/"+day;
+    }
+    return new Date(reunion.met_at).toLocaleDateString("ja-JP",{
+      timeZone:reunion.timezone??"Asia/Tokyo",
+    });
+  }
 
   function newestDesign(ca:StampCommunity["cas"][number]){
     if(!ca.designs.length) return null;
@@ -599,6 +642,9 @@ export default function Page() {
           && selectedDesign
           && selectedCa.collection.acquisition_icon_version_id===selectedDesign.id
         );
+        const selectedReunions=selectedCa?.collection
+          ?reunionsByCollection.get(selectedCa.collection.id)??[]
+          :[];
 
         return <div
           className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/55 p-5 backdrop-blur-sm"
@@ -655,15 +701,35 @@ export default function Page() {
               </div>:null}
 
               {selectedCa?.collection?<div className="mt-4 rounded-[22px] border border-[#e4d7ca] bg-white/75 p-4 text-left">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-xs font-black text-[#514941]">取得済み ・ {selectedCa.trainer_name}</div>
-                    <div className="mt-1 text-[9px] font-bold text-[#8b7e73]">
-                      {new Date(selectedCa.collection.first_acquired_at).toLocaleDateString("ja-JP")}
-                      {selectedCa.collection.first_event_name?" ・ "+selectedCa.collection.first_event_name:""}
-                    </div>
-                  </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-xs font-black text-[#514941]">取得済み ・ {selectedCa.trainer_name}</div>
                   <span className="rounded-full bg-[#eef5e8] px-2 py-1 text-[9px] font-black text-[#5e7d51]">{selectedCa.ca_level??"CA"}</span>
+                </div>
+
+                <div className="mt-3 rounded-2xl border border-[#eadfce] bg-[#fffaf2] p-3">
+                  <div className="text-[10px] font-black text-[#745c3f]">🍀 初回取得</div>
+                  <div className="mt-1 text-[11px] font-black text-[#514941]">
+                    {new Date(selectedCa.collection.first_acquired_at).toLocaleDateString("ja-JP")}
+                  </div>
+                  {selectedCa.collection.first_event_name?<div className="mt-1 text-[9px] font-bold text-[#8b7e73]">🎪 {selectedCa.collection.first_event_name}</div>:null}
+                  {selectedCa.collection.first_location?<div className="mt-1 text-[9px] font-bold text-[#8b7e73]">📍 {selectedCa.collection.first_location}</div>:null}
+                </div>
+
+                <div className="mt-3 rounded-2xl border border-[#dce7d5] bg-[#f7fbf4] p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-[10px] font-black text-[#567848]">🤝 再会</div>
+                    <span className="rounded-full bg-white px-2 py-1 text-[9px] font-black text-[#567848] shadow-sm">×{selectedReunions.length}</span>
+                  </div>
+                  {selectedReunions.length?<div className="mt-2">
+                    {selectedReunions.map((reunion,index)=><div
+                      key={reunion.id}
+                      className={"py-2 text-[9px] font-bold text-[#756b62] "+(index?"border-t border-[#e4ece0]":"")}
+                    >
+                      <div className="text-[10px] font-black text-[#514941]">{formatReunionDate(reunion)}</div>
+                      {reunion.event_name?<div className="mt-1">🎪 {reunion.event_name}</div>:null}
+                      {reunion.location?<div className="mt-1">📍 {reunion.location}</div>:null}
+                    </div>)}
+                  </div>:<div className="mt-2 text-[9px] font-bold text-[#9b948d]">まだ再会記録はありません。</div>}
                 </div>
 
                 {selectedCa.designs.length?<div className="mt-4">
