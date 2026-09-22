@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
 import { PREFECTURE_ORDER, prefectureEnglishLabel } from "@/lib/prefecture-order";
 import { CommunityIcon } from "@/components/community-icon";
@@ -37,6 +37,8 @@ type StampCollectionRow = {
   first_event_name: string | null;
   acquisition_source: "normal" | "event" | "bulk" | "admin" | "import";
   acquisition_icon_version_id: string | null;
+  acquisition_message: string | null;
+  acquisition_message_seen_at: string | null;
 };
 
 type StampReunionRow = {
@@ -137,6 +139,8 @@ export default function Page() {
   const [selectedCaId, setSelectedCaId] = useState<string | null>(null);
   const [selectedDesignId, setSelectedDesignId] = useState<string | null>(null);
   const [preferenceBusy, setPreferenceBusy] = useState(false);
+  const [stampMessagePopup, setStampMessagePopup] = useState<{collectionId:string;message:string}|null>(null);
+  const shownMessageCollections = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (loading || !user || !canAccessStamp) return;
@@ -150,7 +154,7 @@ export default function Page() {
         supabase.rpc("stamp_rally_catalog"),
         supabase
           .from("stamp_collections")
-          .select("id,stamp_ca_member_id,community_id,role_at_acquisition,first_acquired_at,first_location,first_event_name,acquisition_source,acquisition_icon_version_id")
+          .select("id,stamp_ca_member_id,community_id,role_at_acquisition,first_acquired_at,first_location,first_event_name,acquisition_source,acquisition_icon_version_id,acquisition_message,acquisition_message_seen_at")
           .eq("owner_user_id", user.id),
       ]);
 
@@ -256,6 +260,12 @@ export default function Page() {
       alive = false;
     };
   }, [canAccessStamp, loading, supabase, user]);
+
+  useEffect(() => {
+    if(!stampMessagePopup) return;
+    const timer=window.setTimeout(()=>setStampMessagePopup(null),2800);
+    return()=>window.clearTimeout(timer);
+  }, [stampMessagePopup?.collectionId, stampMessagePopup?.message]);
 
   const stampCommunities = useMemo<StampCommunity[]>(() => {
     const caById = new Map(cas.map((ca) => [ca.id, ca]));
@@ -371,17 +381,39 @@ export default function Page() {
     return design.source_avatar_url;
   }
 
+  function showAcquisitionMessage(ca:StampCommunity["cas"][number]|null){
+    const collection=ca?.collection;
+    const message=collection?.acquisition_message?.trim()??"";
+    if(!collection||!message||collection.acquisition_message_seen_at) return;
+    if(shownMessageCollections.current.has(collection.id)) return;
+
+    shownMessageCollections.current.add(collection.id);
+    setStampMessagePopup({collectionId:collection.id,message});
+
+    void (supabase as any)
+      .rpc("stamp_collection_mark_message_seen",{p_collection_id:collection.id})
+      .then(({data,error}:{data:string|null;error:{message:string}|null})=>{
+        if(error) return;
+        const seenAt=String(data??new Date().toISOString());
+        setCollections(current=>current.map(row=>
+          row.id===collection.id?{...row,acquisition_message_seen_at:seenAt}:row
+        ));
+      });
+  }
+
   function openCommunity(community:StampCommunity){
     const firstCa=community.cas.find(ca=>ca.acquired)??community.cas[0]??null;
     const firstDesign=firstCa?displayDesign(firstCa):null;
     setSelectedCommunity(community);
     setSelectedCaId(firstCa?.id??null);
     setSelectedDesignId(firstDesign?.id??null);
+    showAcquisitionMessage(firstCa);
   }
 
   function selectCa(ca:StampCommunity["cas"][number]){
     setSelectedCaId(ca.id);
     setSelectedDesignId(displayDesign(ca)?.id??null);
+    showAcquisitionMessage(ca);
   }
 
   async function togglePinnedDesign(ca:StampCommunity["cas"][number],design:IconVersionRow){
@@ -689,6 +721,16 @@ export default function Page() {
                 className="ml-auto grid size-9 place-items-center rounded-full bg-white text-lg font-black text-[#75695f] shadow-sm"
                 aria-label="閉じる"
               >×</button>
+
+              {stampMessagePopup&&selectedCa?.collection?.id===stampMessagePopup.collectionId ? <>
+                <style>{`@keyframes stampMessagePop{0%{opacity:0;transform:translateY(10px) scale(.78)}65%{opacity:1;transform:translateY(-2px) scale(1.06)}100%{opacity:1;transform:translateY(0) scale(1)}}`}</style>
+                <div
+                  className="mx-auto mt-1 max-w-[280px] rounded-[22px] border border-[#d8e8cf] bg-white px-5 py-3 text-sm font-black leading-6 text-[#4e7043] shadow-[0_14px_34px_rgba(75,105,62,.18)]"
+                  style={{animation:"stampMessagePop .52s cubic-bezier(.2,.9,.25,1.25) both"}}
+                >
+                  💬 {stampMessagePopup.message}
+                </div>
+              </> : null}
 
               {selectedCa?.collection ? <div className="mx-auto mt-1 size-56">
                 <StampMedal3D
