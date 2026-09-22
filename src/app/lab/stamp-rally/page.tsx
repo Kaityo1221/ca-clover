@@ -678,22 +678,24 @@ export default function Page() {
                   archivePath={selectedDesign?.archive_path}
                   className="h-full w-full"
                 />
-              </div> : <div className="mx-auto mt-1 grid size-56 place-items-center rounded-full bg-gradient-to-br from-[#f8e3bf] via-white to-[#edc993] p-2 shadow-[0_18px_45px_rgba(112,73,35,.22)]">
-                {selectedDesignSrc?<div className="relative h-full w-full overflow-hidden rounded-full bg-[#eef2e9]">
-                  <span className="absolute inset-0 grid place-items-center text-6xl text-[#9caf90]">🍀</span>
-                  <img
-                    src={selectedDesignSrc}
-                    alt=""
-                    className="absolute inset-0 h-full w-full object-cover"
-                    onError={event=>{event.currentTarget.style.display="none";}}
-                  />
-                </div>:<CommunityIcon
-                  supabase={supabase}
-                  community={selectedCommunity}
-                  className="h-full w-full rounded-full bg-[#eef2e9]"
-                  fallbackClassName="text-6xl text-[#9caf90]"
-                  loading="eager"
-                />}
+              </div> : <div className="mx-auto mt-1 grid size-56 place-items-center rounded-full border-2 border-dashed border-[#cfc9c3] bg-[#f2f0ed] p-2">
+                <div className="grid h-full w-full place-items-center overflow-hidden rounded-full bg-[#eef2e9] grayscale opacity-35">
+                  {selectedDesignSrc?<div className="relative h-full w-full overflow-hidden rounded-full bg-[#eef2e9]">
+                    <span className="absolute inset-0 grid place-items-center text-6xl text-[#9caf90]">🍀</span>
+                    <img
+                      src={selectedDesignSrc}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover"
+                      onError={event=>{event.currentTarget.style.display="none";}}
+                    />
+                  </div>:<CommunityIcon
+                    supabase={supabase}
+                    community={selectedCommunity}
+                    className="h-full w-full rounded-full bg-[#eef2e9]"
+                    fallbackClassName="text-6xl text-[#9caf90]"
+                    loading="eager"
+                  />}
+                </div>
               </div>}
 
               <h2 className="mt-5 text-xl font-black leading-snug text-[#443c35]">{selectedCommunity.name}</h2>
