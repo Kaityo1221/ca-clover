@@ -235,14 +235,12 @@ async function boot(){
  const s=await client.auth.getSession();const session=s.data.session;
  if(!session){location.href=ROOT;return}
  currentUser=session.user;
- const [p,u,i]=await Promise.all([
+ const [p,u]=await Promise.all([
   client.from("profiles").select("role").eq("id",session.user.id).maybeSingle(),
-  client.from("user_permissions").select("permission_code").eq("user_id",session.user.id).eq("permission_code","S"),
-  client.from("user_ca_identities").select("ca_member_id").eq("user_id",session.user.id).eq("is_primary",true).maybeSingle()
+  client.from("user_permissions").select("permission_code").eq("user_id",session.user.id).eq("permission_code","S")
  ]);
  const ok=p.data&&p.data.role==="admin"||(u.data||[]).some(x=>x.permission_code==="S");
  if(!ok){app.innerHTML='<div class="notice error center">S権限が必要です。</div>';return}
- if(!i.data){app.innerHTML='<div class="notice error center">交換用CA本人情報が設定されていません。</div>';return}
 
  const cached=sessionStorage.getItem(cacheKey());
  if(cached){try{rememberSession(JSON.parse(cached))}catch{sessionStorage.removeItem(cacheKey())}}
