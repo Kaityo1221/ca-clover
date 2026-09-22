@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
+import { useAdminRouteGuard } from "@/lib/use-admin-route-guard";
 import MonthlyActivityChart from "@/components/monthly-activity-chart";
 
 type MeetupRow={
@@ -36,6 +37,7 @@ const periods=[30,90,180,365] as const;
 
 export default function Page(){
   const {supabase,user,profile,loading}=useAuthProfile();
+  const {denied:adminDenied}=useAdminRouteGuard({loading,user,profile});
   const [period,setPeriod]=useState<number>(30);
   const [summary,setSummary]=useState<SummaryRow>({meetup_count:0,ca_meetup_count:0,rsvp_count:0,checkin_count:0,last_event_at:null});
   const [monthly,setMonthly]=useState<MonthlyRow[]>([]);
@@ -44,7 +46,7 @@ export default function Page(){
   const [dataLoading,setDataLoading]=useState(false);
 
   useEffect(()=>{
-    if(loading||!user||!profile||profile.role==="pending") return;
+    if(loading||!user||!profile||profile.role!=="admin") return;
     supabase.from("communities").select("id,name").then(({data})=>{
       setCommunities((data as CommunityRow[]|null)??[]);
     });
@@ -54,7 +56,7 @@ export default function Page(){
   },[loading,user,profile?.role,supabase]);
 
   useEffect(()=>{
-    if(loading||!user||!profile||profile.role==="pending") return;
+    if(loading||!user||!profile||profile.role!=="admin") return;
     let alive=true;
     setDataLoading(true);
     const since=new Date(Date.now()-period*24*60*60*1000).toISOString();
@@ -93,13 +95,14 @@ export default function Page(){
 
   if(loading) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 読み込み中...</main>;
   if(!user) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><h1 className="text-2xl font-black text-lime-950">ログインが必要です</h1><Link href="/login" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black">Googleでログイン</Link></div></main>;
+  if(adminDenied) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 My Communityへ移動中...</main>;
   if(profile?.role==="pending") return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><div className="text-5xl">🌱</div><h1 className="mt-3 text-2xl font-black text-lime-950">アカウント確認中</h1></div></main>;
 
   return <main className="mx-auto max-w-6xl px-4 py-8 md:px-8">
     <Link href="/" className="text-sm font-black text-lime-700">← CA Clover Home</Link>
     <span className="mt-4 block w-fit rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900">活動を見る</span>
     <h1 className="mt-3 text-3xl font-black text-lime-950">🔥 Meetup Activity</h1>
-    <p className="mt-2 text-sm font-semibold text-slate-500">{dataLoading?"読み込み中…":profile?.role==="admin"?"全国の取得済みMeetupをDB側で集計":"割り当てCommunityをDB側で集計"}</p>
+    <p className="mt-2 text-sm font-semibold text-slate-500">{dataLoading?"読み込み中…":"全国の取得済みMeetupをDB側で集計"}</p>
 
     <div className="mt-5 flex flex-wrap gap-2">
       {periods.map(days=><button key={days} onClick={()=>setPeriod(days)} className={period===days?"clover-pill active":"clover-pill"}>{days}日</button>)}
