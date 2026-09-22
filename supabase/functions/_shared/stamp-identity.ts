@@ -12,7 +12,7 @@ type IdentityRow={
 };
 
 function normalizeIdentity(value:unknown){
-  return String(value??"").trim().replace(/^@+/,"").toLowerCase();
+  return String(value??"").normalize("NFKC").trim().replace(/^@+/,"").toLowerCase();
 }
 
 export async function getStampAccess(admin:any,userId:string):Promise<StampAccess>{
@@ -129,8 +129,7 @@ async function persistPrimaryIdentity(admin:any,userId:string,identity:IdentityR
   const {error:demoteError}=await admin.from("user_ca_identities")
     .update({is_primary:false})
     .eq("user_id",userId)
-    .eq("is_primary",true)
-    .neq("ca_member_id",identity.ca_member_id);
+    .eq("is_primary",true);
   if(demoteError) throw demoteError;
 
   const {error:upsertError}=await admin.from("user_ca_identities").upsert({
