@@ -13,6 +13,7 @@ type StampMedal3DProps = {
   fallbackImageUrl?: string | null;
   thumbnailPath?: string | null;
   archivePath?: string | null;
+  engravingLines?: readonly string[] | null;
   className?: string;
 };
 
@@ -36,8 +37,14 @@ export function StampMedal3D({
   fallbackImageUrl,
   thumbnailPath,
   archivePath,
+  engravingLines,
   className = "",
 }: StampMedal3DProps) {
+  const engravingKey=(engravingLines??[])
+    .map(value=>String(value??"").trim())
+    .filter(Boolean)
+    .slice(0,4)
+    .join("\n");
   const mountRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -51,6 +58,7 @@ export function StampMedal3D({
     let medal: THREE.Object3D | null = null;
     let faceTexture: THREE.Texture | null = null;
     let faceObjectUrl: string | null = null;
+    let engravingTexture: THREE.CanvasTexture | null = null;
 
     setReady(false);
     setFailed(false);
@@ -145,6 +153,40 @@ export function StampMedal3D({
       clearcoat: 0.2,
       clearcoatRoughness: 0.08,
     });
+
+    if (engravingKey) {
+      const canvas=document.createElement("canvas");
+      canvas.width=1024;
+      canvas.height=1024;
+      const ctx=canvas.getContext("2d");
+      if(ctx){
+        ctx.fillStyle="#000";
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle="#fff";
+        ctx.textAlign="center";
+        ctx.textBaseline="middle";
+        const lines=engravingKey.split("\n");
+        const yPositions=[390,500,610,720];
+        const baseSizes=[70,58,54,52];
+        const weights=[700,650,560,520];
+        lines.forEach((line,index)=>{
+          let fontSize=baseSizes[index]??52;
+          const weight=weights[index]??520;
+          do{
+            ctx.font=weight+" "+fontSize+'px Arial, "Helvetica Neue", sans-serif';
+            if(ctx.measureText(line).width<=650) break;
+            fontSize-=2;
+          }while(fontSize>30);
+          ctx.fillText(line,512,yPositions[index]??720);
+        });
+        engravingTexture=new THREE.CanvasTexture(canvas);
+        engravingTexture.colorSpace=THREE.NoColorSpace;
+        engravingTexture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
+        backMaterial.bumpMap=engravingTexture;
+        backMaterial.bumpScale=-0.022;
+        backMaterial.needsUpdate=true;
+      }
+    }
 
     async function applyFaceTexture(model: THREE.Object3D) {
       const front = model.getObjectByName("FrontFace");
@@ -303,6 +345,7 @@ export function StampMedal3D({
       controls.dispose();
       if (medal) disposeObject(medal);
       faceTexture?.dispose();
+      engravingTexture?.dispose();
       if (faceObjectUrl) URL.revokeObjectURL(faceObjectUrl);
       goldMaterial.dispose();
       faceMaterial.dispose();
@@ -314,7 +357,7 @@ export function StampMedal3D({
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [archivePath, fallbackImageUrl, imageUrl, supabase, thumbnailPath]);
+  }, [archivePath, engravingKey, fallbackImageUrl, imageUrl, supabase, thumbnailPath]);
 
   return (
     <div className={"relative " + className}>
