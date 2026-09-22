@@ -1,0 +1,150 @@
+name: Apply medal v7 binary
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/apply-medal-v7.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch-medal:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch main medal GLB
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, struct
+          from pathlib import Path
+
+          def patch(path):
+              path=Path(path)
+              data=path.read_bytes()
+              magic,version,total=struct.unpack_from("<III",data,0)
+              assert magic==0x46546C67 and version==2
+              offset=12
+              chunks=[]
+              while offset<len(data):
+                  length,ctype=struct.unpack_from("<II",data,offset)
+                  offset+=8
+                  body=data[offset:offset+length]
+                  offset+=length
+                  chunks.append([ctype,body])
+
+              changed=False
+              for chunk in chunks:
+                  if chunk[0]!=0x4E4F534A:
+                      continue
+                  obj=json.loads(chunk[1].decode("utf-8"))
+                  for node in obj.get("nodes",[]):
+                      if node.get("name")!="FrontFace":
+                          continue
+                      matrix=node.get("matrix")
+                      if not isinstance(matrix,list) or len(matrix)!=16:
+                          raise RuntimeError("FrontFace matrix missing")
+                      if matrix[14]!=-36:
+                          matrix[14]=-36
+                          changed=True
+                  raw=json.dumps(obj,separators=(",",":"),ensure_ascii=False).encode("utf-8")
+                  raw+=b" "*((4-len(raw)%4)%4)
+                  chunk[1]=raw
+
+              if not changed:
+                  print(path,"already v7")
+                  return False
+
+              out=bytearray(struct.pack("<III",magic,version,0))
+              for ctype,body in chunks:
+                  out+=struct.pack("<II",len(body),ctype)
+                  out+=body
+              struct.pack_into("<I",out,8,len(out))
+              path.write_bytes(out)
+              print("patched",path,"bytes",len(out))
+              return True
+
+          patch("public/models/medal_template_final.glb")
+          PY
+
+      - name: Commit main model
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- public/models/medal_template_final.glb; then
+            echo "Main model already current."
+          else
+            git add public/models/medal_template_final.glb
+            git commit -m "Apply medal model v7"
+            git push origin HEAD:main
+          fi
+
+      - name: Patch Pages model
+        shell: bash
+        run: |
+          git fetch origin pages
+          git worktree add /tmp/ca-clover-pages origin/pages
+          cd /tmp/ca-clover-pages
+          python - <<'PY'
+          import json, struct
+          from pathlib import Path
+
+          path=Path("docs/models/medal_template_final.glb")
+          data=path.read_bytes()
+          magic,version,total=struct.unpack_from("<III",data,0)
+          assert magic==0x46546C67 and version==2
+          offset=12
+          chunks=[]
+          while offset<len(data):
+              length,ctype=struct.unpack_from("<II",data,offset)
+              offset+=8
+              body=data[offset:offset+length]
+              offset+=length
+              chunks.append([ctype,body])
+
+          changed=False
+          for chunk in chunks:
+              if chunk[0]!=0x4E4F534A:
+                  continue
+              obj=json.loads(chunk[1].decode("utf-8"))
+              for node in obj.get("nodes",[]):
+                  if node.get("name")!="FrontFace":
+                      continue
+                  matrix=node.get("matrix")
+                  if not isinstance(matrix,list) or len(matrix)!=16:
+                      raise RuntimeError("FrontFace matrix missing")
+                  if matrix[14]!=-36:
+                      matrix[14]=-36
+                      changed=True
+              raw=json.dumps(obj,separators=(",",":"),ensure_ascii=False).encode("utf-8")
+              raw+=b" "*((4-len(raw)%4)%4)
+              chunk[1]=raw
+
+          if changed:
+              out=bytearray(struct.pack("<III",magic,version,0))
+              for ctype,body in chunks:
+                  out+=struct.pack("<II",len(body),ctype)
+                  out+=body
+              struct.pack_into("<I",out,8,len(out))
+              path.write_bytes(out)
+              print("patched",path,"bytes",len(out))
+          else:
+              print(path,"already v7")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- docs/models/medal_template_final.glb; then
+            echo "Pages model already current."
+          else
+            git add docs/models/medal_template_final.glb
+            git commit -m "Apply medal model v7"
+            git push origin HEAD:pages
+          fi
