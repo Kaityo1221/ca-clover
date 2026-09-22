@@ -292,11 +292,6 @@ export function StampMedal3D({
             return;
           }
 
-          if (object.name === "FrontFace") {
-            // Spline v7: pull the face back into the gold rim instead of leaving it floating.
-            object.position.z = -36;
-          }
-
           if (object.name === "MedalBody") object.material = goldMaterial;
           else if (object.name === "back_shell") object.material = backMaterial;
           else if (object.name === "brushed_detail") object.material = brushedMaterial;
