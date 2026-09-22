@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
+import { useAdminRouteGuard } from "@/lib/use-admin-route-guard";
 import { comparePrefectures } from "@/lib/prefecture-order";
 
 type CommunityRow = {
@@ -17,12 +18,13 @@ type CommunityRow = {
 
 export default function Page() {
   const { supabase, user, profile, loading } = useAuthProfile();
+  const { denied: adminDenied } = useAdminRouteGuard({ loading, user, profile });
   const [rows, setRows] = useState<CommunityRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(false);
 
   useEffect(() => {
-    if (loading || !user || !profile || profile.role === "pending") return;
+    if (loading || !user || !profile || profile.role !== "admin") return;
     let alive = true;
     setDataLoading(true);
 
@@ -45,7 +47,7 @@ export default function Page() {
       });
 
     return () => { alive = false; };
-  }, [loading, profile, supabase, user]);
+  }, [loading, profile?.role, supabase, user]);
 
   if (loading) {
     return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 読み込み中...</main>;
@@ -55,6 +57,10 @@ export default function Page() {
     return <main className="grid min-h-[70vh] place-items-center px-4 text-center">
       <div><div className="text-5xl">🍀</div><h1 className="mt-3 text-2xl font-black text-lime-950">ログインが必要です</h1><Link href="/login" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black text-lime-950">Googleでログイン</Link></div>
     </main>;
+  }
+
+  if (adminDenied) {
+    return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 My Communityへ移動中...</main>;
   }
 
   if (profile?.role === "pending") {
@@ -69,7 +75,7 @@ export default function Page() {
       <span className="rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900">全国を見る</span>
       <h1 className="mt-3 text-3xl font-black text-lime-950">🌱 Community一覧</h1>
       <p className="mt-2 text-sm font-semibold text-slate-500">
-        {profile?.role === "admin" ? "全国のCommunity" : "あなたに割り当てられたCommunity"}を表示します。
+        全国のCommunityを表示します。
       </p>
     </div>
 
