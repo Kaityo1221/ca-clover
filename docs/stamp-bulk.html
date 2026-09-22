@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#fff8ef">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>CA Clover 大交換モード</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./community-icon.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<style>
+:root{font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#403a35;background:#fff8ef}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:linear-gradient(180deg,#fffaf4,#fff1df)}a{text-decoration:none;color:inherit}button{font:inherit}
+.wrap{max-width:680px;margin:auto;padding:22px 16px 56px}.head{display:flex;align-items:center;justify-content:space-between}.back{font-size:13px;font-weight:950;color:#567d48}.pill{border-radius:999px;background:#fff0d9;padding:6px 11px;font-size:10px;font-weight:950;color:#8a6131}
+.hero{margin-top:18px;border:1px solid #edcfaa;border-radius:30px;background:linear-gradient(135deg,#ffd6a3,#ffe4bd,#fff7ea);padding:20px;box-shadow:0 18px 44px rgba(110,75,35,.10)}.hero .icon{font-size:40px}.hero h1{margin:7px 0 0;font-size:26px}.hero p{margin:8px 0 0;font-size:12px;line-height:1.7;font-weight:800;color:#756759}
+.card{margin-top:15px;border:1px solid #ead6c2;border-radius:26px;background:#fff;padding:18px;box-shadow:0 9px 26px rgba(90,65,40,.06)}.event{border-color:#fed7aa;background:#fff7ed}.mission{border-color:#d9e9d2;background:#f3f9ef;text-align:center}.notice{margin-top:14px;border-radius:16px;padding:12px;font-size:12px;font-weight:850}.error{border:1px solid #fecdd3;background:#fff1f2;color:#be123c}.offline{border:1px solid #f5d28a;background:#fff8df;color:#805d14}.phase{background:#eff8ff;color:#17638f;text-align:center}
+.btn{width:100%;border:0;border-radius:16px;padding:13px 14px;font-size:13px;font-weight:950;cursor:pointer}.primary{background:#5f8e50;color:white}.orange{background:#d99039;color:white}.muted{background:#eee9e4;color:#75695f}.outline{border:2px solid #a9c89c;background:#fff;color:#537647}.btn:disabled{opacity:.45}.grid{display:grid;gap:10px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.people{display:grid;gap:8px;margin-top:13px}.person{display:flex;align-items:center;gap:10px;border:1px solid #eee5dc;border-radius:17px;background:#fffaf5;padding:9px 10px}.person.me{border-color:#9fc78f;background:#f0f8eb}.avatar{position:relative;width:42px;height:42px;flex:0 0 42px;border-radius:50%;overflow:hidden;background:#edf4e8}.avatar>span{position:absolute;inset:0;display:grid;place-items:center}.avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.pname{font-size:12px;font-weight:950}.pcomm{margin-top:2px;font-size:10px;font-weight:800;color:#8e8175}.host{margin-left:auto;border-radius:999px;background:#fff0d9;padding:5px 7px;font-size:8px;font-weight:950;color:#8a6131}
+.qr{margin:14px auto 0;width:fit-content;border-radius:20px;background:#fff;padding:12px;box-shadow:0 10px 28px rgba(70,55,42,.12)}.small{font-size:10px;font-weight:800;color:#94877b}.center{text-align:center}
+.progress{margin-top:11px;height:12px;border-radius:999px;background:#edf1ea;overflow:hidden}.bar{height:100%;background:#6a985a;border-radius:999px;transition:width .25s}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:11px}.stat{border-radius:12px;padding:8px;text-align:center}.stat b{display:block;font-size:14px}.stat span{font-size:8px;font-weight:950}.ok{background:#edf6e9;color:#587848}.wait{background:#fff4df;color:#946b2c}.bad{background:#fff0f2;color:#b04458}
+.camera{overflow:hidden;border-radius:22px;background:#000}.camera video{width:100%;aspect-ratio:3/4;object-fit:cover}.hidden{display:none}.countdown{margin-top:10px;font-size:48px;font-weight:950;color:#5f8e50}
+.complete{border-color:#ecd09e;background:linear-gradient(180deg,#fff8dc,#fff);text-align:center;overflow:hidden}.medals{position:relative;height:150px;margin-top:10px}.fly{position:absolute;bottom:4px;animation:fly .9s cubic-bezier(.2,.8,.2,1) both}.fly .avatar{width:42px;height:42px;border:2px solid white;box-shadow:0 7px 16px rgba(80,60,40,.2)}
+@keyframes fly{0%{transform:translateY(150px) rotate(-180deg) scale(.45);opacity:0}55%{opacity:1}82%{transform:translateY(-16px) rotate(330deg) scale(1.05);opacity:1}100%{transform:translateY(0) rotate(360deg) scale(1);opacity:1}}
+.foot{margin-top:18px;text-align:center;font-size:10px;line-height:1.8;font-weight:800;color:#9a8b7e}
+@media(max-width:560px){.g2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="head"><a class="back" href="./stamp-events.html">← イベントモード</a><span class="pill">大交換 MODE</span></div>
+  <section class="hero"><div class="icon">🪙</div><h1>みんなで大交換</h1><p>ひとつのQRから集まって、開始時にいる全員どうしで一気にスタンプ交換します。</p></section>
+  <div id="net"></div><div id="phase"></div><div id="message"></div>
+  <div id="app"></div>
+  <div class="foot">開始時に参加者を固定し、全ペアを先に登録してから保存します。主催者の接続が5分以上途切れたルームは自動終了します。</div>
+</main>
+<script>
+(function(){
+"use strict";
+const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
+const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
+const ROOT="https://kaityo1221.github.io/ca-clover/";
+const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
+const app=document.getElementById("app"),net=document.getElementById("net"),phaseEl=document.getElementById("phase"),messageEl=document.getElementById("message");
+let room=null,token=null,currentUser=null,busy=false,phase="idle",online=navigator.onLine,pollTimer=null,stream=null,scanFrame=null,countTimer=null,countdown=0;
+
+function e(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c])}
+function showMessage(v){messageEl.innerHTML=v?'<div class="notice error">'+e(v)+'</div>':""}
+function renderNet(){net.innerHTML=online?"":'<div class="notice offline">📡 オフラインです。ルーム状態は保持します。</div>';const labels={creating:"ルームを準備中...",joining:"ルームに参加中...",starting:"参加者を固定中...",processing:"全ペアを保存中...",retrying:"失敗ペアだけ再試行中...",closing:"ルームを終了中..."};phaseEl.innerHTML=labels[phase]?'<div class="notice phase">⏳ '+labels[phase]+'</div>':""}
+async function invoke(body){
+ const r=await client.functions.invoke("stamp-bulk",{body});
+ if(r.error){
+  let detail=r.error.message;
+  try{if(r.error.context){const p=await r.error.context.clone().json();if(p&&p.error)detail=String(p.error)}}catch{}
+  throw new Error(detail);
+ }
+ if(r.data&&r.data.error)throw new Error(r.data.error);
+ return r.data;
+}
+function tokenKey(id){return"ca-clover-bulk-token:"+id}
+function remember(next){room=next;if(currentUser){const k="ca-clover-bulk-room:"+currentUser.id;if(next)sessionStorage.setItem(k,next.id);else sessionStorage.removeItem(k)}}
+function stopCamera(){if(scanFrame!==null)cancelAnimationFrame(scanFrame);scanFrame=null;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null}
+function extractToken(raw){try{return new URL(raw.trim()).searchParams.get("t")}catch{const m=raw.trim().match(/^CACLOVER:B1:([A-Za-z0-9_-]{20,})$/);return m?m[1]:null}}
+
+async function createRoom(){
+ if(busy||!online)return;busy=true;phase="creating";showMessage("");renderNet();
+ try{const d=await invoke({action:"create"});remember(d.room);if(d.token){token=d.token;sessionStorage.setItem(tokenKey(d.room.id),token)}render()}
+ catch(err){showMessage(err.message||String(err))}
+ finally{busy=false;phase="idle";renderNet()}
+}
+async function rotateQr(){
+ if(!room||busy)return;busy=true;phase="creating";renderNet();showMessage("");
+ try{const d=await invoke({action:"rotate_token",roomId:room.id});remember(d.room);token=d.token;sessionStorage.setItem(tokenKey(room.id),token);render()}
+ catch(err){showMessage(err.message||String(err))}
+ finally{busy=false;phase="idle";renderNet()}
+}
+async function joinToken(t){
+ if(busy||!online)return;busy=true;phase="joining";renderNet();showMessage("");stopCamera();
+ try{const d=await invoke({action:"join",token:t});remember(d.room);token=null;history.replaceState({},"",location.pathname);render()}
+ catch(err){showMessage(err.message||String(err))}
+ finally{busy=false;phase="idle";renderNet()}
+}
+async function refresh(){
+ if(!room||!online)return;
+ try{const d=await invoke({action:"status",roomId:room.id});remember(d.room);render()}
+ catch(err){}
+}
+async function processUntil(mode,cutoff){
+ if(!room)return;phase=mode==="failed"?"retrying":"processing";renderNet();showMessage("");
+ try{
+  for(let i=0;i<25;i++){
+   const d=await invoke({action:"process",roomId:room.id,mode:mode,retryCutoff:cutoff||null});
+   remember(d.room);render();
+   if(Number((d.summary||{}).eligible_remaining||0)<=0)break;
+   await new Promise(r=>setTimeout(r,120));
+  }
+  await refresh();
+ }catch(err){showMessage("交換処理の結果確認が必要です。"+(err.message||String(err)))}
+ finally{phase="idle";renderNet()}
+}
+async function startBulk(){
+ if(!room||room.my_role!=="host"||room.status!=="open"||busy)return;
+ const count=room.participant_count;if(count<2){showMessage("大交換には2人以上必要です。");return}
+ if(!confirm(count+"人で交換を開始します。よろしいですか？"))return;
+ busy=true;phase="starting";renderNet();showMessage("");
+ try{const d=await invoke({action:"start",roomId:room.id,expectedCount:count});remember(d.room);render();busy=false;phase="idle";renderNet();await processUntil("pending")}
+ catch(err){busy=false;phase="idle";renderNet();showMessage(err.message||String(err))}
+}
+async function retryFailed(){if(!room||busy)return;await processUntil("failed",new Date().toISOString())}
+async function endRoom(){
+ if(!room||busy)return;busy=true;phase="closing";renderNet();
+ try{const d=await invoke({action:"end",roomId:room.id});remember(d.room);token=null;sessionStorage.removeItem(tokenKey(room.id));render()}
+ catch(err){showMessage(err.message||String(err))}
+ finally{busy=false;phase="idle";renderNet()}
+}
+async function leaveRoom(){
+ if(!room||busy)return;busy=true;phase="closing";renderNet();
+ try{await invoke({action:"leave",roomId:room.id});remember(null);render()}
+ catch(err){showMessage(err.message||String(err))}
+ finally{busy=false;phase="idle";renderNet()}
+}
+async function startScanner(){
+ if(!online||busy)return;showMessage("");
+ try{
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});
+  renderScanner();
+  const video=document.getElementById("scanVideo");video.srcObject=stream;video.setAttribute("playsinline","true");await video.play();
+  const canvas=document.getElementById("scanCanvas");
+  const loop=()=>{
+   if(!stream)return;
+   if(video.readyState>=2&&video.videoWidth){
+    const w=Math.min(720,video.videoWidth),scale=w/video.videoWidth,h=Math.round(video.videoHeight*scale);
+    canvas.width=w;canvas.height=h;const ctx=canvas.getContext("2d",{willReadFrequently:true});ctx.drawImage(video,0,0,w,h);
+    const image=ctx.getImageData(0,0,w,h),found=jsQR(image.data,w,h,{inversionAttempts:"dontInvert"});
+    if(found&&found.data){const t=extractToken(found.data);if(t){stopCamera();joinToken(t);return}}
+   }
+   scanFrame=requestAnimationFrame(loop);
+  };
+  scanFrame=requestAnimationFrame(loop);
+ }catch(err){stopCamera();showMessage(err.message||String(err));render()}
+}
+function renderScanner(){
+ app.innerHTML='<section class="card"><div class="camera"><video id="scanVideo" muted playsinline></video></div><canvas id="scanCanvas" class="hidden"></canvas><p class="small center">主催者の大交換QRを読み取ってください</p><button id="cancelScan" class="btn muted">キャンセル</button></section>';
+ document.getElementById("cancelScan").onclick=()=>{stopCamera();render()};
+}
+function missionHtml(){
+ if(!room||!room.today_mission||room.status!=="open")return"";
+ return '<section class="card mission"><div class="small">TODAY\'S MISSION ・ '+e(room.today_local_date)+'</div><h3>'+e(room.today_mission.title)+'</h3><div class="small">'+e(room.today_mission.instruction)+'</div>'+(countdown>0?'<div class="countdown">'+countdown+'</div>':'<button id="count5" class="btn outline" style="margin-top:10px">5秒カウント</button>')+'<div class="small" style="margin-top:8px">遊びの合図です。動作は検知しません。</div></section>';
+}
+function iconHtml(p){return '<div class="avatar"><span>🍀</span>'+window.CACommunityIcon.img(client,p.community,'alt="" loading="lazy"')+'</div>'}
+function render(){
+ if(stream)return;
+ if(!room){
+  app.innerHTML='<section class="card center"><b>開催中のイベントに参加しているCAが使えます</b><div class="grid g2" style="margin-top:14px"><button id="create" class="btn primary" '+(busy||!online?"disabled":"")+'>大交換を始める</button><button id="scan" class="btn outline" '+(busy||!online?"disabled":"")+'>大交換QRを読む</button></div></section>';
+  document.getElementById("create").onclick=createRoom;document.getElementById("scan").onclick=startScanner;return;
+ }
+ const statusLabel=room.status==="open"?"参加受付中":room.status==="processing"?"交換保存中":room.status==="partial_failed"?"一部再試行待ち":room.status==="completed"?"交換完了":room.status==="closed"?"終了":"イベント終了";
+ let html='<section class="card event"><b>🎪 '+e(room.event.name)+'</b><div class="small">📍 '+e(room.event.location||"場所未設定")+' ・ '+e(room.event.timezone)+'</div><div style="margin-top:8px"><span class="pill">'+statusLabel+'</span> <span class="pill">'+room.participant_count+'人</span></div></section>'+missionHtml();
+
+ if(room.status==="open"&&room.my_role==="host"){
+  html+='<section class="card center"><div class="small">このQRをみんなに見せてください</div>'+(token?'<div id="qr" class="qr"></div>':'<button id="rotate" class="btn primary" style="margin-top:12px">QRを再表示</button>')+'<div class="small" style="margin-top:8px">受付中は同じQRから参加できます</div></section>';
+ }
+
+ html+='<section class="card"><div class="row"><div><b>参加CA</b><div class="small">'+(room.status==="open"?"リアルタイム受付中":"開始時のメンバーで固定済み")+'</div></div><b style="font-size:24px;color:#5f8e50">'+room.participant_count+'</b></div><div class="people">'+room.participants.map(p=>'<div class="person '+(p.is_me?"me":"")+'">'+iconHtml(p)+'<div style="min-width:0;flex:1"><div class="pname">'+e(p.trainer_name)+(p.is_me?"（あなた）":"")+'</div><div class="pcomm">'+e(p.community.name)+'</div></div>'+(p.is_host?'<span class="host">HOST</span>':'')+'</div>').join("")+'</div></section>';
+
+ if(room.status==="open"&&room.my_role==="host")html+='<section class="card center"><b>'+room.participant_count+'人なら、1人あたり '+Math.max(0,room.participant_count-1)+' 枚受け取ります</b><button id="start" class="btn primary" style="margin-top:13px" '+(busy||!online||room.participant_count<2?"disabled":"")+'>交換開始</button></section>';
+ if(room.status==="open"&&room.my_role==="participant")html+='<button id="leave" class="btn muted" style="margin-top:14px">ルームから退出</button>';
+
+ if(["processing","partial_failed","completed"].includes(room.status)){
+  const pct=room.total_pairs?Math.round(room.completed_pairs/room.total_pairs*100):0;
+  html+='<section class="card"><div class="row"><b>交換保存</b><b style="color:#5f8e50">'+pct+'%</b></div><div class="progress"><div class="bar" style="width:'+pct+'%"></div></div><div class="stats"><div class="stat ok"><b>'+room.completed_pairs+'</b><span>保存済み</span></div><div class="stat wait"><b>'+room.pending_pairs+'</b><span>未処理</span></div><div class="stat bad"><b>'+room.failed_pairs+'</b><span>要再試行</span></div></div><div class="small center" style="margin-top:9px">全 '+room.total_pairs+' ペア ・ 1人あたり '+room.each_receives+' 枚</div>'+(room.status==="processing"&&room.my_role==="host"&&phase==="idle"?'<button id="resumeProcess" class="btn primary" style="margin-top:12px;background:#0284c7">交換処理を再開</button>':'')+(room.status==="partial_failed"&&room.my_role==="host"?'<button id="retry" class="btn orange" style="margin-top:12px">失敗した '+room.failed_pairs+' ペアだけ再試行</button>':'')+(room.status==="partial_failed"&&room.my_role!=="host"?'<div class="notice offline">一部の交換を主催者が再試行しています</div>':'')+'</section>';
+ }
+
+ if(room.status==="completed"){
+  html+='<section class="card complete"><div style="font-size:50px">🎉</div><h2>大交換 完了！</h2><div class="small">'+room.frozen_participant_count+'人で交換しました。あなたには '+room.each_receives+' 枚分の交換結果が保存されています。</div><div class="medals">'+room.participants.map((p,i)=>'<div class="fly" style="left:'+((i+1)/(room.participants.length+1)*100)+'%;animation-delay:'+(i*55)+'ms">'+iconHtml(p)+'</div>').join("")+'</div>'+(room.my_role==="host"?'<button id="end" class="btn primary">終了</button>':'<div class="notice" style="background:#eef6e9;color:#587848">主催者が「終了」を押すまで、この結果画面を共有します。</div>')+'</section>';
+ }
+ if(["closed","expired"].includes(room.status))html+='<section class="card center"><div style="font-size:42px">'+(room.status==="expired"?"⏰":"🍀")+'</div><h2>'+(room.status==="expired"?"イベント終了":"大交換ルーム終了")+'</h2><a class="btn primary" style="display:block" href="./stamp-rally.html">スタンプ一覧へ</a></section>';
+ if(room.my_role==="host"&&room.status!=="processing"&&!["closed","expired","completed"].includes(room.status))html+='<button id="end" class="btn muted" style="margin-top:14px">ルームを終了</button>';
+
+ app.innerHTML=html;window.CACommunityIcon.bind(app);
+ const qr=document.getElementById("qr");if(qr&&token){qr.innerHTML="";new QRCode(qr,{text:ROOT+"stamp-bulk.html?t="+encodeURIComponent(token),width:240,height:240,correctLevel:QRCode.CorrectLevel.M})}
+ const rotate=document.getElementById("rotate");if(rotate)rotate.onclick=rotateQr;
+ const start=document.getElementById("start");if(start)start.onclick=startBulk;
+ const leave=document.getElementById("leave");if(leave)leave.onclick=leaveRoom;
+ const retry=document.getElementById("retry");if(retry)retry.onclick=retryFailed;
+ const rp=document.getElementById("resumeProcess");if(rp)rp.onclick=()=>processUntil("pending");
+ document.querySelectorAll("#end").forEach(b=>b.onclick=endRoom);
+ const count5=document.getElementById("count5");if(count5)count5.onclick=()=>startCountdown();
+}
+function startCountdown(){countdown=5;render();if(countTimer)clearInterval(countTimer);countTimer=setInterval(()=>{countdown--;if(countdown<=0){clearInterval(countTimer);countTimer=null;countdown=0}render()},1000)}
+async function boot(){
+ const s=await client.auth.getSession(),session=s.data.session;if(!session){location.href=ROOT;return}currentUser=session.user;
+ const [p,u,i]=await Promise.all([
+  client.from("profiles").select("role").eq("id",session.user.id).maybeSingle(),
+  client.from("user_permissions").select("permission_code").eq("user_id",session.user.id).eq("permission_code","S"),
+  client.from("user_ca_identities").select("ca_member_id").eq("user_id",session.user.id).eq("is_primary",true).maybeSingle()
+ ]);
+ const ok=p.data&&p.data.role==="admin"||(u.data||[]).some(x=>x.permission_code==="S");if(!ok){showMessage("S権限が必要です。");return}if(!i.data){showMessage("交換用CA本人情報が設定されていません。");return}
+ const t=new URLSearchParams(location.search).get("t");if(t){joinToken(t.trim());return}
+ try{const d=await invoke({action:"resume"});if(d.room){remember(d.room);if(room.my_role==="host"){token=sessionStorage.getItem(tokenKey(room.id))||null}}render()}catch(err){showMessage(err.message||String(err));render()}
+}
+function startPolling(){if(pollTimer)clearInterval(pollTimer);if(room&&online&&!["closed","expired"].includes(room.status))pollTimer=setInterval(refresh,2000)}
+window.addEventListener("online",()=>{online=true;renderNet();refresh();startPolling()});
+window.addEventListener("offline",()=>{online=false;renderNet();if(pollTimer)clearInterval(pollTimer)});
+const observer=new MutationObserver(startPolling);observer.observe(app,{childList:true,subtree:false});
+renderNet();boot();
+})();
+</script>
+</body>
+</html>
