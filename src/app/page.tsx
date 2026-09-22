@@ -18,17 +18,17 @@ const adminSections = [
     title: "全国を見る",
     subtitle: "日本のCAとCommunityを探す",
     items: [
-      { icon: "🌱", title: "Community一覧", description: "全国のCommunityを検索・確認", href: "/communities", badge: "141", access: "一般" },
+      { icon: "🌱", title: "Community一覧", description: "全国のCommunityを検索・確認", href: "/communities", badge: "141", access: "管理者" },
       { icon: "🏕️", title: "CA一覧", description: "担当CA・1st / 2ndを確認", href: "/ca", badge: "177", access: "管理者" },
-      { icon: "🗾", title: "Activity Map", description: "地域ごとの活動を地図で見る", href: "/map", access: "一般" },
+      { icon: "🗾", title: "Activity Map", description: "地域ごとの活動を地図で見る", href: "/map", access: "管理者" },
     ],
   },
   {
     title: "活動を見る",
     subtitle: "Meetupの動きを数字から追う",
     items: [
-      { icon: "🔥", title: "Meetup活動", description: "開催履歴・最近の活動を確認", href: "/activity", access: "一般" },
-      { icon: "📊", title: "Activity集計", description: "RSVP・Check-in・期間別集計", href: "/activity", access: "一般" },
+      { icon: "🔥", title: "Meetup活動", description: "開催履歴・最近の活動を確認", href: "/activity", access: "管理者" },
+      { icon: "📊", title: "Activity集計", description: "RSVP・Check-in・期間別集計", href: "/activity", access: "管理者" },
       { icon: "🧾", title: "Data Coverage", description: "取得済み・一部・未取得を確認", href: "/data", access: "管理者" },
     ],
   },
@@ -57,8 +57,6 @@ const caSections = [
     subtitle: "普段使う場所",
     items: [
       { icon: "🍀", title: "My Community", description: "自分のCommunity活動を見る", href: "/my" },
-      { icon: "🌱", title: "Community", description: "割り当てられたCommunityを確認", href: "/communities" },
-      { icon: "🔥", title: "Meetup活動", description: "Meetup履歴と集計を見る", href: "/activity" },
       { icon: "👤", title: "アカウント", description: "Niantic IDとログイン設定", href: "/account" },
     ],
   },
