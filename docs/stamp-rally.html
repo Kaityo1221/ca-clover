@@ -240,7 +240,7 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
    }
   }
 
-  const gltf=await new GLTFLoader().loadAsync("./models/medal_template_final.glb?v=6");
+  const gltf=await new GLTFLoader().loadAsync("./models/medal_template_final.glb?v=7");
   if(token!==stamp3dToken){
    renderer.dispose();environment.dispose();pmrem.dispose();controls.dispose();
    return;
@@ -250,6 +250,7 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
    if(object instanceof THREE.Camera||object instanceof THREE.Light){object.visible=false;return}
    if(!(object instanceof THREE.Mesh))return;
    if(object.name==="SplineSkyHdriBackground"){object.visible=false;return}
+   if(object.name==="FrontFace")object.position.z=-36;
    if(object.name==="MedalBody")object.material=goldMaterial;
    else if(object.name==="back_shell")object.material=backMaterial;
    else if(object.name==="brushed_detail")object.material=brushedMaterial;
