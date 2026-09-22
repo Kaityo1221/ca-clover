@@ -120,7 +120,13 @@ export default function StampBulkPage(){
   }
 
   async function call(body:Record<string,unknown>){
-    const {data,error}=await supabase.functions.invoke("stamp-bulk",{body});
+    const {data:authData}=await supabase.auth.getSession();
+    const accessToken=authData.session?.access_token;
+    if(!accessToken) throw new Error("ログインセッションが切れています。再ログインしてください。");
+    const {data,error}=await supabase.functions.invoke("stamp-bulk",{
+      body,
+      headers:{Authorization:"Bearer "+accessToken},
+    });
     if(error){
       let detail=error.message;
       const context=(error as {context?:Response}).context;
