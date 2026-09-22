@@ -558,7 +558,7 @@ export default function Page() {
                         <div className="font-black text-[#47413c]">{prefecture}</div>
                         <div className="mt-0.5 text-[10px] font-bold text-[#a39589]">{rows.length} Community</div>
                       </div>
-                      <span className="rounded-full bg-[#eef5e8] px-2.5 py-1 text-xs font-black text-[#587847]">{acquiredCount} / {prefectureCas.length}</span>
+                      <span className="rounded-full bg-[#eef5e8] px-2.5 py-1 text-xs font-black text-[#587847]">取得 {acquiredCount} / {prefectureCas.length}</span>
                       <span className={"text-lg font-black text-[#8b9e80] transition-transform " + (prefectureOpen ? "rotate-180" : "")}>⌄</span>
                     </button>
 
