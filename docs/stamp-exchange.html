@@ -288,8 +288,10 @@ async function boot(){
   const s=cached.session;
   const usableOpen=s.status==="open"&&s.my_role==="issuer"&&!!cached.token&&new Date(s.expires_at).getTime()>Date.now();
   const usablePaired=s.status==="paired";
-  if(usableOpen||usablePaired)rememberSession(s,cached.token);
-  else rememberSession(null,null);
+  if(usableOpen||usablePaired){
+   rememberSession(s,cached.token);
+   startPolling();
+  }else rememberSession(null,null);
  }
  renderNet();render();
 
@@ -306,6 +308,7 @@ async function boot(){
     if(matching){
      rememberSession(resumed,cached.token);
      render();
+     startPolling();
     }else{
      try{await invoke({action:"cancel",sessionId:resumed.id},{retry:true,attempts:2})}catch{}
      rememberSession(null,null);
@@ -314,6 +317,7 @@ async function boot(){
    }else if(resumed.status==="paired"){
     rememberSession(resumed,null);
     render();
+    startPolling();
    }else{
     rememberSession(null,null);
     render();
