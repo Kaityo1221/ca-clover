@@ -262,6 +262,27 @@ export default function StampExchangePage(){
     }
   }
 
+  async function switchToScanner(){
+    if(busy||!online) return;
+    setBusy(true);setPhase("connecting");setMessage(null);stopCamera();
+    try{
+      if(session?.status==="open"){
+        await callExchange(
+          {action:"cancel",sessionId:session.id},
+          {retry:true},
+        );
+      }
+      rememberSession(null);
+      setToken(null);
+    }catch(error){
+      setMessage(error instanceof Error?error.message:String(error));
+      setBusy(false);setPhase("idle");
+      return;
+    }
+    setBusy(false);setPhase("idle");
+    await startScanner();
+  }
+
   async function resumeRecentSession(){
     if(!online||busy) return;
     setPhase("checking");
@@ -485,6 +506,7 @@ export default function StampExchangePage(){
             <div className="rounded-2xl bg-[#f4eee8] p-4 text-sm font-black text-[#796d63]">QRコードの有効期限が切れました</div>
             <button disabled={busy||!online} onClick={()=>void createQr()} className="mt-3 w-full rounded-2xl bg-[#5f8e50] px-4 py-4 text-sm font-black text-white disabled:opacity-50">再発行</button>
           </>}
+          <button disabled={busy||!online} onClick={()=>void switchToScanner()} className="mt-3 w-full rounded-2xl border-2 border-[#a9c89c] bg-white px-4 py-4 text-sm font-black text-[#537647] disabled:opacity-50">QRを読み取る</button>
         </div> : null}
 
         {session?.status==="paired"&&partner ? <div className="mt-6">
@@ -526,7 +548,10 @@ export default function StampExchangePage(){
         {session?.status==="expired" ? <div className="mt-6 text-center">
           <div className="rounded-2xl bg-[#f3eee9] p-4 text-sm font-black text-[#756b62]">QRコードの有効期限が切れました。</div>
           {session.my_role==="issuer"
-            ? <button disabled={busy||!online} onClick={()=>void createQr()} className="mt-3 w-full rounded-2xl bg-[#5f8e50] px-4 py-4 text-sm font-black text-white disabled:opacity-50">再発行</button>
+            ? <div className="mt-3 grid gap-3">
+                <button disabled={busy||!online} onClick={()=>void createQr()} className="w-full rounded-2xl bg-[#5f8e50] px-4 py-4 text-sm font-black text-white disabled:opacity-50">再発行</button>
+                <button disabled={busy||!online} onClick={()=>void switchToScanner()} className="w-full rounded-2xl border-2 border-[#a9c89c] bg-white px-4 py-4 text-sm font-black text-[#537647] disabled:opacity-50">QRを読み取る</button>
+              </div>
             : <button onClick={()=>{rememberSession(null);setMessage(null);}} className="mt-3 w-full rounded-2xl bg-white px-4 py-3 text-sm font-black text-[#567d48]">別のQRを読む</button>}
         </div> : null}
       </section>
