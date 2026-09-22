@@ -20,7 +20,7 @@
     .muted{color:#64748b}.small{font-size:12px}.tiny{font-size:11px}.strong{font-weight:900}.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:6px 10px;background:#ecfccb;color:#4d7c0f;font-size:12px;font-weight:900}
     .pill.amber{background:#fef3c7;color:#92400e}.pill.violet{background:#ede9fe;color:#6d28d9}.pill.blue{background:#e0f2fe;color:#075985}.pill.rose{background:#ffe4e6;color:#be123c}.pill.slate{background:#f1f5f9;color:#475569}
     .grid{display:grid;gap:14px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
-    .btn{border:0;border-radius:16px;padding:13px 16px;font-weight:950;background:#84cc16;color:#1a2e05;width:100%}.btn.dark{background:#365314;color:white}.btn.line{background:white;border:1px solid #d9f99d;color:#4d7c0f}.btn.rose{background:#fff1f2;border:1px solid #fecdd3;color:#be123c}.btn:disabled{opacity:.45;cursor:not-allowed}
+    .btn{border:0;border-radius:16px;padding:13px 16px;font-weight:950;background:#84cc16;color:#1a2e05;width:100%}.stamp-rally-open{display:inline-flex;width:auto;margin-left:46px;align-items:center;justify-content:center;text-decoration:none}.btn.dark{background:#365314;color:white}.btn.line{background:white;border:1px solid #d9f99d;color:#4d7c0f}.btn.rose{background:#fff1f2;border:1px solid #fecdd3;color:#be123c}.btn:disabled{opacity:.45;cursor:not-allowed}
     .input{width:100%;border:1px solid #d9f99d;border-radius:16px;padding:13px 14px;background:#fff;font-weight:750;outline:none}.input:focus{border-color:#84cc16;box-shadow:0 0 0 4px rgba(132,204,22,.12)}
     .section{margin-top:18px}.notice{border-radius:18px;padding:14px 16px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12px;font-weight:800;line-height:1.6}
     .ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534}.err{background:#fff1f2;border-color:#fecdd3;color:#be123c}.row{display:flex;align-items:flex-start;gap:12px}.between{justify-content:space-between}.wraprow{flex-wrap:wrap}
@@ -47,7 +47,7 @@
   const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
   const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
   const ROOT="https://kaityo1221.github.io/ca-clover/";
-  const VERSION="94079b9";
+  const VERSION="stamp-align-20260922";
   const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}
   });
@@ -188,7 +188,7 @@
     html+=flashHtml();
 
     if(profile.role==="admin"||permissions.has("S")){
-      html+='<section class="card section" style="border-color:#f0d7bd;background:linear-gradient(135deg,#fff8ef,#fff,#edf7e8)"><div class="row"><div style="font-size:34px">🍀</div><div><span class="pill">S / STAMP RALLY LAB</span><h2 style="margin-top:8px">CA Stamp Rally LAB</h2><p class="muted small strong">全国スタンプシートのテストページを開きます。</p></div></div><a class="btn section" href="./stamp-rally.html">スタンプラリーを開く →</a></section>';
+      html+='<section class="card section" style="border-color:#f0d7bd;background:linear-gradient(135deg,#fff8ef,#fff,#edf7e8)"><div class="row"><div style="font-size:34px">🍀</div><div><span class="pill">S / STAMP RALLY LAB</span><h2 style="margin-top:8px">CA Stamp Rally LAB</h2><p class="muted small strong">全国スタンプシートのテストページを開きます。</p></div></div><a class="btn section stamp-rally-open" href="./stamp-rally.html">スタンプラリーを開く →</a></section>';
     }
 
     if(profile.role==="pending"){
