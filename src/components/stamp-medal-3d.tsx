@@ -8,6 +8,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 type StampMedal3DProps = {
   imageUrl?: string | null;
+  fallbackImageUrl?: string | null;
   className?: string;
 };
 
@@ -25,7 +26,7 @@ function disposeObject(root: THREE.Object3D) {
   });
 }
 
-export function StampMedal3D({ imageUrl, className = "" }: StampMedal3DProps) {
+export function StampMedal3D({ imageUrl, fallbackImageUrl, className = "" }: StampMedal3DProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -133,11 +134,14 @@ export function StampMedal3D({ imageUrl, className = "" }: StampMedal3DProps) {
       clearcoatRoughness: 0.08,
     });
 
-    function applyFaceTexture(model: THREE.Object3D) {
-      if (!imageUrl) return;
-      new THREE.TextureLoader().load(
-        imageUrl,
-        (texture) => {
+    async function applyFaceTexture(model: THREE.Object3D) {
+      const candidates = [imageUrl, fallbackImageUrl].filter(
+        (value, index, array): value is string => Boolean(value) && array.indexOf(value) === index,
+      );
+      const loader = new THREE.TextureLoader();
+      for (const candidate of candidates) {
+        try {
+          const texture = await loader.loadAsync(candidate);
           if (disposed) {
             texture.dispose();
             return;
@@ -151,12 +155,11 @@ export function StampMedal3D({ imageUrl, className = "" }: StampMedal3DProps) {
           faceMaterial.needsUpdate = true;
           const front = model.getObjectByName("FrontFace");
           if (front instanceof THREE.Mesh) front.material = faceMaterial;
-        },
-        undefined,
-        () => {
-          // Keep the glossy white face if the community image cannot be loaded.
-        },
-      );
+          return;
+        } catch {
+          // Try the next available Community image source.
+        }
+      }
     }
 
     new GLTFLoader().load(
@@ -187,7 +190,7 @@ export function StampMedal3D({ imageUrl, className = "" }: StampMedal3DProps) {
           else if (object.name === "pin_assembly") object.material = pinMaterial;
         });
 
-        applyFaceTexture(medal);
+        void applyFaceTexture(medal);
 
         const box = new THREE.Box3().setFromObject(medal);
         const center = box.getCenter(new THREE.Vector3());
@@ -244,7 +247,7 @@ export function StampMedal3D({ imageUrl, className = "" }: StampMedal3DProps) {
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [imageUrl]);
+  }, [fallbackImageUrl, imageUrl]);
 
   return (
     <div className={"relative " + className}>
