@@ -7,12 +7,16 @@ import { useAuthProfile } from "@/lib/use-auth-profile";
 export default function Page(){
   const { supabase, user, profile, loading } = useAuthProfile();
   const [nianticId, setNianticId] = useState("");
+  const [stampMessage, setStampMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [stampSaving, setStampSaving] = useState(false);
+  const [stampSaveMessage, setStampSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setNianticId(profile?.niantic_id ?? "");
-  }, [profile?.niantic_id]);
+    setStampMessage(profile?.stamp_exchange_message ?? "");
+  }, [profile?.niantic_id, profile?.stamp_exchange_message]);
 
   async function save(){
     if (!user) return;
@@ -31,6 +35,24 @@ export default function Page(){
     }
     setNianticId(value);
     setMessage("保存しました 🍀");
+  }
+
+  async function saveStampMessage(){
+    if(!user) return;
+    setStampSaving(true);
+    setStampSaveMessage(null);
+    const chars=Array.from(stampMessage.trim());
+    const value=chars.slice(0,24).join("");
+    const {data,error}=await (supabase as any).rpc("set_stamp_exchange_message",{
+      p_message:value||null,
+    });
+    setStampSaving(false);
+    if(error){
+      setStampSaveMessage(error.message);
+      return;
+    }
+    setStampMessage(String(data??""));
+    setStampSaveMessage(value?"保存しました 🍀":"一言を未設定にしました");
   }
 
   async function signOut(){
@@ -57,6 +79,32 @@ export default function Page(){
 
       <button onClick={save} disabled={saving} className="mt-4 w-full rounded-2xl bg-lime-400 px-5 py-3 text-sm font-black text-lime-950 disabled:opacity-50">{saving ? "保存中..." : "Niantic IDを保存"}</button>
       {message ? <p className="mt-3 text-center text-xs font-bold text-lime-700">{message}</p> : null}
+
+      <div className="mt-7 border-t border-lime-100 pt-6">
+        <div className="flex items-end justify-between gap-3">
+          <label className="block text-xs font-black text-slate-600" htmlFor="stamp-message">スタンプ交換時の一言</label>
+          <span className="text-[11px] font-black text-slate-400">{Array.from(stampMessage).length} / 24</span>
+        </div>
+        <p className="mt-2 text-[11px] font-semibold leading-5 text-slate-400">
+          新しく交換した相手が、あなたのバッジを初めて開いた時に表示されます。
+        </p>
+        <input
+          id="stamp-message"
+          value={stampMessage}
+          onChange={event=>setStampMessage(Array.from(event.target.value).slice(0,24).join(""))}
+          maxLength={48}
+          placeholder="またどこかで会いましょう🍀"
+          className="mt-3 w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-lime-400"
+        />
+        <button
+          onClick={saveStampMessage}
+          disabled={stampSaving}
+          className="mt-3 w-full rounded-2xl bg-lime-950 px-5 py-3 text-sm font-black text-white disabled:opacity-50"
+        >
+          {stampSaving?"保存中...":"一言を保存"}
+        </button>
+        {stampSaveMessage?<p className="mt-3 text-center text-xs font-bold text-lime-700">{stampSaveMessage}</p>:null}
+      </div>
 
       {profile?.role==="pending" && nianticId.trim() ? (
         <Link href="/my" className="mt-4 flex w-full items-center justify-center rounded-2xl bg-lime-950 px-5 py-3 text-sm font-black text-white">
