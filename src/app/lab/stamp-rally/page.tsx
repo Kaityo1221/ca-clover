@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
-import { PREFECTURE_ORDER } from "@/lib/prefecture-order";
+import { PREFECTURE_ORDER, prefectureEnglishLabel } from "@/lib/prefecture-order";
 import { CommunityIcon } from "@/components/community-icon";
 import { StampMedal3D } from "@/components/stamp-medal-3d";
 
@@ -104,6 +104,19 @@ const REGION_GROUPS = [
   { name: "四国", prefectures: ["徳島県","香川県","愛媛県","高知県"] },
   { name: "九州・沖縄", prefectures: ["福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県"] },
 ] as const;
+
+function formatEngravingDate(value:string){
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime())) return "";
+  const parts=new Intl.DateTimeFormat("en-CA",{
+    timeZone:"Asia/Tokyo",
+    year:"numeric",
+    month:"2-digit",
+    day:"2-digit",
+  }).formatToParts(date);
+  const map=Object.fromEntries(parts.map(part=>[part.type,part.value]));
+  return [map.year,map.month,map.day].filter(Boolean).join(".");
+}
 
 export default function Page() {
   const { supabase, user, profile, permissions, loading } = useAuthProfile();
@@ -652,6 +665,14 @@ export default function Page() {
         const selectedReunions=selectedCa?.collection
           ?reunionsByCollection.get(selectedCa.collection.id)??[]
           :[];
+        const engravingLines=selectedCa?.collection
+          ?[
+              selectedCa.trainer_name,
+              selectedCa.ca_level??selectedCa.collection.role_at_acquisition??"CA",
+              prefectureEnglishLabel(selectedCommunity.prefecture),
+              formatEngravingDate(selectedCa.collection.first_acquired_at),
+            ]
+          :null;
 
         return <div
           className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-slate-950/55 p-5 backdrop-blur-sm [-webkit-overflow-scrolling:touch]"
@@ -676,6 +697,7 @@ export default function Page() {
                   fallbackImageUrl={selectedCommunity.avatar_url}
                   thumbnailPath={selectedDesign?.thumbnail_path}
                   archivePath={selectedDesign?.archive_path}
+                  engravingLines={engravingLines}
                   className="h-full w-full"
                 />
               </div> : <div className="mx-auto mt-1 grid size-56 place-items-center rounded-full border-2 border-dashed border-[#cfc9c3] bg-[#f2f0ed] p-2">
