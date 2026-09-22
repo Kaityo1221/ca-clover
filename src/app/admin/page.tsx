@@ -49,9 +49,9 @@ export default function Page(){
     ["👥","CAアカウント","pending / CA / ADMINを承認・変更","/admin/accounts"],
     ["🧾","同期履歴","取得件数・失敗・部分取得を確認","/admin/sync-runs"],
     ["🧾","Data Coverage","全国の取得状態を確認","/data"],
+    ["🍀","CA Stamp Rally LAB","全国スタンプシートUIを確認","/lab/stamp-rally"],
     ["🎪","イベント管理","Stamp Rallyイベント・日替わりミッション","/admin/stamp-events"],
     ["🏠","ホームへ","カテゴリホームに戻る","/"],
-    ["🍀","CA Stamp Rally LAB","全国スタンプシートUIを確認","/lab/stamp-rally"],
   ];
 
   return <main className="mx-auto max-w-5xl px-4 py-8 md:px-8">
