@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
 import { PREFECTURE_ORDER } from "@/lib/prefecture-order";
 import { CommunityIcon } from "@/components/community-icon";
+import { StampMedal3D } from "@/components/stamp-medal-3d";
 
 type CommunityRow = {
   id: string;
@@ -662,7 +663,9 @@ export default function Page() {
                 aria-label="閉じる"
               >×</button>
 
-              <div className="mx-auto mt-1 grid size-56 place-items-center rounded-full bg-gradient-to-br from-[#f8e3bf] via-white to-[#edc993] p-2 shadow-[0_18px_45px_rgba(112,73,35,.22)]">
+              {selectedCa?.collection ? <div className="mx-auto mt-1 size-56">
+                <StampMedal3D imageUrl={selectedDesignSrc} className="h-full w-full" />
+              </div> : <div className="mx-auto mt-1 grid size-56 place-items-center rounded-full bg-gradient-to-br from-[#f8e3bf] via-white to-[#edc993] p-2 shadow-[0_18px_45px_rgba(112,73,35,.22)]">
                 {selectedDesignSrc?<div className="relative h-full w-full overflow-hidden rounded-full bg-[#eef2e9]">
                   <span className="absolute inset-0 grid place-items-center text-6xl text-[#9caf90]">🍀</span>
                   <img
@@ -678,7 +681,7 @@ export default function Page() {
                   fallbackClassName="text-6xl text-[#9caf90]"
                   loading="eager"
                 />}
-              </div>
+              </div>}
 
               <h2 className="mt-5 text-xl font-black leading-snug text-[#443c35]">{selectedCommunity.name}</h2>
               <p className="mt-1 text-xs font-bold text-[#8a7d72]">{selectedCommunity.prefecture ?? "—"}</p>
