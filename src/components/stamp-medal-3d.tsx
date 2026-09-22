@@ -193,12 +193,18 @@ export function StampMedal3D({
         context.fillRect(0, 0, size, size);
 
         const safeSize = size * faceSafeScale;
-        const scale = Math.min(safeSize / sourceWidth, safeSize / sourceHeight);
+        const scale = Math.max(safeSize / sourceWidth, safeSize / sourceHeight);
         const drawWidth = sourceWidth * scale;
         const drawHeight = sourceHeight * scale;
         const x = (size - drawWidth) / 2;
         const y = (size - drawHeight) / 2;
+
+        context.save();
+        context.beginPath();
+        context.arc(size / 2, size / 2, safeSize / 2, 0, Math.PI * 2);
+        context.clip();
         context.drawImage(image, x, y, drawWidth, drawHeight);
+        context.restore();
 
         const safeTexture = new THREE.CanvasTexture(canvas);
         safeTexture.colorSpace = THREE.SRGBColorSpace;
