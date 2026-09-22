@@ -48,6 +48,56 @@ export const PREFECTURE_ORDER = [
   "沖縄県",
 ] as const;
 
+export const PREFECTURE_ENGLISH_ORDER = [
+  "Hokkaido",
+  "Aomori",
+  "Iwate",
+  "Miyagi",
+  "Akita",
+  "Yamagata",
+  "Fukushima",
+  "Ibaraki",
+  "Tochigi",
+  "Gunma",
+  "Saitama",
+  "Chiba",
+  "Tokyo",
+  "Kanagawa",
+  "Niigata",
+  "Toyama",
+  "Ishikawa",
+  "Fukui",
+  "Yamanashi",
+  "Nagano",
+  "Gifu",
+  "Shizuoka",
+  "Aichi",
+  "Mie",
+  "Shiga",
+  "Kyoto",
+  "Osaka",
+  "Hyogo",
+  "Nara",
+  "Wakayama",
+  "Tottori",
+  "Shimane",
+  "Okayama",
+  "Hiroshima",
+  "Yamaguchi",
+  "Tokushima",
+  "Kagawa",
+  "Ehime",
+  "Kochi",
+  "Fukuoka",
+  "Saga",
+  "Nagasaki",
+  "Kumamoto",
+  "Oita",
+  "Miyazaki",
+  "Kagoshima",
+  "Okinawa",
+] as const;
+
 const PREFECTURE_INDEX = new Map<string, number>(
   PREFECTURE_ORDER.map((name, index) => [name, index])
 );
@@ -68,4 +118,11 @@ export function comparePrefectures(
   if (!aName) return 1;
   if (!bName) return -1;
   return aName.localeCompare(bName, "ja");
+}
+
+export function prefectureEnglishLabel(prefecture: string | null | undefined) {
+  const name = prefecture ?? "";
+  const index = PREFECTURE_INDEX.get(name);
+  if (index !== undefined) return PREFECTURE_ENGLISH_ORDER[index] + ", Japan";
+  return name ? name + ", Japan" : "Japan";
 }
