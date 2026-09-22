@@ -137,12 +137,12 @@ async function mountStampMedal3D(imageUrl){
 
   const scene=new THREE.Scene();
   const camera=new THREE.PerspectiveCamera(28,1,.01,100);
-  camera.position.set(0,.03,3.45);
+  camera.position.set(0,.03,4.10);
 
   const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:"high-performance"});
   renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure=1.08;
+  renderer.toneMappingExposure=.92;
   renderer.setClearColor(0x000000,0);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
   renderer.domElement.style.width="100%";
@@ -178,8 +178,8 @@ async function mountStampMedal3D(imageUrl){
   controls.autoRotateSpeed=1.35;
   controls.target.set(0,0,0);
 
-  const goldMaterial=new THREE.MeshPhysicalMaterial({color:0xb8922e,metalness:.95,roughness:.26,reflectivity:.7,clearcoat:.18,clearcoatRoughness:.1});
-  const faceMaterial=new THREE.MeshPhysicalMaterial({color:0xffffff,metalness:0,roughness:.08,reflectivity:.95,clearcoat:.9,clearcoatRoughness:.03});
+  const goldMaterial=new THREE.MeshPhysicalMaterial({color:0xb8922e,metalness:.95,roughness:.34,reflectivity:.52,clearcoat:.08,clearcoatRoughness:.18});
+  const faceMaterial=new THREE.MeshPhysicalMaterial({color:0xffffff,metalness:0,roughness:.18,reflectivity:.38,clearcoat:.25,clearcoatRoughness:.20});
   const backMaterial=new THREE.MeshPhysicalMaterial({color:0xd7d7d7,metalness:.95,roughness:.16,reflectivity:.85,clearcoat:.4,clearcoatRoughness:.08});
   const brushedMaterial=new THREE.MeshPhysicalMaterial({color:0xd2d2d2,metalness:.65,roughness:.42,reflectivity:.45,clearcoat:.1});
   const pinMaterial=new THREE.MeshPhysicalMaterial({color:0xf0f0f0,metalness:.9,roughness:.22,reflectivity:.8,clearcoat:.2,clearcoatRoughness:.08});
@@ -224,7 +224,7 @@ async function mountStampMedal3D(imageUrl){
   const size=box.getSize(new THREE.Vector3());
   medal.position.sub(center);
   const maxDimension=Math.max(size.x,size.y,size.z);
-  holder.scale.setScalar(maxDimension>0?2.08/maxDimension:1);
+  holder.scale.setScalar(maxDimension>0?1.75/maxDimension:1);
   holder.add(medal);
 
   stamp3d.innerHTML="";
