@@ -148,9 +148,13 @@ async function load(){
  const collectionMap=new Map(collectionRows.map(x=>[x.stamp_ca_member_id+":"+x.community_id,x]));
  const collectionIds=collectionRows.map(x=>x.id);
 
- let designRows=[],preferenceRows=[],versionRows=[];
+ let reunionRows=[],designRows=[],preferenceRows=[],versionRows=[];
  if(collectionIds.length){
-  const [dr,pr]=await Promise.all([
+  const [rr,dr,pr]=await Promise.all([
+   client.from("stamp_reunions")
+    .select("id,collection_id,met_at,local_date,timezone,location,event_name,reunion_source")
+    .in("collection_id",collectionIds)
+    .order("met_at",{ascending:false}),
    client.from("stamp_collection_designs")
     .select("collection_id,icon_version_id,grant_source,granted_at")
     .in("collection_id",collectionIds),
@@ -158,8 +162,9 @@ async function load(){
     .select("collection_id,icon_version_id,updated_at")
     .in("collection_id",collectionIds)
   ]);
-  const designError=dr.error||pr.error;
+  const designError=rr.error||dr.error||pr.error;
   if(designError){status.className="error";status.textContent=designError.message;return}
+  reunionRows=rr.data||[];
   designRows=dr.data||[];
   preferenceRows=pr.data||[];
 
@@ -181,6 +186,24 @@ async function load(){
   designIdsByCollection.set(x.collection_id,list);
  });
  const preferenceMap=new Map(preferenceRows.map(x=>[x.collection_id,x.icon_version_id]));
+ const reunionsByCollection=new Map();
+ reunionRows.forEach(x=>{
+  const list=reunionsByCollection.get(x.collection_id)||[];
+  list.push(x);
+  reunionsByCollection.set(x.collection_id,list);
+ });
+ reunionsByCollection.forEach(list=>list.sort((a,b)=>new Date(b.met_at)-new Date(a.met_at)));
+ const reunionDate=x=>{
+  if(x.local_date){
+   const parts=x.local_date.split("-").map(Number);
+   if(parts[0]&&parts[1]&&parts[2])return parts[0]+"/"+parts[1]+"/"+parts[2];
+  }
+  try{
+   return new Date(x.met_at).toLocaleDateString("ja-JP",{timeZone:x.timezone||"Asia/Tokyo"});
+  }catch(_){
+   return new Date(x.met_at).toLocaleDateString("ja-JP");
+  }
+ };
 
  const designUrl=v=>{
   if(!v)return"";
@@ -287,7 +310,8 @@ async function load(){
    if(selectedCa){
     lines.push((selectedCa.ca_level||"CA")+" ・ "+selectedCa.trainer_name);
     if(selectedCa.collection){
-     lines.push("取得 "+new Date(selectedCa.collection.first_acquired_at).toLocaleDateString("ja-JP")+(selectedCa.collection.first_event_name?" ・ "+selectedCa.collection.first_event_name:""));
+     const count=(reunionsByCollection.get(selectedCa.collection.id)||[]).length;
+     lines.push("取得済み ・ 再会 ×"+count);
     }else{
      lines.push("未取得");
     }
@@ -304,9 +328,24 @@ async function load(){
    window.CACommunityIcon.bind(stampModalBack);
 
    const caButtons=c.cas.map(x=>'<button type="button" class="btn '+(selectedCa&&selectedCa.id===x.id?"":"line")+'" data-modal-ca="'+esc(x.id)+'" style="font-size:10px;padding:8px 10px">'+esc(x.ca_level||"CA")+' ・ '+esc(x.trainer_name)+'</button>').join("");
+   let historyHtml="";
    let designHtml="";
 
    if(selectedCa&&selectedCa.collection){
+    const reunionList=reunionsByCollection.get(selectedCa.collection.id)||[];
+    const firstDate=new Date(selectedCa.collection.first_acquired_at).toLocaleDateString("ja-JP");
+    historyHtml='<div class="section" style="border:1px solid #eadfce;border-radius:18px;background:#fffaf2;padding:12px;text-align:left">'
+     +'<div class="tiny strong" style="color:#745c3f">🍀 初回取得</div>'
+     +'<div class="strong" style="font-size:11px;margin-top:5px;color:#514941">'+esc(firstDate)+'</div>'
+     +(selectedCa.collection.first_event_name?'<div class="tiny muted strong" style="margin-top:5px">🎪 '+esc(selectedCa.collection.first_event_name)+'</div>':'')
+     +(selectedCa.collection.first_location?'<div class="tiny muted strong" style="margin-top:5px">📍 '+esc(selectedCa.collection.first_location)+'</div>':'')
+     +'</div>'
+     +'<div class="section" style="border:1px solid #dce7d5;border-radius:18px;background:#f7fbf4;padding:12px;text-align:left">'
+     +'<div class="row between"><div class="tiny strong" style="color:#567848">🤝 再会</div><span class="pill">×'+reunionList.length+'</span></div>'
+     +(reunionList.length
+       ?'<div style="margin-top:7px">'+reunionList.map((r,i)=>'<div style="padding:8px 0;'+(i?'border-top:1px solid #e4ece0;':'')+'"><div class="tiny strong" style="color:#514941">'+esc(reunionDate(r))+'</div>'+(r.event_name?'<div class="tiny muted strong" style="margin-top:4px">🎪 '+esc(r.event_name)+'</div>':'')+(r.location?'<div class="tiny muted strong" style="margin-top:4px">📍 '+esc(r.location)+'</div>':'')+'</div>').join("")+'</div>'
+       :'<div class="tiny muted strong" style="margin-top:7px">まだ再会記録はありません。</div>')
+     +'</div>';
     if(selectedCa.designs.length){
      if(!selectedDesign)selectedDesign=displayDesign(selectedCa);
      const index=Math.max(0,selectedCa.designs.findIndex(x=>selectedDesign&&x.id===selectedDesign.id));
@@ -329,7 +368,7 @@ async function load(){
     designHtml='<div class="notice section">このCAスタンプは未取得です。</div>';
    }
 
-   stampDesignControls.innerHTML='<div class="actions section" style="justify-content:center">'+caButtons+'</div>'+designHtml;
+   stampDesignControls.innerHTML='<div class="actions section" style="justify-content:center">'+caButtons+'</div>'+historyHtml+designHtml;
 
    stampDesignControls.querySelectorAll("[data-modal-ca]").forEach(button=>button.onclick=()=>{
     selectedCa=c.cas.find(x=>x.id===button.dataset.modalCa)||null;
