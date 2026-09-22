@@ -8,7 +8,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>CA Clover Stamp Rally LAB</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>\n<script src="./community-icon.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>\n<script src="./community-icon.js"></script>\n<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 <style>
 :root{font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#403a35;background:#fff8ef}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 0 0,rgba(244,197,141,.28),transparent 28rem),linear-gradient(180deg,#fffaf4,#fff6eb 70%,#fbf4ea)}
@@ -43,7 +43,7 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
 .empty{text-align:center;padding:16px 8px;font-size:11px;font-weight:850;color:#a0958a}.loading,.error{margin-top:16px;border-radius:22px;background:#fff;padding:20px;text-align:center;font-size:12px;font-weight:900}.error{background:#fff1f2;color:#be123c;border:1px solid #fecdd3}
 .footer{margin-top:16px;border:1px dashed #d7c5b4;border-radius:21px;background:rgba(255,255,255,.62);padding:13px;text-align:center;font-size:10px;line-height:1.6;font-weight:800;color:#8d7b6b}
 .exchange-card{margin-top:14px;display:flex;align-items:center;justify-content:space-between;border:1px solid #d9c4ad;border-radius:22px;background:#fff;padding:15px 17px;box-shadow:0 8px 22px rgba(92,69,45,.06)}.exchange-card strong{display:block;font-size:14px;color:#45663a}.exchange-card small{display:block;margin-top:3px;font-size:10px;font-weight:800;color:#938478}.exchange-card .arrow{font-size:20px;font-weight:950;color:#6a8d59}\n.stamp{border:0;background:transparent;padding:0;width:100%}
-.stampmodalback{position:fixed;inset:0;z-index:80;display:none;place-items:center;background:rgba(15,23,42,.55);backdrop-filter:blur(6px);padding:20px}.stampmodalback.show{display:grid}.stampmodal{width:min(360px,100%);border:1px solid #ead5bf;border-radius:30px;background:#fffaf4;padding:18px;text-align:center;box-shadow:0 26px 70px rgba(15,23,42,.28)}.stampclose{margin-left:auto;width:36px;height:36px;border:0;border-radius:999px;background:#fff;color:#75695f;font-size:20px;font-weight:950;box-shadow:0 4px 14px rgba(80,60,40,.10)}.stampzoom{position:relative;width:224px;height:224px;margin:4px auto 0;border-radius:999px;padding:8px;background:linear-gradient(135deg,#f8e3bf,#fff,#edc993);box-shadow:0 18px 45px rgba(112,73,35,.22)}.stampzoom .medalinner{width:100%;height:100%}.stampzoomtitle{margin:18px 0 0;font-size:20px;line-height:1.35;color:#443c35}.stampzoomarea{margin:5px 0 0;font-size:12px;font-weight:850;color:#8a7d72}
+.stampmodalback{position:fixed;inset:0;z-index:80;display:none;place-items:center;background:rgba(15,23,42,.55);backdrop-filter:blur(6px);padding:20px}.stampmodalback.show{display:grid}.stampmodal{width:min(360px,100%);border:1px solid #ead5bf;border-radius:30px;background:#fffaf4;padding:18px;text-align:center;box-shadow:0 26px 70px rgba(15,23,42,.28)}.stampclose{margin-left:auto;width:36px;height:36px;border:0;border-radius:999px;background:#fff;color:#75695f;font-size:20px;font-weight:950;box-shadow:0 4px 14px rgba(80,60,40,.10)}.stamp3d{position:relative;width:224px;height:224px;margin:4px auto 0;display:none;touch-action:none}.stamp3d.show{display:block}.stamp3d canvas{display:block;width:100%;height:100%}.stampzoom{position:relative;width:224px;height:224px;margin:4px auto 0;border-radius:999px;padding:8px;background:linear-gradient(135deg,#f8e3bf,#fff,#edc993);box-shadow:0 18px 45px rgba(112,73,35,.22)}.stampzoom.hidden{display:none}.stampzoom .medalinner{width:100%;height:100%}.stampzoomtitle{margin:18px 0 0;font-size:20px;line-height:1.35;color:#443c35}.stampzoomarea{margin:5px 0 0;font-size:12px;font-weight:850;color:#8a7d72}
 @media(min-width:600px){.stamps{grid-template-columns:repeat(4,minmax(0,1fr));gap:22px 15px}.medal{width:94px;height:94px}.cname{font-size:11px}.caname{font-size:9px}}
 @media(min-width:900px){.stamps{grid-template-columns:repeat(5,minmax(0,1fr))}}
 </style>
@@ -71,7 +71,8 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
 <div id="stampModalBack" class="stampmodalback" aria-hidden="true">
   <section class="stampmodal" role="dialog" aria-modal="true" aria-labelledby="stampZoomTitle">
     <button id="stampClose" class="stampclose" type="button" aria-label="閉じる">×</button>
-    <div class="stampzoom"><div class="medalinner"><span class="fallback">🍀</span><img id="stampZoomImg" alt=""></div></div>
+    <div id="stamp3d" class="stamp3d" aria-label="3Dメダル"></div>
+    <div id="stampZoom2D" class="stampzoom"><div class="medalinner"><span class="fallback">🍀</span><img id="stampZoomImg" alt=""></div></div>
     <h2 id="stampZoomTitle" class="stampzoomtitle"></h2>
     <p id="stampZoomArea" class="stampzoomarea"></p>
     <div id="stampDesignControls"></div>
@@ -90,12 +91,16 @@ const regionsEl=document.getElementById("regions");
 const totalScore=document.getElementById("totalScore");
 const stampModalBack=document.getElementById("stampModalBack");
 const stampClose=document.getElementById("stampClose");
+const stamp3d=document.getElementById("stamp3d");
+const stampZoom2D=document.getElementById("stampZoom2D");
 const stampZoomImg=document.getElementById("stampZoomImg");
 const stampZoomTitle=document.getElementById("stampZoomTitle");
 const stampZoomArea=document.getElementById("stampZoomArea");
 const stampDesignControls=document.getElementById("stampDesignControls");
 let stampCommunityById=new Map();
 let currentUserId=null;
+let stamp3dCleanup=null;
+let stamp3dToken=0;
 const prefectureOrder=["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県","茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県","新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県","静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県","鳥取県","島根県","岡山県","広島県","山口県","徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県"];
 const groups=[
  ["北海道・東北",["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県"]],
@@ -108,6 +113,160 @@ const groups=[
 ];
 function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c])}
 function thumb(c){return window.CACommunityIcon.url(client,c)}
+function unmountStampMedal3D(){
+ stamp3dToken++;
+ if(stamp3dCleanup){try{stamp3dCleanup()}catch(_){}stamp3dCleanup=null}
+ stamp3d.classList.remove("show");
+ stamp3d.innerHTML="";
+ stampZoom2D.classList.remove("hidden");
+}
+async function mountStampMedal3D(imageUrl){
+ unmountStampMedal3D();
+ const token=++stamp3dToken;
+ stamp3d.classList.add("show");
+ stampZoom2D.classList.add("hidden");
+ stamp3d.innerHTML='<div style="position:absolute;inset:0;display:grid;place-items:center;font-size:11px;font-weight:900;color:#8a6d51">3Dメダルを準備中... 🪙</div>';
+ try{
+  const THREE=await import("three");
+  const [{OrbitControls},{RoomEnvironment},{GLTFLoader}]=await Promise.all([
+   import("three/addons/controls/OrbitControls.js"),
+   import("three/addons/environments/RoomEnvironment.js"),
+   import("three/addons/loaders/GLTFLoader.js")
+  ]);
+  if(token!==stamp3dToken)return;
+
+  const scene=new THREE.Scene();
+  const camera=new THREE.PerspectiveCamera(28,1,.01,100);
+  camera.position.set(0,.03,3.45);
+
+  const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:"high-performance"});
+  renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure=1.08;
+  renderer.setClearColor(0x000000,0);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  renderer.domElement.style.width="100%";
+  renderer.domElement.style.height="100%";
+  renderer.domElement.style.touchAction="none";
+
+  const pmrem=new THREE.PMREMGenerator(renderer);
+  const room=new RoomEnvironment();
+  const environment=pmrem.fromScene(room,.04).texture;
+  room.dispose();
+  scene.environment=environment;
+
+  scene.add(new THREE.HemisphereLight(0xffffff,0x6f685f,1.7));
+  const keyLight=new THREE.DirectionalLight(0xffffff,3.1);
+  keyLight.position.set(2.4,3.2,4.2);
+  scene.add(keyLight);
+  const rimLight=new THREE.DirectionalLight(0xffe5b4,1.6);
+  rimLight.position.set(-3.2,.8,-2.4);
+  scene.add(rimLight);
+
+  const holder=new THREE.Group();
+  holder.rotation.x=-.055;
+  holder.rotation.y=.22;
+  scene.add(holder);
+
+  const controls=new OrbitControls(camera,renderer.domElement);
+  controls.enableDamping=true;
+  controls.dampingFactor=.06;
+  controls.enablePan=false;
+  controls.enableZoom=false;
+  controls.rotateSpeed=.55;
+  controls.autoRotate=true;
+  controls.autoRotateSpeed=1.35;
+  controls.target.set(0,0,0);
+
+  const goldMaterial=new THREE.MeshPhysicalMaterial({color:0xb8922e,metalness:.95,roughness:.26,reflectivity:.7,clearcoat:.18,clearcoatRoughness:.1});
+  const faceMaterial=new THREE.MeshPhysicalMaterial({color:0xffffff,metalness:0,roughness:.08,reflectivity:.95,clearcoat:.9,clearcoatRoughness:.03});
+  const backMaterial=new THREE.MeshPhysicalMaterial({color:0xd7d7d7,metalness:.95,roughness:.16,reflectivity:.85,clearcoat:.4,clearcoatRoughness:.08});
+  const brushedMaterial=new THREE.MeshPhysicalMaterial({color:0xd2d2d2,metalness:.65,roughness:.42,reflectivity:.45,clearcoat:.1});
+  const pinMaterial=new THREE.MeshPhysicalMaterial({color:0xf0f0f0,metalness:.9,roughness:.22,reflectivity:.8,clearcoat:.2,clearcoatRoughness:.08});
+
+  const gltf=await new GLTFLoader().loadAsync("./models/medal_template_final.glb");
+  if(token!==stamp3dToken){
+   renderer.dispose();environment.dispose();pmrem.dispose();controls.dispose();
+   return;
+  }
+  const medal=gltf.scene;
+  medal.traverse(object=>{
+   if(object instanceof THREE.Camera||object instanceof THREE.Light){object.visible=false;return}
+   if(!(object instanceof THREE.Mesh))return;
+   if(object.name==="SplineSkyHdriBackground"){object.visible=false;return}
+   if(object.name==="MedalBody")object.material=goldMaterial;
+   else if(object.name==="FrontFace")object.material=faceMaterial;
+   else if(object.name==="back_shell")object.material=backMaterial;
+   else if(object.name==="brushed_detail")object.material=brushedMaterial;
+   else if(object.name==="pin_assembly")object.material=pinMaterial;
+  });
+
+  let faceTexture=null;
+  if(imageUrl){
+   try{
+    const texture=await new THREE.TextureLoader().loadAsync(imageUrl);
+    if(token===stamp3dToken){
+     texture.colorSpace=THREE.SRGBColorSpace;
+     texture.flipY=false;
+     texture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
+     faceTexture=texture;
+     faceMaterial.map=texture;
+     faceMaterial.color.set(0xffffff);
+     faceMaterial.needsUpdate=true;
+     const front=medal.getObjectByName("FrontFace");
+     if(front instanceof THREE.Mesh)front.material=faceMaterial;
+    }else texture.dispose();
+   }catch(_){}
+  }
+
+  const box=new THREE.Box3().setFromObject(medal);
+  const center=box.getCenter(new THREE.Vector3());
+  const size=box.getSize(new THREE.Vector3());
+  medal.position.sub(center);
+  const maxDimension=Math.max(size.x,size.y,size.z);
+  holder.scale.setScalar(maxDimension>0?2.08/maxDimension:1);
+  holder.add(medal);
+
+  stamp3d.innerHTML="";
+  stamp3d.appendChild(renderer.domElement);
+
+  const resize=()=>{
+   const width=Math.max(1,stamp3d.clientWidth),height=Math.max(1,stamp3d.clientHeight);
+   renderer.setSize(width,height,false);
+   camera.aspect=width/height;
+   camera.updateProjectionMatrix();
+  };
+  resize();
+  const observer=new ResizeObserver(resize);
+  observer.observe(stamp3d);
+
+  let stopped=false,frameId=0;
+  const animate=()=>{
+   if(stopped)return;
+   controls.update();
+   renderer.render(scene,camera);
+   frameId=requestAnimationFrame(animate);
+  };
+  animate();
+
+  stamp3dCleanup=()=>{
+   stopped=true;
+   cancelAnimationFrame(frameId);
+   observer.disconnect();
+   controls.dispose();
+   faceTexture?.dispose();
+   goldMaterial.dispose();faceMaterial.dispose();backMaterial.dispose();brushedMaterial.dispose();pinMaterial.dispose();
+   environment.dispose();pmrem.dispose();renderer.dispose();
+   renderer.domElement.remove();
+  };
+ }catch(err){
+  console.error("3D medal preview failed",err);
+  if(token!==stamp3dToken)return;
+  stamp3d.classList.remove("show");
+  stamp3d.innerHTML="";
+  stampZoom2D.classList.remove("hidden");
+ }
+}
 async function authGuard(){
  const s=await client.auth.getSession();const session=s.data.session;
  if(!session){location.href=ROOT;return false}
@@ -326,6 +485,7 @@ async function load(){
    stampZoomImg.dataset.caBound="";
    if(src)stampZoomImg.src=src;
    window.CACommunityIcon.bind(stampModalBack);
+   if(selectedCa&&selectedCa.collection)void mountStampMedal3D(src);else unmountStampMedal3D();
 
    const caButtons=c.cas.map(x=>'<button type="button" class="btn '+(selectedCa&&selectedCa.id===x.id?"":"line")+'" data-modal-ca="'+esc(x.id)+'" style="font-size:10px;padding:8px 10px">'+esc(x.ca_level||"CA")+' ・ '+esc(x.trainer_name)+'</button>').join("");
    let historyHtml="";
@@ -413,7 +573,7 @@ async function load(){
   stampModalBack.setAttribute("aria-hidden","false");
  }));
 }
-function closeStampModal(){stampModalBack.classList.remove("show");stampModalBack.setAttribute("aria-hidden","true")}
+function closeStampModal(){unmountStampMedal3D();stampModalBack.classList.remove("show");stampModalBack.setAttribute("aria-hidden","true")}
 stampClose.onclick=closeStampModal;
 stampModalBack.addEventListener("click",e=>{if(e.target===stampModalBack)closeStampModal()});
 load();
