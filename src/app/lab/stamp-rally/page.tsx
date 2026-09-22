@@ -671,8 +671,11 @@ export default function Page() {
 
               {selectedCa?.collection ? <div className="mx-auto mt-1 size-56">
                 <StampMedal3D
+                  supabase={supabase}
                   imageUrl={selectedDesignSrc}
                   fallbackImageUrl={selectedCommunity.avatar_url}
+                  thumbnailPath={selectedDesign?.thumbnail_path}
+                  archivePath={selectedDesign?.archive_path}
                   className="h-full w-full"
                 />
               </div> : <div className="mx-auto mt-1 grid size-56 place-items-center rounded-full bg-gradient-to-br from-[#f8e3bf] via-white to-[#edc993] p-2 shadow-[0_18px_45px_rgba(112,73,35,.22)]">
