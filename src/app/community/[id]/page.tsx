@@ -210,7 +210,7 @@ export default function Page(){
   if(!community) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 Communityを読み込み中...</main>;
 
   return <main className="mx-auto max-w-6xl px-4 py-7 md:px-8">
-    <Link href="/communities" className="text-sm font-black text-lime-700">← Community一覧</Link>
+    <Link href={profile?.role==="admin"?"/communities":"/my"} className="text-sm font-black text-lime-700">{profile?.role==="admin"?"← Community一覧":"← My Community"}</Link>
 
     <section className="clover-card mt-4 p-6">
       <div className="text-xs font-black text-lime-600">{community.prefecture??"—"}</div>
