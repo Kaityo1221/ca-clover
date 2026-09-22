@@ -191,12 +191,11 @@ function render(){
 function startCountdown(){countdown=5;render();if(countTimer)clearInterval(countTimer);countTimer=setInterval(()=>{countdown--;if(countdown<=0){clearInterval(countTimer);countTimer=null;countdown=0}render()},1000)}
 async function boot(){
  const s=await client.auth.getSession(),session=s.data.session;if(!session){location.href=ROOT;return}currentUser=session.user;
- const [p,u,i]=await Promise.all([
+ const [p,u]=await Promise.all([
   client.from("profiles").select("role").eq("id",session.user.id).maybeSingle(),
-  client.from("user_permissions").select("permission_code").eq("user_id",session.user.id).eq("permission_code","S"),
-  client.from("user_ca_identities").select("ca_member_id").eq("user_id",session.user.id).eq("is_primary",true).maybeSingle()
+  client.from("user_permissions").select("permission_code").eq("user_id",session.user.id).eq("permission_code","S")
  ]);
- const ok=p.data&&p.data.role==="admin"||(u.data||[]).some(x=>x.permission_code==="S");if(!ok){showMessage("S権限が必要です。");return}if(!i.data){showMessage("交換用CA本人情報が設定されていません。");return}
+ const ok=p.data&&p.data.role==="admin"||(u.data||[]).some(x=>x.permission_code==="S");if(!ok){showMessage("S権限が必要です。");return}
  const t=new URLSearchParams(location.search).get("t");if(t){joinToken(t.trim());return}
  try{const d=await invoke({action:"resume"});if(d.room){remember(d.room);if(room.my_role==="host"){token=sessionStorage.getItem(tokenKey(room.id))||null}}render()}catch(err){showMessage(err.message||String(err));render()}
 }
