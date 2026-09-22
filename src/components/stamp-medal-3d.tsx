@@ -1,14 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 type StampMedal3DProps = {
+  supabase?: SupabaseClient;
   imageUrl?: string | null;
   fallbackImageUrl?: string | null;
+  thumbnailPath?: string | null;
+  archivePath?: string | null;
   className?: string;
 };
 
@@ -26,7 +30,14 @@ function disposeObject(root: THREE.Object3D) {
   });
 }
 
-export function StampMedal3D({ imageUrl, fallbackImageUrl, className = "" }: StampMedal3DProps) {
+export function StampMedal3D({
+  supabase,
+  imageUrl,
+  fallbackImageUrl,
+  thumbnailPath,
+  archivePath,
+  className = "",
+}: StampMedal3DProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -39,6 +50,7 @@ export function StampMedal3D({ imageUrl, fallbackImageUrl, className = "" }: Sta
     let frameId = 0;
     let medal: THREE.Object3D | null = null;
     let faceTexture: THREE.Texture | null = null;
+    let faceObjectUrl: string | null = null;
 
     setReady(false);
     setFailed(false);
@@ -135,30 +147,85 @@ export function StampMedal3D({ imageUrl, fallbackImageUrl, className = "" }: Sta
     });
 
     async function applyFaceTexture(model: THREE.Object3D) {
-      const candidates = [imageUrl, fallbackImageUrl].filter(
-        (value, index, array): value is string => Boolean(value) && array.indexOf(value) === index,
-      );
+      const front = model.getObjectByName("FrontFace");
+      if (!(front instanceof THREE.Mesh)) return;
+
+      const existing = Array.isArray(front.material) ? front.material[0] : front.material;
+      const activeFaceMaterial =
+        existing instanceof THREE.MeshPhysicalMaterial
+          ? existing.clone()
+          : existing instanceof THREE.MeshStandardMaterial
+            ? new THREE.MeshPhysicalMaterial({
+                color: existing.color.clone(),
+                metalness: existing.metalness,
+                roughness: existing.roughness,
+                side: existing.side,
+                transparent: existing.transparent,
+                opacity: existing.opacity,
+              })
+            : faceMaterial.clone();
+
+      activeFaceMaterial.color.set(0xffffff);
+      activeFaceMaterial.metalness = 0;
+      activeFaceMaterial.roughness = 0.18;
+      activeFaceMaterial.clearcoat = 0.25;
+      activeFaceMaterial.clearcoatRoughness = 0.2;
+
       const loader = new THREE.TextureLoader();
-      for (const candidate of candidates) {
+
+      const applyTexture = async (candidate: string) => {
         try {
           const texture = await loader.loadAsync(candidate);
           if (disposed) {
             texture.dispose();
-            return;
+            return false;
           }
           texture.colorSpace = THREE.SRGBColorSpace;
           texture.flipY = false;
           texture.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 8);
           faceTexture = texture;
-          faceMaterial.map = texture;
-          faceMaterial.color.set(0xffffff);
-          faceMaterial.needsUpdate = true;
-          const front = model.getObjectByName("FrontFace");
-          if (front instanceof THREE.Mesh) front.material = faceMaterial;
-          return;
+          activeFaceMaterial.map = texture;
+          activeFaceMaterial.needsUpdate = true;
+          front.material = activeFaceMaterial;
+          return true;
         } catch {
-          // Try the next available Community image source.
+          return false;
         }
+      };
+
+      if (supabase && thumbnailPath) {
+        try {
+          const downloaded = await supabase.storage.from("community-icon-thumbs").download(thumbnailPath);
+          if (!downloaded.error && downloaded.data && !disposed) {
+            faceObjectUrl = URL.createObjectURL(downloaded.data);
+            if (await applyTexture(faceObjectUrl)) return;
+            URL.revokeObjectURL(faceObjectUrl);
+            faceObjectUrl = null;
+          }
+        } catch {
+          // Try the next source.
+        }
+      }
+
+      if (supabase && archivePath) {
+        try {
+          const downloaded = await supabase.storage.from("community-icon-archive").download(archivePath);
+          if (!downloaded.error && downloaded.data && !disposed) {
+            faceObjectUrl = URL.createObjectURL(downloaded.data);
+            if (await applyTexture(faceObjectUrl)) return;
+            URL.revokeObjectURL(faceObjectUrl);
+            faceObjectUrl = null;
+          }
+        } catch {
+          // Try the next source.
+        }
+      }
+
+      const candidates = [imageUrl, fallbackImageUrl].filter(
+        (value, index, array): value is string => Boolean(value) && array.indexOf(value) === index,
+      );
+      for (const candidate of candidates) {
+        if (await applyTexture(candidate)) return;
       }
     }
 
@@ -184,7 +251,6 @@ export function StampMedal3D({ imageUrl, fallbackImageUrl, className = "" }: Sta
           }
 
           if (object.name === "MedalBody") object.material = goldMaterial;
-          else if (object.name === "FrontFace") object.material = faceMaterial;
           else if (object.name === "back_shell") object.material = backMaterial;
           else if (object.name === "brushed_detail") object.material = brushedMaterial;
           else if (object.name === "pin_assembly") object.material = pinMaterial;
@@ -237,6 +303,7 @@ export function StampMedal3D({ imageUrl, fallbackImageUrl, className = "" }: Sta
       controls.dispose();
       if (medal) disposeObject(medal);
       faceTexture?.dispose();
+      if (faceObjectUrl) URL.revokeObjectURL(faceObjectUrl);
       goldMaterial.dispose();
       faceMaterial.dispose();
       backMaterial.dispose();
@@ -247,7 +314,7 @@ export function StampMedal3D({ imageUrl, fallbackImageUrl, className = "" }: Sta
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [fallbackImageUrl, imageUrl]);
+  }, [archivePath, fallbackImageUrl, imageUrl, supabase, thumbnailPath]);
 
   return (
     <div className={"relative " + className}>
