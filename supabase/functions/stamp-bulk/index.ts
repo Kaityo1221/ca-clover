@@ -299,11 +299,10 @@ Deno.serve(async(req:Request)=>{
     if(action==="resume"){
       const {data:rows,error}=await admin
         .from("stamp_bulk_participants")
-        .select("room_id,joined_at,stamp_bulk_rooms!inner(status)")
+        .select("room_id,joined_at")
         .eq("user_id",actorUserId)
-        .in("stamp_bulk_rooms.status",["open","processing","partial_failed","completed"])
         .order("joined_at",{ascending:false})
-        .limit(5);
+        .limit(10);
       if(error) throw error;
 
       for(const row of rows??[]){
