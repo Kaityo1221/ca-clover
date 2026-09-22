@@ -51,6 +51,11 @@ type ExchangeSession={
   result:any;
 };
 
+type ExchangeCache={
+  session:ExchangeSession;
+  token:string|null;
+};
+
 type Phase="idle"|"connecting"|"saving"|"checking"|"retrying";
 
 function loadScript(src:string,globalName:"QRCode"|"jsQR"){
@@ -108,12 +113,33 @@ export default function StampExchangePage(){
     return user?"ca-clover-stamp-exchange:"+user.id:null;
   }
 
-  function rememberSession(next:ExchangeSession|null){
+  function rememberSession(next:ExchangeSession|null,nextToken:string|null=token){
     setSession(next);
+    setToken(next?nextToken:null);
     const key=cacheKey();
     if(!key) return;
-    if(next) sessionStorage.setItem(key,JSON.stringify(next));
-    else sessionStorage.removeItem(key);
+    if(next){
+      const payload:ExchangeCache={session:next,token:nextToken};
+      sessionStorage.setItem(key,JSON.stringify(payload));
+    }else{
+      sessionStorage.removeItem(key);
+    }
+  }
+
+  function readCachedExchange(key:string):ExchangeCache|null{
+    const raw=sessionStorage.getItem(key);
+    if(!raw) return null;
+    try{
+      const parsed=JSON.parse(raw) as ExchangeCache|ExchangeSession;
+      if(parsed&&typeof parsed==="object"&&"session" in parsed){
+        const cache=parsed as ExchangeCache;
+        if(cache.session?.id) return {session:cache.session,token:cache.token??null};
+      }
+      const legacy=parsed as ExchangeSession;
+      if(legacy?.id) return {session:legacy,token:null};
+    }catch{}
+    sessionStorage.removeItem(key);
+    return null;
   }
 
   async function invokeOnce(body:Record<string,unknown>){
@@ -179,8 +205,7 @@ export default function StampExchangePage(){
     setBusy(true);setPhase("connecting");setMessage(null);stopCamera();
     try{
       const data=await callExchange({action:"create"});
-      rememberSession(data.session);
-      setToken(data.token);
+      rememberSession(data.session,data.token);
     }catch(error){
       setMessage(error instanceof Error?error.message:String(error));
     }finally{
@@ -193,8 +218,7 @@ export default function StampExchangePage(){
     setBusy(true);setPhase("connecting");setMessage(null);stopCamera();
     try{
       const data=await callExchange({action:"claim",token:nextToken},{retry:true});
-      rememberSession(data.session);
-      setToken(null);
+      rememberSession(data.session,null);
       window.history.replaceState({}, "", window.location.pathname);
     }catch(error){
       setMessage(error instanceof Error?error.message:String(error));
@@ -253,8 +277,7 @@ export default function StampExchangePage(){
         {action:"cancel",sessionId:session.id},
         {retry:true},
       );
-      rememberSession(data.session);
-      setToken(null);
+      rememberSession(data.session,null);
     }catch(error){
       setMessage(error instanceof Error?error.message:String(error));
     }finally{
@@ -272,8 +295,7 @@ export default function StampExchangePage(){
           {retry:true},
         );
       }
-      rememberSession(null);
-      setToken(null);
+      rememberSession(null,null);
     }catch(error){
       setMessage(error instanceof Error?error.message:String(error));
       setBusy(false);setPhase("idle");
@@ -283,14 +305,61 @@ export default function StampExchangePage(){
     await startScanner();
   }
 
-  async function resumeRecentSession(){
+  async function resumeRecentSession(cached:ExchangeCache|null){
     if(!online||busy) return;
     setPhase("checking");
     try{
       const data=await callExchange({action:"resume"},{retry:true});
-      if(data.session) rememberSession(data.session);
+      const resumed=(data.session??null) as ExchangeSession|null;
+
+      if(!resumed){
+        rememberSession(null,null);
+        return;
+      }
+
+      if(resumed.status==="open"&&resumed.my_role==="issuer"){
+        const matchingToken=
+          cached?.session?.id===resumed.id
+          && Boolean(cached.token)
+          && new Date(resumed.expires_at).getTime()>Date.now();
+
+        if(matchingToken){
+          rememberSession(resumed,cached!.token);
+          return;
+        }
+
+        // An open issuer session cannot redraw its QR without the original token.
+        // End the stale session and return to the initial two-button state.
+        try{
+          await callExchange(
+            {action:"cancel",sessionId:resumed.id},
+            {retry:true,attempts:2},
+          );
+        }catch{}
+        rememberSession(null,null);
+        return;
+      }
+
+      if(resumed.status==="paired"){
+        rememberSession(resumed,null);
+        return;
+      }
+
+      rememberSession(null,null);
     }catch{
-      // Cached session stays visible. This is intentionally quiet on boot.
+      // Keep only a cache that is actually usable offline.
+      const usableOpen=
+        cached?.session?.status==="open"
+        && cached.session.my_role==="issuer"
+        && Boolean(cached.token)
+        && new Date(cached.session.expires_at).getTime()>Date.now();
+      const usablePaired=cached?.session?.status==="paired";
+
+      if(usableOpen||usablePaired){
+        rememberSession(cached!.session,cached!.token);
+      }else{
+        rememberSession(null,null);
+      }
     }finally{
       setPhase("idle");
     }
@@ -376,22 +445,30 @@ export default function StampExchangePage(){
     initialTokenHandled.current=true;
 
     const key="ca-clover-stamp-exchange:"+user.id;
-    const cached=sessionStorage.getItem(key);
-    if(cached){
-      try{
-        rememberSession(JSON.parse(cached) as ExchangeSession);
-      }catch{
-        sessionStorage.removeItem(key);
-      }
-    }
+    const cached=readCachedExchange(key);
 
     const incoming=new URLSearchParams(window.location.search).get("t")?.trim();
     if(incoming){
+      rememberSession(null,null);
       void claimToken(incoming);
       return;
     }
 
-    void resumeRecentSession();
+    if(cached){
+      const usableOpen=
+        cached.session.status==="open"
+        && cached.session.my_role==="issuer"
+        && Boolean(cached.token)
+        && new Date(cached.session.expires_at).getTime()>Date.now();
+      const usablePaired=cached.session.status==="paired";
+      if(usableOpen||usablePaired){
+        rememberSession(cached.session,cached.token);
+      }else{
+        rememberSession(null,null);
+      }
+    }
+
+    void resumeRecentSession(cached);
   },[loading,user,canAccess]);
 
   useEffect(()=>{
@@ -420,7 +497,7 @@ export default function StampExchangePage(){
       })
       .catch(error=>setMessage(error instanceof Error?error.message:String(error)));
     return()=>{alive=false;};
-  },[token]);
+  },[token,session?.id,session?.status]);
 
   const myResultStatus=useMemo(()=>{
     const participants=session?.result?.participants;
