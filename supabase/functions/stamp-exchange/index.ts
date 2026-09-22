@@ -139,13 +139,18 @@ Deno.serve(async(req:Request)=>{
         .from("stamp_exchange_sessions")
         .select("id,status,created_at")
         .or("issuer_user_id.eq."+actorUserId+",scanner_user_id.eq."+actorUserId)
-        .in("status",["open","paired","completed"])
+        .in("status",["open","paired"])
         .gte("created_at",cutoff)
         .order("created_at",{ascending:false})
         .limit(1);
       if(recentError) throw recentError;
       if(!recent?.length) return json({ok:true,session:null});
-      return json({ok:true,session:await getSessionDto(admin,recent[0].id,actorUserId)});
+
+      const resumed=await getSessionDto(admin,recent[0].id,actorUserId);
+      if(!["open","paired"].includes(resumed.status)){
+        return json({ok:true,session:null});
+      }
+      return json({ok:true,session:resumed});
     }
 
     if(action==="create"){
