@@ -83,15 +83,22 @@ Deno.serve(async(req:Request)=>{
     if(auth.error) return auth.error;
     const {admin}=auth;
     const body=await req.json().catch(()=>({}));
+    const requestedIds=Array.isArray(body.communityIds)
+      ?body.communityIds.filter((value:unknown):value is string=>typeof value==="string"&&value.length>0)
+      :[];
     const offset=Math.max(0,Number(body.offset??0)||0);
-    const limit=Math.max(1,Math.min(12,Number(body.limit??8)||8));
+    const limit=Math.max(1,Math.min(8,Number(body.limit??6)||6));
 
-    const {data:rows,error,count}=await admin
+    let query=admin
       .from("communities")
       .select("id,name,avatar_url,avatar_thumbnail_path,avatar_content_hash",{count:"exact"})
-      .not("avatar_url","is",null)
-      .order("name")
-      .range(offset,offset+limit-1);
+      .not("avatar_url","is",null);
+    if(requestedIds.length){
+      query=query.in("id",requestedIds);
+    }else{
+      query=query.order("name").range(offset,offset+limit-1);
+    }
+    const {data:rows,error,count}=await query;
     if(error) throw error;
 
     let repaired=0;
@@ -162,7 +169,7 @@ Deno.serve(async(req:Request)=>{
       }
     }
 
-    const total=count??0;
+    const total=requestedIds.length?requestedIds.length:(count??0);
     const nextOffset=offset+(rows?.length??0);
     return json({
       ok:true,
@@ -170,7 +177,7 @@ Deno.serve(async(req:Request)=>{
       limit,
       total,
       processed:rows?.length??0,
-      nextOffset:nextOffset<total?nextOffset:null,
+      nextOffset:requestedIds.length?null:(nextOffset<total?nextOffset:null),
       valid,
       repaired,
       failed,
