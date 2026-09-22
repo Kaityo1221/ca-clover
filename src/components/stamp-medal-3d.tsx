@@ -172,47 +172,6 @@ export function StampMedal3D({
       activeFaceMaterial.clearcoatRoughness = 0.2;
 
       const loader = new THREE.TextureLoader();
-      const faceSafeScale = 0.88;
-
-      const createSafeFaceTexture = (source: THREE.Texture) => {
-        const image = source.image as HTMLImageElement | ImageBitmap | HTMLCanvasElement;
-        const sourceWidth =
-          "naturalWidth" in image && image.naturalWidth ? image.naturalWidth : image.width;
-        const sourceHeight =
-          "naturalHeight" in image && image.naturalHeight ? image.naturalHeight : image.height;
-        if (!sourceWidth || !sourceHeight) return source;
-
-        const size = 1024;
-        const canvas = document.createElement("canvas");
-        canvas.width = size;
-        canvas.height = size;
-        const context = canvas.getContext("2d");
-        if (!context) return source;
-
-        context.fillStyle = "#ffffff";
-        context.fillRect(0, 0, size, size);
-
-        const safeSize = size * faceSafeScale;
-        const scale = Math.max(safeSize / sourceWidth, safeSize / sourceHeight);
-        const drawWidth = sourceWidth * scale;
-        const drawHeight = sourceHeight * scale;
-        const x = (size - drawWidth) / 2;
-        const y = (size - drawHeight) / 2;
-
-        context.save();
-        context.beginPath();
-        context.arc(size / 2, size / 2, safeSize / 2, 0, Math.PI * 2);
-        context.clip();
-        context.drawImage(image, x, y, drawWidth, drawHeight);
-        context.restore();
-
-        const safeTexture = new THREE.CanvasTexture(canvas);
-        safeTexture.colorSpace = THREE.SRGBColorSpace;
-        safeTexture.flipY = false;
-        safeTexture.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 8);
-        source.dispose();
-        return safeTexture;
-      };
 
       const applyTexture = async (candidate: string) => {
         try {
@@ -221,9 +180,11 @@ export function StampMedal3D({
             texture.dispose();
             return false;
           }
-          const safeTexture = createSafeFaceTexture(texture);
-          faceTexture = safeTexture;
-          activeFaceMaterial.map = safeTexture;
+          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.flipY = false;
+          texture.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 8);
+          faceTexture = texture;
+          activeFaceMaterial.map = texture;
           activeFaceMaterial.needsUpdate = true;
           front.material = activeFaceMaterial;
           return true;
@@ -269,7 +230,7 @@ export function StampMedal3D({
     }
 
     new GLTFLoader().load(
-      "/models/medal_template_final.glb",
+      "/models/medal_template_final.glb?v=6",
       (gltf) => {
         if (disposed) {
           disposeObject(gltf.scene);
