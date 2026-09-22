@@ -120,7 +120,7 @@ function unmountStampMedal3D(){
  stamp3d.innerHTML="";
  stampZoom2D.classList.remove("hidden");
 }
-async function mountStampMedal3D(imageUrl){
+async function mountStampMedal3D(imageUrl,fallbackImageUrl){
  unmountStampMedal3D();
  const token=++stamp3dToken;
  stamp3d.classList.add("show");
@@ -202,20 +202,21 @@ async function mountStampMedal3D(imageUrl){
   });
 
   let faceTexture=null;
-  if(imageUrl){
+  const textureCandidates=[imageUrl,fallbackImageUrl].filter((value,index,array)=>value&&array.indexOf(value)===index);
+  for(const textureUrl of textureCandidates){
    try{
-    const texture=await new THREE.TextureLoader().loadAsync(imageUrl);
-    if(token===stamp3dToken){
-     texture.colorSpace=THREE.SRGBColorSpace;
-     texture.flipY=false;
-     texture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
-     faceTexture=texture;
-     faceMaterial.map=texture;
-     faceMaterial.color.set(0xffffff);
-     faceMaterial.needsUpdate=true;
-     const front=medal.getObjectByName("FrontFace");
-     if(front instanceof THREE.Mesh)front.material=faceMaterial;
-    }else texture.dispose();
+    const texture=await new THREE.TextureLoader().loadAsync(textureUrl);
+    if(token!==stamp3dToken){texture.dispose();break}
+    texture.colorSpace=THREE.SRGBColorSpace;
+    texture.flipY=false;
+    texture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
+    faceTexture=texture;
+    faceMaterial.map=texture;
+    faceMaterial.color.set(0xffffff);
+    faceMaterial.needsUpdate=true;
+    const front=medal.getObjectByName("FrontFace");
+    if(front instanceof THREE.Mesh)front.material=faceMaterial;
+    break;
    }catch(_){}
   }
 
@@ -440,7 +441,7 @@ async function load(){
       const gotCount=c.cas.filter(x=>x.acquired).length,any=gotCount>0,allGot=c.cas.length>0&&gotCount===c.cas.length;
       const coverCa=c.cas.find(x=>x.acquired)||null,coverDesign=coverCa?displayDesign(coverCa):null,coverSrc=designUrl(coverDesign);
       const picture=coverSrc
-       ?'<img src="'+esc(coverSrc)+'" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
+       ?'<img data-ca-community-icon="1" data-original="'+esc(c.avatar_url||"")+'" src="'+esc(coverSrc)+'" alt="" loading="lazy">'
        :window.CACommunityIcon.img(client,c,'alt="" loading="lazy"');
       return '<button type="button" class="stamp" data-community="'+esc(c.id)+'"><div class="medal '+(any?'':'unowned')+'"><div class="medalinner"><span class="fallback">🍀</span>'+picture+'</div>'+(allGot?'<span class="check">✓</span>':'')+'</div><div class="cname">'+esc(c.name)+'</div><div class="canames">'+(c.cas.length?c.cas.slice(0,2).map(x=>'<div class="caname '+(x.acquired?'on':'off')+'">'+(x.acquired?'● ':'○ ')+esc(x.trainer_name)+'</div>').join(""):'<div class="caname off">CA未設定</div>')+(c.cas.length>2?'<div class="caname off">+'+(c.cas.length-2)+'</div>':'')+'</div></button>';
     }).join(""):'<div class="empty">Communityはありません</div>';
@@ -480,12 +481,12 @@ async function load(){
 
    const src=selectedDesign?designUrl(selectedDesign):thumb(c);
    stampZoomImg.style.display=src?"block":"none";
-   stampZoomImg.dataset.original=selectedDesign?"":c.avatar_url||"";
-   stampZoomImg.dataset.caCommunityIcon=selectedDesign?"":"1";
+   stampZoomImg.dataset.original=c.avatar_url||"";
+   stampZoomImg.dataset.caCommunityIcon="1";
    stampZoomImg.dataset.caBound="";
    if(src)stampZoomImg.src=src;
    window.CACommunityIcon.bind(stampModalBack);
-   if(selectedCa&&selectedCa.collection)void mountStampMedal3D(src);else unmountStampMedal3D();
+   if(selectedCa&&selectedCa.collection)void mountStampMedal3D(src,c.avatar_url||"");else unmountStampMedal3D();
 
    const caButtons=c.cas.map(x=>'<button type="button" class="btn '+(selectedCa&&selectedCa.id===x.id?"":"line")+'" data-modal-ca="'+esc(x.id)+'" style="font-size:10px;padding:8px 10px">'+esc(x.ca_level||"CA")+' ・ '+esc(x.trainer_name)+'</button>').join("");
    let historyHtml="";
