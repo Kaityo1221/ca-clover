@@ -71,7 +71,11 @@ async function fetchSource(url:string){
   if(!response.ok) throw new Error("avatar HTTP "+response.status);
   const buffer=await response.arrayBuffer();
   if(buffer.byteLength>5*1024*1024) throw new Error("avatar too large");
-  return buffer;
+  const rawType=(response.headers.get("content-type")??"").split(";")[0].trim().toLowerCase();
+  return {
+    buffer,
+    contentType:rawType.startsWith("image/")?rawType:"application/octet-stream",
+  };
 }
 
 Deno.serve(async(req:Request)=>{
@@ -128,24 +132,50 @@ Deno.serve(async(req:Request)=>{
         }
 
         const source=await fetchSource(community.avatar_url);
-        const communityPath=await createCommunityIconThumbnail(admin,community.id,source);
+        let archivePath:string|null=null;
+        if(version&&community.avatar_content_hash){
+          archivePath=community.id+"/"+community.avatar_content_hash;
+          const {error:archiveError}=await admin.storage
+            .from("community-icon-archive")
+            .upload(archivePath,new Uint8Array(source.buffer),{
+              contentType:source.contentType,
+              cacheControl:"31536000",
+              upsert:true,
+            });
+          if(archiveError) throw archiveError;
+        }
+
+        let communityPath:string|null=null;
+        let versionPath:string|null=null;
+        try{
+          communityPath=await createCommunityIconThumbnail(admin,community.id,source.buffer);
+          if(version&&community.avatar_content_hash){
+            versionPath=await createCommunityIconVersionThumbnail(
+              admin,
+              community.id,
+              community.avatar_content_hash,
+              source.buffer,
+            );
+          }
+        }catch(error){
+          if(!(error instanceof Error)||error.message!=="source_dimensions_too_large"){
+            throw error;
+          }
+        }
+
         const {error:updateCommunityError}=await admin
           .from("communities")
           .update({avatar_thumbnail_path:communityPath})
           .eq("id",community.id);
         if(updateCommunityError) throw updateCommunityError;
 
-        let versionPath=version?.thumbnail_path??null;
-        if(version&&community.avatar_content_hash){
-          versionPath=await createCommunityIconVersionThumbnail(
-            admin,
-            community.id,
-            community.avatar_content_hash,
-            source,
-          );
+        if(version){
           const {error:updateVersionError}=await admin
             .from("community_icon_versions")
-            .update({thumbnail_path:versionPath})
+            .update({
+              thumbnail_path:versionPath,
+              archive_path:archivePath,
+            })
             .eq("id",version.id);
           if(updateVersionError) throw updateVersionError;
         }
@@ -154,9 +184,10 @@ Deno.serve(async(req:Request)=>{
         results.push({
           community_id:community.id,
           name:community.name,
-          status:"repaired",
+          status:communityPath?"repaired":"archive_fallback",
           community_thumbnail_path:communityPath,
           version_thumbnail_path:versionPath,
+          archive_path:archivePath,
         });
       }catch(error){
         failed++;
