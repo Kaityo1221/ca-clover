@@ -49,7 +49,10 @@ function e(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<
 function showMessage(v){messageEl.innerHTML=v?'<div class="notice error">'+e(v)+'</div>':""}
 function renderNet(){net.innerHTML=online?"":'<div class="notice offline">📡 オフラインです。ルーム状態は保持します。</div>';const labels={creating:"ルームを準備中...",joining:"ルームに参加中...",starting:"参加者を固定中...",processing:"全ペアを保存中...",retrying:"失敗ペアだけ再試行中...",closing:"ルームを終了中..."};phaseEl.innerHTML=labels[phase]?'<div class="notice phase">⏳ '+labels[phase]+'</div>':""}
 async function invoke(body){
- const r=await client.functions.invoke("stamp-bulk",{body});
+ const authState=await client.auth.getSession();
+ const accessToken=authState.data.session&&authState.data.session.access_token;
+ if(!accessToken)throw new Error("ログインセッションが切れています。再ログインしてください。");
+ const r=await client.functions.invoke("stamp-bulk",{body,headers:{Authorization:"Bearer "+accessToken}});
  if(r.error){
   let detail=r.error.message;
   try{if(r.error.context){const p=await r.error.context.clone().json();if(p&&p.error)detail=String(p.error)}}catch{}
