@@ -180,10 +180,16 @@ export default function StampEventsPage(){
               >取消</button>
             </div>:null}
 
-            {event.active_for_me?<Link
-              href="/lab/stamp-rally/exchange"
-              className="mt-4 block rounded-2xl bg-[#5f8e50] px-4 py-3.5 text-center text-sm font-black text-white"
-            >イベント交換をする →</Link>:null}
+            {event.active_for_me?<div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <Link
+                href="/lab/stamp-rally/exchange"
+                className="block rounded-2xl bg-[#5f8e50] px-4 py-3.5 text-center text-sm font-black text-white"
+              >1対1交換 →</Link>
+              <Link
+                href="/lab/stamp-rally/bulk"
+                className="block rounded-2xl bg-[#d99039] px-4 py-3.5 text-center text-sm font-black text-white"
+              >🪙 大交換モード →</Link>
+            </div>:null}
           </section>;
         }):<div className="rounded-[24px] border border-dashed border-[#d8c7b5] bg-white/70 p-7 text-center text-sm font-bold text-[#8d7c6c]">現在参加できるイベントはありません。</div>}
       </div>
