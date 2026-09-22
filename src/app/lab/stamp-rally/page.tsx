@@ -584,15 +584,21 @@ export default function Page() {
                                 const coverCa=community.cas.find(ca=>ca.acquired)??null;
                                 const coverDesign=coverCa?displayDesign(coverCa):null;
                                 const coverSrc=designUrl(coverDesign);
-                                return coverSrc?<div className={"relative h-full w-full overflow-hidden rounded-full bg-[#eef2e9] "+(!anyAcquired?"grayscale opacity-35":"")}>
-                                  <span className="absolute inset-0 grid place-items-center text-3xl text-[#9caf90]">🍀</span>
-                                  <img src={coverSrc} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" onError={event=>{event.currentTarget.style.display="none";}}/>
-                                </div>:<CommunityIcon
-                                  supabase={supabase}
-                                  community={community}
-                                  className={"h-full w-full rounded-full bg-[#eef2e9] "+(!anyAcquired?"grayscale opacity-35":"")}
-                                  fallbackClassName="text-3xl text-[#9caf90]"
-                                />;
+                                return <div className={"relative h-full w-full overflow-hidden rounded-full bg-[#eef2e9] "+(!anyAcquired?"grayscale opacity-35":"")}>
+                                  <CommunityIcon
+                                    supabase={supabase}
+                                    community={community}
+                                    className="absolute inset-0 h-full w-full rounded-full bg-[#eef2e9]"
+                                    fallbackClassName="text-3xl text-[#9caf90]"
+                                  />
+                                  {coverSrc?<img
+                                    src={coverSrc}
+                                    alt=""
+                                    loading="lazy"
+                                    className="absolute inset-0 h-full w-full object-cover"
+                                    onError={event=>{event.currentTarget.style.display="none";}}
+                                  />:null}
+                                </div>;
                               })()}
                               {allAcquired ? <span className="absolute -right-1 -top-1 grid size-6 place-items-center rounded-full border-2 border-white bg-[#6e9959] text-[10px] text-white">✓</span> : null}
                             </div>
@@ -664,7 +670,11 @@ export default function Page() {
               >×</button>
 
               {selectedCa?.collection ? <div className="mx-auto mt-1 size-56">
-                <StampMedal3D imageUrl={selectedDesignSrc} className="h-full w-full" />
+                <StampMedal3D
+                  imageUrl={selectedDesignSrc}
+                  fallbackImageUrl={selectedCommunity.avatar_url}
+                  className="h-full w-full"
+                />
               </div> : <div className="mx-auto mt-1 grid size-56 place-items-center rounded-full bg-gradient-to-br from-[#f8e3bf] via-white to-[#edc993] p-2 shadow-[0_18px_45px_rgba(112,73,35,.22)]">
                 {selectedDesignSrc?<div className="relative h-full w-full overflow-hidden rounded-full bg-[#eef2e9]">
                   <span className="absolute inset-0 grid place-items-center text-6xl text-[#9caf90]">🍀</span>
