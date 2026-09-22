@@ -79,7 +79,7 @@ function render(data){
   const mission=ev.active_for_me?'<div class="mission"><div class="k">TODAY\'S MISSION ・ '+esc(ev.today_local_date)+'</div>'+(ev.today_mission?'<div class="t">'+esc(ev.today_mission.title)+'</div><div class="d">'+esc(ev.today_mission.instruction)+'</div><div class="note">遊びの合図です。端末で動作判定はしません。</div>':'<div class="d">今日のミッションは設定されていません。</div>')+'</div>':"";
   const action=!ended&&!ev.joined?'<button class="btn primary" data-join="'+esc(ev.id)+'" '+(busyId===ev.id?"disabled":"")+'>'+(busyId===ev.id?"参加設定中...":"このイベントに参加する")+'</button>'
    :!ended&&ev.joined&&!ev.active_for_me?'<div class="grid2"><div class="joinedBox">✓ 参加登録済み</div><button class="btn muted" data-leave="'+esc(ev.id)+'">取消</button></div>'
-   :ev.active_for_me?'<a class="btn primary" style="display:block;text-align:center;margin-top:14px" href="./stamp-exchange.html">イベント交換をする →</a>':"";
+   :ev.active_for_me?'<div class="grid g2" style="margin-top:14px"><a class="btn primary" style="display:block;text-align:center" href="./stamp-exchange.html">1対1交換 →</a><a class="btn" style="display:block;text-align:center;background:#d99039;color:white" href="./stamp-bulk.html">🪙 大交換モード →</a></div>':"";
   return '<article class="event '+(ev.active_for_me?"activeMine":"")+'"><div class="row"><div><div class="tags">'+phaseTag+joined+'</div><h2>'+esc(ev.name)+'</h2><div class="meta">📍 '+esc(ev.location||"場所未設定")+'<br>'+esc(ev.starts_local.replace("T"," "))+' → '+esc(ev.ends_local.replace("T"," "))+' ・ '+esc(ev.timezone)+'</div></div><div style="font-size:30px">'+(active?"🔥":"🎟️")+'</div></div>'+mission+'<div style="margin-top:14px">'+action+'</div></article>';
  }).join("");
  eventsEl.querySelectorAll("[data-join]").forEach(b=>b.onclick=()=>join(b.dataset.join));
