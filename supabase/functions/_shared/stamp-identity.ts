@@ -192,6 +192,38 @@ export async function resolveStampActor(
     };
   }
 
+  const {data:testerRows,error:testerError}=await admin.from("stamp_tester_identities")
+    .select("ca_member_id,community_id")
+    .eq("user_id",userId);
+  if(testerError) throw testerError;
+
+  const testerCandidates=(testerRows??[])
+    .map((row:any)=>({
+      ca_member_id:String(row.ca_member_id??""),
+      community_id:String(row.community_id??""),
+      is_primary:true,
+    }))
+    .filter((row:IdentityRow)=>row.ca_member_id&&row.community_id);
+
+  const uniqueTesterCandidates=[...new Map(
+    testerCandidates.map((row:IdentityRow)=>[row.ca_member_id+"|"+row.community_id,row])
+  ).values()];
+
+  if(uniqueTesterCandidates.length===1){
+    const valid=await validateIdentity(admin,uniqueTesterCandidates[0]);
+    if(valid){
+      await persistPrimaryIdentity(admin,userId,uniqueTesterCandidates[0],"stamp_auto_tester_identity");
+      return {
+        user_id:userId,
+        niantic_id:access.nianticId,
+        ca_member_id:valid.ca.id,
+        trainer_name:valid.ca.trainer_name,
+        ca_level:valid.ca.ca_level,
+        community:valid.community,
+      };
+    }
+  }
+
   const exact=await chooseExactMasterIdentity(admin,userId,access.nianticId);
   if(exact){
     const valid=await validateIdentity(admin,exact);
