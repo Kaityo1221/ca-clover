@@ -31,7 +31,7 @@ async function renderThumbnail(source:ArrayBuffer){
   await ensureImageMagick();
   return ImageMagick.read(new Uint8Array(source),(image):Uint8Array=>{
     image.resize(256,256);
-    return image.write(MagickFormat.WebP,(data)=>data);
+    return image.write(MagickFormat.WebP,(data)=>new Uint8Array(data));
   });
 }
 
