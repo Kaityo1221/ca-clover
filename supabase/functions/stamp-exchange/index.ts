@@ -1,5 +1,4 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import {observeCommunityIcon} from "../_shared/community-icon.ts";
 import {resolveStampActor} from "../_shared/stamp-identity.ts";
 
 const corsHeaders={
@@ -31,21 +30,6 @@ function makeToken(){
   const bytes=new Uint8Array(32);
   crypto.getRandomValues(bytes);
   return base64Url(bytes);
-}
-
-async function ensureActorDesign(admin:any,actor:any){
-  const community=actor?.community;
-  if(!community?.id||!community?.avatar_url) return;
-  await observeCommunityIcon(
-    admin,
-    community.id,
-    community.avatar_url,
-    {
-      generateMissingThumbnail:!community.avatar_thumbnail_path,
-      ensureArchive:true,
-      allowUrlFallbackChange:false,
-    },
-  );
 }
 
 async function getActiveEvent(admin:any,userId:string){
@@ -166,7 +150,6 @@ Deno.serve(async(req:Request)=>{
 
     if(action==="create"){
       const actor=await resolveStampActor(admin,actorUserId);
-      await ensureActorDesign(admin,actor);
       const activeEvent=await getActiveEvent(admin,actorUserId);
 
       await admin.from("stamp_exchange_sessions")
@@ -199,7 +182,6 @@ Deno.serve(async(req:Request)=>{
 
     if(action==="claim"){
       const actor=await resolveStampActor(admin,actorUserId);
-      await ensureActorDesign(admin,actor);
       const token=String(body.token??"").trim();
       if(!token) return json({error:"QRコードを読み取れませんでした"},400);
       const tokenHash=await sha256(token);
