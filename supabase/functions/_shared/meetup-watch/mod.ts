@@ -318,7 +318,7 @@ async function queueDiscordNotification(
     retry_count:0,
     next_retry_at:null,
     payload,
-  },{onConflict:"notification_key",ignoreDuplicates:true}).select("id");
+  },{onConflict:"dedupe_key",ignoreDuplicates:true}).select("id");
   if(error) throw error;
   return Boolean(data?.length);
 }
