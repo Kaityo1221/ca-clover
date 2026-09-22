@@ -44,7 +44,7 @@ export function StampMedal3D({ imageUrl, className = "" }: StampMedal3DProps) {
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(28, 1, 0.01, 100);
-    camera.position.set(0, 0.03, 3.45);
+    camera.position.set(0, 0.03, 4.10);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -53,7 +53,7 @@ export function StampMedal3D({ imageUrl, className = "" }: StampMedal3DProps) {
     });
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.08;
+    renderer.toneMappingExposure = 0.92;
     renderer.setClearColor(0x000000, 0);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.domElement.style.width = "100%";
@@ -96,18 +96,18 @@ export function StampMedal3D({ imageUrl, className = "" }: StampMedal3DProps) {
     const goldMaterial = new THREE.MeshPhysicalMaterial({
       color: 0xb8922e,
       metalness: 0.95,
-      roughness: 0.26,
-      reflectivity: 0.7,
-      clearcoat: 0.18,
-      clearcoatRoughness: 0.1,
+      roughness: 0.34,
+      reflectivity: 0.52,
+      clearcoat: 0.08,
+      clearcoatRoughness: 0.18,
     });
     const faceMaterial = new THREE.MeshPhysicalMaterial({
       color: 0xffffff,
       metalness: 0,
-      roughness: 0.08,
-      reflectivity: 0.95,
-      clearcoat: 0.9,
-      clearcoatRoughness: 0.03,
+      roughness: 0.18,
+      reflectivity: 0.38,
+      clearcoat: 0.25,
+      clearcoatRoughness: 0.2,
     });
     const backMaterial = new THREE.MeshPhysicalMaterial({
       color: 0xd7d7d7,
@@ -195,7 +195,7 @@ export function StampMedal3D({ imageUrl, className = "" }: StampMedal3DProps) {
         medal.position.sub(center);
 
         const maxDimension = Math.max(size.x, size.y, size.z);
-        const scale = maxDimension > 0 ? 2.08 / maxDimension : 1;
+        const scale = maxDimension > 0 ? 1.75 / maxDimension : 1;
         holder.scale.setScalar(scale);
         holder.add(medal);
 
