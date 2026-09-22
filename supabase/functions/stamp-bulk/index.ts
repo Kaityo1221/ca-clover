@@ -1,5 +1,4 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import {observeCommunityIcon} from "../_shared/community-icon.ts";
 import {resolveStampActor} from "../_shared/stamp-identity.ts";
 
 const corsHeaders={
@@ -42,21 +41,6 @@ function localDate(instant:Date,timezone:string){
   }).formatToParts(instant);
   const values=Object.fromEntries(parts.map(part=>[part.type,part.value]));
   return values.year+"-"+values.month+"-"+values.day;
-}
-
-async function ensureActorDesign(admin:any,actor:any){
-  const community=actor?.community;
-  if(!community?.id||!community?.avatar_url) return;
-  await observeCommunityIcon(
-    admin,
-    community.id,
-    community.avatar_url,
-    {
-      generateMissingThumbnail:!community.avatar_thumbnail_path,
-      ensureArchive:true,
-      allowUrlFallbackChange:false,
-    },
-  );
 }
 
 async function getActiveEvent(admin:any,userId:string){
@@ -273,7 +257,6 @@ Deno.serve(async(req:Request)=>{
     }
 
     if(action==="create"){
-      await ensureActorDesign(admin,actor);
       const event=await getActiveEvent(admin,actorUserId);
       if(!event) return json({error:"開催中の参加イベントがありません"},409);
 
@@ -322,7 +305,6 @@ Deno.serve(async(req:Request)=>{
     }
 
     if(action==="join"){
-      await ensureActorDesign(admin,actor);
       const token=String(body.token??"").trim();
       if(!token) return json({error:"大交換QRを読み取れませんでした"},400);
       const tokenHash=await sha256(token);
