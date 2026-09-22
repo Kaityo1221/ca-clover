@@ -654,10 +654,10 @@ export default function Page() {
           :[];
 
         return <div
-          className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/55 p-5 backdrop-blur-sm"
+          className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-slate-950/55 p-5 backdrop-blur-sm [-webkit-overflow-scrolling:touch]"
           onClick={() => setSelectedCommunity(null)}
         >
-          <div className="mx-auto flex min-h-full max-w-sm items-center justify-center py-4">
+          <div className="mx-auto flex min-h-full max-w-sm items-start justify-center py-4">
             <section
               className="w-full rounded-[30px] border border-[#ead5bf] bg-[#fffaf4] p-5 text-center shadow-2xl"
               onClick={(event) => event.stopPropagation()}
