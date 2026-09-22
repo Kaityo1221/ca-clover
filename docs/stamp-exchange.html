@@ -80,13 +80,25 @@ async function invoke(body,options){
  throw last instanceof Error?last:new Error(String(last||"通信エラー"));
 }
 function cacheKey(){return currentUser?"ca-clover-stamp-exchange:"+currentUser.id:null}
-function rememberSession(s){
+function rememberSession(s,token=currentToken){
  currentSession=s;
+ currentToken=s?token:null;
  const key=cacheKey();
  if(key){
-  if(s)sessionStorage.setItem(key,JSON.stringify(s));
+  if(s)sessionStorage.setItem(key,JSON.stringify({session:s,token:token||null}));
   else sessionStorage.removeItem(key);
  }
+}
+function readCachedExchange(){
+ const key=cacheKey(),raw=key&&sessionStorage.getItem(key);
+ if(!raw)return null;
+ try{
+  const parsed=JSON.parse(raw);
+  if(parsed&&parsed.session&&parsed.session.id)return{session:parsed.session,token:parsed.token||null};
+  if(parsed&&parsed.id)return{session:parsed,token:null};
+ }catch{}
+ if(key)sessionStorage.removeItem(key);
+ return null;
 }
 function renderNet(){
  const net=document.getElementById("netState"),ph=document.getElementById("phaseState");
@@ -149,7 +161,7 @@ async function confirmExchange(){
 }
 async function cancelExchange(){
  if(!currentSession||busy)return;busy=true;phase="connecting";renderNet();render();
- try{const d=await invoke({action:"cancel",sessionId:currentSession.id},{retry:true});setSession(d.session)}
+ try{const d=await invoke({action:"cancel",sessionId:currentSession.id},{retry:true});currentToken=null;setSession(d.session)}
  catch(err){message=err.message||String(err);render()}
  finally{busy=false;phase="idle";renderNet();render()}
 }
@@ -160,7 +172,7 @@ async function switchToScanner(){
   if(currentSession&&currentSession.status==="open"){
    await invoke({action:"cancel",sessionId:currentSession.id},{retry:true});
   }
-  rememberSession(null);currentToken=null;clearTimers();
+  rememberSession(null,null);clearTimers();
  }catch(err){
   message=err.message||String(err);
   busy=false;phase="idle";renderNet();render();
@@ -188,7 +200,7 @@ function renderScanner(){
  app.innerHTML='<div class="grid"><video id="cam" muted playsinline></video><canvas id="cv" class="hidden"></canvas><div class="small center">相手のQRコードを枠内に入れてください</div><button id="cancelScan" class="btn mutedbtn">キャンセル</button></div>';
  const video=document.getElementById("cam"),canvas=document.getElementById("cv");
  video.srcObject=stream;video.play();
- document.getElementById("cancelScan").onclick=()=>{stopCamera();rememberSession(null);currentToken=null;render()};
+ document.getElementById("cancelScan").onclick=()=>{stopCamera();rememberSession(null,null);render()};
  const loop=()=>{
   if(!stream||!window.jsQR)return;
   if(video.readyState>=2&&video.videoWidth>0){
@@ -222,6 +234,7 @@ function render(){
   html+='<div class="grid"><button id="showQr" class="btn primary" '+(busy||!online?"disabled":"")+'>QRを見せる</button><button id="scanQr" class="btn outline" '+(busy||!online?"disabled":"")+'>QRを読み取る</button></div>';
  }else if(currentSession.status==="open"&&currentSession.my_role==="issuer"){
   html+=qrHtml();
+  html+='<button id="switchToScan" class="btn outline" style="width:100%;margin-top:12px" '+(busy||!online?"disabled":"")+'>QRを読み取る</button>';
  }else if(currentSession.status==="paired"&&currentSession.partner){
   const p=currentSession.partner;
   html+='<div class="person"><div class="avatar"><span>🍀</span>'+window.CACommunityIcon.img(client,p.community,'alt=""')+'</div><div class="name">'+e(p.trainer_name)+'</div><div class="community">'+e(p.community.name)+'</div><div class="pref">'+e(p.community.prefecture||"")+'</div></div>';
@@ -232,7 +245,7 @@ function render(){
  }else if(currentSession.status==="cancelled"){
   html+='<div class="notice warn center">この交換はキャンセルされました。</div><button id="reset" class="btn outline" style="width:100%;margin-top:12px">最初に戻る</button>';
  }else if(currentSession.status==="expired"){
-  html+='<div class="notice warn center">QRコードの有効期限が切れました。</div>'+(currentSession.my_role==="issuer"?'<button id="reissue" class="btn primary" style="width:100%;margin-top:12px">再発行</button>':'<button id="reset" class="btn outline" style="width:100%;margin-top:12px">別のQRを読む</button>');
+  html+='<div class="notice warn center">QRコードの有効期限が切れました。</div>'+(currentSession.my_role==="issuer"?'<button id="reissue" class="btn primary" style="width:100%;margin-top:12px">再発行</button><button id="switchToScan" class="btn outline" style="width:100%;margin-top:12px">QRを読み取る</button>':'<button id="reset" class="btn outline" style="width:100%;margin-top:12px">別のQRを読む</button>');
  }
  if(message)html+='<div class="notice error">'+e(message)+(currentSession&&online?'<button id="checkState" class="btn outline" style="width:100%;margin-top:8px">状態を再確認</button>':'')+'</div>';
  app.innerHTML=html;
@@ -242,7 +255,7 @@ function render(){
  const sw=document.getElementById("switchToScan");if(sw)sw.onclick=switchToScanner;
  const co=document.getElementById("confirmExchange");if(co)co.onclick=confirmExchange;
  const ca=document.getElementById("cancelExchange");if(ca)ca.onclick=cancelExchange;
- const reset=document.getElementById("reset");if(reset)reset.onclick=()=>{rememberSession(null);currentToken=null;message="";render()};
+ const reset=document.getElementById("reset");if(reset)reset.onclick=()=>{rememberSession(null,null);message="";render()};
  const check=document.getElementById("checkState");if(check)check.onclick=()=>refresh(true);
  window.CACommunityIcon.bind(app);
  if(currentToken&&currentSession&&currentSession.status==="open"&&document.getElementById("qr")){
@@ -262,17 +275,55 @@ async function boot(){
  const ok=p.data&&p.data.role==="admin"||(u.data||[]).some(x=>x.permission_code==="S");
  if(!ok){app.innerHTML='<div class="notice error center">S権限が必要です。</div>';return}
 
- const cached=sessionStorage.getItem(cacheKey());
- if(cached){try{rememberSession(JSON.parse(cached))}catch{sessionStorage.removeItem(cacheKey())}}
- renderNet();render();
-
+ const cached=readCachedExchange();
  const t=new URLSearchParams(location.search).get("t");
- if(t){claimToken(t.trim());return}
+ if(t){
+  rememberSession(null,null);
+  renderNet();render();
+  claimToken(t.trim());
+  return;
+ }
+
+ if(cached){
+  const s=cached.session;
+  const usableOpen=s.status==="open"&&s.my_role==="issuer"&&!!cached.token&&new Date(s.expires_at).getTime()>Date.now();
+  const usablePaired=s.status==="paired";
+  if(usableOpen||usablePaired)rememberSession(s,cached.token);
+  else rememberSession(null,null);
+ }
+ renderNet();render();
 
  if(online){
   phase="checking";renderNet();
-  try{const d=await invoke({action:"resume"},{retry:true});if(d.session)setSession(d.session)}
-  catch{}
+  try{
+   const d=await invoke({action:"resume"},{retry:true});
+   const resumed=d.session||null;
+   if(!resumed){
+    rememberSession(null,null);
+    render();
+   }else if(resumed.status==="open"&&resumed.my_role==="issuer"){
+    const matching=!!(cached&&cached.session&&cached.session.id===resumed.id&&cached.token&&new Date(resumed.expires_at).getTime()>Date.now());
+    if(matching){
+     rememberSession(resumed,cached.token);
+     render();
+    }else{
+     try{await invoke({action:"cancel",sessionId:resumed.id},{retry:true,attempts:2})}catch{}
+     rememberSession(null,null);
+     render();
+    }
+   }else if(resumed.status==="paired"){
+    rememberSession(resumed,null);
+    render();
+   }else{
+    rememberSession(null,null);
+    render();
+   }
+  }catch{
+   const s=cached&&cached.session;
+   const usableOpen=!!(s&&s.status==="open"&&s.my_role==="issuer"&&cached.token&&new Date(s.expires_at).getTime()>Date.now());
+   const usablePaired=!!(s&&s.status==="paired");
+   if(!(usableOpen||usablePaired)){rememberSession(null,null);render()}
+  }
   finally{phase="idle";renderNet()}
  }
 }
