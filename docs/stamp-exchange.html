@@ -49,7 +49,10 @@ let currentSession=null,currentToken=null,currentUser=null,pollTimer=null,countT
 function e(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c])}
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function invokeOnce(body){
- const r=await client.functions.invoke("stamp-exchange",{body});
+ const authState=await client.auth.getSession();
+ const accessToken=authState.data.session&&authState.data.session.access_token;
+ if(!accessToken)throw new Error("ログインセッションが切れています。再ログインしてください。");
+ const r=await client.functions.invoke("stamp-exchange",{body,headers:{Authorization:"Bearer "+accessToken}});
  if(r.error){
   let detail=r.error.message;
   try{
