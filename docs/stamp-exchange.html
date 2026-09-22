@@ -153,6 +153,22 @@ async function cancelExchange(){
  catch(err){message=err.message||String(err);render()}
  finally{busy=false;phase="idle";renderNet();render()}
 }
+async function switchToScanner(){
+ if(busy||!online)return;
+ busy=true;phase="connecting";message="";renderNet();render();stopCamera();
+ try{
+  if(currentSession&&currentSession.status==="open"){
+   await invoke({action:"cancel",sessionId:currentSession.id},{retry:true});
+  }
+  rememberSession(null);currentToken=null;clearTimers();
+ }catch(err){
+  message=err.message||String(err);
+  busy=false;phase="idle";renderNet();render();
+  return;
+ }
+ busy=false;phase="idle";renderNet();render();
+ await startScanner();
+}
 function startPolling(){
  clearTimers();
  if(!currentSession)return;
@@ -172,7 +188,7 @@ function renderScanner(){
  app.innerHTML='<div class="grid"><video id="cam" muted playsinline></video><canvas id="cv" class="hidden"></canvas><div class="small center">相手のQRコードを枠内に入れてください</div><button id="cancelScan" class="btn mutedbtn">キャンセル</button></div>';
  const video=document.getElementById("cam"),canvas=document.getElementById("cv");
  video.srcObject=stream;video.play();
- document.getElementById("cancelScan").onclick=()=>{stopCamera();currentSession=null;render()};
+ document.getElementById("cancelScan").onclick=()=>{stopCamera();rememberSession(null);currentToken=null;render()};
  const loop=()=>{
   if(!stream||!window.jsQR)return;
   if(video.readyState>=2&&video.videoWidth>0){
@@ -223,6 +239,7 @@ function render(){
  const show=document.getElementById("showQr");if(show)show.onclick=createQr;
  const scan=document.getElementById("scanQr");if(scan)scan.onclick=startScanner;
  const re=document.getElementById("reissue");if(re)re.onclick=createQr;
+ const sw=document.getElementById("switchToScan");if(sw)sw.onclick=switchToScanner;
  const co=document.getElementById("confirmExchange");if(co)co.onclick=confirmExchange;
  const ca=document.getElementById("cancelExchange");if(ca)ca.onclick=cancelExchange;
  const reset=document.getElementById("reset");if(reset)reset.onclick=()=>{rememberSession(null);currentToken=null;message="";render()};
