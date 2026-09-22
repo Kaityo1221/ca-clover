@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
+import { useAdminRouteGuard } from "@/lib/use-admin-route-guard";
 import { comparePrefectures } from "@/lib/prefecture-order";
 
 type ActivityMapRow = {
@@ -272,6 +273,7 @@ function renderRecentMeetups(container: HTMLElement, meetups: RecentMeetupRow[])
 
 export default function Page() {
   const { supabase, user, profile, loading } = useAuthProfile();
+  const { denied: adminDenied } = useAdminRouteGuard({ loading, user, profile });
   const [period, setPeriod] = useState<number>(30);
   const [metric, setMetric] = useState<MetricKey>("checkin_count");
   const [mapMode, setMapMode] = useState<MapMode>("activity");
@@ -308,7 +310,7 @@ export default function Page() {
   }, [isMobileMap, mapInteractionEnabled]);
 
   useEffect(() => {
-    if (loading || !user || !profile || profile.role === "pending") return;
+    if (loading || !user || !profile || profile.role !== "admin") return;
     let alive = true;
     setDataLoading(true);
     setError(null);
@@ -666,6 +668,14 @@ export default function Page() {
     );
   }
 
+  if (adminDenied) {
+    return (
+      <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">
+        🍀 My Communityへ移動中...
+      </main>
+    );
+  }
+
   if (profile?.role === "pending") {
     return (
       <main className="grid min-h-[70vh] place-items-center px-4 text-center">
@@ -694,9 +704,7 @@ export default function Page() {
         🗾 Activity Map
       </h1>
       <p className="mt-2 text-sm font-semibold text-slate-500">
-        {profile?.role === "admin"
-          ? "全国Communityの活動量を地図で比較"
-          : "割り当てCommunityの活動量を地図で比較"}
+        全国Communityの活動量を地図で比較
       </p>
 
       <div className="mt-5 flex flex-wrap gap-2">
