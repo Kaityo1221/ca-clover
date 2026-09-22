@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import {observeCommunityIcon} from "../_shared/community-icon.ts";\nimport {resolveStampActor} from "../_shared/stamp-identity.ts";
+import {observeCommunityIcon} from "../_shared/community-icon.ts";
+import {resolveStampActor} from "../_shared/stamp-identity.ts";
 
 const corsHeaders={
   "Access-Control-Allow-Origin":"*",
