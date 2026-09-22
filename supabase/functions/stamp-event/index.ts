@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";\nimport {getStampAccess,resolveStampActor} from "../_shared/stamp-identity.ts";
 
 const corsHeaders={
   "Access-Control-Allow-Origin":"*",
@@ -45,26 +45,6 @@ function localDateTime(instant:string,timezone:string){
   }).formatToParts(new Date(instant));
   const values=Object.fromEntries(parts.map(part=>[part.type,part.value]));
   return values.year+"-"+values.month+"-"+values.day+"T"+values.hour+":"+values.minute;
-}
-
-async function getAccess(admin:any,userId:string){
-  const [profileResult,permissionResult,identityResult]=await Promise.all([
-    admin.from("profiles").select("role,niantic_id").eq("id",userId).single(),
-    admin.from("user_permissions").select("permission_code").eq("user_id",userId).eq("permission_code","S"),
-    admin.from("user_ca_identities").select("ca_member_id").eq("user_id",userId).eq("is_primary",true).maybeSingle(),
-  ]);
-
-  if(profileResult.error||!profileResult.data) throw new Error("profile not found");
-  const profile=profileResult.data;
-  const isAdmin=profile.role==="admin";
-  const hasStamp=isAdmin||(permissionResult.data??[]).some((row:any)=>row.permission_code==="S");
-
-  return {
-    isAdmin,
-    hasStamp,
-    hasIdentity:Boolean(identityResult.data?.ca_member_id),
-    nianticId:profile.niantic_id??null,
-  };
 }
 
 async function listData(admin:any,userId:string,isAdmin:boolean){
@@ -172,7 +152,7 @@ Deno.serve(async(req:Request)=>{
 
     const actorUserId=userData.user.id;
     const admin=createClient(url,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}});
-    const access=await getAccess(admin,actorUserId);
+    const access=await getStampAccess(admin,actorUserId);
     if(!access.hasStamp) return json({error:"Stamp Rallyの利用権限がありません"},403);
 
     const body=await req.json().catch(()=>({}));
@@ -183,7 +163,7 @@ Deno.serve(async(req:Request)=>{
     }
 
     if(action==="join"){
-      if(!access.hasIdentity) return json({error:"交換用CA本人情報が設定されていません"},400);
+      await resolveStampActor(admin,actorUserId);
       const eventId=String(body.eventId??"");
       if(!eventId) return json({error:"eventId is required"},400);
 
