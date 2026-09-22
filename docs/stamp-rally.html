@@ -195,7 +195,6 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl){
    if(!(object instanceof THREE.Mesh))return;
    if(object.name==="SplineSkyHdriBackground"){object.visible=false;return}
    if(object.name==="MedalBody")object.material=goldMaterial;
-   else if(object.name==="FrontFace")object.material=faceMaterial;
    else if(object.name==="back_shell")object.material=backMaterial;
    else if(object.name==="brushed_detail")object.material=brushedMaterial;
    else if(object.name==="pin_assembly")object.material=pinMaterial;
@@ -203,9 +202,30 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl){
 
   let faceTexture=null;
   let faceObjectUrl=null;
+  const front=medal.getObjectByName("FrontFace");
+  const sourceFaceMaterial=front instanceof THREE.Mesh
+   ?(Array.isArray(front.material)?front.material[0]:front.material)
+   :null;
+  const activeFaceMaterial=sourceFaceMaterial instanceof THREE.MeshPhysicalMaterial
+   ?sourceFaceMaterial.clone()
+   :sourceFaceMaterial instanceof THREE.MeshStandardMaterial
+    ?new THREE.MeshPhysicalMaterial({
+      color:sourceFaceMaterial.color.clone(),
+      metalness:sourceFaceMaterial.metalness,
+      roughness:sourceFaceMaterial.roughness,
+      side:sourceFaceMaterial.side,
+      transparent:sourceFaceMaterial.transparent,
+      opacity:sourceFaceMaterial.opacity
+     })
+    :faceMaterial.clone();
+  activeFaceMaterial.color.set(0xffffff);
+  activeFaceMaterial.metalness=0;
+  activeFaceMaterial.roughness=.18;
+  activeFaceMaterial.clearcoat=.25;
+  activeFaceMaterial.clearcoatRoughness=.2;
   const textureLoader=new THREE.TextureLoader();
   const tryTexture=async textureUrl=>{
-   if(!textureUrl)return false;
+   if(!textureUrl||!(front instanceof THREE.Mesh))return false;
    try{
     const texture=await textureLoader.loadAsync(textureUrl);
     if(token!==stamp3dToken){texture.dispose();return false}
@@ -213,11 +233,9 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl){
     texture.flipY=false;
     texture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
     faceTexture=texture;
-    faceMaterial.map=texture;
-    faceMaterial.color.set(0xffffff);
-    faceMaterial.needsUpdate=true;
-    const front=medal.getObjectByName("FrontFace");
-    if(front instanceof THREE.Mesh)front.material=faceMaterial;
+    activeFaceMaterial.map=texture;
+    activeFaceMaterial.needsUpdate=true;
+    front.material=activeFaceMaterial;
     return true;
    }catch(_){return false}
   };
@@ -285,6 +303,7 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl){
    controls.dispose();
    faceTexture?.dispose();
    if(faceObjectUrl)URL.revokeObjectURL(faceObjectUrl);
+   if(activeFaceMaterial!==faceMaterial)activeFaceMaterial.dispose();
    goldMaterial.dispose();faceMaterial.dispose();backMaterial.dispose();brushedMaterial.dispose();pinMaterial.dispose();
    environment.dispose();pmrem.dispose();renderer.dispose();
    renderer.domElement.remove();
