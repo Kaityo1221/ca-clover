@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import {observeCommunityIcon} from "../_shared/community-icon.ts";
+import {observeCommunityIcon} from "../_shared/community-icon.ts";\nimport {resolveStampActor} from "../_shared/stamp-identity.ts";
 
 const corsHeaders={
   "Access-Control-Allow-Origin":"*",
@@ -41,51 +41,6 @@ function localDate(instant:Date,timezone:string){
   }).formatToParts(instant);
   const values=Object.fromEntries(parts.map(part=>[part.type,part.value]));
   return values.year+"-"+values.month+"-"+values.day;
-}
-
-async function getActor(admin:any,userId:string){
-  const [profileResult,permissionResult,identityResult]=await Promise.all([
-    admin.from("profiles").select("role,niantic_id").eq("id",userId).single(),
-    admin.from("user_permissions").select("permission_code").eq("user_id",userId).eq("permission_code","S"),
-    admin.from("user_ca_identities")
-      .select("ca_member_id,community_id")
-      .eq("user_id",userId)
-      .eq("is_primary",true)
-      .maybeSingle(),
-  ]);
-
-  if(profileResult.error||!profileResult.data) throw new Error("profile not found");
-  const profile=profileResult.data;
-  const hasAccess=profile.role==="admin"||(permissionResult.data??[]).some((row:any)=>row.permission_code==="S");
-  if(!hasAccess) throw new Error("Stamp Rallyの利用権限がありません");
-  if(!identityResult.data) throw new Error("交換用CA本人情報が設定されていません");
-
-  const identity=identityResult.data;
-  const [caResult,communityResult]=await Promise.all([
-    admin.from("ca_members")
-      .select("id,trainer_name,ca_level,status")
-      .eq("id",identity.ca_member_id)
-      .single(),
-    admin.from("communities")
-      .select("id,name,prefecture,avatar_url,avatar_thumbnail_path,avatar_last_changed_at")
-      .eq("id",identity.community_id)
-      .single(),
-  ]);
-
-  if(caResult.error||!caResult.data) throw new Error("CA情報を取得できません");
-  if(communityResult.error||!communityResult.data) throw new Error("Community情報を取得できません");
-  if(caResult.data.status!=="active"||!["1st","2nd"].includes(String(caResult.data.ca_level??""))){
-    throw new Error("現在有効な1st/2nd CAとして確認できません");
-  }
-
-  return {
-    user_id:userId,
-    niantic_id:profile.niantic_id??null,
-    ca_member_id:caResult.data.id,
-    trainer_name:caResult.data.trainer_name,
-    ca_level:caResult.data.ca_level,
-    community:communityResult.data,
-  };
 }
 
 async function ensureActorDesign(admin:any,actor:any){
@@ -292,7 +247,7 @@ Deno.serve(async(req:Request)=>{
 
     const actorUserId=userData.user.id;
     const admin=createClient(url,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}});
-    const actor=await getActor(admin,actorUserId);
+    const actor=await resolveStampActor(admin,actorUserId);
     const body=await req.json().catch(()=>({}));
     const action=String(body.action??"");
 
