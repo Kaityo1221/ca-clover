@@ -272,7 +272,7 @@ export function StampMedal3D({
     }
 
     new GLTFLoader().load(
-      "/models/medal_template_final.glb?v=6",
+      "/models/medal_template_final.glb?v=7",
       (gltf) => {
         if (disposed) {
           disposeObject(gltf.scene);
@@ -290,6 +290,11 @@ export function StampMedal3D({
           if (object.name === "SplineSkyHdriBackground") {
             object.visible = false;
             return;
+          }
+
+          if (object.name === "FrontFace") {
+            // Spline v7: pull the face back into the gold rim instead of leaving it floating.
+            object.position.z = -36;
           }
 
           if (object.name === "MedalBody") object.material = goldMaterial;
