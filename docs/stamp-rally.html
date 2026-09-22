@@ -493,7 +493,7 @@ async function load(){
        :window.CACommunityIcon.img(client,c,'alt="" loading="lazy"');
       return '<button type="button" class="stamp" data-community="'+esc(c.id)+'"><div class="medal '+(any?'':'unowned')+'"><div class="medalinner"><span class="fallback">🍀</span>'+picture+'</div>'+(allGot?'<span class="check">✓</span>':'')+'</div><div class="cname">'+esc(c.name)+'</div><div class="canames">'+(c.cas.length?c.cas.slice(0,2).map(x=>'<div class="caname '+(x.acquired?'on':'off')+'">'+(x.acquired?'● ':'○ ')+esc(x.trainer_name)+'</div>').join(""):'<div class="caname off">CA未設定</div>')+(c.cas.length>2?'<div class="caname off">+'+(c.cas.length-2)+'</div>':'')+'</div></button>';
     }).join(""):'<div class="empty">Communityはありません</div>';
-    return '<div class="pref"><button class="prefbtn"><div><div class="prefname">'+esc(p)+'</div><div class="sub">'+rows.length+' Community</div></div><span class="progress">'+acquired+' / '+cas.length+'</span><span class="chev">⌄</span></button><div class="stamps">'+stamps+'</div></div>';
+    return '<div class="pref"><button class="prefbtn"><div><div class="prefname">'+esc(p)+'</div><div class="sub">'+rows.length+' Community</div></div><span class="progress">取得 '+acquired+' / '+cas.length+'</span><span class="chev">⌄</span></button><div class="stamps">'+stamps+'</div></div>';
   }).join("");
   return '<div class="region"><button class="regionbtn"><span class="leaf">🍀</span><div><div class="regiontitle">'+esc(region)+'</div><div class="sub">'+rc+' Community</div></div><div class="grow"></div><span class="chev">⌄</span></button><div class="prefwrap">'+prefHtml+'</div></div>';
  }).join("");
