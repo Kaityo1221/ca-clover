@@ -1,4 +1,5 @@
-import { createClient } from "npm:@supabase/supabase-js@2";\nimport {getStampAccess,resolveStampActor} from "../_shared/stamp-identity.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import {getStampAccess,resolveStampActor} from "../_shared/stamp-identity.ts";
 
 const corsHeaders={
   "Access-Control-Allow-Origin":"*",
