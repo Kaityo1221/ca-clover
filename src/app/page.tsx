@@ -133,8 +133,12 @@ export default function Page() {
     <main className="mx-auto max-w-6xl px-4 py-7 md:px-8">
       <section className="rounded-[30px] border border-lime-100 bg-gradient-to-br from-lime-100 via-white to-emerald-50 p-6 md:p-8">
         <span className="rounded-full bg-lime-300 px-3 py-1 text-xs font-black text-lime-950">CA CLOVER HOME</span>
-        <h1 className="mt-4 text-3xl font-black tracking-tight text-lime-950 md:text-4xl">今日は何を見る？ 🍀</h1>
-        <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-600">目的から機能を選ぶ、カテゴリ型のホーム画面です。</p>
+        <h1 className="mt-4 text-3xl font-black tracking-tight text-lime-950 md:text-4xl">
+          {profile?.role === "admin" ? "全国のCommunityを、ここから。🍀" : profile?.role === "ca" ? "My Communityへようこそ。🍀" : "CA Cloverへようこそ。🍀"}
+        </h1>
+        <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
+          {profile?.role === "admin" ? "Communityの活動と運営状況を、ひとつの場所で。" : "目的から機能を選ぶ、カテゴリ型のホーム画面です。"}
+        </p>
 
         {profile?.role === "admin" ? <div className="mt-5 flex flex-wrap gap-2">
           <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-lime-800">🌱 {counts.communities} Community</span>
