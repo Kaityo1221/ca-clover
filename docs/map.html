@@ -36,7 +36,7 @@ async function guard(){
  const got=await client.auth.getSession(),session=got.data.session||null;
  if(!session){app.innerHTML='<section class="card hero"><h1>🗾 Activity Map</h1><p class="muted strong">ログインが必要です</p><button id="login" class="btn section">Googleでログイン</button></section>';document.getElementById("login").onclick=login;return false}
  const p=await client.from("profiles").select("role").eq("id",session.user.id).maybeSingle();
- if(p.data?.role!=="admin"){app.innerHTML='<section class="card hero"><h1>🔒 ADMIN専用です</h1><p class="muted strong">Activity Mapは管理画面から利用してください。</p><a class="btn line section" href="./">My Communityへ</a></section>';return false}
+ if(p.data?.role!=="admin"){location.replace(ROOT+"#my");return false}
  return true;
 }
 async function load(){
