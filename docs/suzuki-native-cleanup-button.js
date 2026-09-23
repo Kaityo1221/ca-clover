@@ -3,12 +3,14 @@
 if(!/(?:^|\/)stamp-rally\.html$/.test(location.pathname))return;
 
 // TEMP SuzukiPM-only cleanup entry point.
-// Self-contained: no dynamic brush loader, no page-wide MutationObserver.
+// Self-contained and event-driven. No page-wide MutationObserver.
 let cleanupRow=null;
 let burnedSession=false;
 let running=false;
 let brushOverlay=null;
+let sootOverlay=null;
 let finishTimer=null;
+let sootTimers=[];
 let lastActivateAt=0;
 
 const style=document.createElement("style");
@@ -22,6 +24,8 @@ style.textContent=`
 .szNativeBrush{position:absolute;left:50%;top:50%;width:112px;height:38px;opacity:1;transform:translate(-195px,-50%) rotate(-10deg);transform-origin:58% 50%;filter:drop-shadow(0 4px 5px rgba(0,0,0,.28))}
 .szNativeBrush:before{content:"";position:absolute;left:34px;top:1px;width:78px;height:12px;border-radius:9px;background:linear-gradient(180deg,#a9794f,#6c4327 58%,#4b2e1c);box-shadow:inset 0 2px rgba(255,255,255,.23)}
 .szNativeBrush:after{content:"";position:absolute;left:0;top:11px;width:54px;height:27px;border-radius:9px 9px 6px 6px;background:repeating-linear-gradient(90deg,#665442 0 3px,#ccb99f 3px 6px);box-shadow:inset 0 3px rgba(255,255,255,.16)}
+.szNativeSootOverlay{position:fixed;z-index:9997;pointer-events:none;border-radius:50%;overflow:hidden;opacity:.78;transition:opacity .24s linear;mix-blend-mode:multiply}
+.szNativeSootOverlay:before{content:"";position:absolute;inset:13% 14%;border-radius:50%;background:radial-gradient(ellipse at 35% 62%,rgba(20,12,8,.82) 0 13%,rgba(39,22,13,.62) 17% 28%,transparent 43%),radial-gradient(ellipse at 57% 67%,rgba(57,30,15,.74) 0 12%,rgba(69,38,19,.48) 17% 29%,transparent 42%),radial-gradient(ellipse at 72% 58%,rgba(29,16,10,.70) 0 10%,rgba(52,29,17,.43) 16% 26%,transparent 39%);filter:blur(4px)}
 `;
 document.head.appendChild(style);
 
@@ -29,6 +33,11 @@ function modal(){return document.getElementById("stampModalBack")}
 function area(){return document.getElementById("stampZoomArea")}
 function controls(){return document.getElementById("stampDesignControls")}
 function closeButton(){return document.getElementById("stampClose")}
+
+function clearSootTimers(){
+ sootTimers.forEach(clearTimeout);
+ sootTimers=[];
+}
 
 function clearBrush(){
  if(finishTimer){clearTimeout(finishTimer);finishTimer=null}
@@ -38,8 +47,14 @@ function clearBrush(){
  if(button){button.disabled=false;button.textContent="🧹 煤をお掃除"}
 }
 
+function clearSoot(){
+ clearSootTimers();
+ if(sootOverlay){sootOverlay.remove();sootOverlay=null}
+}
+
 function removeButton(){
  clearBrush();
+ clearSoot();
  if(cleanupRow){cleanupRow.remove();cleanupRow=null}
  burnedSession=false;
 }
@@ -54,9 +69,46 @@ function isSuzukiDetail(){
 function visibleMedalHost(){
  const d3=document.getElementById("stamp3d");
  const d2=document.getElementById("stampZoom2D");
- if(d3&&d3.getBoundingClientRect().width>0&&d3.getBoundingClientRect().height>0)return d3;
- if(d2&&d2.getBoundingClientRect().width>0&&d2.getBoundingClientRect().height>0)return d2;
+ if(d3){const r=d3.getBoundingClientRect();if(r.width>0&&r.height>0)return d3}
+ if(d2){const r=d2.getBoundingClientRect();if(r.width>0&&r.height>0)return d2}
  return null;
+}
+
+function positionOverlay(el,host){
+ if(!el||!host)return false;
+ const r=host.getBoundingClientRect();
+ if(!r.width||!r.height)return false;
+ el.style.left=r.left+"px";
+ el.style.top=r.top+"px";
+ el.style.width=r.width+"px";
+ el.style.height=r.height+"px";
+ return true;
+}
+
+function ensureSoot(){
+ const host=visibleMedalHost();
+ if(!host)return false;
+ if(!sootOverlay){
+  sootOverlay=document.createElement("div");
+  sootOverlay.className="szNativeSootOverlay";
+  document.body.appendChild(sootOverlay);
+ }
+ positionOverlay(sootOverlay,host);
+ sootOverlay.style.opacity=".78";
+ return true;
+}
+
+function setSootOpacity(value){
+ if(sootOverlay)sootOverlay.style.opacity=String(value);
+}
+
+function animateSootCleaning(){
+ clearSootTimers();
+ const steps=[[260,.68],[700,.55],[1120,.43],[1580,.32],[2020,.22],[2320,.14]];
+ steps.forEach(([ms,opacity])=>{
+  const id=setTimeout(()=>setSootOpacity(opacity),ms);
+  sootTimers.push(id);
+ });
 }
 
 function animateBrush(el){
@@ -70,14 +122,19 @@ function animateBrush(el){
   {transform:"translate(-110px,8%) rotate(-5deg)",offset:.84},
   {transform:"translate(92px,16%) rotate(9deg)",opacity:0,offset:1}
  ];
+ const finish=()=>{
+  clearBrush();
+  setSootOpacity(.14);
+  window.dispatchEvent(new CustomEvent("ca:suzuki-brush-finished",{detail:{trainer_name:"SuzukiPM"}}));
+ };
  try{
   const a=el.animate(frames,{duration:2350,easing:"cubic-bezier(.42,.02,.58,.98)",fill:"forwards"});
-  a.onfinish=()=>{clearBrush();window.dispatchEvent(new CustomEvent("ca:suzuki-brush-finished",{detail:{trainer_name:"SuzukiPM"}}))};
-  finishTimer=setTimeout(()=>{if(running){clearBrush();window.dispatchEvent(new CustomEvent("ca:suzuki-brush-finished",{detail:{trainer_name:"SuzukiPM"}}))}},2550);
+  a.onfinish=finish;
+  finishTimer=setTimeout(()=>{if(running)finish()},2550);
  }catch(_){
   el.style.transition="transform 2.2s ease,opacity .3s ease 2s";
   requestAnimationFrame(()=>{el.style.transform="translate(92px,16%) rotate(9deg)";el.style.opacity="0"});
-  finishTimer=setTimeout(()=>{clearBrush();window.dispatchEvent(new CustomEvent("ca:suzuki-brush-finished",{detail:{trainer_name:"SuzukiPM"}}))},2400);
+  finishTimer=setTimeout(finish,2400);
  }
 }
 
@@ -87,6 +144,7 @@ function runBrush(){
  const host=visibleMedalHost();
  const button=document.querySelector(".szNativeCleanupBtn");
  if(!m||!m.classList.contains("show")||!host||!button)return false;
+ ensureSoot();
  const r=host.getBoundingClientRect();
  running=true;
  button.disabled=true;
@@ -99,6 +157,7 @@ function runBrush(){
  brushOverlay.style.height=r.height+"px";
  brushOverlay.innerHTML='<div class="szNativeBrush" aria-hidden="true"></div>';
  document.body.appendChild(brushOverlay);
+ animateSootCleaning();
  const brush=brushOverlay.querySelector(".szNativeBrush");
  requestAnimationFrame(()=>requestAnimationFrame(()=>animateBrush(brush)));
  return true;
@@ -123,6 +182,7 @@ function insertButton(){
  const button=cleanupRow.querySelector("button");
  button.addEventListener("pointerup",activate,{passive:false});
  button.addEventListener("click",activate,false);
+ requestAnimationFrame(()=>ensureSoot());
  return true;
 }
 
@@ -142,9 +202,10 @@ if(close)close.addEventListener("click",removeButton,true);
 const m=modal();
 if(m)m.addEventListener("click",e=>{if(e.target===m)removeButton()},true);
 window.addEventListener("pagehide",removeButton);
+window.addEventListener("resize",()=>{if(sootOverlay){const host=visibleMedalHost();if(host)positionOverlay(sootOverlay,host)}});
 
 window.CASuzukiNativeCleanup={
- version:"self-contained-brush-20260924-0732",
+ version:"brush-plus-soot-fade-20260924-0749",
  get armed(){return burnedSession},
  get running(){return running},
  run:runBrush,
