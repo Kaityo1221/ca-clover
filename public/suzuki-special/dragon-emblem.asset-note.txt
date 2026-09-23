@@ -1,0 +1,1 @@
+Official SuzukiPM emblem is stored as dragon-emblem.jpg. Do not replace it with generated SVG fallback.
