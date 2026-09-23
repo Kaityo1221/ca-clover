@@ -7,12 +7,12 @@ function bind(root){(root||document).querySelectorAll('img[data-ca-community-ico
 window.CACommunityIcon={url,img,bind};
 if(/(?:^|\/)stamp-rally\.html$/.test(location.pathname)){
  const loadSuzuki=()=>{
-  const s=document.createElement("script");s.src="./suzuki-real-audio.js?v=20260923-2320";s.async=false;s.onload=()=>{
-   const f=document.createElement("script");f.src="./suzuki-vfx-layout-fix.js?v=20260923-2320";f.async=false;f.onload=()=>{
-    const b=document.createElement("script");b.src="./suzuki-brush-cleanup.js?v=20260923-2320";b.async=false;document.head.appendChild(b)
+  const s=document.createElement("script");s.src="./suzuki-real-audio.js?v=20260923-2343";s.async=false;s.onload=()=>{
+   const f=document.createElement("script");f.src="./suzuki-vfx-layout-fix.js?v=20260923-2343";f.async=false;f.onload=()=>{
+    const b=document.createElement("script");b.src="./suzuki-brush-cleanup.js?v=20260923-2343";b.async=false;document.head.appendChild(b)
    };document.head.appendChild(f)
   };document.head.appendChild(s)
  };
- const m=document.createElement("script");m.src="./suzuki-silence.js?v=20260923-2320";m.async=false;m.onload=loadSuzuki;m.onerror=loadSuzuki;document.head.appendChild(m)
+ const m=document.createElement("script");m.src="./suzuki-silence.js?v=20260923-2343";m.async=false;m.onload=loadSuzuki;m.onerror=loadSuzuki;document.head.appendChild(m)
 }
 })();
