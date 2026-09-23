@@ -2,15 +2,15 @@
 "use strict";
 if(!/(?:^|\/)stamp-rally\.html$/.test(location.pathname))return;
 
-// TEMP SuzukiPM-only cleanup entry point.
-// Self-contained and event-driven. No page-wide MutationObserver.
+// TEMP SuzukiPM-only native medal cleanup.
+// No fake soot overlay: brush the existing burned 3D medal, then re-render
+// the same native medal without the temporary Suzuki scorch texture.
 let cleanupRow=null;
 let burnedSession=false;
 let running=false;
 let brushOverlay=null;
-let sootOverlay=null;
 let finishTimer=null;
-let sootTimers=[];
+let restoreLowerTimer=null;
 let lastActivateAt=0;
 
 const style=document.createElement("style");
@@ -19,13 +19,12 @@ style.textContent=`
 .szNativeCleanupRow{display:flex;justify-content:center;margin:14px 0 2px}
 .szNativeCleanupBtn{border:1px solid #c8a96a;background:#fffaf0;color:#5a4528;border-radius:999px;padding:10px 18px;font-weight:900;font-size:14px;box-shadow:0 7px 18px rgba(60,43,23,.18);-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .szNativeCleanupBtn:active{transform:scale(.98)}
-.szNativeCleanupBtn:disabled{opacity:.5}
+.szNativeCleanupBtn:disabled{opacity:.52}
+.szNativeCleanupBtn.szDone{border-color:#b7cda9;background:#f3f8ef;color:#587747;opacity:1}
 .szNativeBrushOverlay{position:fixed;z-index:9999;pointer-events:none;overflow:visible}
 .szNativeBrush{position:absolute;left:50%;top:50%;width:112px;height:38px;opacity:1;transform:translate(-195px,-50%) rotate(-10deg);transform-origin:58% 50%;filter:drop-shadow(0 4px 5px rgba(0,0,0,.28))}
 .szNativeBrush:before{content:"";position:absolute;left:34px;top:1px;width:78px;height:12px;border-radius:9px;background:linear-gradient(180deg,#a9794f,#6c4327 58%,#4b2e1c);box-shadow:inset 0 2px rgba(255,255,255,.23)}
 .szNativeBrush:after{content:"";position:absolute;left:0;top:11px;width:54px;height:27px;border-radius:9px 9px 6px 6px;background:repeating-linear-gradient(90deg,#665442 0 3px,#ccb99f 3px 6px);box-shadow:inset 0 3px rgba(255,255,255,.16)}
-.szNativeSootOverlay{position:fixed;z-index:9997;pointer-events:none;border-radius:50%;overflow:hidden;opacity:.78;transition:opacity .24s linear;mix-blend-mode:multiply}
-.szNativeSootOverlay:before{content:"";position:absolute;inset:13% 14%;border-radius:50%;background:radial-gradient(ellipse at 35% 62%,rgba(20,12,8,.82) 0 13%,rgba(39,22,13,.62) 17% 28%,transparent 43%),radial-gradient(ellipse at 57% 67%,rgba(57,30,15,.74) 0 12%,rgba(69,38,19,.48) 17% 29%,transparent 42%),radial-gradient(ellipse at 72% 58%,rgba(29,16,10,.70) 0 10%,rgba(52,29,17,.43) 16% 26%,transparent 39%);filter:blur(4px)}
 `;
 document.head.appendChild(style);
 
@@ -34,27 +33,15 @@ function area(){return document.getElementById("stampZoomArea")}
 function controls(){return document.getElementById("stampDesignControls")}
 function closeButton(){return document.getElementById("stampClose")}
 
-function clearSootTimers(){
- sootTimers.forEach(clearTimeout);
- sootTimers=[];
-}
-
 function clearBrush(){
  if(finishTimer){clearTimeout(finishTimer);finishTimer=null}
  if(brushOverlay){brushOverlay.remove();brushOverlay=null}
  running=false;
- const button=document.querySelector(".szNativeCleanupBtn");
- if(button){button.disabled=false;button.textContent="🧹 煤をお掃除"}
-}
-
-function clearSoot(){
- clearSootTimers();
- if(sootOverlay){sootOverlay.remove();sootOverlay=null}
 }
 
 function removeButton(){
  clearBrush();
- clearSoot();
+ if(restoreLowerTimer){clearTimeout(restoreLowerTimer);restoreLowerTimer=null}
  if(cleanupRow){cleanupRow.remove();cleanupRow=null}
  burnedSession=false;
 }
@@ -85,30 +72,59 @@ function positionOverlay(el,host){
  return true;
 }
 
-function ensureSoot(){
- const host=visibleMedalHost();
- if(!host)return false;
- if(!sootOverlay){
-  sootOverlay=document.createElement("div");
-  sootOverlay.className="szNativeSootOverlay";
-  document.body.appendChild(sootOverlay);
- }
- positionOverlay(sootOverlay,host);
- sootOverlay.style.opacity=".78";
- return true;
+function markDone(){
+ const button=document.querySelector(".szNativeCleanupBtn");
+ if(!button)return;
+ button.disabled=true;
+ button.classList.add("szDone");
+ button.textContent="✨ お掃除完了";
 }
 
-function setSootOpacity(value){
- if(sootOverlay)sootOverlay.style.opacity=String(value);
-}
+function rerenderCleanNativeMedal(){
+ const c=controls();
+ const dir=c&&c.querySelector("[data-design-dir]");
+ if(!dir){markDone();return}
 
-function animateSootCleaning(){
- clearSootTimers();
- const steps=[[260,.68],[700,.55],[1120,.43],[1580,.32],[2020,.22],[2320,.14]];
- steps.forEach(([ms,opacity])=>{
-  const id=setTimeout(()=>setSootOpacity(opacity),ms);
-  sootTimers.push(id);
- });
+ // The native stamp renderer decides whether to draw the temporary scorch
+ // from trainer_name.toLowerCase(). For this one re-render only, make the
+ // exact SuzukiPM comparison miss, then restore String.prototype immediately
+ // after the new native canvas appears (or after a short safety timeout).
+ const oldCanvas=document.querySelector("#stamp3d canvas");
+ const originalLower=String.prototype.toLowerCase;
+ let restored=false;
+ const restore=()=>{
+  if(restored)return;
+  restored=true;
+  String.prototype.toLowerCase=originalLower;
+  if(restoreLowerTimer){clearTimeout(restoreLowerTimer);restoreLowerTimer=null}
+ };
+ String.prototype.toLowerCase=function(){
+  const raw=String(this);
+  const lowered=originalLower.call(this);
+  if(raw==="SuzukiPM"||lowered==="suzukipm")return "suzukipm-clean";
+  return lowered;
+ };
+
+ try{dir.click()}catch(_){restore();markDone();return}
+
+ const started=performance.now();
+ const waitForCanvas=()=>{
+  const next=document.querySelector("#stamp3d canvas");
+  if(next&&next!==oldCanvas){
+   restore();
+   markDone();
+   window.dispatchEvent(new CustomEvent("ca:suzuki-cleanup-complete",{detail:{trainer_name:"SuzukiPM"}}));
+   return;
+  }
+  if(performance.now()-started>4500){
+   restore();
+   markDone();
+   return;
+  }
+  requestAnimationFrame(waitForCanvas);
+ };
+ requestAnimationFrame(waitForCanvas);
+ restoreLowerTimer=setTimeout(()=>{restore();markDone()},5000);
 }
 
 function animateBrush(el){
@@ -122,15 +138,18 @@ function animateBrush(el){
   {transform:"translate(-110px,8%) rotate(-5deg)",offset:.84},
   {transform:"translate(92px,16%) rotate(9deg)",opacity:0,offset:1}
  ];
+ let finished=false;
  const finish=()=>{
+  if(finished)return;
+  finished=true;
   clearBrush();
-  setSootOpacity(.14);
+  rerenderCleanNativeMedal();
   window.dispatchEvent(new CustomEvent("ca:suzuki-brush-finished",{detail:{trainer_name:"SuzukiPM"}}));
  };
  try{
   const a=el.animate(frames,{duration:2350,easing:"cubic-bezier(.42,.02,.58,.98)",fill:"forwards"});
   a.onfinish=finish;
-  finishTimer=setTimeout(()=>{if(running)finish()},2550);
+  finishTimer=setTimeout(finish,2550);
  }catch(_){
   el.style.transition="transform 2.2s ease,opacity .3s ease 2s";
   requestAnimationFrame(()=>{el.style.transform="translate(92px,16%) rotate(9deg)";el.style.opacity="0"});
@@ -144,20 +163,15 @@ function runBrush(){
  const host=visibleMedalHost();
  const button=document.querySelector(".szNativeCleanupBtn");
  if(!m||!m.classList.contains("show")||!host||!button)return false;
- ensureSoot();
  const r=host.getBoundingClientRect();
  running=true;
  button.disabled=true;
  button.textContent="🧹 お掃除中…";
  brushOverlay=document.createElement("div");
  brushOverlay.className="szNativeBrushOverlay";
- brushOverlay.style.left=r.left+"px";
- brushOverlay.style.top=r.top+"px";
- brushOverlay.style.width=r.width+"px";
- brushOverlay.style.height=r.height+"px";
+ positionOverlay(brushOverlay,host);
  brushOverlay.innerHTML='<div class="szNativeBrush" aria-hidden="true"></div>';
  document.body.appendChild(brushOverlay);
- animateSootCleaning();
  const brush=brushOverlay.querySelector(".szNativeBrush");
  requestAnimationFrame(()=>requestAnimationFrame(()=>animateBrush(brush)));
  return true;
@@ -182,7 +196,6 @@ function insertButton(){
  const button=cleanupRow.querySelector("button");
  button.addEventListener("pointerup",activate,{passive:false});
  button.addEventListener("click",activate,false);
- requestAnimationFrame(()=>ensureSoot());
  return true;
 }
 
@@ -202,10 +215,9 @@ if(close)close.addEventListener("click",removeButton,true);
 const m=modal();
 if(m)m.addEventListener("click",e=>{if(e.target===m)removeButton()},true);
 window.addEventListener("pagehide",removeButton);
-window.addEventListener("resize",()=>{if(sootOverlay){const host=visibleMedalHost();if(host)positionOverlay(sootOverlay,host)}});
 
 window.CASuzukiNativeCleanup={
- version:"brush-plus-soot-fade-20260924-0749",
+ version:"native-burn-cleanup-20260924-0755",
  get armed(){return burnedSession},
  get running(){return running},
  run:runBrush,
