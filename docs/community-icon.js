@@ -15,11 +15,44 @@ function enhanceAdminIconHistory(root){
   Array.from(row.children).forEach(item=>item.classList.add("icon-history-item"));
  });
 }
+let adminModalScrollY=0;
+let adminModalLocked=false;
+function syncAdminModalScrollLock(){
+ if(!/(?:^|\/)admin\.html$/.test(location.pathname))return;
+ const shouldLock=!!document.querySelector(".adminmodalback");
+ if(shouldLock&&!adminModalLocked){
+  adminModalScrollY=window.scrollY||window.pageYOffset||0;
+  document.documentElement.classList.add("ca-admin-modal-open");
+  document.body.classList.add("ca-admin-modal-open");
+  document.body.style.position="fixed";
+  document.body.style.top="-"+adminModalScrollY+"px";
+  document.body.style.left="0";
+  document.body.style.right="0";
+  document.body.style.width="100%";
+  adminModalLocked=true;
+  return;
+ }
+ if(!shouldLock&&adminModalLocked){
+  document.documentElement.classList.remove("ca-admin-modal-open");
+  document.body.classList.remove("ca-admin-modal-open");
+  document.body.style.position="";
+  document.body.style.top="";
+  document.body.style.left="";
+  document.body.style.right="";
+  document.body.style.width="";
+  const y=adminModalScrollY;
+  adminModalLocked=false;
+  requestAnimationFrame(()=>window.scrollTo(0,y));
+ }
+}
 function installAdminIconHistoryFix(){
  if(!/(?:^|\/)admin\.html$/.test(location.pathname))return;
  const style=document.createElement("style");
  style.id="ca-icon-history-style";
  style.textContent=`
+html.ca-admin-modal-open,body.ca-admin-modal-open{overscroll-behavior:none!important}
+.adminmodalback{overscroll-behavior:contain!important;touch-action:pan-y!important}
+.adminmodal{overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important}
 .icon-history-row{display:flex!important;align-items:stretch!important;gap:14px!important;overflow-x:auto!important;padding:4px 2px 12px!important;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
 .icon-history-item{min-width:138px!important;padding:12px 10px 10px!important;border:1px solid #e5eed7;border-radius:20px;background:#f8fafc;text-align:center;scroll-snap-align:start}
 .icon-history-item .avatar{position:relative!important;width:112px!important;height:112px!important;margin:0 auto 8px!important;border-radius:999px!important;overflow:hidden!important;border:4px solid #fff!important;background:#f7fee7!important;display:grid!important;place-items:center!important;box-shadow:0 8px 22px rgba(77,124,15,.12)!important}
@@ -28,7 +61,23 @@ function installAdminIconHistoryFix(){
 `;
  document.head.appendChild(style);
  enhanceAdminIconHistory(document);
- const observer=new MutationObserver(mutations=>{for(const mutation of mutations){for(const node of mutation.addedNodes){if(node.nodeType===1){enhanceAdminIconHistory(node);if(node.matches&&node.matches(".adminmodal"))enhanceAdminIconHistory(document)}}}});
+ syncAdminModalScrollLock();
+ const observer=new MutationObserver(mutations=>{
+  let modalChanged=false;
+  for(const mutation of mutations){
+   for(const node of mutation.addedNodes){
+    if(node.nodeType===1){
+     enhanceAdminIconHistory(node);
+     if(node.matches&&node.matches(".adminmodal"))enhanceAdminIconHistory(document);
+     if((node.matches&&node.matches(".adminmodalback,.adminmodal"))||(node.querySelector&&node.querySelector(".adminmodalback,.adminmodal")))modalChanged=true;
+    }
+   }
+   for(const node of mutation.removedNodes){
+    if(node.nodeType===1&&((node.matches&&node.matches(".adminmodalback,.adminmodal"))||(node.querySelector&&node.querySelector(".adminmodalback,.adminmodal"))))modalChanged=true;
+   }
+  }
+  if(modalChanged||document.querySelector(".adminmodalback"))syncAdminModalScrollLock();
+ });
  observer.observe(document.body,{childList:true,subtree:true});
 }
 window.CACommunityIcon={url,img,bind};
