@@ -184,91 +184,136 @@ export function StampMedal3D({
         const lines=engravingKey.split("\n");
         const isTemporarySuzukiBurn=lines[0]?.toLowerCase()==="suzukipm";
 
-        // TEMP: SuzukiPM-only dragon-fire heat tint. Remove this branch after the joke event.
+        // TEMP: SuzukiPM-only dragon-fire scorch. Remove this branch after the joke event.
         if(isTemporarySuzukiBurn){
-          // Real heated steel does not form a neat ring. Build an uneven oxidation bloom instead:
-          // charred core -> violet/blue temper colours -> brown/straw/gold at the cooler edge.
-          const drawHeatBloom=(
+          // Burnt-board reference translated onto metal:
+          // warm exposed metal in the middle, irregular brown/black char invading from the upper-left,
+          // and scattered soot/streaks. Deliberately avoid rings, borders, and logo-like symmetry.
+          const drawScorchCloud=(
             cx:number,
             cy:number,
             rx:number,
             ry:number,
             rotation:number,
-            opacity:number,
+            coreAlpha:number,
+            edgeAlpha:number,
           )=>{
             visualCtx.save();
             visualCtx.translate(cx,cy);
             visualCtx.rotate(rotation);
-            visualCtx.scale(rx/260,ry/260);
-            visualCtx.globalAlpha=opacity;
-            const tint=visualCtx.createRadialGradient(-28,-34,18,0,0,260);
-            tint.addColorStop(0,"rgba(18,15,14,0.52)");
-            tint.addColorStop(0.18,"rgba(48,30,25,0.38)");
-            tint.addColorStop(0.34,"rgba(72,34,92,0.34)");
-            tint.addColorStop(0.50,"rgba(27,67,128,0.34)");
-            tint.addColorStop(0.64,"rgba(105,55,73,0.25)");
-            tint.addColorStop(0.77,"rgba(151,91,29,0.24)");
-            tint.addColorStop(0.88,"rgba(213,164,62,0.18)");
-            tint.addColorStop(1,"rgba(232,199,108,0)");
-            visualCtx.fillStyle=tint;
+            visualCtx.scale(rx/220,ry/220);
+            const scorch=visualCtx.createRadialGradient(-34,-28,8,0,0,220);
+            scorch.addColorStop(0,`rgba(16,12,10,${coreAlpha})`);
+            scorch.addColorStop(0.24,`rgba(35,22,16,${coreAlpha*0.92})`);
+            scorch.addColorStop(0.48,`rgba(79,45,24,${coreAlpha*0.68})`);
+            scorch.addColorStop(0.70,`rgba(137,82,35,${edgeAlpha})`);
+            scorch.addColorStop(0.88,`rgba(196,132,52,${edgeAlpha*0.48})`);
+            scorch.addColorStop(1,"rgba(222,172,82,0)");
+            visualCtx.fillStyle=scorch;
             visualCtx.beginPath();
-            visualCtx.arc(0,0,260,0,Math.PI*2);
+            visualCtx.arc(0,0,220,0,Math.PI*2);
             visualCtx.fill();
             visualCtx.restore();
           };
 
-          // Main heat-affected zone plus offset lobes to break any seal/ring silhouette.
-          drawHeatBloom(500,654,330,205,-0.05,0.90);
-          drawHeatBloom(410,596,220,150,-0.34,0.64);
-          drawHeatBloom(610,710,235,130,0.20,0.48);
-          drawHeatBloom(356,548,150,104,-0.52,0.46);
-
-          // Irregular hotter patches, biased toward the upper-left where the "dragon flame" hit first.
-          const hotPatches=[
-            [342,536,62,36,-0.40,0.30],
-            [386,566,78,42,-0.28,0.26],
-            [445,604,58,31,-0.14,0.22],
-            [548,650,72,34,0.08,0.18],
-            [632,718,54,29,0.25,0.14],
-          ] as const;
-          for(const [cx,cy,rx,ry,rotation,alpha] of hotPatches){
-            visualCtx.save();
-            visualCtx.translate(cx,cy);
-            visualCtx.rotate(rotation);
-            visualCtx.scale(rx/90,ry/90);
-            const patch=visualCtx.createRadialGradient(-14,-10,4,0,0,90);
-            patch.addColorStop(0,`rgba(12,10,9,${alpha})`);
-            patch.addColorStop(0.28,`rgba(55,24,20,${alpha*0.92})`);
-            patch.addColorStop(0.55,`rgba(78,37,103,${alpha*0.72})`);
-            patch.addColorStop(0.75,`rgba(31,73,131,${alpha*0.56})`);
-            patch.addColorStop(1,"rgba(194,133,40,0)");
-            visualCtx.fillStyle=patch;
-            visualCtx.beginPath();
-            visualCtx.arc(0,0,90,0,Math.PI*2);
-            visualCtx.fill();
-            visualCtx.restore();
-          }
-
-          // Dry soot flecks keep the burn organic without turning into a drawn line.
-          const soot=[
-            [327,526,18,9,-0.34,0.22],
-            [365,548,27,11,-0.26,0.18],
-            [405,579,15,8,-0.18,0.16],
-            [469,614,21,8,-0.10,0.13],
-            [590,690,17,7,0.18,0.10],
-          ] as const;
+          // A faint amber heat wash beneath the engraving. This keeps the centre readable and
+          // creates the "surviving wood tone" feeling from the reference without turning metal into wood.
           visualCtx.save();
-          for(const [cx,cy,rx,ry,rotation,alpha] of soot){
+          visualCtx.translate(512,660);
+          visualCtx.scale(1.36,0.76);
+          const warmWash=visualCtx.createRadialGradient(0,0,35,0,0,245);
+          warmWash.addColorStop(0,"rgba(171,103,38,0.18)");
+          warmWash.addColorStop(0.48,"rgba(139,75,28,0.13)");
+          warmWash.addColorStop(0.78,"rgba(82,43,21,0.08)");
+          warmWash.addColorStop(1,"rgba(52,28,18,0)");
+          visualCtx.fillStyle=warmWash;
+          visualCtx.beginPath();
+          visualCtx.arc(0,0,245,0,Math.PI*2);
+          visualCtx.fill();
+          visualCtx.restore();
+
+          // Heavy irregular burn on the flame-entry side plus smaller islands elsewhere.
+          drawScorchCloud(330,525,210,140,-0.42,0.78,0.34);
+          drawScorchCloud(392,565,230,128,-0.27,0.62,0.30);
+          drawScorchCloud(286,635,165,118,-0.12,0.54,0.28);
+          drawScorchCloud(676,740,150,100,0.24,0.36,0.20);
+          drawScorchCloud(716,614,118,78,0.08,0.26,0.14);
+          drawScorchCloud(484,812,158,72,0.02,0.28,0.16);
+
+          // Dry black char fragments, intentionally broken and asymmetric.
+          const charPatches=[
+            [286,487,62,24,-0.42,0.42],
+            [330,516,88,29,-0.36,0.34],
+            [373,548,72,22,-0.28,0.28],
+            [267,610,54,18,-0.08,0.28],
+            [315,657,66,20,-0.05,0.22],
+            [668,739,46,17,0.20,0.18],
+            [712,716,30,13,0.18,0.14],
+            [465,810,56,15,0.00,0.16],
+          ] as const;
+          for(const [cx,cy,rx,ry,rotation,alpha] of charPatches){
             visualCtx.save();
             visualCtx.translate(cx,cy);
             visualCtx.rotate(rotation);
-            visualCtx.fillStyle=`rgba(24,18,16,${alpha})`;
+            const charGradient=visualCtx.createRadialGradient(-rx*0.18,-ry*0.15,2,0,0,Math.max(rx,ry));
+            charGradient.addColorStop(0,`rgba(9,8,7,${alpha})`);
+            charGradient.addColorStop(0.52,`rgba(22,16,13,${alpha*0.86})`);
+            charGradient.addColorStop(1,"rgba(55,31,19,0)");
+            visualCtx.fillStyle=charGradient;
             visualCtx.beginPath();
             visualCtx.ellipse(0,0,rx,ry,0,0,Math.PI*2);
             visualCtx.fill();
             visualCtx.restore();
           }
+
+          // Soot streaks mimic flame lick and rubbed char from the supplied burnt-board references.
+          const sootStreaks=[
+            [248,505,430,571,11,0.28],
+            [258,538,448,603,7,0.23],
+            [272,579,420,624,5,0.18],
+            [294,620,390,646,4,0.16],
+            [614,728,720,760,5,0.13],
+            [436,806,564,812,4,0.11],
+          ] as const;
+          visualCtx.save();
+          visualCtx.lineCap="round";
+          for(const [x1,y1,x2,y2,width,alpha] of sootStreaks){
+            visualCtx.strokeStyle=`rgba(18,13,11,${alpha})`;
+            visualCtx.lineWidth=width;
+            visualCtx.beginPath();
+            visualCtx.moveTo(x1,y1);
+            visualCtx.quadraticCurveTo(
+              x1+(x2-x1)*0.47,
+              y1+(y2-y1)*0.36-8,
+              x2,
+              y2,
+            );
+            visualCtx.stroke();
+          }
           visualCtx.restore();
+
+          // A tiny trace of steel heat tint remains only at the hottest transition,
+          // so the result still reads as scorched metal rather than painted wood.
+          const tintWisps=[
+            [384,558,74,30,-0.28],
+            [427,589,58,24,-0.18],
+          ] as const;
+          for(const [cx,cy,rx,ry,rotation] of tintWisps){
+            visualCtx.save();
+            visualCtx.translate(cx,cy);
+            visualCtx.rotate(rotation);
+            visualCtx.scale(rx/80,ry/80);
+            const tint=visualCtx.createRadialGradient(0,0,6,0,0,80);
+            tint.addColorStop(0,"rgba(52,31,83,0.12)");
+            tint.addColorStop(0.46,"rgba(30,67,117,0.10)");
+            tint.addColorStop(0.76,"rgba(147,86,34,0.08)");
+            tint.addColorStop(1,"rgba(185,132,48,0)");
+            visualCtx.fillStyle=tint;
+            visualCtx.beginPath();
+            visualCtx.arc(0,0,80,0,Math.PI*2);
+            visualCtx.fill();
+            visualCtx.restore();
+          }
         }
 
         const yPositions=[520,610,700,790];
@@ -286,16 +331,16 @@ export function StampMedal3D({
           }while(fontSize>30);
           const y=yPositions[index]??790;
           if(isTemporarySuzukiBurn){
-            // Burnt engraving: deep charcoal-brown with a faint oxidised bronze edge.
-            visualCtx.shadowBlur=5;
-            visualCtx.shadowColor="rgba(63,25,12,0.30)";
-            visualCtx.fillStyle="rgba(112,57,24,0.28)";
+            // Carbonised engraving: nearly black in the recess with a dirty burnt-brown shoulder.
+            visualCtx.shadowBlur=4;
+            visualCtx.shadowColor="rgba(28,15,9,0.34)";
+            visualCtx.fillStyle="rgba(104,57,25,0.34)";
             visualCtx.fillText(line,512,y-1);
             visualCtx.shadowBlur=0;
-            visualCtx.fillStyle="rgba(31,22,18,0.94)";
+            visualCtx.fillStyle="rgba(22,16,13,0.96)";
             visualCtx.fillText(line,512,y+2);
-            visualCtx.strokeStyle="rgba(126,69,31,0.38)";
-            visualCtx.lineWidth=1.15;
+            visualCtx.strokeStyle="rgba(121,70,30,0.46)";
+            visualCtx.lineWidth=1.35;
             visualCtx.strokeText(line,512,y+2);
           }else{
             visualCtx.fillStyle="rgba(255,255,255,0.30)";
