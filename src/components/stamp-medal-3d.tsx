@@ -26,6 +26,7 @@ function disposeObject(root: THREE.Object3D) {
       if (!material) continue;
       const candidate = material as THREE.MeshStandardMaterial;
       candidate.map?.dispose();
+      candidate.bumpMap?.dispose();
       material.dispose();
     }
   });
@@ -165,9 +166,7 @@ export function StampMedal3D({
       const visualCtx=visualCanvas.getContext("2d");
       const bumpCtx=bumpCanvas.getContext("2d");
       if(visualCtx&&bumpCtx){
-        visualCtx.fillStyle="#f5f5f5";
-        visualCtx.fillRect(0,0,visualCanvas.width,visualCanvas.height);
-        visualCtx.fillStyle="#ababab";
+        visualCtx.clearRect(0,0,visualCanvas.width,visualCanvas.height);
         visualCtx.textAlign="center";
         visualCtx.textBaseline="middle";
 
@@ -192,7 +191,10 @@ export function StampMedal3D({
             fontSize-=2;
           }while(fontSize>30);
           const y=yPositions[index]??790;
-          visualCtx.fillText(line,512,y);
+          visualCtx.fillStyle="rgba(255,255,255,0.30)";
+          visualCtx.fillText(line,512,y-2);
+          visualCtx.fillStyle="rgba(66,66,66,0.72)";
+          visualCtx.fillText(line,512,y+1);
           bumpCtx.fillText(line,512,y);
         });
 
@@ -204,7 +206,6 @@ export function StampMedal3D({
         engravingBumpTexture.colorSpace=THREE.NoColorSpace;
         engravingBumpTexture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
 
-        backMaterial.map=engravingVisualTexture;
         backMaterial.bumpMap=engravingBumpTexture;
         backMaterial.bumpScale=-0.016;
         backMaterial.needsUpdate=true;
@@ -320,6 +321,35 @@ export function StampMedal3D({
           else if (object.name === "brushed_detail") object.material = brushedMaterial;
           else if (object.name === "pin_assembly") object.material = pinMaterial;
         });
+
+        const backShell=medal.getObjectByName("back_shell");
+        if(engravingVisualTexture&&backShell instanceof THREE.Mesh){
+          backShell.geometry.computeBoundingBox();
+          const bounds=backShell.geometry.boundingBox;
+          if(bounds){
+            const shellSize=bounds.getSize(new THREE.Vector3());
+            const shellCenter=bounds.getCenter(new THREE.Vector3());
+            const overlayGeometry=new THREE.PlaneGeometry(shellSize.x*0.84,shellSize.y*0.84);
+            const overlayMaterial=new THREE.MeshBasicMaterial({
+              map:engravingVisualTexture,
+              transparent:true,
+              alphaTest:0.02,
+              depthTest:false,
+              depthWrite:false,
+              side:THREE.FrontSide,
+              toneMapped:false,
+            });
+            const overlay=new THREE.Mesh(overlayGeometry,overlayMaterial);
+            overlay.name="engraving_overlay";
+            overlay.position.set(
+              shellCenter.x,
+              shellCenter.y-shellSize.y*0.035,
+              bounds.max.z+Math.max(shellSize.z*0.04,0.35),
+            );
+            overlay.renderOrder=1000;
+            backShell.add(overlay);
+          }
+        }
 
         void applyFaceTexture(medal);
 
