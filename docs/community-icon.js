@@ -29,11 +29,11 @@ window.CACommunityIcon={url,img,bind};
 
 if(/(?:^|\/)stamp-rally\.html$/.test(location.pathname)){
   const s=document.createElement("script");
-  s.src="./suzuki-real-audio.js?v=20260923-2207";
+  s.src="./suzuki-real-audio.js?v=20260923-2211";
   s.async=false;
   s.onload=()=>{
     const f=document.createElement("script");
-    f.src="./suzuki-vfx-layout-fix.js?v=20260923-2207";
+    f.src="./suzuki-vfx-layout-fix.js?v=20260923-2211";
     f.async=false;
     document.head.appendChild(f);
   };
