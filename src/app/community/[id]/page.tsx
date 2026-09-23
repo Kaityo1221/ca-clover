@@ -68,7 +68,14 @@ function trendUnitLabel(bucket:TrendBucket){
 export default function Page(){
   const params=useParams<{id:string}>();
   const id=params.id;
-  const {supabase,user,profile,loading}=useAuthProfile();
+  const {
+    supabase,
+    user,
+    profile,
+    loading,
+    error:authError,
+    retry:retryAuth,
+  }=useAuthProfile();
 
   const [community,setCommunity]=useState<CommunityRow|null>(null);
   const [cas,setCas]=useState<CaRow[]>([]);
@@ -77,16 +84,45 @@ export default function Page(){
   const [trend,setTrend]=useState<TrendRow[]>([]);
   const [period,setPeriod]=useState<PeriodValue>(30);
   const [dataLoading,setDataLoading]=useState(false);
+  const [accessDenied,setAccessDenied]=useState(false);
   const [notFound,setNotFound]=useState(false);
+  const [baseError,setBaseError]=useState<string|null>(null);
+  const [activityError,setActivityError]=useState<string|null>(null);
+  const [reloadKey,setReloadKey]=useState(0);
   const [selectedMeetup,setSelectedMeetup]=useState<MeetupRow|null>(null);
   const [copied,setCopied]=useState(false);
 
   useEffect(()=>{
-    if(loading||!user||!profile||profile.role==="pending"||!id) return;
+    if(loading||authError||!user||!profile||profile.role==="pending"||!id) return;
     let alive=true;
 
     async function loadBase(){
       setDataLoading(true);
+      setAccessDenied(false);
+      setNotFound(false);
+      setBaseError(null);
+
+      if(profile?.role!=="admin"){
+        const membershipResult=await supabase
+          .from("community_memberships")
+          .select("community_id")
+          .eq("user_id",user!.id)
+          .eq("community_id",id)
+          .maybeSingle();
+
+        if(!alive) return;
+        if(membershipResult.error){
+          setBaseError("Communityの閲覧権限を確認できませんでした。通信状態を確認して、もう一度お試しください。");
+          setDataLoading(false);
+          return;
+        }
+        if(!membershipResult.data){
+          setAccessDenied(true);
+          setDataLoading(false);
+          return;
+        }
+      }
+
       const {data:communityRow,error:communityError}=await supabase
         .from("communities")
         .select("id,campfire_community_id,name,prefecture,campfire_url,member_count,coverage,coverage_from,coverage_to,fetched_at")
@@ -94,41 +130,63 @@ export default function Page(){
         .maybeSingle();
 
       if(!alive) return;
-      if(communityError||!communityRow){
+      if(communityError){
+        setBaseError("Community情報を取得できませんでした。0件として扱わず、再取得を待っています。");
+        setDataLoading(false);
+        return;
+      }
+      if(!communityRow){
         setNotFound(true);
         setDataLoading(false);
         return;
       }
+
+      setCommunity(communityRow as CommunityRow);
 
       const linksResult=await supabase
         .from("community_ca_members")
         .select("ca_member_id")
         .eq("community_id",id);
 
+      if(!alive) return;
+      if(linksResult.error){
+        setCas([]);
+        setBaseError("Communityは表示できますが、担当CA情報を取得できませんでした。");
+        setDataLoading(false);
+        return;
+      }
+
       const links=(linksResult.data as LinkRow[]|null)??[];
       let caRows:CaRow[]=[];
       if(links.length){
-        const {data}=await supabase.from("ca_members")
+        const caResult=await supabase.from("ca_members")
           .select("id,trainer_name,ca_level")
           .in("id",links.map(link=>link.ca_member_id))
           .order("ca_level");
-        caRows=(data as CaRow[]|null)??[];
+        if(!alive) return;
+        if(caResult.error){
+          setCas([]);
+          setBaseError("Communityは表示できますが、担当CA情報を取得できませんでした。");
+          setDataLoading(false);
+          return;
+        }
+        caRows=(caResult.data as CaRow[]|null)??[];
       }
 
       if(!alive) return;
-      setCommunity(communityRow as CommunityRow);
       setCas(caRows);
       setDataLoading(false);
     }
 
-    loadBase();
+    void loadBase();
     return()=>{alive=false;};
-  },[id,loading,user,profile?.role,supabase]);
+  },[authError,id,loading,profile?.role,reloadKey,supabase,user]);
 
   useEffect(()=>{
-    if(loading||!user||!profile||profile.role==="pending"||!id||notFound) return;
+    if(loading||authError||!user||!profile||profile.role==="pending"||!id||!community) return;
     let alive=true;
     setDataLoading(true);
+    setActivityError(null);
     const since=period===null?null:new Date(Date.now()-period*24*60*60*1000).toISOString();
 
     let meetupQuery=supabase.from("meetups")
@@ -150,15 +208,24 @@ export default function Page(){
       } as never),
     ]).then(([summaryResult,meetupResult,trendResult])=>{
       if(!alive) return;
+      if(summaryResult.error||meetupResult.error||trendResult.error){
+        setActivityError("Activity情報を取得できませんでした。表示中の数字を0件として確定せず、再読み込みをお願いします。");
+        setDataLoading(false);
+        return;
+      }
       const first=((summaryResult.data as SummaryRow[]|null)??[])[0];
       setSummary(first??{meetup_count:0,ca_meetup_count:0,rsvp_count:0,checkin_count:0,last_event_at:null});
       setMeetups((meetupResult.data as MeetupRow[]|null)??[]);
       setTrend((trendResult.data as TrendRow[]|null)??[]);
       setDataLoading(false);
+    }).catch(()=>{
+      if(!alive) return;
+      setActivityError("Activity情報の読み込み中にエラーが発生しました。もう一度お試しください。");
+      setDataLoading(false);
     });
 
     return()=>{alive=false;};
-  },[id,loading,user,profile?.role,period,notFound,supabase]);
+  },[authError,community,id,loading,user,profile?.role,period,reloadKey,supabase]);
 
   async function openMeetup(m:MeetupRow){
     setCopied(false);
@@ -204,13 +271,18 @@ export default function Page(){
   const selectedTrendBucket=trendBucketForPeriod(period);
 
   if(loading) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 読み込み中...</main>;
-  if(!user) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><h1 className="text-2xl font-black text-lime-950">ログインが必要です</h1><Link href="/login" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black">Googleでログイン</Link></div></main>;
+  if(authError) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div className="max-w-md"><div className="text-5xl">⚠️</div><h1 className="mt-3 text-2xl font-black text-lime-950">認証情報を確認できませんでした</h1><p className="mt-3 text-sm font-semibold leading-6 text-slate-500">{authError}</p><button onClick={retryAuth} className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black text-lime-950">もう一度確認する</button></div></main>;
+  if(!user) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><h1 className="text-2xl font-black text-lime-950">ログインが必要です</h1><Link href={"/login?next="+encodeURIComponent("/community/"+id)} className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black">Googleでログイン</Link></div></main>;
   if(profile?.role==="pending") return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><div className="text-5xl">🌱</div><h1 className="mt-3 text-2xl font-black text-lime-950">アカウント確認中</h1></div></main>;
-  if(notFound) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><div className="text-5xl">🔒</div><h1 className="mt-3 text-2xl font-black text-lime-950">このCommunityは表示できません</h1><p className="mt-2 text-sm font-semibold text-slate-500">割り当て外、または存在しないCommunityです。</p></div></main>;
+  if(accessDenied) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div className="max-w-md"><div className="text-5xl">🔒</div><h1 className="mt-3 text-2xl font-black text-lime-950">このCommunityを閲覧する権限がありません</h1><p className="mt-2 text-sm font-semibold text-slate-500">自分に割り当てられたCommunityはMy Communityから確認できます。</p><Link href="/my" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black text-lime-950">My Communityへ</Link></div></main>;
+  if(notFound) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div className="max-w-md"><div className="text-5xl">🔎</div><h1 className="mt-3 text-2xl font-black text-lime-950">Community情報が見つかりません</h1><p className="mt-2 text-sm font-semibold text-slate-500">削除・移行されたか、URLが古い可能性があります。</p></div></main>;
+  if(baseError&&!community) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div className="max-w-md"><div className="text-5xl">⚠️</div><h1 className="mt-3 text-2xl font-black text-lime-950">Community情報を確認できませんでした</h1><p className="mt-3 text-sm font-semibold leading-6 text-slate-500">{baseError}</p><button onClick={()=>setReloadKey(value=>value+1)} className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black text-lime-950">もう一度読み込む</button></div></main>;
   if(!community) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 Communityを読み込み中...</main>;
 
   return <main className="mx-auto max-w-6xl px-4 py-7 md:px-8">
     <Link href={profile?.role==="admin"?"/communities":"/my"} className="text-sm font-black text-lime-700">{profile?.role==="admin"?"← Community一覧":"← My Community"}</Link>
+
+    {baseError?<section className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800"><div>{baseError}</div><button onClick={()=>setReloadKey(value=>value+1)} className="mt-3 rounded-full bg-amber-200 px-4 py-2 text-xs font-black text-amber-950">担当CA情報を再取得</button></section>:null}
 
     <section className="clover-card mt-4 p-6">
       <div className="text-xs font-black text-lime-600">{community.prefecture??"—"}</div>
@@ -235,6 +307,8 @@ export default function Page(){
     <div className="clover-periods mt-5">
       {periods.map(item=><button key={item.label} onClick={()=>setPeriod(item.days)} className={period===item.days?"clover-pill active":"clover-pill"}>{item.label}</button>)}
     </div>
+
+    {activityError?<section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800"><div>{activityError}</div><button onClick={()=>setReloadKey(value=>value+1)} className="mt-3 rounded-full bg-amber-200 px-4 py-2 text-xs font-black text-amber-950">Activityを再取得</button></section>:null}
 
     <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
       {[
@@ -264,7 +338,7 @@ export default function Page(){
 
     <section className="clover-card mt-5 overflow-hidden">
       <div className="border-b border-lime-100 px-5 py-4"><h2 className="font-black text-lime-950">🔥 Meetup履歴 / {selectedPeriodLabel}</h2><p className="mt-1 text-[11px] font-semibold text-slate-400">{period===null?"最大500件まで表示":"最新50件まで表示"}</p></div>
-      {meetups.length===0&&!dataLoading?<div className="p-8 text-center text-sm font-semibold text-slate-500">この期間のMeetupデータはありません。</div>:null}
+      {meetups.length===0&&!dataLoading&&!activityError?<div className="p-8 text-center text-sm font-semibold text-slate-500">この期間のMeetupデータはありません。</div>:null}
       <div className="divide-y divide-lime-50">
         {meetups.map(m=><button
           key={m.id}
