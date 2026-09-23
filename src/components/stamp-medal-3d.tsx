@@ -219,12 +219,12 @@ export function StampMedal3D({
           // A faint amber heat wash beneath the engraving. This keeps the centre readable and
           // creates the "surviving wood tone" feeling from the reference without turning metal into wood.
           visualCtx.save();
-          visualCtx.translate(512,660);
-          visualCtx.scale(1.36,0.76);
-          const warmWash=visualCtx.createRadialGradient(0,0,35,0,0,245);
-          warmWash.addColorStop(0,"rgba(171,103,38,0.18)");
-          warmWash.addColorStop(0.48,"rgba(139,75,28,0.13)");
-          warmWash.addColorStop(0.78,"rgba(82,43,21,0.08)");
+          visualCtx.translate(512,650);
+          visualCtx.scale(1.55,0.95);
+          const warmWash=visualCtx.createRadialGradient(0,0,35,0,0,255);
+          warmWash.addColorStop(0,"rgba(171,103,38,0.24)");
+          warmWash.addColorStop(0.46,"rgba(139,75,28,0.18)");
+          warmWash.addColorStop(0.76,"rgba(82,43,21,0.12)");
           warmWash.addColorStop(1,"rgba(52,28,18,0)");
           visualCtx.fillStyle=warmWash;
           visualCtx.beginPath();
@@ -240,6 +240,17 @@ export function StampMedal3D({
           drawScorchCloud(716,614,118,78,0.08,0.26,0.14);
           drawScorchCloud(484,812,158,72,0.02,0.28,0.16);
 
+          // Carry the heat over the whole back instead of keeping it local to the upper-left.
+          drawScorchCloud(512,610,250,120,-0.08,0.34,0.18);
+          drawScorchCloud(604,650,230,130,0.06,0.30,0.17);
+          drawScorchCloud(470,704,240,145,0.03,0.32,0.18);
+          drawScorchCloud(350,760,180,100,-0.18,0.28,0.16);
+          drawScorchCloud(660,785,175,92,0.18,0.26,0.14);
+          drawScorchCloud(742,545,128,82,0.02,0.22,0.12);
+          drawScorchCloud(538,486,215,82,-0.03,0.24,0.13);
+          drawScorchCloud(790,675,108,92,0.16,0.22,0.12);
+          drawScorchCloud(222,746,108,88,-0.18,0.24,0.13);
+
           // Dry black char fragments, intentionally broken and asymmetric.
           const charPatches=[
             [286,487,62,24,-0.42,0.42],
@@ -250,6 +261,15 @@ export function StampMedal3D({
             [668,739,46,17,0.20,0.18],
             [712,716,30,13,0.18,0.14],
             [465,810,56,15,0.00,0.16],
+            [505,560,54,18,-0.06,0.16],
+            [586,598,62,20,0.04,0.15],
+            [650,640,58,18,0.10,0.14],
+            [420,730,70,19,-0.08,0.14],
+            [560,760,64,18,0.03,0.13],
+            [700,790,48,16,0.16,0.12],
+            [530,482,72,17,-0.03,0.13],
+            [770,600,42,15,0.08,0.12],
+            [246,742,44,16,-0.18,0.13],
           ] as const;
           for(const [cx,cy,rx,ry,rotation,alpha] of charPatches){
             visualCtx.save();
@@ -274,6 +294,13 @@ export function StampMedal3D({
             [294,620,390,646,4,0.16],
             [614,728,720,760,5,0.13],
             [436,806,564,812,4,0.11],
+            [430,560,640,602,6,0.16],
+            [470,620,710,666,5,0.14],
+            [360,740,560,774,4,0.13],
+            [540,798,730,812,4,0.12],
+            [620,520,760,548,5,0.12],
+            [242,690,430,712,4,0.11],
+            [560,690,806,724,4,0.10],
           ] as const;
           visualCtx.save();
           visualCtx.lineCap="round";
