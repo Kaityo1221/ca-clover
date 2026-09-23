@@ -182,6 +182,63 @@ export function StampMedal3D({
         bumpCtx.textBaseline="middle";
 
         const lines=engravingKey.split("\n");
+        const isTemporarySuzukiBurn=lines[0]?.toLowerCase()==="suzukipm";
+
+        // TEMP: SuzukiPM-only dragon-fire scorch. Remove this branch after the joke event.
+        if(isTemporarySuzukiBurn){
+          visualCtx.save();
+          visualCtx.translate(500,650);
+          visualCtx.rotate(-0.20);
+          visualCtx.scale(1.75,0.78);
+          const heat=visualCtx.createRadialGradient(-40,-10,12,-10,0,250);
+          heat.addColorStop(0,"rgba(255,118,24,0.26)");
+          heat.addColorStop(0.24,"rgba(177,57,9,0.22)");
+          heat.addColorStop(0.58,"rgba(74,30,10,0.22)");
+          heat.addColorStop(0.82,"rgba(34,18,10,0.16)");
+          heat.addColorStop(1,"rgba(20,12,8,0)");
+          visualCtx.fillStyle=heat;
+          visualCtx.beginPath();
+          visualCtx.arc(0,0,250,0,Math.PI*2);
+          visualCtx.fill();
+          visualCtx.restore();
+
+          visualCtx.save();
+          visualCtx.lineCap="round";
+          visualCtx.lineJoin="round";
+          visualCtx.shadowBlur=26;
+          visualCtx.shadowColor="rgba(255,82,12,0.34)";
+          visualCtx.strokeStyle="rgba(84,30,7,0.34)";
+          visualCtx.lineWidth=48;
+          visualCtx.beginPath();
+          visualCtx.moveTo(155,390);
+          visualCtx.bezierCurveTo(300,445,330,565,520,620);
+          visualCtx.bezierCurveTo(650,658,760,694,858,770);
+          visualCtx.stroke();
+          visualCtx.strokeStyle="rgba(255,101,18,0.20)";
+          visualCtx.lineWidth=18;
+          visualCtx.beginPath();
+          visualCtx.moveTo(150,383);
+          visualCtx.bezierCurveTo(305,438,350,548,525,606);
+          visualCtx.bezierCurveTo(670,654,758,683,866,755);
+          visualCtx.stroke();
+          visualCtx.restore();
+
+          const scorchMarks=[
+            [318,520,64,0.20],[405,596,88,0.16],[532,655,108,0.14],
+            [646,710,74,0.17],[724,758,54,0.15],[268,456,38,0.18]
+          ];
+          for(const [x,y,r,a] of scorchMarks){
+            const scorch=visualCtx.createRadialGradient(x,y,0,x,y,r);
+            scorch.addColorStop(0,"rgba(47,20,8,"+a+")");
+            scorch.addColorStop(0.62,"rgba(93,36,7,"+(a*0.62)+")");
+            scorch.addColorStop(1,"rgba(93,36,7,0)");
+            visualCtx.fillStyle=scorch;
+            visualCtx.beginPath();
+            visualCtx.arc(x,y,r,0,Math.PI*2);
+            visualCtx.fill();
+          }
+        }
+
         const yPositions=[520,610,700,790];
         const baseSizes=[68,56,52,50];
         const weights=[650,620,540,500];
@@ -196,10 +253,20 @@ export function StampMedal3D({
             fontSize-=2;
           }while(fontSize>30);
           const y=yPositions[index]??790;
-          visualCtx.fillStyle="rgba(255,255,255,0.30)";
-          visualCtx.fillText(line,512,y-2);
-          visualCtx.fillStyle="rgba(66,66,66,0.72)";
-          visualCtx.fillText(line,512,y+1);
+          if(isTemporarySuzukiBurn){
+            visualCtx.shadowBlur=10;
+            visualCtx.shadowColor="rgba(255,83,12,0.38)";
+            visualCtx.fillStyle="rgba(255,164,72,0.26)";
+            visualCtx.fillText(line,512,y-2);
+            visualCtx.shadowBlur=0;
+            visualCtx.fillStyle="rgba(36,15,6,0.88)";
+            visualCtx.fillText(line,512,y+2);
+          }else{
+            visualCtx.fillStyle="rgba(255,255,255,0.30)";
+            visualCtx.fillText(line,512,y-2);
+            visualCtx.fillStyle="rgba(66,66,66,0.72)";
+            visualCtx.fillText(line,512,y+1);
+          }
           bumpCtx.fillText(line,512,y);
         });
 
