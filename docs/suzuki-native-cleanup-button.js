@@ -32,6 +32,12 @@ function isSuzukiDetail(){
  return /SuzukiPM/i.test(text);
 }
 
+function requestCleanup(){
+ const brush=window.CASuzukiNativeBrush;
+ if(brush&&typeof brush.run==="function"&&brush.run())return;
+ window.dispatchEvent(new CustomEvent("ca:suzuki-cleanup-requested",{detail:{trainer_name:"SuzukiPM"}}));
+}
+
 function insertButton(){
  if(!burnedSession||!modal||!controls||!isSuzukiDetail())return false;
  if(cleanupRow&&document.contains(cleanupRow))return true;
@@ -41,7 +47,7 @@ function insertButton(){
  controls.parentNode.insertBefore(cleanupRow,controls);
  cleanupRow.querySelector("button").onclick=e=>{
   e.preventDefault();e.stopPropagation();
-  window.dispatchEvent(new CustomEvent("ca:suzuki-cleanup-requested",{detail:{trainer_name:"SuzukiPM"}}));
+  requestCleanup();
  };
  return true;
 }
@@ -62,13 +68,13 @@ if(modal)modal.addEventListener("click",e=>{if(e.target===modal)removeButton()},
 window.addEventListener("pagehide",removeButton);
 
 window.CASuzukiNativeCleanup={
- version:"button-plus-brush-loader-20260924-0724",
+ version:"button-direct-brush-20260924-0728",
  get armed(){return burnedSession},
  remove:removeButton
 };
 
 const brushScript=document.createElement("script");
-brushScript.src="./suzuki-native-brush.js?v=20260924-0724";
+brushScript.src="./suzuki-native-brush.js?v=20260924-0728";
 brushScript.async=false;
 document.head.appendChild(brushScript);
 })();
