@@ -29,6 +29,7 @@ function syncAdminModalScrollLock(){
   document.body.style.left="0";
   document.body.style.right="0";
   document.body.style.width="100%";
+  document.body.style.overflow="hidden";
   adminModalLocked=true;
   return;
  }
@@ -40,26 +41,39 @@ function syncAdminModalScrollLock(){
   document.body.style.left="";
   document.body.style.right="";
   document.body.style.width="";
+  document.body.style.overflow="";
   const y=adminModalScrollY;
   adminModalLocked=false;
   requestAnimationFrame(()=>window.scrollTo(0,y));
  }
+}
+function closeAdminIconModalNow(ev){
+ const target=ev.target&&ev.target.closest?ev.target.closest("#iconClose"):null;
+ if(!target)return;
+ ev.preventDefault();
+ ev.stopPropagation();
+ if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();
+ const modal=document.getElementById("iconModal")||target.closest(".adminmodalback");
+ if(modal)modal.remove();
+ syncAdminModalScrollLock();
 }
 function installAdminIconHistoryFix(){
  if(!/(?:^|\/)admin\.html$/.test(location.pathname))return;
  const style=document.createElement("style");
  style.id="ca-icon-history-style";
  style.textContent=`
-html.ca-admin-modal-open,body.ca-admin-modal-open{overscroll-behavior:none!important}
-.adminmodalback{overscroll-behavior:contain!important;touch-action:pan-y!important}
-.adminmodal{overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important}
-.icon-history-row{display:flex!important;align-items:stretch!important;gap:14px!important;overflow-x:auto!important;padding:4px 2px 12px!important;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+html.ca-admin-modal-open,body.ca-admin-modal-open{overflow:hidden!important;overscroll-behavior:none!important}
+.adminmodalback{position:fixed!important;inset:0!important;width:100%!important;height:100dvh!important;max-height:100dvh!important;overflow:hidden!important;overscroll-behavior:none!important;touch-action:pan-y!important}
+.adminmodal{max-height:calc(100dvh - 32px)!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-y!important}
+.icon-history-row{display:flex!important;align-items:stretch!important;gap:14px!important;overflow-x:auto!important;overflow-y:hidden!important;padding:4px 2px 12px!important;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
 .icon-history-item{min-width:138px!important;padding:12px 10px 10px!important;border:1px solid #e5eed7;border-radius:20px;background:#f8fafc;text-align:center;scroll-snap-align:start}
 .icon-history-item .avatar{position:relative!important;width:112px!important;height:112px!important;margin:0 auto 8px!important;border-radius:999px!important;overflow:hidden!important;border:4px solid #fff!important;background:#f7fee7!important;display:grid!important;place-items:center!important;box-shadow:0 8px 22px rgba(77,124,15,.12)!important}
 .icon-history-item .avatar img{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;object-fit:cover!important;display:block!important}
-@media(max-width:820px){.icon-history-item{min-width:146px!important}.icon-history-item .avatar{width:120px!important;height:120px!important}}
+@media(max-width:820px){.adminmodalback{padding:12px!important;align-items:flex-start!important}.adminmodal{max-height:calc(100dvh - 24px)!important}.icon-history-item{min-width:146px!important}.icon-history-item .avatar{width:120px!important;height:120px!important}}
 `;
  document.head.appendChild(style);
+ document.addEventListener("touchstart",closeAdminIconModalNow,{capture:true,passive:false});
+ document.addEventListener("pointerdown",ev=>{if(ev.pointerType!=="touch")closeAdminIconModalNow(ev)},true);
  enhanceAdminIconHistory(document);
  syncAdminModalScrollLock();
  const observer=new MutationObserver(mutations=>{
