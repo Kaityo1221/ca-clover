@@ -236,34 +236,54 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
     bumpCtx.fillStyle="#000";bumpCtx.fillRect(0,0,1024,1024);
     bumpCtx.fillStyle="#fff";bumpCtx.textAlign="center";bumpCtx.textBaseline="middle";
     const isTemporarySuzukiBurn=(engravingText[0]||"").toLowerCase()==="suzukipm";
-    // TEMP: SuzukiPM-only dragon-fire heat tint. Remove this branch after the joke event.
+    // TEMP: SuzukiPM-only dragon-fire scorch. Remove this branch after the joke event.
     if(isTemporarySuzukiBurn){
-     const drawHeatBloom=(cx,cy,rx,ry,rotation,opacity)=>{
-      visualCtx.save();visualCtx.translate(cx,cy);visualCtx.rotate(rotation);visualCtx.scale(rx/260,ry/260);visualCtx.globalAlpha=opacity;
-      const tint=visualCtx.createRadialGradient(-28,-34,18,0,0,260);
-      tint.addColorStop(0,"rgba(18,15,14,.52)");tint.addColorStop(.18,"rgba(48,30,25,.38)");
-      tint.addColorStop(.34,"rgba(72,34,92,.34)");tint.addColorStop(.50,"rgba(27,67,128,.34)");
-      tint.addColorStop(.64,"rgba(105,55,73,.25)");tint.addColorStop(.77,"rgba(151,91,29,.24)");
-      tint.addColorStop(.88,"rgba(213,164,62,.18)");tint.addColorStop(1,"rgba(232,199,108,0)");
-      visualCtx.fillStyle=tint;visualCtx.beginPath();visualCtx.arc(0,0,260,0,Math.PI*2);visualCtx.fill();visualCtx.restore();
+     const drawScorchCloud=(cx,cy,rx,ry,rotation,coreAlpha,edgeAlpha)=>{
+      visualCtx.save();visualCtx.translate(cx,cy);visualCtx.rotate(rotation);visualCtx.scale(rx/220,ry/220);
+      const scorch=visualCtx.createRadialGradient(-34,-28,8,0,0,220);
+      scorch.addColorStop(0,`rgba(16,12,10,${coreAlpha})`);
+      scorch.addColorStop(.24,`rgba(35,22,16,${coreAlpha*.92})`);
+      scorch.addColorStop(.48,`rgba(79,45,24,${coreAlpha*.68})`);
+      scorch.addColorStop(.70,`rgba(137,82,35,${edgeAlpha})`);
+      scorch.addColorStop(.88,`rgba(196,132,52,${edgeAlpha*.48})`);
+      scorch.addColorStop(1,"rgba(222,172,82,0)");
+      visualCtx.fillStyle=scorch;visualCtx.beginPath();visualCtx.arc(0,0,220,0,Math.PI*2);visualCtx.fill();visualCtx.restore();
      };
-     drawHeatBloom(500,654,330,205,-.05,.90);
-     drawHeatBloom(410,596,220,150,-.34,.64);
-     drawHeatBloom(610,710,235,130,.20,.48);
-     drawHeatBloom(356,548,150,104,-.52,.46);
 
-     [[342,536,62,36,-.40,.30],[386,566,78,42,-.28,.26],[445,604,58,31,-.14,.22],[548,650,72,34,.08,.18],[632,718,54,29,.25,.14]].forEach(([cx,cy,rx,ry,rotation,alpha])=>{
-      visualCtx.save();visualCtx.translate(cx,cy);visualCtx.rotate(rotation);visualCtx.scale(rx/90,ry/90);
-      const patch=visualCtx.createRadialGradient(-14,-10,4,0,0,90);
-      patch.addColorStop(0,`rgba(12,10,9,${alpha})`);patch.addColorStop(.28,`rgba(55,24,20,${alpha*.92})`);
-      patch.addColorStop(.55,`rgba(78,37,103,${alpha*.72})`);patch.addColorStop(.75,`rgba(31,73,131,${alpha*.56})`);
-      patch.addColorStop(1,"rgba(194,133,40,0)");
-      visualCtx.fillStyle=patch;visualCtx.beginPath();visualCtx.arc(0,0,90,0,Math.PI*2);visualCtx.fill();visualCtx.restore();
+     visualCtx.save();visualCtx.translate(512,660);visualCtx.scale(1.36,.76);
+     const warmWash=visualCtx.createRadialGradient(0,0,35,0,0,245);
+     warmWash.addColorStop(0,"rgba(171,103,38,.18)");warmWash.addColorStop(.48,"rgba(139,75,28,.13)");
+     warmWash.addColorStop(.78,"rgba(82,43,21,.08)");warmWash.addColorStop(1,"rgba(52,28,18,0)");
+     visualCtx.fillStyle=warmWash;visualCtx.beginPath();visualCtx.arc(0,0,245,0,Math.PI*2);visualCtx.fill();visualCtx.restore();
+
+     drawScorchCloud(330,525,210,140,-.42,.78,.34);
+     drawScorchCloud(392,565,230,128,-.27,.62,.30);
+     drawScorchCloud(286,635,165,118,-.12,.54,.28);
+     drawScorchCloud(676,740,150,100,.24,.36,.20);
+     drawScorchCloud(716,614,118,78,.08,.26,.14);
+     drawScorchCloud(484,812,158,72,.02,.28,.16);
+
+     [[286,487,62,24,-.42,.42],[330,516,88,29,-.36,.34],[373,548,72,22,-.28,.28],[267,610,54,18,-.08,.28],[315,657,66,20,-.05,.22],[668,739,46,17,.20,.18],[712,716,30,13,.18,.14],[465,810,56,15,0,.16]].forEach(([cx,cy,rx,ry,rotation,alpha])=>{
+      visualCtx.save();visualCtx.translate(cx,cy);visualCtx.rotate(rotation);
+      const charGradient=visualCtx.createRadialGradient(-rx*.18,-ry*.15,2,0,0,Math.max(rx,ry));
+      charGradient.addColorStop(0,`rgba(9,8,7,${alpha})`);charGradient.addColorStop(.52,`rgba(22,16,13,${alpha*.86})`);
+      charGradient.addColorStop(1,"rgba(55,31,19,0)");
+      visualCtx.fillStyle=charGradient;visualCtx.beginPath();visualCtx.ellipse(0,0,rx,ry,0,0,Math.PI*2);visualCtx.fill();visualCtx.restore();
      });
 
-     [[327,526,18,9,-.34,.22],[365,548,27,11,-.26,.18],[405,579,15,8,-.18,.16],[469,614,21,8,-.10,.13],[590,690,17,7,.18,.10]].forEach(([cx,cy,rx,ry,rotation,alpha])=>{
-      visualCtx.save();visualCtx.translate(cx,cy);visualCtx.rotate(rotation);visualCtx.fillStyle=`rgba(24,18,16,${alpha})`;
-      visualCtx.beginPath();visualCtx.ellipse(0,0,rx,ry,0,0,Math.PI*2);visualCtx.fill();visualCtx.restore();
+     visualCtx.save();visualCtx.lineCap="round";
+     [[248,505,430,571,11,.28],[258,538,448,603,7,.23],[272,579,420,624,5,.18],[294,620,390,646,4,.16],[614,728,720,760,5,.13],[436,806,564,812,4,.11]].forEach(([x1,y1,x2,y2,width,alpha])=>{
+      visualCtx.strokeStyle=`rgba(18,13,11,${alpha})`;visualCtx.lineWidth=width;visualCtx.beginPath();visualCtx.moveTo(x1,y1);
+      visualCtx.quadraticCurveTo(x1+(x2-x1)*.47,y1+(y2-y1)*.36-8,x2,y2);visualCtx.stroke();
+     });
+     visualCtx.restore();
+
+     [[384,558,74,30,-.28],[427,589,58,24,-.18]].forEach(([cx,cy,rx,ry,rotation])=>{
+      visualCtx.save();visualCtx.translate(cx,cy);visualCtx.rotate(rotation);visualCtx.scale(rx/80,ry/80);
+      const tint=visualCtx.createRadialGradient(0,0,6,0,0,80);
+      tint.addColorStop(0,"rgba(52,31,83,.12)");tint.addColorStop(.46,"rgba(30,67,117,.10)");
+      tint.addColorStop(.76,"rgba(147,86,34,.08)");tint.addColorStop(1,"rgba(185,132,48,0)");
+      visualCtx.fillStyle=tint;visualCtx.beginPath();visualCtx.arc(0,0,80,0,Math.PI*2);visualCtx.fill();visualCtx.restore();
      });
     }
     const ys=[520,610,700,790],sizes=[68,56,52,50],weights=[650,620,540,500];
@@ -277,9 +297,9 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
      }while(size>30);
      const y=ys[index]||790;
      if(isTemporarySuzukiBurn){
-      visualCtx.shadowBlur=5;visualCtx.shadowColor="rgba(63,25,12,.30)";visualCtx.fillStyle="rgba(112,57,24,.28)";visualCtx.fillText(line,512,y-1);
-      visualCtx.shadowBlur=0;visualCtx.fillStyle="rgba(31,22,18,.94)";visualCtx.fillText(line,512,y+2);
-      visualCtx.strokeStyle="rgba(126,69,31,.38)";visualCtx.lineWidth=1.15;visualCtx.strokeText(line,512,y+2);
+      visualCtx.shadowBlur=4;visualCtx.shadowColor="rgba(28,15,9,.34)";visualCtx.fillStyle="rgba(104,57,25,.34)";visualCtx.fillText(line,512,y-1);
+      visualCtx.shadowBlur=0;visualCtx.fillStyle="rgba(22,16,13,.96)";visualCtx.fillText(line,512,y+2);
+      visualCtx.strokeStyle="rgba(121,70,30,.46)";visualCtx.lineWidth=1.35;visualCtx.strokeText(line,512,y+2);
      }else{
       visualCtx.fillStyle="rgba(255,255,255,0.30)";visualCtx.fillText(line,512,y-2);
       visualCtx.fillStyle="rgba(66,66,66,0.72)";visualCtx.fillText(line,512,y+1);
