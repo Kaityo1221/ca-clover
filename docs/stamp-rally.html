@@ -217,25 +217,41 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
   const backMaterial=new THREE.MeshPhysicalMaterial({color:0xd7d7d7,metalness:.95,roughness:.16,reflectivity:.85,clearcoat:.4,clearcoatRoughness:.08});
   const brushedMaterial=new THREE.MeshPhysicalMaterial({color:0xd2d2d2,metalness:.65,roughness:.42,reflectivity:.45,clearcoat:.1});
   const pinMaterial=new THREE.MeshPhysicalMaterial({color:0xf0f0f0,metalness:.9,roughness:.22,reflectivity:.8,clearcoat:.2,clearcoatRoughness:.08});
-  let engravingTexture=null;
+  let engravingVisualTexture=null;
+  let engravingBumpTexture=null;
   const engravingText=(engravingLines||[]).map(x=>String(x||"").trim()).filter(Boolean).slice(0,4);
   if(engravingText.length){
-   const canvas=document.createElement("canvas");canvas.width=1024;canvas.height=1024;
-   const ctx=canvas.getContext("2d");
-   if(ctx){
-    ctx.fillStyle="#000";ctx.fillRect(0,0,1024,1024);
-    ctx.fillStyle="#fff";ctx.textAlign="center";ctx.textBaseline="middle";
-    const ys=[390,500,610,720],sizes=[70,58,54,52],weights=[700,650,560,520];
+   const visualCanvas=document.createElement("canvas");visualCanvas.width=1024;visualCanvas.height=1024;
+   const bumpCanvas=document.createElement("canvas");bumpCanvas.width=1024;bumpCanvas.height=1024;
+   const visualCtx=visualCanvas.getContext("2d");
+   const bumpCtx=bumpCanvas.getContext("2d");
+   if(visualCtx&&bumpCtx){
+    visualCtx.fillStyle="#f5f5f5";visualCtx.fillRect(0,0,1024,1024);
+    visualCtx.fillStyle="#ababab";visualCtx.textAlign="center";visualCtx.textBaseline="middle";
+    bumpCtx.fillStyle="#000";bumpCtx.fillRect(0,0,1024,1024);
+    bumpCtx.fillStyle="#fff";bumpCtx.textAlign="center";bumpCtx.textBaseline="middle";
+    const ys=[520,610,700,790],sizes=[68,56,52,50],weights=[650,620,540,500];
     engravingText.forEach((line,index)=>{
-     let size=sizes[index]||52,weight=weights[index]||520;
-     do{ctx.font=weight+" "+size+'px Arial, "Helvetica Neue", sans-serif';if(ctx.measureText(line).width<=650)break;size-=2}while(size>30);
-     ctx.fillText(line,512,ys[index]||720);
+     let size=sizes[index]||50,weight=weights[index]||500;
+     do{
+      const font=weight+" "+size+'px Arial, "Helvetica Neue", sans-serif';
+      visualCtx.font=font;bumpCtx.font=font;
+      if(visualCtx.measureText(line).width<=650)break;
+      size-=2;
+     }while(size>30);
+     const y=ys[index]||790;
+     visualCtx.fillText(line,512,y);
+     bumpCtx.fillText(line,512,y);
     });
-    engravingTexture=new THREE.CanvasTexture(canvas);
-    engravingTexture.colorSpace=THREE.NoColorSpace;
-    engravingTexture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
-    backMaterial.bumpMap=engravingTexture;
-    backMaterial.bumpScale=-.022;
+    engravingVisualTexture=new THREE.CanvasTexture(visualCanvas);
+    engravingVisualTexture.colorSpace=THREE.SRGBColorSpace;
+    engravingVisualTexture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
+    engravingBumpTexture=new THREE.CanvasTexture(bumpCanvas);
+    engravingBumpTexture.colorSpace=THREE.NoColorSpace;
+    engravingBumpTexture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
+    backMaterial.map=engravingVisualTexture;
+    backMaterial.bumpMap=engravingBumpTexture;
+    backMaterial.bumpScale=-.016;
     backMaterial.needsUpdate=true;
    }
   }
@@ -358,7 +374,8 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
    observer.disconnect();
    controls.dispose();
    faceTexture?.dispose();
-   engravingTexture?.dispose();
+   engravingVisualTexture?.dispose();
+   engravingBumpTexture?.dispose();
    if(faceObjectUrl)URL.revokeObjectURL(faceObjectUrl);
    if(activeFaceMaterial!==faceMaterial)activeFaceMaterial.dispose();
    goldMaterial.dispose();faceMaterial.dispose();backMaterial.dispose();brushedMaterial.dispose();pinMaterial.dispose();
