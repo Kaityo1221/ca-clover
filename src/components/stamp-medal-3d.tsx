@@ -184,68 +184,89 @@ export function StampMedal3D({
         const lines=engravingKey.split("\n");
         const isTemporarySuzukiBurn=lines[0]?.toLowerCase()==="suzukipm";
 
-        // TEMP: SuzukiPM-only dragon-fire scorch. Remove this branch after the joke event.
+        // TEMP: SuzukiPM-only dragon-fire heat tint. Remove this branch after the joke event.
         if(isTemporarySuzukiBurn){
-          // Clean branded-seal treatment: no long brown smear across the medal.
-          visualCtx.save();
-          visualCtx.translate(512,662);
-          visualCtx.scale(1.18,0.62);
-          const brandHeat=visualCtx.createRadialGradient(0,0,70,0,0,245);
-          brandHeat.addColorStop(0,"rgba(255,112,28,0.03)");
-          brandHeat.addColorStop(0.56,"rgba(255,86,18,0.05)");
-          brandHeat.addColorStop(0.72,"rgba(28,12,8,0.08)");
-          brandHeat.addColorStop(0.84,"rgba(24,10,7,0.34)");
-          brandHeat.addColorStop(0.93,"rgba(211,50,8,0.16)");
-          brandHeat.addColorStop(1,"rgba(255,94,18,0)");
-          visualCtx.fillStyle=brandHeat;
-          visualCtx.beginPath();
-          visualCtx.arc(0,0,245,0,Math.PI*2);
-          visualCtx.fill();
-          visualCtx.restore();
-
-          visualCtx.save();
-          visualCtx.lineCap="round";
-          visualCtx.lineJoin="round";
-          visualCtx.shadowBlur=12;
-          visualCtx.shadowColor="rgba(255,72,12,0.24)";
-          visualCtx.strokeStyle="rgba(24,12,9,0.42)";
-          visualCtx.lineWidth=10;
-          visualCtx.setLineDash([92,18,54,24,36,16]);
-          visualCtx.beginPath();
-          visualCtx.ellipse(512,662,286,164,-0.025,0,Math.PI*2);
-          visualCtx.stroke();
-          visualCtx.setLineDash([]);
-          visualCtx.strokeStyle="rgba(214,55,10,0.20)";
-          visualCtx.lineWidth=3;
-          visualCtx.beginPath();
-          visualCtx.ellipse(512,662,276,156,-0.025,0.06,Math.PI*1.94);
-          visualCtx.stroke();
-          visualCtx.restore();
-
-          // Three short flame-claw marks at the upper-left edge of the seal.
-          const flameClaws=[
-            [286,540,344,566,390,586],
-            [300,514,356,540,404,560],
-            [322,492,374,516,418,536],
-          ];
-          visualCtx.save();
-          visualCtx.lineCap="round";
-          for(const [x1,y1,cx,cy,x2,y2] of flameClaws){
-            visualCtx.shadowBlur=10;
-            visualCtx.shadowColor="rgba(255,78,10,0.30)";
-            visualCtx.strokeStyle="rgba(42,18,10,0.56)";
-            visualCtx.lineWidth=8;
+          // Real heated steel does not form a neat ring. Build an uneven oxidation bloom instead:
+          // charred core -> violet/blue temper colours -> brown/straw/gold at the cooler edge.
+          const drawHeatBloom=(
+            cx:number,
+            cy:number,
+            rx:number,
+            ry:number,
+            rotation:number,
+            opacity:number,
+          )=>{
+            visualCtx.save();
+            visualCtx.translate(cx,cy);
+            visualCtx.rotate(rotation);
+            visualCtx.scale(rx/260,ry/260);
+            visualCtx.globalAlpha=opacity;
+            const tint=visualCtx.createRadialGradient(-28,-34,18,0,0,260);
+            tint.addColorStop(0,"rgba(18,15,14,0.52)");
+            tint.addColorStop(0.18,"rgba(48,30,25,0.38)");
+            tint.addColorStop(0.34,"rgba(72,34,92,0.34)");
+            tint.addColorStop(0.50,"rgba(27,67,128,0.34)");
+            tint.addColorStop(0.64,"rgba(105,55,73,0.25)");
+            tint.addColorStop(0.77,"rgba(151,91,29,0.24)");
+            tint.addColorStop(0.88,"rgba(213,164,62,0.18)");
+            tint.addColorStop(1,"rgba(232,199,108,0)");
+            visualCtx.fillStyle=tint;
             visualCtx.beginPath();
-            visualCtx.moveTo(x1,y1);
-            visualCtx.quadraticCurveTo(cx,cy,x2,y2);
-            visualCtx.stroke();
-            visualCtx.shadowBlur=5;
-            visualCtx.strokeStyle="rgba(255,92,18,0.34)";
-            visualCtx.lineWidth=3;
+            visualCtx.arc(0,0,260,0,Math.PI*2);
+            visualCtx.fill();
+            visualCtx.restore();
+          };
+
+          // Main heat-affected zone plus offset lobes to break any seal/ring silhouette.
+          drawHeatBloom(500,654,330,205,-0.05,0.90);
+          drawHeatBloom(410,596,220,150,-0.34,0.64);
+          drawHeatBloom(610,710,235,130,0.20,0.48);
+          drawHeatBloom(356,548,150,104,-0.52,0.46);
+
+          // Irregular hotter patches, biased toward the upper-left where the "dragon flame" hit first.
+          const hotPatches=[
+            [342,536,62,36,-0.40,0.30],
+            [386,566,78,42,-0.28,0.26],
+            [445,604,58,31,-0.14,0.22],
+            [548,650,72,34,0.08,0.18],
+            [632,718,54,29,0.25,0.14],
+          ] as const;
+          for(const [cx,cy,rx,ry,rotation,alpha] of hotPatches){
+            visualCtx.save();
+            visualCtx.translate(cx,cy);
+            visualCtx.rotate(rotation);
+            visualCtx.scale(rx/90,ry/90);
+            const patch=visualCtx.createRadialGradient(-14,-10,4,0,0,90);
+            patch.addColorStop(0,`rgba(12,10,9,${alpha})`);
+            patch.addColorStop(0.28,`rgba(55,24,20,${alpha*0.92})`);
+            patch.addColorStop(0.55,`rgba(78,37,103,${alpha*0.72})`);
+            patch.addColorStop(0.75,`rgba(31,73,131,${alpha*0.56})`);
+            patch.addColorStop(1,"rgba(194,133,40,0)");
+            visualCtx.fillStyle=patch;
             visualCtx.beginPath();
-            visualCtx.moveTo(x1+2,y1-2);
-            visualCtx.quadraticCurveTo(cx+2,cy-3,x2,y2-3);
-            visualCtx.stroke();
+            visualCtx.arc(0,0,90,0,Math.PI*2);
+            visualCtx.fill();
+            visualCtx.restore();
+          }
+
+          // Dry soot flecks keep the burn organic without turning into a drawn line.
+          const soot=[
+            [327,526,18,9,-0.34,0.22],
+            [365,548,27,11,-0.26,0.18],
+            [405,579,15,8,-0.18,0.16],
+            [469,614,21,8,-0.10,0.13],
+            [590,690,17,7,0.18,0.10],
+          ] as const;
+          visualCtx.save();
+          for(const [cx,cy,rx,ry,rotation,alpha] of soot){
+            visualCtx.save();
+            visualCtx.translate(cx,cy);
+            visualCtx.rotate(rotation);
+            visualCtx.fillStyle=`rgba(24,18,16,${alpha})`;
+            visualCtx.beginPath();
+            visualCtx.ellipse(0,0,rx,ry,0,0,Math.PI*2);
+            visualCtx.fill();
+            visualCtx.restore();
           }
           visualCtx.restore();
         }
@@ -265,13 +286,17 @@ export function StampMedal3D({
           }while(fontSize>30);
           const y=yPositions[index]??790;
           if(isTemporarySuzukiBurn){
-            visualCtx.shadowBlur=10;
-            visualCtx.shadowColor="rgba(255,82,14,0.24)";
-            visualCtx.fillStyle="rgba(255,150,62,0.18)";
-            visualCtx.fillText(line,512,y-2);
+            // Burnt engraving: deep charcoal-brown with a faint oxidised bronze edge.
+            visualCtx.shadowBlur=5;
+            visualCtx.shadowColor="rgba(63,25,12,0.30)";
+            visualCtx.fillStyle="rgba(112,57,24,0.28)";
+            visualCtx.fillText(line,512,y-1);
             visualCtx.shadowBlur=0;
-            visualCtx.fillStyle="rgba(24,18,16,0.90)";
+            visualCtx.fillStyle="rgba(31,22,18,0.94)";
             visualCtx.fillText(line,512,y+2);
+            visualCtx.strokeStyle="rgba(126,69,31,0.38)";
+            visualCtx.lineWidth=1.15;
+            visualCtx.strokeText(line,512,y+2);
           }else{
             visualCtx.fillStyle="rgba(255,255,255,0.30)";
             visualCtx.fillText(line,512,y-2);
@@ -290,7 +315,7 @@ export function StampMedal3D({
         engravingBumpTexture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
 
         backMaterial.bumpMap=engravingBumpTexture;
-        backMaterial.bumpScale=-0.016;
+        backMaterial.bumpScale=isTemporarySuzukiBurn?-0.022:-0.016;
         backMaterial.needsUpdate=true;
       }
     }
