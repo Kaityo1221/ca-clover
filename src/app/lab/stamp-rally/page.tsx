@@ -97,6 +97,10 @@ type StampCatalogRow = {
   ca_level: "1st" | "2nd" | null;
 };
 
+const SUZUKI_HEARTBEAT_MP3 = "https://upload.wikimedia.org/wikipedia/commons/transcoded/7/72/HROgg.ogg/HROgg.ogg.mp3";
+const SUZUKI_HEARTBEAT_OGG = "https://upload.wikimedia.org/wikipedia/commons/7/72/HROgg.ogg";
+const SUZUKI_INTRO_MS = 4300;
+
 const REGION_GROUPS = [
   { name: "北海道・東北", prefectures: ["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県"] },
   { name: "関東", prefectures: ["茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県"] },
@@ -140,7 +144,10 @@ export default function Page() {
   const [selectedDesignId, setSelectedDesignId] = useState<string | null>(null);
   const [preferenceBusy, setPreferenceBusy] = useState(false);
   const [stampMessagePopup, setStampMessagePopup] = useState<{collectionId:string;message:string}|null>(null);
+  const [suzukiIntroActive,setSuzukiIntroActive]=useState(false);
   const shownMessageCollections = useRef<Set<string>>(new Set());
+  const suzukiHeartbeatRef=useRef<HTMLAudioElement|null>(null);
+  const suzukiIntroTimerRef=useRef<number|null>(null);
 
   useEffect(() => {
     if (loading || !user || !canAccessStamp) return;
@@ -267,6 +274,18 @@ export default function Page() {
     return()=>window.clearTimeout(timer);
   }, [stampMessagePopup?.collectionId, stampMessagePopup?.message]);
 
+
+  useEffect(()=>()=>{
+    if(suzukiIntroTimerRef.current!==null){
+      window.clearTimeout(suzukiIntroTimerRef.current);
+    }
+    const audio=suzukiHeartbeatRef.current;
+    if(audio){
+      audio.pause();
+      audio.currentTime=0;
+    }
+  },[]);
+
   const stampCommunities = useMemo<StampCommunity[]>(() => {
     const caById = new Map(cas.map((ca) => [ca.id, ca]));
     const versionById = new Map(designVersions.map((version) => [version.id, version]));
@@ -381,6 +400,44 @@ export default function Page() {
     return design.source_avatar_url;
   }
 
+  function isSuzukiSpecial(ca:StampCommunity["cas"][number]|null){
+    return ca?.trainer_name?.trim().toLowerCase()==="suzukipm";
+  }
+
+  function startSuzukiIntro(ca:StampCommunity["cas"][number]|null){
+    if(!isSuzukiSpecial(ca)) return;
+
+    if(suzukiIntroTimerRef.current!==null){
+      window.clearTimeout(suzukiIntroTimerRef.current);
+    }
+
+    const audio=suzukiHeartbeatRef.current;
+    if(audio){
+      try{
+        audio.pause();
+        audio.currentTime=0;
+        audio.volume=0.72;
+        void audio.play().catch(()=>{});
+      }catch{
+        // The visual ritual still runs if the browser blocks audio.
+      }
+    }
+
+    setSuzukiIntroActive(false);
+    window.requestAnimationFrame(()=>{
+      setSuzukiIntroActive(true);
+      suzukiIntroTimerRef.current=window.setTimeout(()=>{
+        setSuzukiIntroActive(false);
+        suzukiIntroTimerRef.current=null;
+        const currentAudio=suzukiHeartbeatRef.current;
+        if(currentAudio){
+          currentAudio.pause();
+          currentAudio.currentTime=0;
+        }
+      },SUZUKI_INTRO_MS);
+    });
+  }
+
   function showAcquisitionMessage(ca:StampCommunity["cas"][number]|null){
     const collection=ca?.collection;
     const message=collection?.acquisition_message?.trim()??"";
@@ -408,12 +465,14 @@ export default function Page() {
     setSelectedCaId(firstCa?.id??null);
     setSelectedDesignId(firstDesign?.id??null);
     showAcquisitionMessage(firstCa);
+    startSuzukiIntro(firstCa);
   }
 
   function selectCa(ca:StampCommunity["cas"][number]){
     setSelectedCaId(ca.id);
     setSelectedDesignId(displayDesign(ca)?.id??null);
     showAcquisitionMessage(ca);
+    startSuzukiIntro(ca);
   }
 
   async function togglePinnedDesign(ca:StampCommunity["cas"][number],design:IconVersionRow){
@@ -507,6 +566,111 @@ export default function Page() {
   }
 
   return <main className="min-h-screen bg-[#fff8ef]">
+    <audio ref={suzukiHeartbeatRef} preload="auto" className="hidden" aria-hidden="true">
+      <source src={SUZUKI_HEARTBEAT_MP3} type="audio/mpeg" />
+      <source src={SUZUKI_HEARTBEAT_OGG} type="audio/ogg" />
+    </audio>
+
+    {suzukiIntroActive ? <>
+      <style>{`
+        @keyframes suzukiRitualFade{
+          0%{opacity:0}
+          8%{opacity:1}
+          86%{opacity:1}
+          100%{opacity:0}
+        }
+        @keyframes suzukiHeartPulse{
+          0%,100%{transform:scale(1);filter:brightness(.78)}
+          7%{transform:scale(1.045);filter:brightness(1.55)}
+          17%{transform:scale(.985);filter:brightness(.92)}
+          28%{transform:scale(1.028);filter:brightness(1.28)}
+          42%{transform:scale(1);filter:brightness(.82)}
+        }
+        @keyframes suzukiRuneWake{
+          0%,20%{opacity:.12;text-shadow:0 0 0 transparent}
+          42%{opacity:.72;text-shadow:0 0 10px rgba(173,38,20,.72)}
+          65%,100%{opacity:.38;text-shadow:0 0 5px rgba(135,28,17,.45)}
+        }
+        @keyframes suzukiLineOne{
+          0%,18%{opacity:0;transform:translateY(8px)}
+          30%,100%{opacity:1;transform:translateY(0)}
+        }
+        @keyframes suzukiLineTwo{
+          0%,42%{opacity:0;transform:translateY(8px)}
+          56%,100%{opacity:1;transform:translateY(0)}
+        }
+        @keyframes suzukiAsh{
+          0%{transform:translate3d(0,-8px,0) rotate(0deg);opacity:0}
+          20%{opacity:.55}
+          100%{transform:translate3d(var(--ash-x),110vh,0) rotate(220deg);opacity:0}
+        }
+      `}</style>
+      <div
+        className="fixed inset-0 z-[120] overflow-hidden bg-black"
+        style={{animation:`suzukiRitualFade ${SUZUKI_INTRO_MS}ms ease both`}}
+        aria-live="assertive"
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(75,10,8,.20),transparent_42%)]" />
+
+        {Array.from({length:16},(_,index)=><span
+          key={index}
+          className="absolute left-1/2 top-1/2 size-1 rounded-full bg-[#6e2018]"
+          style={{
+            ["--ash-x" as string]:`${((index%5)-2)*18}px`,
+            marginLeft:`${(index*37)%260-130}px`,
+            animation:`suzukiAsh ${2400+(index%4)*360}ms linear ${index*90}ms infinite`,
+            opacity:.25,
+          }}
+        />)}
+
+        <div className="absolute inset-0 grid place-items-center px-6">
+          <div className="relative flex w-full max-w-sm flex-col items-center text-center">
+            <div
+              className="relative grid size-[248px] place-items-center"
+              style={{animation:"suzukiHeartPulse .86s ease-out .12s 4"}}
+            >
+              <div className="absolute inset-[16px] rounded-full border border-[#632018]/55 shadow-[0_0_48px_rgba(110,28,18,.20),inset_0_0_38px_rgba(80,18,14,.16)]" />
+              <div className="absolute inset-[34px] rotate-45 rounded-[28%] border border-[#4c1713]/45" />
+              <div className="absolute inset-[55px] -rotate-12 rounded-full border border-[#7b241a]/35" />
+              <svg viewBox="0 0 200 200" className="absolute inset-[52px] h-[144px] w-[144px] opacity-55" aria-hidden="true">
+                <path d="M100 17 L126 72 L183 78 L140 118 L152 177 L100 148 L48 177 L60 118 L17 78 L74 72 Z" fill="none" stroke="#6d2018" strokeWidth="2.3"/>
+                <circle cx="100" cy="100" r="45" fill="none" stroke="#8c2b1e" strokeWidth="1.4"/>
+                <path d="M67 132 C72 96 85 63 100 49 C116 64 128 98 133 132" fill="none" stroke="#7a261c" strokeWidth="2"/>
+              </svg>
+
+              {["ᚱ","ᚨ","ᚷ","ᛟ","ᚾ","ᚺ","ᛖ","ᚨ","ᚱ","ᛏ","ᛒ","ᚱ"].map((rune,index)=>{
+                const angle=(index/12)*Math.PI*2-Math.PI/2;
+                const radius=104;
+                return <span
+                  key={index}
+                  className="absolute text-[15px] font-black text-[#8d2d21]"
+                  style={{
+                    left:`calc(50% + ${Math.cos(angle)*radius}px)`,
+                    top:`calc(50% + ${Math.sin(angle)*radius}px)`,
+                    transform:`translate(-50%,-50%) rotate(${angle+Math.PI/2}rad)`,
+                    animation:`suzukiRuneWake 2.2s ease ${index*70}ms both`,
+                  }}
+                >{rune}</span>;
+              })}
+            </div>
+
+            <div
+              className="-mt-3 text-[19px] font-semibold tracking-[.08em] text-[#c4a8a0]"
+              style={{animation:"suzukiLineOne 4.3s ease both",textShadow:"0 0 18px rgba(120,28,18,.35)"}}
+            >
+              覚者よ、よくきた。
+            </div>
+            <div
+              className="mt-5 max-w-[320px] text-[14px] font-medium leading-7 tracking-[.06em] text-[#a9857d]"
+              style={{animation:"suzukiLineTwo 4.3s ease both",textShadow:"0 0 16px rgba(110,24,17,.28)"}}
+            >
+              お前の心臓と引き換えに、<br />
+              この紋章を授けよう。
+            </div>
+          </div>
+        </div>
+      </div>
+    </> : null}
     <div className="mx-auto max-w-5xl px-3 py-6 sm:px-6 md:py-9">
       <div className="flex items-center justify-between gap-3">
         <Link
