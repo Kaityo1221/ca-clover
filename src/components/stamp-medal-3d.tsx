@@ -58,7 +58,8 @@ export function StampMedal3D({
     let medal: THREE.Object3D | null = null;
     let faceTexture: THREE.Texture | null = null;
     let faceObjectUrl: string | null = null;
-    let engravingTexture: THREE.CanvasTexture | null = null;
+    let engravingVisualTexture: THREE.CanvasTexture | null = null;
+    let engravingBumpTexture: THREE.CanvasTexture | null = null;
 
     setReady(false);
     setFailed(false);
@@ -155,35 +156,57 @@ export function StampMedal3D({
     });
 
     if (engravingKey) {
-      const canvas=document.createElement("canvas");
-      canvas.width=1024;
-      canvas.height=1024;
-      const ctx=canvas.getContext("2d");
-      if(ctx){
-        ctx.fillStyle="#000";
-        ctx.fillRect(0,0,canvas.width,canvas.height);
-        ctx.fillStyle="#fff";
-        ctx.textAlign="center";
-        ctx.textBaseline="middle";
+      const visualCanvas=document.createElement("canvas");
+      visualCanvas.width=1024;
+      visualCanvas.height=1024;
+      const bumpCanvas=document.createElement("canvas");
+      bumpCanvas.width=1024;
+      bumpCanvas.height=1024;
+      const visualCtx=visualCanvas.getContext("2d");
+      const bumpCtx=bumpCanvas.getContext("2d");
+      if(visualCtx&&bumpCtx){
+        visualCtx.fillStyle="#f5f5f5";
+        visualCtx.fillRect(0,0,visualCanvas.width,visualCanvas.height);
+        visualCtx.fillStyle="#ababab";
+        visualCtx.textAlign="center";
+        visualCtx.textBaseline="middle";
+
+        bumpCtx.fillStyle="#000";
+        bumpCtx.fillRect(0,0,bumpCanvas.width,bumpCanvas.height);
+        bumpCtx.fillStyle="#fff";
+        bumpCtx.textAlign="center";
+        bumpCtx.textBaseline="middle";
+
         const lines=engravingKey.split("\n");
-        const yPositions=[390,500,610,720];
-        const baseSizes=[70,58,54,52];
-        const weights=[700,650,560,520];
+        const yPositions=[520,610,700,790];
+        const baseSizes=[68,56,52,50];
+        const weights=[650,620,540,500];
         lines.forEach((line,index)=>{
-          let fontSize=baseSizes[index]??52;
-          const weight=weights[index]??520;
+          let fontSize=baseSizes[index]??50;
+          const weight=weights[index]??500;
           do{
-            ctx.font=weight+" "+fontSize+'px Arial, "Helvetica Neue", sans-serif';
-            if(ctx.measureText(line).width<=650) break;
+            const font=weight+" "+fontSize+'px Arial, "Helvetica Neue", sans-serif';
+            visualCtx.font=font;
+            bumpCtx.font=font;
+            if(visualCtx.measureText(line).width<=650) break;
             fontSize-=2;
           }while(fontSize>30);
-          ctx.fillText(line,512,yPositions[index]??720);
+          const y=yPositions[index]??790;
+          visualCtx.fillText(line,512,y);
+          bumpCtx.fillText(line,512,y);
         });
-        engravingTexture=new THREE.CanvasTexture(canvas);
-        engravingTexture.colorSpace=THREE.NoColorSpace;
-        engravingTexture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
-        backMaterial.bumpMap=engravingTexture;
-        backMaterial.bumpScale=-0.022;
+
+        engravingVisualTexture=new THREE.CanvasTexture(visualCanvas);
+        engravingVisualTexture.colorSpace=THREE.SRGBColorSpace;
+        engravingVisualTexture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
+
+        engravingBumpTexture=new THREE.CanvasTexture(bumpCanvas);
+        engravingBumpTexture.colorSpace=THREE.NoColorSpace;
+        engravingBumpTexture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
+
+        backMaterial.map=engravingVisualTexture;
+        backMaterial.bumpMap=engravingBumpTexture;
+        backMaterial.bumpScale=-0.016;
         backMaterial.needsUpdate=true;
       }
     }
@@ -345,7 +368,8 @@ export function StampMedal3D({
       controls.dispose();
       if (medal) disposeObject(medal);
       faceTexture?.dispose();
-      engravingTexture?.dispose();
+      engravingVisualTexture?.dispose();
+      engravingBumpTexture?.dispose();
       if (faceObjectUrl) URL.revokeObjectURL(faceObjectUrl);
       goldMaterial.dispose();
       faceMaterial.dispose();
