@@ -39,7 +39,14 @@ type ClaimRow = {
 };
 
 export default function Page() {
-  const { supabase, user, profile, loading } = useAuthProfile();
+  const {
+    supabase,
+    user,
+    profile,
+    loading,
+    error: authError,
+    retry: retryAuth,
+  } = useAuthProfile();
   const [communities, setCommunities] = useState<CommunityRow[]>([]);
   const [meetups, setMeetups] = useState<MeetupRow[]>([]);
   const [claims,setClaims]=useState<ClaimRow[]>([]);
@@ -47,55 +54,78 @@ export default function Page() {
   const [claimBusy,setClaimBusy]=useState(false);
   const [claimMessage,setClaimMessage]=useState<string|null>(null);
   const [dataLoading, setDataLoading] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
+  const [dataReloadKey, setDataReloadKey] = useState(0);
 
   async function loadClaims(){
-    if(!user) return;
-    const {data}=await supabase.from("community_access_requests")
+    if(!user) return false;
+    const {data,error}=await supabase.from("community_access_requests")
       .select("id,meetup_title,request_source,community_name_snapshot,community_prefecture_snapshot,master_match,creator_display_name,creator_username,creator_username_matches_profile,creator_ca_badge_verified,ca_level_snapshot,ca_role_verified,ca_map_status,status,requested_at,reviewed_at")
       .eq("user_id",user.id)
       .order("requested_at",{ascending:false});
+    if(error){
+      setDataError("申請履歴を取得できませんでした。通信状態を確認して、もう一度読み込んでください。");
+      return false;
+    }
     setClaims((data as ClaimRow[]|null)??[]);
+    return true;
   }
 
   useEffect(() => {
-    if (loading || !user || !profile) return;
+    if (loading || authError || !user || !profile) return;
     let alive = true;
     const userId = user.id;
 
     async function load() {
       setDataLoading(true);
-      const [{data:memberships},{data:claimRows}]=await Promise.all([
-        supabase.from("community_memberships").select("community_id").eq("user_id", userId),
-        supabase.from("community_access_requests")
-          .select("id,meetup_title,request_source,community_name_snapshot,community_prefecture_snapshot,master_match,creator_display_name,creator_username,creator_username_matches_profile,creator_ca_badge_verified,ca_level_snapshot,ca_role_verified,ca_map_status,status,requested_at,reviewed_at")
-          .eq("user_id",userId)
-          .order("requested_at",{ascending:false}),
-      ]);
-      if(!alive) return;
-      setClaims((claimRows as ClaimRow[]|null)??[]);
+      setDataError(null);
+      try {
+        const [membershipResult, claimResult]=await Promise.all([
+          supabase.from("community_memberships").select("community_id").eq("user_id", userId),
+          supabase.from("community_access_requests")
+            .select("id,meetup_title,request_source,community_name_snapshot,community_prefecture_snapshot,master_match,creator_display_name,creator_username,creator_username_matches_profile,creator_ca_badge_verified,ca_level_snapshot,ca_role_verified,ca_map_status,status,requested_at,reviewed_at")
+            .eq("user_id",userId)
+            .order("requested_at",{ascending:false}),
+        ]);
+        if(!alive) return;
 
-      const ids = ((memberships as MembershipRow[] | null) ?? []).map(x => x.community_id);
-      if (!ids.length) {
-        setCommunities([]);
-        setMeetups([]);
-        setDataLoading(false);
-        return;
+        if(membershipResult.error || claimResult.error){
+          setDataError("Community情報を取得できませんでした。0件として扱わず、取得状態を保留しています。");
+          return;
+        }
+
+        setClaims((claimResult.data as ClaimRow[]|null)??[]);
+
+        const ids = ((membershipResult.data as MembershipRow[] | null) ?? []).map(x => x.community_id);
+        if (!ids.length) {
+          setCommunities([]);
+          setMeetups([]);
+          return;
+        }
+
+        const [communityResult, meetupResult] = await Promise.all([
+          supabase.from("communities").select("id,name,prefecture,member_count,avatar_url,coverage").in("id", ids).order("name"),
+          supabase.from("meetups").select("community_id,starts_at,rsvp_count,checkin_count").in("community_id", ids).order("starts_at", { ascending: false }),
+        ]);
+
+        if (!alive) return;
+        if(communityResult.error || meetupResult.error){
+          setDataError("Community詳細またはMeetup情報を取得できませんでした。表示中のデータは消さず、再取得を待っています。");
+          return;
+        }
+        setCommunities((communityResult.data as CommunityRow[]) ?? []);
+        setMeetups((meetupResult.data as MeetupRow[]) ?? []);
+      } catch {
+        if(!alive) return;
+        setDataError("データの読み込み中にエラーが発生しました。もう一度読み込んでください。");
+      } finally {
+        if(alive) setDataLoading(false);
       }
-
-      const [{ data: communityRows }, { data: meetupRows }] = await Promise.all([
-        supabase.from("communities").select("id,name,prefecture,member_count,avatar_url,coverage").in("id", ids).order("name"),
-        supabase.from("meetups").select("community_id,starts_at,rsvp_count,checkin_count").in("community_id", ids).order("starts_at", { ascending: false }),
-      ]);
-
-      if (!alive) return;
-      setCommunities((communityRows as CommunityRow[]) ?? []);
-      setMeetups((meetupRows as MeetupRow[]) ?? []);
-      setDataLoading(false);
     }
 
-    load();
+    void load();
     return () => { alive = false; };
-  }, [loading, profile, supabase, user]);
+  }, [authError, dataReloadKey, loading, profile, supabase, user]);
 
   async function submitClaim(){
     const value=claimInput.trim();
@@ -137,12 +167,20 @@ export default function Page() {
   }, [meetups]);
 
   if (loading) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 読み込み中...</main>;
+  if (authError) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div className="max-w-md"><div className="text-5xl">⚠️</div><h1 className="mt-3 text-2xl font-black text-lime-950">ログイン情報を確認できませんでした</h1><p className="mt-3 text-sm font-semibold leading-6 text-slate-500">{authError}</p><button onClick={retryAuth} className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black text-lime-950">もう一度確認する</button></div></main>;
   if (!user) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><div className="text-5xl">🍀</div><h1 className="mt-3 text-2xl font-black text-lime-950">ログインが必要です</h1><Link href="/login" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black">Googleでログイン</Link></div></main>;
   return <main className="mx-auto max-w-5xl px-4 py-8 md:px-8">
     <Link href="/" className="text-sm font-black text-lime-700">← CA Clover Home</Link>
     <span className="mt-4 block w-fit rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900">MY COMMUNITY</span>
     <h1 className="mt-3 text-3xl font-black text-lime-950">🍀 自分のCommunity</h1>
-    <p className="mt-2 text-sm font-semibold text-slate-500">{dataLoading ? "読み込み中..." : communities.length ? "✅ 認証済み " + communities.length + " Community" : "0 Community"}</p>
+    <p className="mt-2 text-sm font-semibold text-slate-500">{dataLoading ? "読み込み中..." : dataError ? "⚠️ データ取得エラー" : communities.length ? "✅ 認証済み " + communities.length + " Community" : "0 Community"}</p>
+
+    {dataError ? <section className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5">
+      <div className="text-xs font-black text-amber-700">データ取得エラー</div>
+      <h2 className="mt-1 text-lg font-black text-amber-950">0件として扱わず、再取得を待っています</h2>
+      <p className="mt-2 text-xs font-semibold leading-5 text-amber-800">{dataError}</p>
+      <button onClick={()=>setDataReloadKey(value=>value+1)} disabled={dataLoading} className="mt-3 inline-flex rounded-full bg-amber-200 px-4 py-2 text-xs font-black text-amber-950 disabled:opacity-50">{dataLoading?"再読み込み中...":"もう一度読み込む"}</button>
+    </section> : null}
 
     {profile?.role==="pending" ? <section className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5">
       <div className="text-xs font-black text-amber-700">初回CA登録</div>
@@ -180,7 +218,7 @@ export default function Page() {
       </div>)}</div>
     </section> : null}
 
-    {!dataLoading && communities.length === 0 ? (
+    {!dataLoading && !dataError && communities.length === 0 ? (
       <section className="clover-card mt-6 p-8 text-center">
         <div className="text-5xl">🌱</div>
         <h2 className="mt-3 text-xl font-black text-lime-950">Community未割当です</h2>

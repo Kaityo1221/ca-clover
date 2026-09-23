@@ -8,14 +8,21 @@ type CommunityIdRow={id:string};
 type MembershipCommunityRow={community_id:string};
 
 export default function Page(){
-  const { supabase,user, profile, loading } = useAuthProfile();
+  const {
+    supabase,
+    user,
+    profile,
+    loading,
+    error: authError,
+    retry: retryAuth,
+  } = useAuthProfile();
   const [pendingClaims,setPendingClaims]=useState(0);
   const [watchCount,setWatchCount]=useState(0);
   const [iconReviewCount,setIconReviewCount]=useState(0);
   const [unassignedCount,setUnassignedCount]=useState(0);
 
   useEffect(()=>{
-    if(loading||!user||profile?.role!=="admin") return;
+    if(loading||authError||!user||profile?.role!=="admin") return;
     Promise.all([
       supabase.from("community_access_requests").select("id",{count:"exact",head:true}).eq("status","pending"),
       supabase.from("meetup_watch_cases").select("id",{count:"exact",head:true}).eq("review_required",true).eq("status","unreviewed"),
@@ -31,9 +38,10 @@ export default function Page(){
       const assigned=new Set(membershipRows.map(row=>row.community_id));
       setUnassignedCount(communityRows.filter(row=>!assigned.has(row.id)).length);
     });
-  },[loading,user,profile?.role,supabase]);
+  },[authError,loading,user,profile?.role,supabase]);
 
   if (loading) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 読み込み中...</main>;
+  if (authError) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div className="max-w-md"><div className="text-5xl">⚠️</div><h1 className="mt-3 text-2xl font-black text-lime-950">認証情報を確認できませんでした</h1><p className="mt-3 text-sm font-semibold leading-6 text-slate-500">{authError}</p><button onClick={retryAuth} className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black text-lime-950">もう一度確認する</button></div></main>;
   if (!user) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><h1 className="text-2xl font-black text-lime-950">ログインが必要です</h1><Link href="/login" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black">Googleでログイン</Link></div></main>;
   if (profile?.role !== "admin") return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><div className="text-5xl">🔒</div><h1 className="mt-3 text-2xl font-black text-lime-950">ADMIN専用です</h1></div></main>;
 
