@@ -45,6 +45,8 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
 .exchange-card{margin-top:14px;display:flex;align-items:center;justify-content:space-between;border:1px solid #d9c4ad;border-radius:22px;background:#fff;padding:15px 17px;box-shadow:0 8px 22px rgba(92,69,45,.06)}.exchange-card strong{display:block;font-size:14px;color:#45663a}.exchange-card small{display:block;margin-top:3px;font-size:10px;font-weight:800;color:#938478}.exchange-card .arrow{font-size:20px;font-weight:950;color:#6a8d59}\n.stamp{border:0;background:transparent;padding:0;width:100%}
 .stampmodalback{position:fixed;inset:0;z-index:80;display:none;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;align-items:flex-start;justify-items:center;background:rgba(15,23,42,.55);backdrop-filter:blur(6px);padding:max(20px,env(safe-area-inset-top)) 20px max(20px,env(safe-area-inset-bottom))}.stampmodalback.show{display:grid}.stampmodal{width:min(360px,100%);margin:0 auto;border:1px solid #ead5bf;border-radius:30px;background:#fffaf4;padding:18px;text-align:center;box-shadow:0 26px 70px rgba(15,23,42,.28)}.stampclose{margin-left:auto;width:36px;height:36px;border:0;border-radius:999px;background:#fff;color:#75695f;font-size:20px;font-weight:950;box-shadow:0 4px 14px rgba(80,60,40,.10)}.stamp3d{position:relative;width:224px;height:224px;margin:4px auto 0;display:none;touch-action:none}.stamp3d.show{display:block}.stamp3d canvas{display:block;width:100%;height:100%}.stampzoom{position:relative;width:224px;height:224px;margin:4px auto 0;border-radius:999px;padding:8px;background:linear-gradient(135deg,#f8e3bf,#fff,#edc993);box-shadow:0 18px 45px rgba(112,73,35,.22)}.stampzoom.unowned{border:2px dashed #cbc5bf;background:#f1efec;box-shadow:none}.stampzoom.unowned .medalinner{filter:grayscale(1);opacity:.34}.stampzoom.hidden{display:none}.stampzoom .medalinner{width:100%;height:100%}.stampzoomtitle{margin:18px 0 0;font-size:20px;line-height:1.35;color:#443c35}.stampzoomarea{margin:5px 0 0;font-size:12px;font-weight:850;color:#8a7d72}
 .stampmessagepop{display:none;margin:2px auto 10px;max-width:280px;border:1px solid #d8e8cf;border-radius:22px;background:#fff;padding:11px 18px;color:#4e7043;font-size:13px;line-height:1.6;font-weight:950;box-shadow:0 14px 34px rgba(75,105,62,.18)}.stampmessagepop.show{display:block;animation:stampMessagePop .52s cubic-bezier(.2,.9,.25,1.25) both}@keyframes stampMessagePop{0%{opacity:0;transform:translateY(10px) scale(.78)}65%{opacity:1;transform:translateY(-2px) scale(1.06)}100%{opacity:1;transform:translateY(0) scale(1)}}
+.suzukiintroback{position:fixed;inset:0;z-index:140;display:none;overflow:hidden;background:#000;pointer-events:auto}.suzukiintroback.show{display:block;animation:suzukiRitualFade 4.3s ease both}.suzukiintroglow{position:absolute;inset:0;background:radial-gradient(circle at center,rgba(75,10,8,.20),transparent 42%)}.suzukiintrocenter{position:absolute;inset:0;display:grid;place-items:center;padding:24px}.suzukiintroinner{position:relative;display:flex;width:min(360px,100%);flex-direction:column;align-items:center;text-align:center}.suzukisigil{position:relative;display:grid;width:248px;height:248px;place-items:center;animation:suzukiHeartPulse .86s ease-out .12s 4}.suzukiring{position:absolute;inset:16px;border:1px solid rgba(99,32,24,.55);border-radius:999px;box-shadow:0 0 48px rgba(110,28,18,.20),inset 0 0 38px rgba(80,18,14,.16)}.suzukidiamond{position:absolute;inset:34px;border:1px solid rgba(76,23,19,.45);border-radius:28%;transform:rotate(45deg)}.suzukicircle{position:absolute;inset:55px;border:1px solid rgba(123,36,26,.35);border-radius:999px;transform:rotate(-12deg)}.suzukisvg{position:absolute;inset:52px;width:144px;height:144px;opacity:.55}.suzukirune{position:absolute;color:#8d2d21;font-size:15px;font-weight:900;animation:suzukiRuneWake 2.2s ease both}.suzukiline1{margin-top:-12px;color:#c4a8a0;font-size:19px;font-weight:650;letter-spacing:.08em;text-shadow:0 0 18px rgba(120,28,18,.35);animation:suzukiLineOne 4.3s ease both}.suzukiline2{margin-top:20px;max-width:320px;color:#a9857d;font-size:14px;font-weight:550;line-height:1.95;letter-spacing:.06em;text-shadow:0 0 16px rgba(110,24,17,.28);animation:suzukiLineTwo 4.3s ease both}.suzukiash{position:absolute;left:50%;top:50%;width:4px;height:4px;border-radius:999px;background:#6e2018;opacity:.25;animation:suzukiAsh var(--ash-dur) linear var(--ash-delay) infinite}
+@keyframes suzukiRitualFade{0%{opacity:0}8%{opacity:1}86%{opacity:1}100%{opacity:0}}@keyframes suzukiHeartPulse{0%,100%{transform:scale(1);filter:brightness(.78)}7%{transform:scale(1.045);filter:brightness(1.55)}17%{transform:scale(.985);filter:brightness(.92)}28%{transform:scale(1.028);filter:brightness(1.28)}42%{transform:scale(1);filter:brightness(.82)}}@keyframes suzukiRuneWake{0%,20%{opacity:.12;text-shadow:0 0 0 transparent}42%{opacity:.72;text-shadow:0 0 10px rgba(173,38,20,.72)}65%,100%{opacity:.38;text-shadow:0 0 5px rgba(135,28,17,.45)}}@keyframes suzukiLineOne{0%,18%{opacity:0;transform:translateY(8px)}30%,100%{opacity:1;transform:translateY(0)}}@keyframes suzukiLineTwo{0%,42%{opacity:0;transform:translateY(8px)}56%,100%{opacity:1;transform:translateY(0)}}@keyframes suzukiAsh{0%{transform:translate3d(0,-8px,0) rotate(0deg);opacity:0}20%{opacity:.55}100%{transform:translate3d(var(--ash-x),110vh,0) rotate(220deg);opacity:0}}
 @media(min-width:600px){.stamps{grid-template-columns:repeat(4,minmax(0,1fr));gap:22px 15px}.medal{width:94px;height:94px}.cname{font-size:11px}.caname{font-size:9px}}
 @media(min-width:900px){.stamps{grid-template-columns:repeat(5,minmax(0,1fr))}}
 </style>
@@ -80,6 +82,27 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
     <div id="stampDesignControls"></div>
   </section>
 </div>
+<audio id="suzukiHeartbeatAudio" preload="auto" aria-hidden="true" style="display:none">
+ <source src="https://upload.wikimedia.org/wikipedia/commons/transcoded/7/72/HROgg.ogg/HROgg.ogg.mp3" type="audio/mpeg">
+ <source src="https://upload.wikimedia.org/wikipedia/commons/7/72/HROgg.ogg" type="audio/ogg">
+</audio>
+<div id="suzukiIntroBack" class="suzukiintroback" aria-live="assertive">
+ <div class="suzukiintroglow"></div>
+ <span class="suzukiash" style="margin-left:-130px;--ash-x:-36px;--ash-dur:2400ms;--ash-delay:0ms"></span><span class="suzukiash" style="margin-left:-93px;--ash-x:-18px;--ash-dur:2760ms;--ash-delay:90ms"></span><span class="suzukiash" style="margin-left:-56px;--ash-x:0px;--ash-dur:3120ms;--ash-delay:180ms"></span><span class="suzukiash" style="margin-left:-19px;--ash-x:18px;--ash-dur:3480ms;--ash-delay:270ms"></span><span class="suzukiash" style="margin-left:18px;--ash-x:36px;--ash-dur:2400ms;--ash-delay:360ms"></span><span class="suzukiash" style="margin-left:55px;--ash-x:-36px;--ash-dur:2760ms;--ash-delay:450ms"></span><span class="suzukiash" style="margin-left:92px;--ash-x:-18px;--ash-dur:3120ms;--ash-delay:540ms"></span><span class="suzukiash" style="margin-left:129px;--ash-x:0px;--ash-dur:3480ms;--ash-delay:630ms"></span><span class="suzukiash" style="margin-left:-94px;--ash-x:18px;--ash-dur:2400ms;--ash-delay:720ms"></span><span class="suzukiash" style="margin-left:-57px;--ash-x:36px;--ash-dur:2760ms;--ash-delay:810ms"></span><span class="suzukiash" style="margin-left:-20px;--ash-x:-36px;--ash-dur:3120ms;--ash-delay:900ms"></span><span class="suzukiash" style="margin-left:17px;--ash-x:-18px;--ash-dur:3480ms;--ash-delay:990ms"></span><span class="suzukiash" style="margin-left:54px;--ash-x:0px;--ash-dur:2400ms;--ash-delay:1080ms"></span><span class="suzukiash" style="margin-left:91px;--ash-x:18px;--ash-dur:2760ms;--ash-delay:1170ms"></span><span class="suzukiash" style="margin-left:128px;--ash-x:36px;--ash-dur:3120ms;--ash-delay:1260ms"></span><span class="suzukiash" style="margin-left:-95px;--ash-x:-36px;--ash-dur:3480ms;--ash-delay:1350ms"></span>
+ <div class="suzukiintrocenter"><div class="suzukiintroinner">
+  <div class="suzukisigil">
+   <div class="suzukiring"></div><div class="suzukidiamond"></div><div class="suzukicircle"></div>
+   <svg viewBox="0 0 200 200" class="suzukisvg" aria-hidden="true">
+    <path d="M100 17 L126 72 L183 78 L140 118 L152 177 L100 148 L48 177 L60 118 L17 78 L74 72 Z" fill="none" stroke="#6d2018" stroke-width="2.3"/>
+    <circle cx="100" cy="100" r="45" fill="none" stroke="#8c2b1e" stroke-width="1.4"/>
+    <path d="M67 132 C72 96 85 63 100 49 C116 64 128 98 133 132" fill="none" stroke="#7a261c" stroke-width="2"/>
+   </svg>
+   <span class="suzukirune" style="left:calc(50% + 0.00px);top:calc(50% + -104.00px);transform:translate(-50%,-50%) rotate(0.0000rad);animation-delay:0ms">ᚱ</span><span class="suzukirune" style="left:calc(50% + 52.00px);top:calc(50% + -90.07px);transform:translate(-50%,-50%) rotate(0.5236rad);animation-delay:70ms">ᚨ</span><span class="suzukirune" style="left:calc(50% + 90.07px);top:calc(50% + -52.00px);transform:translate(-50%,-50%) rotate(1.0472rad);animation-delay:140ms">ᚷ</span><span class="suzukirune" style="left:calc(50% + 104.00px);top:calc(50% + 0.00px);transform:translate(-50%,-50%) rotate(1.5708rad);animation-delay:210ms">ᛟ</span><span class="suzukirune" style="left:calc(50% + 90.07px);top:calc(50% + 52.00px);transform:translate(-50%,-50%) rotate(2.0944rad);animation-delay:280ms">ᚾ</span><span class="suzukirune" style="left:calc(50% + 52.00px);top:calc(50% + 90.07px);transform:translate(-50%,-50%) rotate(2.6180rad);animation-delay:350ms">ᚺ</span><span class="suzukirune" style="left:calc(50% + 0.00px);top:calc(50% + 104.00px);transform:translate(-50%,-50%) rotate(3.1416rad);animation-delay:420ms">ᛖ</span><span class="suzukirune" style="left:calc(50% + -52.00px);top:calc(50% + 90.07px);transform:translate(-50%,-50%) rotate(3.6652rad);animation-delay:490ms">ᚨ</span><span class="suzukirune" style="left:calc(50% + -90.07px);top:calc(50% + 52.00px);transform:translate(-50%,-50%) rotate(4.1888rad);animation-delay:560ms">ᚱ</span><span class="suzukirune" style="left:calc(50% + -104.00px);top:calc(50% + 0.00px);transform:translate(-50%,-50%) rotate(4.7124rad);animation-delay:630ms">ᛏ</span><span class="suzukirune" style="left:calc(50% + -90.07px);top:calc(50% + -52.00px);transform:translate(-50%,-50%) rotate(5.2360rad);animation-delay:700ms">ᛒ</span><span class="suzukirune" style="left:calc(50% + -52.00px);top:calc(50% + -90.07px);transform:translate(-50%,-50%) rotate(5.7596rad);animation-delay:770ms">ᚱ</span>
+  </div>
+  <div class="suzukiline1">覚者よ、よくきた。</div>
+  <div class="suzukiline2">お前の心臓と引き換えに、<br>この紋章を授けよう。</div>
+ </div></div>
+</div>
 <script>
 (function(){
 "use strict";
@@ -100,6 +123,9 @@ const stampZoomTitle=document.getElementById("stampZoomTitle");
 const stampZoomArea=document.getElementById("stampZoomArea");
 const stampDesignControls=document.getElementById("stampDesignControls");
 const stampMessagePop=document.getElementById("stampMessagePop");
+const suzukiIntroBack=document.getElementById("suzukiIntroBack");
+const suzukiHeartbeatAudio=document.getElementById("suzukiHeartbeatAudio");
+let suzukiIntroTimer=null;
 let stampCommunityById=new Map();
 let currentUserId=null;
 let stamp3dCleanup=null;
@@ -112,6 +138,35 @@ function hideStampMessage(){
  stampMessageTimer=null;
  stampMessagePop.classList.remove("show");
  stampMessagePop.textContent="";
+}
+
+function isSuzukiSpecial(ca){
+ return !!(ca&&String(ca.trainer_name||"").trim().toLowerCase()==="suzukipm");
+}
+function stopSuzukiIntro(){
+ if(suzukiIntroTimer)clearTimeout(suzukiIntroTimer);
+ suzukiIntroTimer=null;
+ suzukiIntroBack.classList.remove("show");
+ try{suzukiHeartbeatAudio.pause();suzukiHeartbeatAudio.currentTime=0}catch(_){}
+}
+function startSuzukiIntro(ca){
+ if(!isSuzukiSpecial(ca))return;
+ if(suzukiIntroTimer)clearTimeout(suzukiIntroTimer);
+ suzukiIntroBack.classList.remove("show");
+ void suzukiIntroBack.offsetWidth;
+ suzukiIntroBack.classList.add("show");
+ try{
+  suzukiHeartbeatAudio.pause();
+  suzukiHeartbeatAudio.currentTime=0;
+  suzukiHeartbeatAudio.volume=.72;
+  const playPromise=suzukiHeartbeatAudio.play();
+  if(playPromise&&playPromise.catch)playPromise.catch(()=>{});
+ }catch(_){}
+ suzukiIntroTimer=setTimeout(()=>{
+  suzukiIntroBack.classList.remove("show");
+  suzukiIntroTimer=null;
+  try{suzukiHeartbeatAudio.pause();suzukiHeartbeatAudio.currentTime=0}catch(_){}
+ },4300);
 }
 async function showStampMessage(collection){
  const message=collection&&String(collection.acquisition_message||"").trim();
@@ -683,6 +738,7 @@ async function load(){
 
   let selectedCa=c.cas.find(x=>x.acquired)||c.cas[0]||null;
   let selectedDesign=selectedCa?displayDesign(selectedCa):null;
+  startSuzukiIntro(selectedCa);
 
   const renderModal=()=>{
    stampZoomTitle.textContent=c.name||"";
@@ -766,6 +822,7 @@ async function load(){
     selectedCa=c.cas.find(x=>x.id===button.dataset.modalCa)||null;
     selectedDesign=selectedCa?displayDesign(selectedCa):null;
     renderModal();
+    startSuzukiIntro(selectedCa);
    });
 
    stampDesignControls.querySelectorAll("[data-design-dir]").forEach(button=>button.onclick=()=>{
@@ -805,7 +862,7 @@ async function load(){
   stampModalBack.setAttribute("aria-hidden","false");
  }));
 }
-function closeStampModal(){hideStampMessage();unmountStampMedal3D();stampModalBack.classList.remove("show");stampModalBack.setAttribute("aria-hidden","true")}
+function closeStampModal(){hideStampMessage();stopSuzukiIntro();unmountStampMedal3D();stampModalBack.classList.remove("show");stampModalBack.setAttribute("aria-hidden","true")}
 stampClose.onclick=closeStampModal;
 stampModalBack.addEventListener("click",e=>{if(e.target===stampModalBack)closeStampModal()});
 load();
