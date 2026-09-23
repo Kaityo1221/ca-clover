@@ -10,8 +10,10 @@ let burnedSession=false;
 let running=false;
 let brushOverlay=null;
 let finishTimer=null;
-let restoreLowerTimer=null;
+let rerenderTimeout=null;
 let lastActivateAt=0;
+let originalLowerCase=null;
+let lowerCasePatched=false;
 
 const style=document.createElement("style");
 style.id="suzuki-native-cleanup-button-style";
@@ -21,6 +23,7 @@ style.textContent=`
 .szNativeCleanupBtn:active{transform:scale(.98)}
 .szNativeCleanupBtn:disabled{opacity:.52}
 .szNativeCleanupBtn.szDone{border-color:#b7cda9;background:#f3f8ef;color:#587747;opacity:1}
+.szNativeCleanupBtn.szFail{border-color:#d9b7a9;background:#fff7f3;color:#9a5f49;opacity:1}
 .szNativeBrushOverlay{position:fixed;z-index:9999;pointer-events:none;overflow:visible}
 .szNativeBrush{position:absolute;left:50%;top:50%;width:112px;height:38px;opacity:1;transform:translate(-195px,-50%) rotate(-10deg);transform-origin:58% 50%;filter:drop-shadow(0 4px 5px rgba(0,0,0,.28))}
 .szNativeBrush:before{content:"";position:absolute;left:34px;top:1px;width:78px;height:12px;border-radius:9px;background:linear-gradient(180deg,#a9794f,#6c4327 58%,#4b2e1c);box-shadow:inset 0 2px rgba(255,255,255,.23)}
@@ -33,15 +36,41 @@ function area(){return document.getElementById("stampZoomArea")}
 function controls(){return document.getElementById("stampDesignControls")}
 function closeButton(){return document.getElementById("stampClose")}
 
+function restoreSuzukiLowerCase(){
+ if(!lowerCasePatched)return;
+ if(originalLowerCase)String.prototype.toLowerCase=originalLowerCase;
+ originalLowerCase=null;
+ lowerCasePatched=false;
+}
+
+function patchSuzukiLowerCase(){
+ restoreSuzukiLowerCase();
+ originalLowerCase=String.prototype.toLowerCase;
+ const nativeLower=originalLowerCase;
+ String.prototype.toLowerCase=function(){
+  const raw=String(this);
+  const lowered=nativeLower.call(this);
+  if(raw==="SuzukiPM"||lowered==="suzukipm")return "suzukipm-clean";
+  return lowered;
+ };
+ lowerCasePatched=true;
+}
+
 function clearBrush(){
  if(finishTimer){clearTimeout(finishTimer);finishTimer=null}
  if(brushOverlay){brushOverlay.remove();brushOverlay=null}
+ document.querySelectorAll(".szNativeBrushOverlay").forEach(el=>el.remove());
  running=false;
+}
+
+function clearRerender(){
+ if(rerenderTimeout){clearTimeout(rerenderTimeout);rerenderTimeout=null}
+ restoreSuzukiLowerCase();
 }
 
 function removeButton(){
  clearBrush();
- if(restoreLowerTimer){clearTimeout(restoreLowerTimer);restoreLowerTimer=null}
+ clearRerender();
  if(cleanupRow){cleanupRow.remove();cleanupRow=null}
  burnedSession=false;
 }
@@ -76,55 +105,69 @@ function markDone(){
  const button=document.querySelector(".szNativeCleanupBtn");
  if(!button)return;
  button.disabled=true;
+ button.classList.remove("szFail");
  button.classList.add("szDone");
  button.textContent="✨ お掃除完了";
+}
+
+function markFailed(){
+ const button=document.querySelector(".szNativeCleanupBtn");
+ if(!button)return;
+ button.disabled=false;
+ button.classList.remove("szDone");
+ button.classList.add("szFail");
+ button.textContent="⚠️ もう一度お掃除";
 }
 
 function rerenderCleanNativeMedal(){
  const c=controls();
  const dir=c&&c.querySelector("[data-design-dir]");
- if(!dir){markDone();return}
+ if(!dir){markFailed();return}
 
- // The native stamp renderer decides whether to draw the temporary scorch
- // from trainer_name.toLowerCase(). For this one re-render only, make the
- // exact SuzukiPM comparison miss, then restore String.prototype immediately
- // after the new native canvas appears (or after a short safety timeout).
+ // With Design 1/1 the native arrows are disabled. Temporarily enable one
+ // so its existing onclick handler re-renders the same selected design.
  const oldCanvas=document.querySelector("#stamp3d canvas");
- const originalLower=String.prototype.toLowerCase;
- let restored=false;
- const restore=()=>{
-  if(restored)return;
-  restored=true;
-  String.prototype.toLowerCase=originalLower;
-  if(restoreLowerTimer){clearTimeout(restoreLowerTimer);restoreLowerTimer=null}
- };
- String.prototype.toLowerCase=function(){
-  const raw=String(this);
-  const lowered=originalLower.call(this);
-  if(raw==="SuzukiPM"||lowered==="suzukipm")return "suzukipm-clean";
-  return lowered;
- };
+ patchSuzukiLowerCase();
+ const wasDisabled=dir.disabled;
+ if(wasDisabled)dir.disabled=false;
 
- try{dir.click()}catch(_){restore();markDone();return}
+ try{
+  dir.click();
+ }catch(_){
+  if(document.contains(dir)&&wasDisabled)dir.disabled=true;
+  clearRerender();
+  markFailed();
+  return;
+ }
+
+ // renderModal rebuilds the design controls, so the old disabled button is
+ // normally detached immediately. Restore it only if it somehow survived.
+ if(document.contains(dir)&&wasDisabled)dir.disabled=true;
 
  const started=performance.now();
  const waitForCanvas=()=>{
   const next=document.querySelector("#stamp3d canvas");
-  if(next&&next!==oldCanvas){
-   restore();
-   markDone();
-   window.dispatchEvent(new CustomEvent("ca:suzuki-cleanup-complete",{detail:{trainer_name:"SuzukiPM"}}));
+  const loading=document.getElementById("stamp3d")?.textContent?.includes("3Dメダルを準備中");
+  if(next&&next!==oldCanvas&&!loading){
+   requestAnimationFrame(()=>{
+    clearRerender();
+    markDone();
+    window.dispatchEvent(new CustomEvent("ca:suzuki-cleanup-complete",{detail:{trainer_name:"SuzukiPM"}}));
+   });
    return;
   }
-  if(performance.now()-started>4500){
-   restore();
-   markDone();
+  if(performance.now()-started>7000){
+   clearRerender();
+   markFailed();
    return;
   }
   requestAnimationFrame(waitForCanvas);
  };
  requestAnimationFrame(waitForCanvas);
- restoreLowerTimer=setTimeout(()=>{restore();markDone()},5000);
+ rerenderTimeout=setTimeout(()=>{
+  clearRerender();
+  if(!document.querySelector(".szNativeCleanupBtn.szDone"))markFailed();
+ },7500);
 }
 
 function animateBrush(el){
@@ -163,9 +206,9 @@ function runBrush(){
  const host=visibleMedalHost();
  const button=document.querySelector(".szNativeCleanupBtn");
  if(!m||!m.classList.contains("show")||!host||!button)return false;
- const r=host.getBoundingClientRect();
  running=true;
  button.disabled=true;
+ button.classList.remove("szDone","szFail");
  button.textContent="🧹 お掃除中…";
  brushOverlay=document.createElement("div");
  brushOverlay.className="szNativeBrushOverlay";
@@ -217,7 +260,7 @@ if(m)m.addEventListener("click",e=>{if(e.target===m)removeButton()},true);
 window.addEventListener("pagehide",removeButton);
 
 window.CASuzukiNativeCleanup={
- version:"native-burn-cleanup-20260924-0755",
+ version:"native-burn-cleanup-single-design-20260924-0808",
  get armed(){return burnedSession},
  get running(){return running},
  run:runBrush,
