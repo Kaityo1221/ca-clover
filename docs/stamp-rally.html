@@ -250,10 +250,10 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
       visualCtx.fillStyle=scorch;visualCtx.beginPath();visualCtx.arc(0,0,220,0,Math.PI*2);visualCtx.fill();visualCtx.restore();
      };
 
-     visualCtx.save();visualCtx.translate(512,660);visualCtx.scale(1.36,.76);
-     const warmWash=visualCtx.createRadialGradient(0,0,35,0,0,245);
-     warmWash.addColorStop(0,"rgba(171,103,38,.18)");warmWash.addColorStop(.48,"rgba(139,75,28,.13)");
-     warmWash.addColorStop(.78,"rgba(82,43,21,.08)");warmWash.addColorStop(1,"rgba(52,28,18,0)");
+     visualCtx.save();visualCtx.translate(512,650);visualCtx.scale(1.55,.95);
+     const warmWash=visualCtx.createRadialGradient(0,0,35,0,0,255);
+     warmWash.addColorStop(0,"rgba(171,103,38,.24)");warmWash.addColorStop(.46,"rgba(139,75,28,.18)");
+     warmWash.addColorStop(.76,"rgba(82,43,21,.12)");warmWash.addColorStop(1,"rgba(52,28,18,0)");
      visualCtx.fillStyle=warmWash;visualCtx.beginPath();visualCtx.arc(0,0,245,0,Math.PI*2);visualCtx.fill();visualCtx.restore();
 
      drawScorchCloud(330,525,210,140,-.42,.78,.34);
@@ -262,8 +262,17 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
      drawScorchCloud(676,740,150,100,.24,.36,.20);
      drawScorchCloud(716,614,118,78,.08,.26,.14);
      drawScorchCloud(484,812,158,72,.02,.28,.16);
+     drawScorchCloud(512,610,250,120,-.08,.34,.18);
+     drawScorchCloud(604,650,230,130,.06,.30,.17);
+     drawScorchCloud(470,704,240,145,.03,.32,.18);
+     drawScorchCloud(350,760,180,100,-.18,.28,.16);
+     drawScorchCloud(660,785,175,92,.18,.26,.14);
+     drawScorchCloud(742,545,128,82,.02,.22,.12);
+     drawScorchCloud(538,486,215,82,-.03,.24,.13);
+     drawScorchCloud(790,675,108,92,.16,.22,.12);
+     drawScorchCloud(222,746,108,88,-.18,.24,.13);
 
-     [[286,487,62,24,-.42,.42],[330,516,88,29,-.36,.34],[373,548,72,22,-.28,.28],[267,610,54,18,-.08,.28],[315,657,66,20,-.05,.22],[668,739,46,17,.20,.18],[712,716,30,13,.18,.14],[465,810,56,15,0,.16]].forEach(([cx,cy,rx,ry,rotation,alpha])=>{
+     [[286,487,62,24,-.42,.42],[330,516,88,29,-.36,.34],[373,548,72,22,-.28,.28],[267,610,54,18,-.08,.28],[315,657,66,20,-.05,.22],[668,739,46,17,.20,.18],[712,716,30,13,.18,.14],[465,810,56,15,0,.16],[505,560,54,18,-.06,.16],[586,598,62,20,.04,.15],[650,640,58,18,.10,.14],[420,730,70,19,-.08,.14],[560,760,64,18,.03,.13],[700,790,48,16,.16,.12],[530,482,72,17,-.03,.13],[770,600,42,15,.08,.12],[246,742,44,16,-.18,.13]].forEach(([cx,cy,rx,ry,rotation,alpha])=>{
       visualCtx.save();visualCtx.translate(cx,cy);visualCtx.rotate(rotation);
       const charGradient=visualCtx.createRadialGradient(-rx*.18,-ry*.15,2,0,0,Math.max(rx,ry));
       charGradient.addColorStop(0,`rgba(9,8,7,${alpha})`);charGradient.addColorStop(.52,`rgba(22,16,13,${alpha*.86})`);
@@ -272,7 +281,7 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
      });
 
      visualCtx.save();visualCtx.lineCap="round";
-     [[248,505,430,571,11,.28],[258,538,448,603,7,.23],[272,579,420,624,5,.18],[294,620,390,646,4,.16],[614,728,720,760,5,.13],[436,806,564,812,4,.11]].forEach(([x1,y1,x2,y2,width,alpha])=>{
+     [[248,505,430,571,11,.28],[258,538,448,603,7,.23],[272,579,420,624,5,.18],[294,620,390,646,4,.16],[614,728,720,760,5,.13],[436,806,564,812,4,.11],[430,560,640,602,6,.16],[470,620,710,666,5,.14],[360,740,560,774,4,.13],[540,798,730,812,4,.12],[620,520,760,548,5,.12],[242,690,430,712,4,.11],[560,690,806,724,4,.10]].forEach(([x1,y1,x2,y2,width,alpha])=>{
       visualCtx.strokeStyle=`rgba(18,13,11,${alpha})`;visualCtx.lineWidth=width;visualCtx.beginPath();visualCtx.moveTo(x1,y1);
       visualCtx.quadraticCurveTo(x1+(x2-x1)*.47,y1+(y2-y1)*.36-8,x2,y2);visualCtx.stroke();
      });
