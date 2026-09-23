@@ -98,14 +98,8 @@ window.CACommunityIcon={url,img,bind};
 installAdminIconHistoryFix();
 if(/(?:^|\/)stamp-rally\.html$/.test(location.pathname)){
  const s=document.createElement("script");
- s.src="./suzuki-safe-mode.js?v=20260924-0658";
+ s.src="./suzuki-native-flow.js?v=20260924-0705";
  s.async=false;
- s.onload=()=>{
-  const spin=document.createElement("script");
-  spin.src="./suzuki-medal-spin.js?v=20260924-0658";
-  spin.async=false;
-  document.head.appendChild(spin);
- };
  document.head.appendChild(s)
 }
 })();
