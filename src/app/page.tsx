@@ -18,8 +18,8 @@ const adminSections = [
     title: "全国を見る",
     subtitle: "日本のCAとCommunityを探す",
     items: [
-      { icon: "🌱", title: "Community一覧", description: "全国のCommunityを検索・確認", href: "/communities", badge: "141", access: "管理者" },
-      { icon: "🏕️", title: "CA一覧", description: "担当CA・1st / 2ndを確認", href: "/ca", badge: "177", access: "管理者" },
+      { icon: "🌱", title: "Community一覧", description: "全国のCommunityを検索・確認", href: "/communities", access: "管理者" },
+      { icon: "🏕️", title: "CA一覧", description: "担当CA・1st / 2ndを確認", href: "/ca", access: "管理者" },
       { icon: "🗾", title: "Activity Map", description: "地域ごとの活動を地図で見る", href: "/map", access: "管理者" },
     ],
   },
@@ -83,15 +83,22 @@ function MenuButton({ item }: { item: MenuItem }) {
 
 export default function Page() {
   const { supabase, user, profile, hasPermission, loading } = useAuthProfile();
-  const [counts,setCounts]=useState({communities:0,cas:0,unresolved:0});
+  const [counts,setCounts]=useState<{communities:number|null;cas:number|null;unresolved:number|null}>({communities:null,cas:null,unresolved:null});
+  const [countsError,setCountsError]=useState(false);
 
   useEffect(()=>{
     if(profile?.role!=="admin") return;
+    setCountsError(false);
     Promise.all([
       supabase.from("communities").select("id",{count:"exact",head:true}),
       supabase.from("ca_members").select("id"),
       supabase.from("community_ca_members").select("ca_member_id"),
     ]).then(([communities,cas,links])=>{
+      if(communities.error||cas.error||links.error){
+        setCounts({communities:null,cas:null,unresolved:null});
+        setCountsError(true);
+        return;
+      }
       const caIds=((cas.data as {id:string}[]|null)??[]).map(x=>x.id);
       const linked=new Set(((links.data as {ca_member_id:string}[]|null)??[]).map(x=>x.ca_member_id));
       setCounts({
@@ -99,12 +106,24 @@ export default function Page() {
         cas:caIds.length,
         unresolved:caIds.filter(id=>!linked.has(id)).length,
       });
+    }).catch(()=>{
+      setCounts({communities:null,cas:null,unresolved:null});
+      setCountsError(true);
     });
   },[profile?.role,supabase]);
 
+  const adminSectionsWithCounts=adminSections.map(section=>({
+    ...section,
+    items:section.items.map(item=>{
+      if(item.title==="Community一覧"&&counts.communities!==null) return {...item,badge:String(counts.communities)};
+      if(item.title==="CA一覧"&&counts.cas!==null) return {...item,badge:String(counts.cas)};
+      return item;
+    }),
+  }));
+
   const roleLabel = loading ? "..." : !user ? "GUEST" : profile?.role === "admin" ? "ADMIN" : profile?.role === "ca" ? "CA" : "確認中";
   const sections = profile?.role === "admin"
-    ? adminSections
+    ? adminSectionsWithCounts
     : profile?.role === "ca"
       ? caSections.map((section,index)=>index===0 && hasPermission("S")
         ? {...section,items:[...section.items,{
@@ -139,9 +158,10 @@ export default function Page() {
         </p>
 
         {profile?.role === "admin" ? <div className="mt-5 flex flex-wrap gap-2">
-          <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-lime-800">🌱 {counts.communities} Community</span>
-          <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-lime-800">🏕️ {counts.cas} CA</span>
-          <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-amber-700">◐ 未解決 {counts.unresolved}</span>
+          <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-lime-800">🌱 {counts.communities??"…"} Community</span>
+          <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-lime-800">🏕️ {counts.cas??"…"} CA</span>
+          <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-amber-700">◐ 未解決 {counts.unresolved??"…"}</span>
+          {countsError?<span className="rounded-full bg-amber-50 px-3 py-2 text-xs font-black text-amber-700">⚠️ 集計取得エラー</span>:null}
         </div> : null}
       </section>
 
