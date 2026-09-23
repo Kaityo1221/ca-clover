@@ -9,21 +9,32 @@ type AdminRouteGuardArgs = {
   loading: boolean;
   user: User | null;
   profile: AuthProfile | null;
+  error?: string | null;
   redirectTo?: string;
+  loginRedirectTo?: string;
 };
 
 export function useAdminRouteGuard({
   loading,
   user,
   profile,
+  error = null,
   redirectTo = "/my",
+  loginRedirectTo = "/login",
 }: AdminRouteGuardArgs) {
   const router = useRouter();
-  const denied = !loading && Boolean(user) && profile?.role !== "admin";
+  const unauthenticated = !loading && !error && !user;
+  const denied = !loading && !error && Boolean(user) && profile?.role !== "admin";
+  const blocked = loading || Boolean(error);
 
   useEffect(() => {
-    if (denied) router.replace(redirectTo);
-  }, [denied, redirectTo, router]);
+    if (loading || error) return;
+    if (!user) {
+      router.replace(loginRedirectTo);
+      return;
+    }
+    if (profile?.role !== "admin") router.replace(redirectTo);
+  }, [error, loading, loginRedirectTo, profile?.role, redirectTo, router, user]);
 
-  return { denied };
+  return { denied, unauthenticated, blocked };
 }
