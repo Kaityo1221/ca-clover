@@ -6,6 +6,6 @@ function img(client,community,attrs){const src=url(client,community),original=co
 function bind(root){(root||document).querySelectorAll('img[data-ca-community-icon="1"]').forEach(image=>{if(image.dataset.caBound==="1")return;image.dataset.caBound="1";image.addEventListener("error",()=>{const original=image.dataset.original||"";if(original&&image.dataset.caOriginalTried!=="1"&&image.src!==original){image.dataset.caOriginalTried="1";image.src=original;return}image.style.display="none"})})}
 window.CACommunityIcon={url,img,bind};
 if(/(?:^|\/)stamp-rally\.html$/.test(location.pathname)){
- const s=document.createElement("script");s.src="./suzuki-safe-mode.js?v=20260924-0006";s.async=false;document.head.appendChild(s)
+ const s=document.createElement("script");s.src="./suzuki-safe-mode.js?v=20260924-0300";s.async=false;document.head.appendChild(s)
 }
 })();
