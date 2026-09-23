@@ -99,6 +99,11 @@ export function StampMedal3D({
     rimLight.position.set(-3.2, 0.8, -2.4);
     scene.add(rimLight);
 
+    // Keep the back readable head-on without flattening the metallic glint.
+    const backFillLight = new THREE.DirectionalLight(0xffffff, 0.72);
+    backFillLight.position.set(0.35, 1.15, -4.2);
+    scene.add(backFillLight);
+
     const holder = new THREE.Group();
     holder.rotation.x = -0.055;
     holder.rotation.y = 0.22;
