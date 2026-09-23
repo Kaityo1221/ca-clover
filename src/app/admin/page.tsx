@@ -19,7 +19,7 @@ export default function Page(){
   const [pendingClaims,setPendingClaims]=useState(0);
   const [watchCount,setWatchCount]=useState(0);
   const [iconReviewCount,setIconReviewCount]=useState(0);
-  const [unassignedCount,setUnassignedCount]=useState(0);
+  const [unassignedCount,setUnassignedCount]=useState<number|null>(null);
 
   useEffect(()=>{
     if(loading||authError||!user||profile?.role!=="admin") return;
@@ -33,16 +33,20 @@ export default function Page(){
       setPendingClaims(claims.count??0);
       setWatchCount(watch.count??0);
       setIconReviewCount(icons.count??0);
+      if(communities.error||memberships.error){
+        setUnassignedCount(null);
+        return;
+      }
       const membershipRows=(memberships.data as MembershipCommunityRow[]|null)??[];
       const communityRows=(communities.data as CommunityIdRow[]|null)??[];
       const assigned=new Set(membershipRows.map(row=>row.community_id));
       setUnassignedCount(communityRows.filter(row=>!assigned.has(row.id)).length);
-    });
+    }).catch(()=>setUnassignedCount(null));
   },[authError,loading,user,profile?.role,supabase]);
 
   if (loading) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 読み込み中...</main>;
   if (authError) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div className="max-w-md"><div className="text-5xl">⚠️</div><h1 className="mt-3 text-2xl font-black text-lime-950">認証情報を確認できませんでした</h1><p className="mt-3 text-sm font-semibold leading-6 text-slate-500">{authError}</p><button onClick={retryAuth} className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black text-lime-950">もう一度確認する</button></div></main>;
-  if (!user) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><h1 className="text-2xl font-black text-lime-950">ログインが必要です</h1><Link href="/login" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black">Googleでログイン</Link></div></main>;
+  if (!user) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><h1 className="text-2xl font-black text-lime-950">ログインが必要です</h1><Link href="/login?next=%2Fadmin" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black">Googleでログイン</Link></div></main>;
   if (profile?.role !== "admin") return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><div className="text-5xl">🔒</div><h1 className="mt-3 text-2xl font-black text-lime-950">ADMIN専用です</h1></div></main>;
 
   const buttons=[
@@ -52,7 +56,7 @@ export default function Page(){
     ["🛎️","Community申請",pendingClaims?pendingClaims+"件の承認待ちがあります":"承認待ちはありません","/admin/claims"],
     ["🔐","Campfire接続","ADMIN tokenと接続状態を管理","/admin/campfire"],
     ["🔄","データ同期","Campfire Activityを全国更新","/admin/sync"],
-    ["🔗","Community権限調整","通常は自動割当 / 手動補正用","/admin/assignments"],
+    ["🔗","Community権限調整","CA Cloverユーザーへの閲覧権限を手動補正","/admin/assignments"],
     ["👀","一般ユーザーページ","一般ユーザーページを確認","/admin/preview/general-ca"],
     ["👥","CAアカウント","pending / CA / ADMINを承認・変更","/admin/accounts"],
     ["🧾","同期履歴","取得件数・失敗・部分取得を確認","/admin/sync-runs"],
@@ -78,7 +82,7 @@ export default function Page(){
         return <Link key={t} href={href} className={(attention
           ?"clover-card relative min-h-40 animate-pulse border-amber-300 bg-amber-50 p-5 text-left ring-2 ring-amber-200 transition hover:-translate-y-1 hover:border-amber-400"
           :"clover-card relative min-h-40 p-5 text-left transition hover:-translate-y-1 hover:border-lime-300")}>
-          {assignmentCard?<span className="absolute right-4 top-4 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-600">未割当 {unassignedCount}</span>:null}
+          {assignmentCard?<span className="absolute right-4 top-4 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-600">ユーザー未割当 {unassignedCount??"…"}</span>:null}
           {iconCard&&iconReviewCount>0?<span className="absolute right-4 top-4 rounded-full bg-amber-200 px-2.5 py-1 text-[11px] font-black text-amber-900">要確認 {iconReviewCount}</span>:null}
           <div className="text-3xl">{i}</div><div className="mt-4 font-black text-lime-950">{t}</div><div className="mt-1 text-xs font-semibold text-slate-500">{d}</div><div className="mt-4 text-xs font-black text-lime-700">開く →</div>
         </Link>;
