@@ -196,6 +196,9 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
   const rimLight=new THREE.DirectionalLight(0xffe5b4,1.6);
   rimLight.position.set(-3.2,.8,-2.4);
   scene.add(rimLight);
+  const backFillLight=new THREE.DirectionalLight(0xffffff,.72);
+  backFillLight.position.set(.35,1.15,-4.2);
+  scene.add(backFillLight);
 
   const holder=new THREE.Group();
   holder.rotation.x=-.055;
