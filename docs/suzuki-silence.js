@@ -3,17 +3,19 @@
 if(!/(?:^|\/)stamp-rally\.html$/.test(location.pathname))return;
 
 // TEMP: SuzukiPM-only hard mute guard.
-// This file exists so the joke sequence can be removed cleanly later.
+// Keep the audio graph untouched on iOS Safari. We silence only playback starts.
 const NAME="suzukipm";
 let muteActive=false;
 let releaseTimer=null;
 
 function isSuzukiButton(button){
  const raw=button&&button.textContent||"";
- const text=raw.replace(/\s+/g," ").trim();
- if(!text.toLowerCase().includes(NAME))return false;
- if(/・\s*SuzukiPM/i.test(text))return true;
- return (raw.match(/[●○]/g)||[]).length===1&&/[●○]\s*SuzukiPM/i.test(raw);
+ const text=raw.replace(/\s+/g," ").trim().toLowerCase();
+ if(!text.includes(NAME))return false;
+ // The stamp card itself is the primary trigger. Keep the old patterns as fallback.
+ if(button.matches&&button.matches("button.stamp[data-community]"))return true;
+ if(/・\s*SuzukiPM/i.test(raw))return true;
+ return /[●○]\s*SuzukiPM/i.test(raw);
 }
 
 function silenceLegacyHeartbeat(){
@@ -44,7 +46,7 @@ document.addEventListener("pointerdown",maybeActivate,true);
 document.addEventListener("touchstart",maybeActivate,{capture:true,passive:true});
 document.addEventListener("click",maybeActivate,true);
 
-// Block only Suzuki audio media. The dragon-fire MP4 remains visual and keeps playing.
+// Block only Suzuki audio media. Dragon-fire MP4 is muted video and remains visual.
 const mediaPlay=HTMLMediaElement.prototype.play;
 HTMLMediaElement.prototype.play=function(){
  const src=String(this.currentSrc||this.src||"").toLowerCase();
@@ -56,31 +58,32 @@ HTMLMediaElement.prototype.play=function(){
  return mediaPlay.apply(this,arguments);
 };
 
-// Suzuki's Web Audio sounds (heartbeat oscillator / footsteps / roar / fire)
-// eventually connect to AudioDestinationNode. While the Suzuki sequence is active,
-// drop only that final connection so absolutely no sound reaches the speaker.
-if(window.AudioNode&&window.AudioNode.prototype&&window.AudioNode.prototype.connect){
- const audioConnect=window.AudioNode.prototype.connect;
- window.AudioNode.prototype.connect=function(destination){
-  const isDestination=destination&&(
-   (window.AudioDestinationNode&&destination instanceof window.AudioDestinationNode)||
-   destination.constructor?.name==="AudioDestinationNode"
-  );
-  if(muteActive&&isDestination)return destination;
-  return audioConnect.apply(this,arguments);
+// Safer iOS strategy: do NOT replace AudioNode.connect().
+// Suzuki WebAudio uses OscillatorNode (heartbeat) and AudioBufferSourceNode
+// (footsteps, roar, fire). Prevent only their start while Suzuki is active.
+if(window.OscillatorNode&&window.OscillatorNode.prototype){
+ const oscillatorStart=window.OscillatorNode.prototype.start;
+ window.OscillatorNode.prototype.start=function(){
+  if(muteActive){try{this.stop()}catch(_){};return;}
+  return oscillatorStart.apply(this,arguments);
+ };
+}
+if(window.AudioBufferSourceNode&&window.AudioBufferSourceNode.prototype){
+ const bufferStart=window.AudioBufferSourceNode.prototype.start;
+ window.AudioBufferSourceNode.prototype.start=function(){
+  if(muteActive){try{this.stop()}catch(_){};return;}
+  return bufferStart.apply(this,arguments);
  };
 }
 
 function specialVisible(){
  const root=document.getElementById("szReal");
- const cleanup=document.getElementById("szCleanStage");
  let rootVisible=false;
  if(root){
   const style=getComputedStyle(root);
   rootVisible=style.display!=="none"&&Number(style.opacity||1)>0.01;
  }
- const cleanupVisible=!!(cleanup&&cleanup.classList.contains("on"));
- return rootVisible||cleanupVisible;
+ return rootVisible;
 }
 
 function scheduleRelease(){
@@ -102,7 +105,7 @@ const observer=new MutationObserver(()=>{
 observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:["class","style"]});
 
 window.CASuzukiSilence={
- version:"hard-mute-20260923-2306",
+ version:"hard-mute-ios-safe-20260923-2343",
  get active(){return muteActive;},
  activate:activateMute,
  reset(){
