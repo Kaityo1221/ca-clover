@@ -1,20 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createBrowserSupabaseClient } from "@/lib/supabase";
 import { useAuthProfile } from "@/lib/use-auth-profile";
+import { sanitizeNextPath } from "@/lib/auth-routing";
 
 export default function Page(){
   const { user, loading } = useAuthProfile();
   const [error, setError] = useState<string | null>(null);
+  const [nextPath, setNextPath] = useState("/my");
+
+  useEffect(()=>{
+    const params=new URLSearchParams(window.location.search);
+    setNextPath(sanitizeNextPath(params.get("next"),"/my"));
+  },[]);
 
   async function login(){
     const supabase=createBrowserSupabaseClient();
     setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider:"google",
-      options:{redirectTo:window.location.origin+"/my"}
+      options:{redirectTo:window.location.origin+nextPath}
     });
     if (error) setError(error.message);
   }
@@ -31,7 +38,7 @@ export default function Page(){
         <>
           <div className="mt-7 rounded-2xl bg-lime-50 p-4 text-sm font-bold text-lime-900">ログイン済みです</div>
           <div className="mt-4 grid gap-2">
-            <Link href="/my" className="rounded-2xl bg-lime-400 px-5 py-3.5 text-sm font-black text-lime-950">My Communityへ</Link>
+            <Link href={nextPath} className="rounded-2xl bg-lime-400 px-5 py-3.5 text-sm font-black text-lime-950">{nextPath==="/my"?"My Communityへ":"元の画面へ戻る"}</Link>
             <Link href="/account" className="rounded-2xl border border-lime-200 bg-white px-5 py-3.5 text-sm font-black text-lime-800">アカウント設定</Link>
           </div>
         </>
