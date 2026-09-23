@@ -334,7 +334,7 @@ export function StampMedal3D({
               map:engravingVisualTexture,
               transparent:true,
               alphaTest:0.02,
-              depthTest:false,
+              depthTest:true,
               depthWrite:false,
               side:THREE.FrontSide,
               toneMapped:false,
@@ -344,8 +344,9 @@ export function StampMedal3D({
             overlay.position.set(
               shellCenter.x,
               shellCenter.y-shellSize.y*0.035,
-              bounds.max.z+Math.max(shellSize.z*0.04,0.35),
+              bounds.min.z-Math.max(shellSize.z*0.04,0.35),
             );
+            overlay.rotation.y=Math.PI;
             overlay.renderOrder=1000;
             backShell.add(overlay);
           }
