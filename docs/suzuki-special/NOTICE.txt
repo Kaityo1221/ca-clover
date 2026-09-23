@@ -1,1 +1,0 @@
-Temporary generated fallback assets are used until the original Library files can be transferred into the repository. The SuzukiPM ritual remains isolated from normal CA behavior.
