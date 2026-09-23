@@ -102,7 +102,7 @@ if(/(?:^|\/)stamp-rally\.html$/.test(location.pathname)){
  s.async=false;
  s.onload=()=>{
   const c=document.createElement("script");
-  c.src="./suzuki-native-cleanup-button.js?v=20260924-0732";
+  c.src="./suzuki-native-cleanup-button.js?v=20260924-0749";
   c.async=false;
   document.head.appendChild(c)
  };
