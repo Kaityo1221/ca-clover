@@ -17,6 +17,7 @@ style.textContent=`
 .szNativeCleanupRow{display:flex;justify-content:center;margin:14px 0 2px}
 .szNativeCleanupBtn{border:1px solid #c8a96a;background:#fffaf0;color:#5a4528;border-radius:999px;padding:10px 18px;font-weight:900;font-size:14px;box-shadow:0 7px 18px rgba(60,43,23,.18);-webkit-tap-highlight-color:transparent}
 .szNativeCleanupBtn:active{transform:scale(.98)}
+.szNativeCleanupBtn:disabled{opacity:.45;transform:scale(.98)}
 `;
 document.head.appendChild(style);
 
@@ -61,8 +62,13 @@ if(modal)modal.addEventListener("click",e=>{if(e.target===modal)removeButton()},
 window.addEventListener("pagehide",removeButton);
 
 window.CASuzukiNativeCleanup={
- version:"button-only-20260924-0721",
+ version:"button-plus-brush-loader-20260924-0724",
  get armed(){return burnedSession},
  remove:removeButton
 };
+
+const brushScript=document.createElement("script");
+brushScript.src="./suzuki-native-brush.js?v=20260924-0724";
+brushScript.async=false;
+document.head.appendChild(brushScript);
 })();
