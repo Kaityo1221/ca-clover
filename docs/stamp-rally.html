@@ -236,22 +236,34 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
     bumpCtx.fillStyle="#000";bumpCtx.fillRect(0,0,1024,1024);
     bumpCtx.fillStyle="#fff";bumpCtx.textAlign="center";bumpCtx.textBaseline="middle";
     const isTemporarySuzukiBurn=(engravingText[0]||"").toLowerCase()==="suzukipm";
-    // TEMP: SuzukiPM-only dragon-fire scorch. Remove this branch after the joke event.
+    // TEMP: SuzukiPM-only dragon-fire heat tint. Remove this branch after the joke event.
     if(isTemporarySuzukiBurn){
-     visualCtx.save();visualCtx.translate(512,662);visualCtx.scale(1.18,.62);
-     const brandHeat=visualCtx.createRadialGradient(0,0,70,0,0,245);
-     brandHeat.addColorStop(0,"rgba(255,112,28,.03)");brandHeat.addColorStop(.56,"rgba(255,86,18,.05)");
-     brandHeat.addColorStop(.72,"rgba(28,12,8,.08)");brandHeat.addColorStop(.84,"rgba(24,10,7,.34)");
-     brandHeat.addColorStop(.93,"rgba(211,50,8,.16)");brandHeat.addColorStop(1,"rgba(255,94,18,0)");
-     visualCtx.fillStyle=brandHeat;visualCtx.beginPath();visualCtx.arc(0,0,245,0,Math.PI*2);visualCtx.fill();visualCtx.restore();
-     visualCtx.save();visualCtx.lineCap="round";visualCtx.lineJoin="round";visualCtx.shadowBlur=12;visualCtx.shadowColor="rgba(255,72,12,.24)";
-     visualCtx.strokeStyle="rgba(24,12,9,.42)";visualCtx.lineWidth=10;visualCtx.setLineDash([92,18,54,24,36,16]);
-     visualCtx.beginPath();visualCtx.ellipse(512,662,286,164,-.025,0,Math.PI*2);visualCtx.stroke();visualCtx.setLineDash([]);
-     visualCtx.strokeStyle="rgba(214,55,10,.20)";visualCtx.lineWidth=3;visualCtx.beginPath();visualCtx.ellipse(512,662,276,156,-.025,.06,Math.PI*1.94);visualCtx.stroke();visualCtx.restore();
-     [[286,540,344,566,390,586],[300,514,356,540,404,560],[322,492,374,516,418,536]].forEach(([x1,y1,cx,cy,x2,y2])=>{
-      visualCtx.save();visualCtx.lineCap="round";visualCtx.shadowBlur=10;visualCtx.shadowColor="rgba(255,78,10,.30)";
-      visualCtx.strokeStyle="rgba(42,18,10,.56)";visualCtx.lineWidth=8;visualCtx.beginPath();visualCtx.moveTo(x1,y1);visualCtx.quadraticCurveTo(cx,cy,x2,y2);visualCtx.stroke();
-      visualCtx.shadowBlur=5;visualCtx.strokeStyle="rgba(255,92,18,.34)";visualCtx.lineWidth=3;visualCtx.beginPath();visualCtx.moveTo(x1+2,y1-2);visualCtx.quadraticCurveTo(cx+2,cy-3,x2,y2-3);visualCtx.stroke();visualCtx.restore();
+     const drawHeatBloom=(cx,cy,rx,ry,rotation,opacity)=>{
+      visualCtx.save();visualCtx.translate(cx,cy);visualCtx.rotate(rotation);visualCtx.scale(rx/260,ry/260);visualCtx.globalAlpha=opacity;
+      const tint=visualCtx.createRadialGradient(-28,-34,18,0,0,260);
+      tint.addColorStop(0,"rgba(18,15,14,.52)");tint.addColorStop(.18,"rgba(48,30,25,.38)");
+      tint.addColorStop(.34,"rgba(72,34,92,.34)");tint.addColorStop(.50,"rgba(27,67,128,.34)");
+      tint.addColorStop(.64,"rgba(105,55,73,.25)");tint.addColorStop(.77,"rgba(151,91,29,.24)");
+      tint.addColorStop(.88,"rgba(213,164,62,.18)");tint.addColorStop(1,"rgba(232,199,108,0)");
+      visualCtx.fillStyle=tint;visualCtx.beginPath();visualCtx.arc(0,0,260,0,Math.PI*2);visualCtx.fill();visualCtx.restore();
+     };
+     drawHeatBloom(500,654,330,205,-.05,.90);
+     drawHeatBloom(410,596,220,150,-.34,.64);
+     drawHeatBloom(610,710,235,130,.20,.48);
+     drawHeatBloom(356,548,150,104,-.52,.46);
+
+     [[342,536,62,36,-.40,.30],[386,566,78,42,-.28,.26],[445,604,58,31,-.14,.22],[548,650,72,34,.08,.18],[632,718,54,29,.25,.14]].forEach(([cx,cy,rx,ry,rotation,alpha])=>{
+      visualCtx.save();visualCtx.translate(cx,cy);visualCtx.rotate(rotation);visualCtx.scale(rx/90,ry/90);
+      const patch=visualCtx.createRadialGradient(-14,-10,4,0,0,90);
+      patch.addColorStop(0,`rgba(12,10,9,${alpha})`);patch.addColorStop(.28,`rgba(55,24,20,${alpha*.92})`);
+      patch.addColorStop(.55,`rgba(78,37,103,${alpha*.72})`);patch.addColorStop(.75,`rgba(31,73,131,${alpha*.56})`);
+      patch.addColorStop(1,"rgba(194,133,40,0)");
+      visualCtx.fillStyle=patch;visualCtx.beginPath();visualCtx.arc(0,0,90,0,Math.PI*2);visualCtx.fill();visualCtx.restore();
+     });
+
+     [[327,526,18,9,-.34,.22],[365,548,27,11,-.26,.18],[405,579,15,8,-.18,.16],[469,614,21,8,-.10,.13],[590,690,17,7,.18,.10]].forEach(([cx,cy,rx,ry,rotation,alpha])=>{
+      visualCtx.save();visualCtx.translate(cx,cy);visualCtx.rotate(rotation);visualCtx.fillStyle=`rgba(24,18,16,${alpha})`;
+      visualCtx.beginPath();visualCtx.ellipse(0,0,rx,ry,0,0,Math.PI*2);visualCtx.fill();visualCtx.restore();
      });
     }
     const ys=[520,610,700,790],sizes=[68,56,52,50],weights=[650,620,540,500];
@@ -265,8 +277,9 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
      }while(size>30);
      const y=ys[index]||790;
      if(isTemporarySuzukiBurn){
-      visualCtx.shadowBlur=10;visualCtx.shadowColor="rgba(255,82,14,.24)";visualCtx.fillStyle="rgba(255,150,62,.18)";visualCtx.fillText(line,512,y-2);
-      visualCtx.shadowBlur=0;visualCtx.fillStyle="rgba(24,18,16,.90)";visualCtx.fillText(line,512,y+2);
+      visualCtx.shadowBlur=5;visualCtx.shadowColor="rgba(63,25,12,.30)";visualCtx.fillStyle="rgba(112,57,24,.28)";visualCtx.fillText(line,512,y-1);
+      visualCtx.shadowBlur=0;visualCtx.fillStyle="rgba(31,22,18,.94)";visualCtx.fillText(line,512,y+2);
+      visualCtx.strokeStyle="rgba(126,69,31,.38)";visualCtx.lineWidth=1.15;visualCtx.strokeText(line,512,y+2);
      }else{
       visualCtx.fillStyle="rgba(255,255,255,0.30)";visualCtx.fillText(line,512,y-2);
       visualCtx.fillStyle="rgba(66,66,66,0.72)";visualCtx.fillText(line,512,y+1);
@@ -280,7 +293,7 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
     engravingBumpTexture.colorSpace=THREE.NoColorSpace;
     engravingBumpTexture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
     backMaterial.bumpMap=engravingBumpTexture;
-    backMaterial.bumpScale=-.016;
+    backMaterial.bumpScale=isTemporarySuzukiBurn?-.022:-.016;
     backMaterial.needsUpdate=true;
    }
   }
