@@ -288,14 +288,15 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
      map:engravingVisualTexture,
      transparent:true,
      alphaTest:.02,
-     depthTest:false,
+     depthTest:true,
      depthWrite:false,
      side:THREE.FrontSide,
      toneMapped:false
     });
     const overlay=new THREE.Mesh(engravingOverlayGeometry,engravingOverlayMaterial);
     overlay.name="engraving_overlay";
-    overlay.position.set(shellCenter.x,shellCenter.y-shellSize.y*.035,bounds.max.z+Math.max(shellSize.z*.04,.35));
+    overlay.position.set(shellCenter.x,shellCenter.y-shellSize.y*.035,bounds.min.z-Math.max(shellSize.z*.04,.35));
+    overlay.rotation.y=Math.PI;
     overlay.renderOrder=1000;
     backShell.add(overlay);
    }
