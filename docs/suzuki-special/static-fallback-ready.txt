@@ -1,0 +1,1 @@
+The SuzukiPM ritual has no blocking dependency on the original binary assets. Static fallbacks keep the sequence functional.
