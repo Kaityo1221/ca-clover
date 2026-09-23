@@ -186,57 +186,68 @@ export function StampMedal3D({
 
         // TEMP: SuzukiPM-only dragon-fire scorch. Remove this branch after the joke event.
         if(isTemporarySuzukiBurn){
+          // Clean branded-seal treatment: no long brown smear across the medal.
           visualCtx.save();
-          visualCtx.translate(500,650);
-          visualCtx.rotate(-0.20);
-          visualCtx.scale(1.75,0.78);
-          const heat=visualCtx.createRadialGradient(-40,-10,12,-10,0,250);
-          heat.addColorStop(0,"rgba(255,118,24,0.26)");
-          heat.addColorStop(0.24,"rgba(177,57,9,0.22)");
-          heat.addColorStop(0.58,"rgba(74,30,10,0.22)");
-          heat.addColorStop(0.82,"rgba(34,18,10,0.16)");
-          heat.addColorStop(1,"rgba(20,12,8,0)");
-          visualCtx.fillStyle=heat;
+          visualCtx.translate(512,662);
+          visualCtx.scale(1.18,0.62);
+          const brandHeat=visualCtx.createRadialGradient(0,0,70,0,0,245);
+          brandHeat.addColorStop(0,"rgba(255,112,28,0.03)");
+          brandHeat.addColorStop(0.56,"rgba(255,86,18,0.05)");
+          brandHeat.addColorStop(0.72,"rgba(28,12,8,0.08)");
+          brandHeat.addColorStop(0.84,"rgba(24,10,7,0.34)");
+          brandHeat.addColorStop(0.93,"rgba(211,50,8,0.16)");
+          brandHeat.addColorStop(1,"rgba(255,94,18,0)");
+          visualCtx.fillStyle=brandHeat;
           visualCtx.beginPath();
-          visualCtx.arc(0,0,250,0,Math.PI*2);
+          visualCtx.arc(0,0,245,0,Math.PI*2);
           visualCtx.fill();
           visualCtx.restore();
 
           visualCtx.save();
           visualCtx.lineCap="round";
           visualCtx.lineJoin="round";
-          visualCtx.shadowBlur=26;
-          visualCtx.shadowColor="rgba(255,82,12,0.34)";
-          visualCtx.strokeStyle="rgba(84,30,7,0.34)";
-          visualCtx.lineWidth=48;
+          visualCtx.shadowBlur=12;
+          visualCtx.shadowColor="rgba(255,72,12,0.24)";
+          visualCtx.strokeStyle="rgba(24,12,9,0.42)";
+          visualCtx.lineWidth=10;
+          visualCtx.setLineDash([92,18,54,24,36,16]);
           visualCtx.beginPath();
-          visualCtx.moveTo(155,390);
-          visualCtx.bezierCurveTo(300,445,330,565,520,620);
-          visualCtx.bezierCurveTo(650,658,760,694,858,770);
+          visualCtx.ellipse(512,662,286,164,-0.025,0,Math.PI*2);
           visualCtx.stroke();
-          visualCtx.strokeStyle="rgba(255,101,18,0.20)";
-          visualCtx.lineWidth=18;
+          visualCtx.setLineDash([]);
+          visualCtx.strokeStyle="rgba(214,55,10,0.20)";
+          visualCtx.lineWidth=3;
           visualCtx.beginPath();
-          visualCtx.moveTo(150,383);
-          visualCtx.bezierCurveTo(305,438,350,548,525,606);
-          visualCtx.bezierCurveTo(670,654,758,683,866,755);
+          visualCtx.ellipse(512,662,276,156,-0.025,0.06,Math.PI*1.94);
           visualCtx.stroke();
           visualCtx.restore();
 
-          const scorchMarks=[
-            [318,520,64,0.20],[405,596,88,0.16],[532,655,108,0.14],
-            [646,710,74,0.17],[724,758,54,0.15],[268,456,38,0.18]
+          // Three short flame-claw marks at the upper-left edge of the seal.
+          const flameClaws=[
+            [286,540,344,566,390,586],
+            [300,514,356,540,404,560],
+            [322,492,374,516,418,536],
           ];
-          for(const [x,y,r,a] of scorchMarks){
-            const scorch=visualCtx.createRadialGradient(x,y,0,x,y,r);
-            scorch.addColorStop(0,"rgba(47,20,8,"+a+")");
-            scorch.addColorStop(0.62,"rgba(93,36,7,"+(a*0.62)+")");
-            scorch.addColorStop(1,"rgba(93,36,7,0)");
-            visualCtx.fillStyle=scorch;
+          visualCtx.save();
+          visualCtx.lineCap="round";
+          for(const [x1,y1,cx,cy,x2,y2] of flameClaws){
+            visualCtx.shadowBlur=10;
+            visualCtx.shadowColor="rgba(255,78,10,0.30)";
+            visualCtx.strokeStyle="rgba(42,18,10,0.56)";
+            visualCtx.lineWidth=8;
             visualCtx.beginPath();
-            visualCtx.arc(x,y,r,0,Math.PI*2);
-            visualCtx.fill();
+            visualCtx.moveTo(x1,y1);
+            visualCtx.quadraticCurveTo(cx,cy,x2,y2);
+            visualCtx.stroke();
+            visualCtx.shadowBlur=5;
+            visualCtx.strokeStyle="rgba(255,92,18,0.34)";
+            visualCtx.lineWidth=3;
+            visualCtx.beginPath();
+            visualCtx.moveTo(x1+2,y1-2);
+            visualCtx.quadraticCurveTo(cx+2,cy-3,x2,y2-3);
+            visualCtx.stroke();
           }
+          visualCtx.restore();
         }
 
         const yPositions=[520,610,700,790];
@@ -255,11 +266,11 @@ export function StampMedal3D({
           const y=yPositions[index]??790;
           if(isTemporarySuzukiBurn){
             visualCtx.shadowBlur=10;
-            visualCtx.shadowColor="rgba(255,83,12,0.38)";
-            visualCtx.fillStyle="rgba(255,164,72,0.26)";
+            visualCtx.shadowColor="rgba(255,82,14,0.24)";
+            visualCtx.fillStyle="rgba(255,150,62,0.18)";
             visualCtx.fillText(line,512,y-2);
             visualCtx.shadowBlur=0;
-            visualCtx.fillStyle="rgba(36,15,6,0.88)";
+            visualCtx.fillStyle="rgba(24,18,16,0.90)";
             visualCtx.fillText(line,512,y+2);
           }else{
             visualCtx.fillStyle="rgba(255,255,255,0.30)";
