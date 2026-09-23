@@ -29,7 +29,7 @@ window.CACommunityIcon={url,img,bind};
 
 if(/(?:^|\/)stamp-rally\.html$/.test(location.pathname)){
   const s=document.createElement("script");
-  s.src="./suzuki-real-audio.js?v=20260923-2107";
+  s.src="./suzuki-real-audio.js?v=20260923-2118";
   s.async=false;
   document.head.appendChild(s);
 }
