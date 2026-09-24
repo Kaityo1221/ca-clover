@@ -21,7 +21,7 @@
   <div class="notice testnote">正式な取得履歴には保存しません。QRの読み取りだけを仮想化し、交換確認の流れとスタンプ一覧の色・取得数をテストします。</div>
   <div id="app"><div class="notice testnote center">読み込み中...</div></div>
  </section>
- <div class="foot">SuzukiPM・lutowalker・JUNP0K0・自分自身は候補から除外します。仮想取得はこの端末のブラウザ内だけに保存されます。</div>
+ <div class="foot">柏らへん・MaTSUmoto Darkrai・ポケモン GO 嵐山町・自分のCommunityは候補から除外します。仮想取得はこの端末のブラウザ内だけに保存されます。</div>
 </main>
 <script>
 (function(){
@@ -35,6 +35,12 @@ const EXCLUDED_CA_IDS=new Set([
  "ab45cd17-8815-4e66-ac43-606cfc757e95",
  "918a34a4-020d-438e-9279-be45a0dc474a",
  "1dd35eed-b9fc-46fa-b869-812d206f7cbf"
+]);
+const EXCLUDED_COMMUNITY_IDS=new Set([
+ "195fd46f-5f61-49dd-ad83-b1910080093a",
+ "ea85165f-f7f4-4cee-b5d0-d58ac64a129b",
+ "8a1f2edf-63ff-433b-b3df-724b7b0d1082",
+ "6ae51ae5-dd21-4a27-95b2-a32f4e4046fc"
 ]);
 let currentUser=null,candidates=[],selected=null,stage="list",query="",busy=false;
 function e(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c])}
@@ -128,6 +134,7 @@ async function boot(){
   if(!row||!row.ca_member_id||!row.community_id)return false;
   if(!["1st","2nd"].includes(String(row.ca_level||"")))return false;
   if(EXCLUDED_CA_IDS.has(String(row.ca_member_id)))return false;
+  if(EXCLUDED_COMMUNITY_IDS.has(String(row.community_id)))return false;
   const key=String(row.ca_member_id)+"|"+String(row.community_id);
   if(real.has(key)||virtual.has(key)||seen.has(key))return false;
   seen.add(key);return true;
