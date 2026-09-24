@@ -209,7 +209,7 @@ function unmountStampMedal3D(){
  stamp3d.innerHTML="";
  stampZoom2D.classList.remove("hidden");
 }
-async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines){
+async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines,options){
  unmountStampMedal3D();
  const token=++stamp3dToken;
  stamp3d.classList.add("show");
@@ -280,6 +280,7 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
   let engravingOverlayGeometry=null;
   let engravingOverlayMaterial=null;
   const engravingText=(engravingLines||[]).map(x=>String(x||"").trim()).filter(Boolean).slice(0,4);
+  const shouldDrawSuzukiBurn=Boolean(options&&options.suzukiBurned);
   if(engravingText.length){
    const visualCanvas=document.createElement("canvas");visualCanvas.width=1024;visualCanvas.height=1024;
    const bumpCanvas=document.createElement("canvas");bumpCanvas.width=1024;bumpCanvas.height=1024;
@@ -290,9 +291,9 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
     visualCtx.textAlign="center";visualCtx.textBaseline="middle";
     bumpCtx.fillStyle="#000";bumpCtx.fillRect(0,0,1024,1024);
     bumpCtx.fillStyle="#fff";bumpCtx.textAlign="center";bumpCtx.textBaseline="middle";
-    const isTemporarySuzukiBurn=(engravingText[0]||"").toLowerCase()==="suzukipm";
+    // Suzuki burn is an explicit render option; engraving text never controls visual state.
     // TEMP: SuzukiPM-only dragon-fire scorch. Remove this branch after the joke event.
-    if(isTemporarySuzukiBurn){
+    if(shouldDrawSuzukiBurn){
      const drawScorchCloud=(cx,cy,rx,ry,rotation,coreAlpha,edgeAlpha)=>{
       visualCtx.save();visualCtx.translate(cx,cy);visualCtx.rotate(rotation);visualCtx.scale(rx/220,ry/220);
       const scorch=visualCtx.createRadialGradient(-34,-28,8,0,0,220);
@@ -360,7 +361,7 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
       size-=2;
      }while(size>30);
      const y=ys[index]||790;
-     if(isTemporarySuzukiBurn){
+     if(shouldDrawSuzukiBurn){
       visualCtx.shadowBlur=4;visualCtx.shadowColor="rgba(28,15,9,.34)";visualCtx.fillStyle="rgba(104,57,25,.34)";visualCtx.fillText(line,512,y-1);
       visualCtx.shadowBlur=0;visualCtx.fillStyle="rgba(22,16,13,.96)";visualCtx.fillText(line,512,y+2);
       visualCtx.strokeStyle="rgba(121,70,30,.46)";visualCtx.lineWidth=1.35;visualCtx.strokeText(line,512,y+2);
@@ -377,7 +378,7 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
     engravingBumpTexture.colorSpace=THREE.NoColorSpace;
     engravingBumpTexture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
     backMaterial.bumpMap=engravingBumpTexture;
-    backMaterial.bumpScale=isTemporarySuzukiBurn?-.022:-.016;
+    backMaterial.bumpScale=shouldDrawSuzukiBurn?-.022:-.016;
     backMaterial.needsUpdate=true;
    }
   }
@@ -500,6 +501,7 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
 
   stamp3d.innerHTML="";
   stamp3d.appendChild(renderer.domElement);
+  window.dispatchEvent(new CustomEvent("ca:stamp-medal-rendered",{detail:{trainer_name:engravingText[0]||"",suzukiBurned:shouldDrawSuzukiBurn}}));
 
   const resize=()=>{
    const width=Math.max(1,stamp3d.clientWidth),height=Math.max(1,stamp3d.clientHeight);
@@ -772,7 +774,8 @@ async function load(){
      prefectureEnglishLabel(c.prefecture),
      engravingDate(selectedCa.collection.first_acquired_at)
     ];
-    void mountStampMedal3D(selectedDesign,src,c.avatar_url||"",engravingLines);
+    const suzukiBurned=isSuzukiSpecial(selectedCa)&&window.CASuzukiMedalState?.phase!=="clean_complete";
+    void mountStampMedal3D(selectedDesign,src,c.avatar_url||"",engravingLines,{suzukiBurned});
    }else unmountStampMedal3D();
 
    const caButtons=c.cas.map(x=>'<button type="button" class="btn '+(selectedCa&&selectedCa.id===x.id?"":"line")+'" data-modal-ca="'+esc(x.id)+'" style="font-size:10px;padding:8px 10px">'+esc(x.ca_level||"CA")+' ・ '+esc(x.trainer_name)+'</button>').join("");
@@ -857,12 +860,25 @@ async function load(){
    };
   };
 
+  window.CAStampRallyMedalBridge={
+   rerenderSuzuki(){
+    if(!isSuzukiSpecial(selectedCa)||!(selectedCa&&selectedCa.collection))return false;
+    renderModal();
+    return true;
+   }
+  };
+
   renderModal();
   stampModalBack.classList.add("show");
   stampModalBack.setAttribute("aria-hidden","false");
  }));
 }
-function closeStampModal(){hideStampMessage();stopSuzukiIntro();unmountStampMedal3D();stampModalBack.classList.remove("show");stampModalBack.setAttribute("aria-hidden","true")}
+function closeStampModal(){
+ hideStampMessage();stopSuzukiIntro();unmountStampMedal3D();
+ if(window.CASuzukiMedalState)window.CASuzukiMedalState.phase="idle";
+ window.CAStampRallyMedalBridge=null;
+ stampModalBack.classList.remove("show");stampModalBack.setAttribute("aria-hidden","true");
+}
 stampClose.onclick=closeStampModal;
 stampModalBack.addEventListener("click",e=>{if(e.target===stampModalBack)closeStampModal()});
 load();
