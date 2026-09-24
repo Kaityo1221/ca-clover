@@ -5,7 +5,8 @@ const NAME="suzukipm";
 const EMBLEM="./suzuki-special/dragon-emblem.jpg?v=20260924-1256";
 const FIRE_VFX="./suzuki-special/dragon-fire-vfx.mp4?v=20260924-1727";
 const FOOTSTEP="./suzuki-special/monster-footstep.mp3?v=20260924-1748";
-let phase="idle",tapCount=0,root=null,targetButton=null,bypass=false,timers=[],footstepAudio=null;
+const ROAR="./suzuki-special/dragon-roar.mp3?v=20260924-1756";
+let phase="idle",tapCount=0,root=null,targetButton=null,bypass=false,timers=[],footstepAudio=null,roarAudio=null;
 function later(fn,ms){const id=setTimeout(()=>{timers=timers.filter(x=>x!==id);fn()},ms);timers.push(id);return id}
 function clearTimers(){timers.forEach(clearTimeout);timers=[]}
 function isSuzukiButton(b){
@@ -48,6 +49,32 @@ function stopFootstep(){
  try{footstepAudio.pause();footstepAudio.currentTime=0;footstepAudio.removeAttribute("src");footstepAudio.load()}catch(_){}
  footstepAudio=null;
 }
+function prepareRoar(){
+ if(roarAudio)return roarAudio;
+ try{
+  const audio=new Audio();
+  audio.preload="auto";
+  audio.src=ROAR;
+  audio.load();
+  roarAudio=audio;
+ }catch(_){}
+ return roarAudio;
+}
+function playRoar(){
+ const audio=prepareRoar();if(!audio)return;
+ try{
+  audio.pause();
+  audio.currentTime=0;
+  audio.volume=.95;
+  audio.playbackRate=1;
+  const p=audio.play();if(p&&p.catch)p.catch(()=>{});
+ }catch(_){}
+}
+function stopRoar(){
+ if(!roarAudio)return;
+ try{roarAudio.pause();roarAudio.currentTime=0;roarAudio.removeAttribute("src");roarAudio.load()}catch(_){}
+ roarAudio=null;
+}
 function ensure(){
  if(root&&document.body.contains(root))return root;
  const st=document.createElement("style");st.id="sz-native-flow-style";st.textContent=`
@@ -82,7 +109,7 @@ function bindDragonImage(r){
  if(img.complete){if(img.naturalWidth>0)ready();else failed()}
 }
 function showRitual(){
- phase="heartbeat_intro";tapCount=0;const r=ensure();stopVisualMedia();stopFootstep();prepareFootstep();r.hidden=false;r.innerHTML=`<div class="szScene"><div class="szRitual"><div class="szDragon"><img class="szDragonImg" src="${EMBLEM}" alt="" decoding="async" fetchpriority="high"></div><div class="szText"></div><div class="szHint"></div></div></div><div class="szFlash"></div>`;bindDragonImage(r);
+ phase="heartbeat_intro";tapCount=0;const r=ensure();stopVisualMedia();stopFootstep();stopRoar();prepareFootstep();prepareRoar();r.hidden=false;r.innerHTML=`<div class="szScene"><div class="szRitual"><div class="szDragon"><img class="szDragonImg" src="${EMBLEM}" alt="" decoding="async" fetchpriority="high"></div><div class="szText"></div><div class="szHint"></div></div></div><div class="szFlash"></div>`;bindDragonImage(r);
  later(()=>{if(phase!=="heartbeat_intro")return;phase="text_reveal";const t=r.querySelector(".szText");if(t)t.textContent="覚者よ、よくきた。"},3800);
  later(()=>{const t=r.querySelector(".szText");if(t)t.innerHTML='覚者よ、よくきた。<br>お前の心臓と引き換えに、この紋章を授けよう。'},5200);
  later(()=>{if(phase!=="text_reveal")return;phase="tap_wait";const h=r.querySelector(".szHint");if(h)h.textContent="画面を3回タップ"},7200)
@@ -92,7 +119,7 @@ function ritualTap(){
  if(d){d.style.transform=`scale(${1+tapCount*.035})`;d.style.filter=`brightness(${1+tapCount*.28}) drop-shadow(0 0 ${28+tapCount*13}px #c32b1999)`}
  if(tapCount===1){playFootstep(false);return}
  if(tapCount===2){playFootstep(true);return}
- phase="roar";const f=root.querySelector(".szFlash");if(f){f.classList.add("on");later(()=>f.classList.remove("on"),180)}later(showForge,500)
+ stopFootstep();playRoar();phase="roar";const f=root.querySelector(".szFlash");if(f){f.classList.add("on");later(()=>f.classList.remove("on"),180)}later(showForge,500)
 }
 function showBrandImpact(){
  if(!root||phase!=="fire")return;
@@ -104,7 +131,6 @@ function showBrandImpact(){
 function showForge(){
  phase="fire";
  if(!root)return;
- stopFootstep();
  stopVisualMedia();
  root.innerHTML=`<div class="szScene szForge"><video class="szFireVfx" muted playsinline autoplay loop preload="auto" src="${FIRE_VFX}" aria-hidden="true"></video><div class="szForgeShade"></div><div class="szForgeCenter"><div class="szForgeLabel">刻印中...</div></div></div>`;
  const video=root.querySelector(".szFireVfx");
@@ -122,12 +148,12 @@ function showForge(){
 }
 function openNativeDetail(){
  if(!targetButton||!document.contains(targetButton)){finish();return}
- phase="burned";muteLegacy();stopFootstep();stopVisualMedia();if(root){root.hidden=true;root.innerHTML=""}
+ phase="burned";muteLegacy();stopFootstep();stopRoar();stopVisualMedia();if(root){root.hidden=true;root.innerHTML=""}
  bypass=true;const button=targetButton;button.click();
  later(()=>{muteLegacy();window.dispatchEvent(new CustomEvent("ca:suzuki-burned",{detail:{trainer_name:"SuzukiPM"}}));phase="idle";targetButton=null},0);
  later(muteLegacy,120)
 }
-function finish(){clearTimers();stopFootstep();stopVisualMedia();phase="idle";tapCount=0;targetButton=null;if(root){root.hidden=true;root.innerHTML=""}muteLegacy()}
+function finish(){clearTimers();stopFootstep();stopRoar();stopVisualMedia();phase="idle";tapCount=0;targetButton=null;if(root){root.hidden=true;root.innerHTML=""}muteLegacy()}
 function capture(ev){
  if(bypass){bypass=false;return}
  const t=ev.target;if(!(t instanceof Element))return;
@@ -137,5 +163,5 @@ function capture(ev){
 }
 document.addEventListener("click",capture,true);
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&phase!=="idle")finish()});
-muteLegacy();window.CASuzukiSpecial={version:"native-detail-flow-footstep-20260924-1748",get phase(){return phase},reset:finish};
+muteLegacy();window.CASuzukiSpecial={version:"native-detail-flow-roar-20260924-1756",get phase(){return phase},reset:finish};
 })();
