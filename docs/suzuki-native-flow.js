@@ -70,13 +70,17 @@ function prepareFireBuffer(){
  fireBufferPromise=decodeBuffer(FIRE_AUDIO,"fire").then(decoded=>{fireBuffer=decoded;return decoded}).catch(()=>{fireBufferPromise=null;return null});
  return fireBufferPromise;
 }
-function playRoar(){
- const ctx=ensureAudioContext(true);if(!ctx)return;
- if(!roarBuffer){prepareRoarBuffer();return}
- try{
-  if(roarSource){try{roarSource.stop()}catch(_){}roarSource=null}
-  const src=ctx.createBufferSource(),gain=ctx.createGain();src.buffer=roarBuffer;gain.gain.value=.98;src.connect(gain).connect(ctx.destination);src.onended=()=>{if(roarSource===src)roarSource=null};roarSource=src;src.start(0)
- }catch(_){}
+function playRoarReady(){
+ const ctx=ensureAudioContext(true);if(!ctx)return Promise.resolve(false);
+ const resumed=ctx.state==="suspended"?Promise.resolve(ctx.resume()).catch(()=>null):Promise.resolve();
+ const ready=roarBuffer?Promise.resolve(roarBuffer):prepareRoarBuffer();
+ return Promise.all([resumed,ready]).then(([,buffer])=>{
+  if(!buffer)return false;
+  try{
+   if(roarSource){try{roarSource.stop()}catch(_){}roarSource=null}
+   const src=ctx.createBufferSource(),gain=ctx.createGain();src.buffer=buffer;gain.gain.value=.98;src.connect(gain).connect(ctx.destination);src.onended=()=>{if(roarSource===src)roarSource=null};roarSource=src;src.start(0);return true
+  }catch(_){return false}
+ });
 }
 function stopRoar(){if(roarSource){try{roarSource.stop()}catch(_){}roarSource=null}}
 function playFire(){
@@ -132,17 +136,26 @@ function showRitual(){
  later(()=>{const t=r.querySelector(".szText");if(t)t.innerHTML='覚者よ、よくきた。<br>お前の心臓と引き換えに、この紋章を授けよう。'},5200);
  later(()=>{if(phase!=="text_reveal")return;phase="tap_wait";const h=r.querySelector(".szHint");if(h)h.textContent="画面を3回タップ"},7200)
 }
+function beginRoarGate(){
+ phase="roar_wait";later(stopFootstep,80);
+ const h=root&&root.querySelector(".szHint");if(h)h.textContent="";
+ playRoarReady().then(started=>{
+  if(phase!=="roar_wait")return;
+  if(!started){phase="tap_wait";tapCount=2;const hint=root&&root.querySelector(".szHint");if(hint)hint.textContent="もう一度タップ";return}
+  phase="roar";const f=root&&root.querySelector(".szFlash");if(f){f.classList.add("on");later(()=>f.classList.remove("on"),180)}later(showForge,700)
+ });
+}
 function ritualTap(){
  if(phase!=="tap_wait")return;tapCount++;const d=root&&root.querySelector(".szDragon");if(d){d.style.transform=`scale(${1+tapCount*.035})`;d.style.filter=`brightness(${1+tapCount*.28}) drop-shadow(0 0 ${28+tapCount*13}px #c32b1999)`}
- if(tapCount===1){playFootstep(false);return}
- if(tapCount===2){playFootstep(true);return}
- playRoar();later(stopFootstep,80);phase="roar";const f=root.querySelector(".szFlash");if(f){f.classList.add("on");later(()=>f.classList.remove("on"),180)}later(showForge,500)
+ if(tapCount===1){prepareRoarBuffer();playFootstep(false);return}
+ if(tapCount===2){prepareRoarBuffer();playFootstep(true);return}
+ beginRoarGate()
 }
 function showBrandImpact(){
  if(!root||phase!=="fire")return;phase="branding";const label=root.querySelector(".szForgeLabel");if(label)label.style.opacity="0";const forge=root.querySelector(".szForge");if(!forge)return;const impact=document.createElement("div");impact.className="szBrandImpact";impact.innerHTML='<div class="szBrandHeat" aria-hidden="true"></div>';forge.appendChild(impact)
 }
 function showForge(){
- phase="fire";if(!root)return;stopVisualMedia();playFire();
+ if(phase!=="roar")return;phase="fire";if(!root)return;stopVisualMedia();playFire();
  root.innerHTML=`<div class="szScene szForge"><video class="szFireVfx" muted playsinline autoplay loop preload="auto" src="${FIRE_VFX}" aria-hidden="true"></video><div class="szForgeShade"></div><div class="szForgeCenter"><div class="szForgeLabel">刻印中...</div></div></div>`;
  const video=root.querySelector(".szFireVfx");if(video){try{video.muted=true;video.defaultMuted=true;video.volume=0;video.playsInline=true;video.loop=true;video.playbackRate=1.0;video.currentTime=0;video.load();const tryPlay=()=>{try{const p=video.play();if(p&&p.catch)p.catch(()=>{})}catch(_){}};video.addEventListener("canplay",tryPlay,{once:true});tryPlay()}catch(_){} }
  later(showBrandImpact,2450);later(openNativeDetail,3400)
@@ -159,5 +172,5 @@ function capture(ev){
 document.addEventListener("click",capture,true);
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&phase!=="idle")finish()});
 document.addEventListener("pagehide",()=>{stopRoar();stopFire();try{if(audioCtx&&audioCtx.state!=="closed")audioCtx.suspend()}catch(_){}});
-muteLegacy();window.CASuzukiSpecial={version:"native-detail-flow-fire-audio-boost-20260924-1815",get phase(){return phase},reset:finish};
+muteLegacy();window.CASuzukiSpecial={version:"native-detail-flow-roar-gated-20260924-1822",get phase(){return phase},reset:finish};
 })();
