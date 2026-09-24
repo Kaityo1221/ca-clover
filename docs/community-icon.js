@@ -167,9 +167,52 @@ html.ca-admin-modal-open,body.ca-admin-modal-open{overflow:hidden!important;over
  });
  observer.observe(document.body,{childList:true,subtree:true});
 }
+let adminCountClient=null;
+function installAdminPendingCommunityCountFix(){
+ if(!/(?:^|\/)admin\.html$/.test(location.pathname))return;
+ const supabaseApi=window.supabase;
+ if(!supabaseApi||typeof supabaseApi.createClient!=="function")return;
+ const originalCreateClient=supabaseApi.createClient.bind(supabaseApi);
+ supabaseApi.createClient=function(...args){
+  const created=originalCreateClient(...args);
+  if(!adminCountClient)adminCountClient=created;
+  return created;
+ };
+ let timer=null;
+ let requestSerial=0;
+ async function refresh(){
+  if(!adminCountClient)return;
+  const card=Array.from(document.querySelectorAll(".menucard")).find(x=>x.querySelector("h3")?.textContent.trim()==="アイコン一覧");
+  if(!card)return;
+  const serial=++requestSerial;
+  const result=await adminCountClient.from("community_icon_changes").select("community_id").eq("change_type","changed").is("reviewed_at",null);
+  if(serial!==requestSerial||result.error)return;
+  const count=new Set((result.data||[]).map(x=>x.community_id).filter(Boolean)).size;
+  let badge=card.querySelector(".count");
+  if(count>0){
+   if(!badge){badge=document.createElement("span");badge.className="pill amber count";card.appendChild(badge)}
+   badge.textContent="要確認 "+count;
+   card.classList.add("attention");
+  }else{
+   if(badge)badge.remove();
+   card.classList.remove("attention");
+  }
+ }
+ function schedule(){clearTimeout(timer);timer=setTimeout(()=>void refresh(),80)}
+ function start(){
+  const app=document.getElementById("app");
+  if(!app)return;
+  const observer=new MutationObserver(schedule);
+  observer.observe(app,{childList:true,subtree:true});
+  schedule();
+ }
+ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});
+ else start();
+}
 window.CACommunityIcon={url,img,bind};
 installBreakArtifactCleanup();
 installAdminIconHistoryFix();
+installAdminPendingCommunityCountFix();
 if(/(?:^|\/)stamp-rally\.html$/.test(location.pathname)){
  const s=document.createElement("script");
  s.src="./suzuki-native-flow.js?v=20260924-1836";
