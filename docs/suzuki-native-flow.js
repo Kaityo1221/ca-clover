@@ -42,10 +42,18 @@ function stopFootstep(){
 function ensureAudioContext(userGesture){
  try{
   const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;
-  if(!audioCtx||audioCtx.state==="closed")audioCtx=new C();
-  if(audioCtx.state==="suspended"){try{const p=audioCtx.resume();if(p&&p.catch)p.catch(()=>{})}catch(_){}}
+  if(!audioCtx||audioCtx.state==="closed"){
+   audioCtx=new C();
+   roarBuffer=null;roarBufferPromise=null;fireBuffer=null;fireBufferPromise=null;
+  }
+  if(audioCtx.state!=="running"){
+   try{const p=audioCtx.resume();if(p&&p.catch)p.catch(()=>{})}catch(_){}
+  }
   if(userGesture){
-   try{const now=audioCtx.currentTime,osc=audioCtx.createOscillator(),gain=audioCtx.createGain();gain.gain.setValueAtTime(.00001,now);osc.connect(gain).connect(audioCtx.destination);osc.start(now);osc.stop(now+.025)}catch(_){}
+   try{
+    const now=audioCtx.currentTime,osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
+    gain.gain.setValueAtTime(.00001,now);osc.connect(gain).connect(audioCtx.destination);osc.start(now);osc.stop(now+.025)
+   }catch(_){}
   }
   return audioCtx;
  }catch(_){return null}
@@ -70,16 +78,26 @@ function prepareFireBuffer(){
  fireBufferPromise=decodeBuffer(FIRE_AUDIO,"fire").then(decoded=>{fireBuffer=decoded;return decoded}).catch(()=>{fireBufferPromise=null;return null});
  return fireBufferPromise;
 }
+function startRoarSource(ctx,buffer){
+ if(!ctx||!buffer||ctx.state!=="running")return false;
+ try{
+  if(roarSource){try{roarSource.stop()}catch(_){}roarSource=null}
+  const src=ctx.createBufferSource(),gain=ctx.createGain();
+  src.buffer=buffer;gain.gain.value=.98;src.connect(gain).connect(ctx.destination);
+  src.onended=()=>{if(roarSource===src)roarSource=null};roarSource=src;src.start(0);return true
+ }catch(_){return false}
+}
 function playRoarReady(){
  const ctx=ensureAudioContext(true);if(!ctx)return Promise.resolve(false);
- const resumed=ctx.state==="suspended"?Promise.resolve(ctx.resume()).catch(()=>null):Promise.resolve();
+ if(roarBuffer&&ctx.state==="running")return Promise.resolve(startRoarSource(ctx,roarBuffer));
+ const resumed=ctx.state==="running"?Promise.resolve(true):Promise.resolve(ctx.resume()).then(()=>true).catch(()=>false);
  const ready=roarBuffer?Promise.resolve(roarBuffer):prepareRoarBuffer();
  return Promise.all([resumed,ready]).then(([,buffer])=>{
   if(!buffer)return false;
-  try{
-   if(roarSource){try{roarSource.stop()}catch(_){}roarSource=null}
-   const src=ctx.createBufferSource(),gain=ctx.createGain();src.buffer=buffer;gain.gain.value=.98;src.connect(gain).connect(ctx.destination);src.onended=()=>{if(roarSource===src)roarSource=null};roarSource=src;src.start(0);return true
-  }catch(_){return false}
+  if(ctx.state!=="running"){
+   try{const p=ctx.resume();if(p&&p.catch)p.catch(()=>{})}catch(_){}
+  }
+  return startRoarSource(ctx,buffer)
  });
 }
 function stopRoar(){if(roarSource){try{roarSource.stop()}catch(_){}roarSource=null}}
@@ -147,17 +165,23 @@ function showRitual(){
  later(()=>{const t=r.querySelector(".szText");if(t)t.innerHTML='覚者よ、よくきた。<br>お前の心臓と引き換えに、この紋章を授けよう。'},5200);
  later(()=>{if(phase!=="text_reveal")return;phase="tap_wait";const h=r.querySelector(".szHint");if(h)h.textContent="画面を3回タップ"},7200)
 }
+function onRoarStarted(){
+ if(phase!=="roar_wait")return;
+ phase="roar";const f=root&&root.querySelector(".szFlash");if(f){f.classList.add("on");later(()=>f.classList.remove("on"),180)}later(showForge,700)
+}
 function beginRoarGate(){
  phase="roar_wait";later(stopFootstep,80);
  const h=root&&root.querySelector(".szHint");if(h)h.textContent="";
+ const ctx=ensureAudioContext(true);
+ if(ctx&&roarBuffer&&ctx.state==="running"&&startRoarSource(ctx,roarBuffer)){onRoarStarted();return}
  playRoarReady().then(started=>{
   if(phase!=="roar_wait")return;
   if(!started){phase="tap_wait";tapCount=2;const hint=root&&root.querySelector(".szHint");if(hint)hint.textContent="もう一度タップ";return}
-  phase="roar";const f=root&&root.querySelector(".szFlash");if(f){f.classList.add("on");later(()=>f.classList.remove("on"),180)}later(showForge,700)
+  onRoarStarted()
  });
 }
 function ritualTap(){
- if(phase!=="tap_wait")return;tapCount++;const d=root&&root.querySelector(".szDragon");if(d){d.style.transform=`scale(${1+tapCount*.035})`;d.style.filter=`brightness(${1+tapCount*.28}) drop-shadow(0 0 ${28+tapCount*13}px #c32b1999)`}
+ if(phase!=="tap_wait")return;tapCount++;ensureAudioContext(true);const d=root&&root.querySelector(".szDragon");if(d){d.style.transform=`scale(${1+tapCount*.035})`;d.style.filter=`brightness(${1+tapCount*.28}) drop-shadow(0 0 ${28+tapCount*13}px #c32b1999)`}
  if(tapCount===1){prepareRoarBuffer();playFootstep(false);return}
  if(tapCount===2){prepareRoarBuffer();playFootstep(true);return}
  beginRoarGate()
@@ -193,5 +217,5 @@ function capture(ev){
 document.addEventListener("click",capture,true);
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&phase!=="idle")finish()});
 document.addEventListener("pagehide",()=>{stopRoar();stopFire();try{if(audioCtx&&audioCtx.state!=="closed")audioCtx.suspend()}catch(_){}});
-muteLegacy();window.CASuzukiSpecial={version:"native-detail-flow-zoom-guard-20260924-1827",get phase(){return phase},reset:finish};
+muteLegacy();window.CASuzukiSpecial={version:"native-detail-flow-repeat-roar-20260924-1836",get phase(){return phase},reset:finish};
 })();
