@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#fff8ef">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>CA Clover 仮想交換</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./community-icon.js"></script>
+<style>
+:root{font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#403a35;background:#fff8ef}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:linear-gradient(180deg,#fffaf4,#fff4e8)}a{text-decoration:none;color:inherit}button,input{font:inherit}.wrap{max-width:430px;margin:auto;padding:20px 16px 60px}.head{display:flex;justify-content:space-between;align-items:center}.back{font-size:13px;font-weight:900;color:#567d48}.pill{border-radius:999px;background:#fff2bf;padding:6px 11px;font-size:10px;font-weight:950;color:#8a641d}.card{margin-top:18px;border:1px solid #ead6bf;border-radius:30px;background:rgba(255,255,255,.9);padding:20px;box-shadow:0 18px 44px rgba(98,70,40,.10)}.center{text-align:center}.hero{font-size:40px}.title{margin:6px 0 0;font-size:25px;font-weight:950}.desc{margin:8px 0 0;font-size:12px;line-height:1.65;font-weight:800;color:#88786a}.notice{margin-top:14px;border-radius:16px;padding:12px;font-size:11px;line-height:1.55;font-weight:850}.testnote{border:1px solid #efd18c;background:#fff8df;color:#7d5c1b}.error{background:#fff0f2;color:#b4233b}.grid{display:grid;gap:12px;margin-top:18px}.btn{border:0;border-radius:18px;padding:14px;font-size:14px;font-weight:950;cursor:pointer}.primary{background:#5f8e50;color:#fff}.outline{border:2px solid #a9c89c;background:#fff;color:#537647}.muted{background:#eee9e4;color:#6d655f}.amber{background:#fff2bf;color:#8a641d}.btn:disabled{opacity:.5}.search{width:100%;border:1px solid #ddcdbb;border-radius:16px;background:#fff;padding:13px 14px;font-size:14px;outline:none}.search:focus{border-color:#9ebd92;box-shadow:0 0 0 3px rgba(95,142,80,.10)}.list{display:grid;gap:10px;margin-top:14px}.candidate{width:100%;border:1px solid #ead9c7;border-radius:20px;background:#fffaf4;padding:12px;display:flex;align-items:center;gap:12px;text-align:left;cursor:pointer}.avatar{position:relative;flex:0 0 auto;width:62px;height:62px;border:3px solid #fff;border-radius:999px;background:#edf4e8;display:grid;place-items:center;font-size:25px;overflow:hidden;box-shadow:0 7px 18px rgba(80,60,40,.10)}.avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.meta{min-width:0;flex:1}.community{font-size:13px;font-weight:950;color:#496c3e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.name{margin-top:3px;font-size:12px;font-weight:950;color:#403a35}.pref{margin-top:2px;font-size:9px;font-weight:800;color:#9b8d82}.tag{display:inline-block;margin-left:4px;border-radius:999px;background:#edf5e8;padding:2px 6px;color:#5f7c52;font-size:8px;font-weight:950}.empty{padding:18px;text-align:center;font-size:12px;font-weight:850;color:#94867b}.person{margin-top:18px;border:1px solid #ead8c6;border-radius:26px;background:#fffaf4;padding:20px;text-align:center}.person .avatar{width:112px;height:112px;margin:auto;font-size:38px}.person .name{margin-top:12px;font-size:20px}.person .community{margin-top:4px;font-size:14px}.confirm{margin-top:15px;font-size:18px;font-weight:950}.wait{margin-top:15px;border-radius:18px;background:#edf5e8;padding:14px;text-align:center;font-size:13px;font-weight:950;color:#587848}.twocol{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.done{margin-top:24px;text-align:center}.done .emoji{font-size:54px}.foot{margin-top:14px;text-align:center;font-size:10px;line-height:1.55;font-weight:800;color:#9a8b7e}
+</style>
+</head>
+<body>
+<main class="wrap">
+ <div class="head"><a href="./stamp-exchange.html" class="back">← スタンプ交換</a><span class="pill">ADMIN TEST</span></div>
+ <section class="card">
+  <div class="center"><div class="hero">🧪</div><h1 class="title">仮想スタンプ交換</h1><p class="desc">実在するCommunity / CAを相手役にして、1台だけで交換成立から色付き表示まで確認します。</p></div>
+  <div class="notice testnote">正式な取得履歴には保存しません。QRの読み取りだけを仮想化し、交換確認の流れとスタンプ一覧の色・取得数をテストします。</div>
+  <div id="app"><div class="notice testnote center">読み込み中...</div></div>
+ </section>
+ <div class="foot">SuzukiPM・lutowalker・JUNP0K0・自分自身は候補から除外します。仮想取得はこの端末のブラウザ内だけに保存されます。</div>
+</main>
+<script>
+(function(){
+"use strict";
+const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
+const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
+const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
+const app=document.getElementById("app");
+const EXCLUDED_CA_IDS=new Set([
+ "2cf606f6-cd3a-4113-bfa7-12414ddbbafc",
+ "ab45cd17-8815-4e66-ac43-606cfc757e95",
+ "918a34a4-020d-438e-9279-be45a0dc474a",
+ "1dd35eed-b9fc-46fa-b869-812d206f7cbf"
+]);
+let currentUser=null,candidates=[],selected=null,stage="list",query="",busy=false;
+function e(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c])}
+function storeKey(){return currentUser?"ca-clover-virtual-stamps-v1:"+currentUser.id:null}
+function loadVirtual(){
+ const key=storeKey();if(!key)return[];
+ try{const v=JSON.parse(localStorage.getItem(key)||"[]");return Array.isArray(v)?v:[]}catch(_){return[]}
+}
+function saveVirtual(item){
+ const key=storeKey();if(!key)return;
+ const list=loadVirtual();
+ const k=item.ca_member_id+"|"+item.community_id;
+ const next=list.filter(x=>x.ca_member_id+"|"+x.community_id!==k);
+ next.push(item);
+ localStorage.setItem(key,JSON.stringify(next));
+}
+function communityObj(row){return{ id:row.community_id,name:row.community_name,prefecture:row.prefecture,avatar_url:row.avatar_url,avatar_thumbnail_path:row.avatar_thumbnail_path,avatar_last_changed_at:row.avatar_last_changed_at}}
+function picture(row){return '<div class="avatar"><span>🍀</span>'+window.CACommunityIcon.img(client,communityObj(row),'alt=""')+'</div>'}
+function filtered(){
+ const q=query.trim().normalize("NFKC").toLowerCase();
+ if(!q)return candidates;
+ return candidates.filter(x=>[x.community_name,x.trainer_name,x.prefecture].some(v=>String(v||"").normalize("NFKC").toLowerCase().includes(q)));
+}
+function renderList(){
+ const rows=filtered();
+ app.innerHTML='<div class="grid"><input id="search" class="search" type="search" placeholder="Community / CA / 都道府県で検索" value="'+e(query)+'"><div class="list">'+(rows.length?rows.map((r,i)=>'<button type="button" class="candidate" data-i="'+i+'">'+picture(r)+'<div class="meta"><div class="community">'+e(r.community_name)+'</div><div class="name">'+e(r.trainer_name)+' <span class="tag">'+e(r.ca_level||"CA")+'</span></div><div class="pref">'+e(r.prefecture||"")+'</div></div><div style="font-weight:950;color:#6f8f61">›</div></button>').join(""):'<div class="empty">候補がありません。</div>')+'</div></div>';
+ const search=document.getElementById("search");
+ if(search){search.oninput=()=>{query=search.value;renderList();requestAnimationFrame(()=>{const s=document.getElementById("search");if(s){s.focus();s.setSelectionRange(query.length,query.length)}})}}
+ app.querySelectorAll(".candidate").forEach((btn,idx)=>btn.onclick=()=>{selected=rows[idx];stage="scan";render()});
+ window.CACommunityIcon.bind(app);
+}
+function renderScan(){
+ const p=selected;
+ app.innerHTML='<div class="person">'+picture(p)+'<div class="name">'+e(p.trainer_name)+'</div><div class="community">'+e(p.community_name)+'</div><div class="pref">'+e(p.prefecture||"")+' ・ '+e(p.ca_level||"CA")+'</div></div><div class="notice testnote center">このCAを「QRを読み取った相手」として仮想接続します。</div><div class="twocol"><button id="back" class="btn muted">戻る</button><button id="scan" class="btn amber">QR読み取りを再現</button></div>';
+ document.getElementById("back").onclick=()=>{selected=null;stage="list";render()};
+ document.getElementById("scan").onclick=()=>{stage="confirm";render()};
+ window.CACommunityIcon.bind(app);
+}
+function renderConfirm(){
+ const p=selected;
+ app.innerHTML='<div class="person">'+picture(p)+'<div class="name">'+e(p.trainer_name)+'</div><div class="community">'+e(p.community_name)+'</div><div class="pref">'+e(p.prefecture||"")+'</div></div><div class="confirm center">交換しますか？</div><div class="twocol"><button id="cancel" class="btn muted">やめる</button><button id="ok" class="btn primary">OK</button></div>';
+ document.getElementById("cancel").onclick=()=>{selected=null;stage="list";render()};
+ document.getElementById("ok").onclick=()=>{stage="mine_ok";render()};
+ window.CACommunityIcon.bind(app);
+}
+function renderMineOk(){
+ const p=selected;
+ app.innerHTML='<div class="person">'+picture(p)+'<div class="name">'+e(p.trainer_name)+'</div><div class="community">'+e(p.community_name)+'</div><div class="pref">'+e(p.prefecture||"")+'</div></div><div class="wait">あなたはOK済みです。仮想相手の確認を待っています 🍀</div><div class="grid"><button id="partnerOk" class="btn amber">仮想相手もOK</button><button id="cancel" class="btn muted">テストを中止</button></div>';
+ document.getElementById("partnerOk").onclick=complete;
+ document.getElementById("cancel").onclick=()=>{selected=null;stage="list";render()};
+ window.CACommunityIcon.bind(app);
+}
+function complete(){
+ if(!selected||busy)return;busy=true;
+ const item={
+  ca_member_id:String(selected.ca_member_id),community_id:String(selected.community_id),trainer_name:String(selected.trainer_name||""),ca_level:String(selected.ca_level||""),community_name:String(selected.community_name||""),prefecture:String(selected.prefecture||""),avatar_url:selected.avatar_url||null,avatar_thumbnail_path:selected.avatar_thumbnail_path||null,avatar_last_changed_at:selected.avatar_last_changed_at||null,acquired_at:new Date().toISOString(),source:"virtual_test"
+ };
+ saveVirtual(item);stage="done";busy=false;render();
+}
+function renderDone(){
+ const p=selected;
+ app.innerHTML='<div class="done"><div class="emoji">🎉</div><h2 class="title">仮想交換完了！</h2><p class="desc">'+e(p.trainer_name)+'さん / '+e(p.community_name)+' をテスト取得しました。</p><div class="notice testnote">スタンプ一覧へ戻ると、対象Communityがグレーからカラーになり、取得カウントもテスト分だけ増えます。</div><div class="grid"><a class="btn primary" style="display:block;text-align:center" href="./stamp-rally.html">スタンプ一覧で確認</a><button id="again" class="btn outline">別のCommunityも試す</button></div></div>';
+ document.getElementById("again").onclick=()=>{selected=null;stage="list";query="";render()};
+}
+function render(){
+ if(stage==="list")return renderList();
+ if(stage==="scan")return renderScan();
+ if(stage==="confirm")return renderConfirm();
+ if(stage==="mine_ok")return renderMineOk();
+ if(stage==="done")return renderDone();
+}
+async function boot(){
+ const auth=await client.auth.getSession();const session=auth.data.session;
+ if(!session){location.href="./";return}
+ currentUser=session.user;
+ const profile=await client.from("profiles").select("role").eq("id",currentUser.id).maybeSingle();
+ if(profile.error||!profile.data||profile.data.role!=="admin"){
+  app.innerHTML='<div class="notice error center">このテスト機能はADMIN限定です。</div>';return;
+ }
+ const [catalogResult,collectionResult]=await Promise.all([
+  client.rpc("stamp_rally_catalog"),
+  client.from("stamp_collections").select("stamp_ca_member_id,community_id").eq("owner_user_id",currentUser.id)
+ ]);
+ if(catalogResult.error||collectionResult.error){
+  app.innerHTML='<div class="notice error">'+e((catalogResult.error||collectionResult.error).message)+'</div>';return;
+ }
+ const real=new Set((collectionResult.data||[]).map(x=>String(x.stamp_ca_member_id)+"|"+String(x.community_id)));
+ const virtual=new Set(loadVirtual().map(x=>String(x.ca_member_id)+"|"+String(x.community_id)));
+ const seen=new Set();
+ candidates=(catalogResult.data||[]).filter(row=>{
+  if(!row||!row.ca_member_id||!row.community_id)return false;
+  if(!["1st","2nd"].includes(String(row.ca_level||"")))return false;
+  if(EXCLUDED_CA_IDS.has(String(row.ca_member_id)))return false;
+  const key=String(row.ca_member_id)+"|"+String(row.community_id);
+  if(real.has(key)||virtual.has(key)||seen.has(key))return false;
+  seen.add(key);return true;
+ }).sort((a,b)=>String(a.prefecture||"").localeCompare(String(b.prefecture||""),"ja")||String(a.community_name||"").localeCompare(String(b.community_name||""),"ja")||String(a.trainer_name||"").localeCompare(String(b.trainer_name||""),"ja"));
+ render();
+}
+boot();
+})();
+</script>
+</body>
+</html>
