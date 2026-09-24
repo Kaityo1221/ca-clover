@@ -13,6 +13,7 @@ let finishTimer=null;
 let rerenderTimeout=null;
 let startRaf1=0;
 let startRaf2=0;
+let insertRaf=0;
 let lastActivateAt=0;
 let waitingForCleanRender=false;
 
@@ -46,6 +47,7 @@ function cleanupSuzukiCleanupFx(options){
  if(rerenderTimeout){clearTimeout(rerenderTimeout);rerenderTimeout=null}
  if(startRaf1){cancelAnimationFrame(startRaf1);startRaf1=0}
  if(startRaf2){cancelAnimationFrame(startRaf2);startRaf2=0}
+ if(insertRaf){cancelAnimationFrame(insertRaf);insertRaf=0}
  if(brushAnimation){try{brushAnimation.cancel()}catch(_){}brushAnimation=null}
  if(brushOverlay){brushOverlay.remove();brushOverlay=null}
  document.querySelectorAll(".szNativeBrushOverlay").forEach(el=>el.remove());
@@ -217,15 +219,16 @@ function insertButton(){
 }
 
 function tryInsert(attempt){
+ insertRaf=0;
  if(insertButton())return;
  if(attempt>=12)return;
- requestAnimationFrame(()=>tryInsert(attempt+1));
+ insertRaf=requestAnimationFrame(()=>tryInsert(attempt+1));
 }
 
 window.addEventListener("ca:suzuki-burned",()=>{
  cleanupSuzukiCleanupFx({resetState:false});
  setPhase("burned");
- requestAnimationFrame(()=>tryInsert(0));
+ insertRaf=requestAnimationFrame(()=>tryInsert(0));
 });
 
 const close=closeButton();
@@ -242,7 +245,7 @@ if(c)c.addEventListener("click",e=>{
 window.addEventListener("pagehide",()=>cleanupSuzukiCleanupFx({resetState:true}));
 
 window.CASuzukiNativeCleanup={
- version:"native-burn-cleanup-state-20260924-1135",
+ version:"native-burn-cleanup-state-20260924-1145",
  get phase(){return medalState()?.phase||"idle"},
  get running(){return running},
  run:runBrush,
