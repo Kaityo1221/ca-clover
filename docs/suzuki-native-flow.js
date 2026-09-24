@@ -6,8 +6,9 @@ const EMBLEM="./suzuki-special/dragon-emblem.jpg?v=20260924-1256";
 const FIRE_VFX="./suzuki-special/dragon-fire-vfx.mp4?v=20260924-1727";
 const FOOTSTEP="./suzuki-special/monster-footstep.mp3?v=20260924-1748";
 const ROAR="./suzuki-special/dragon-roar.mp3?v=20260924-1803";
+const FIRE_AUDIO="./suzuki-special/dragon-fire.mp3?v=20260924-1810";
 let phase="idle",tapCount=0,root=null,targetButton=null,bypass=false,timers=[],footstepAudio=null;
-let audioCtx=null,roarBuffer=null,roarBufferPromise=null,roarSource=null;
+let audioCtx=null,roarBuffer=null,roarBufferPromise=null,roarSource=null,fireBuffer=null,fireBufferPromise=null,fireSource=null;
 function later(fn,ms){const id=setTimeout(()=>{timers=timers.filter(x=>x!==id);fn()},ms);timers.push(id);return id}
 function clearTimers(){timers.forEach(clearTimeout);timers=[]}
 function isSuzukiButton(b){
@@ -26,24 +27,12 @@ function stopVisualMedia(){
 }
 function prepareFootstep(){
  if(footstepAudio)return footstepAudio;
- try{
-  const audio=new Audio();
-  audio.preload="auto";
-  audio.src=FOOTSTEP;
-  audio.load();
-  footstepAudio=audio;
- }catch(_){}
+ try{const audio=new Audio();audio.preload="auto";audio.src=FOOTSTEP;audio.load();footstepAudio=audio}catch(_){}
  return footstepAudio;
 }
 function playFootstep(near){
  const audio=prepareFootstep();if(!audio)return;
- try{
-  audio.pause();
-  audio.currentTime=0;
-  audio.volume=near?.92:.52;
-  audio.playbackRate=near?1:.92;
-  const p=audio.play();if(p&&p.catch)p.catch(()=>{});
- }catch(_){}
+ try{audio.pause();audio.currentTime=0;audio.volume=near?.92:.52;audio.playbackRate=near?1:.92;const p=audio.play();if(p&&p.catch)p.catch(()=>{})}catch(_){}
 }
 function stopFootstep(){
  if(!footstepAudio)return;
@@ -54,54 +43,51 @@ function ensureAudioContext(userGesture){
  try{
   const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;
   if(!audioCtx||audioCtx.state==="closed")audioCtx=new C();
-  if(audioCtx.state==="suspended"){
-   try{const p=audioCtx.resume();if(p&&p.catch)p.catch(()=>{})}catch(_){}
-  }
+  if(audioCtx.state==="suspended"){try{const p=audioCtx.resume();if(p&&p.catch)p.catch(()=>{})}catch(_){}}
   if(userGesture){
-   try{
-    const now=audioCtx.currentTime;
-    const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
-    gain.gain.setValueAtTime(.00001,now);
-    osc.connect(gain).connect(audioCtx.destination);
-    osc.start(now);osc.stop(now+.025);
-   }catch(_){}
+   try{const now=audioCtx.currentTime,osc=audioCtx.createOscillator(),gain=audioCtx.createGain();gain.gain.setValueAtTime(.00001,now);osc.connect(gain).connect(audioCtx.destination);osc.start(now);osc.stop(now+.025)}catch(_){}
   }
   return audioCtx;
  }catch(_){return null}
 }
-function prepareRoarBuffer(){
+function decodeBuffer(url,kind){
  const ctx=ensureAudioContext(false);if(!ctx)return Promise.resolve(null);
+ return fetch(url,{cache:"force-cache"})
+  .then(r=>{if(!r.ok)throw new Error(kind+" fetch "+r.status);return r.arrayBuffer()})
+  .then(buf=>new Promise((resolve,reject)=>{
+   try{const p=ctx.decodeAudioData(buf.slice(0));if(p&&typeof p.then==="function")p.then(resolve,reject);else ctx.decodeAudioData(buf,resolve,reject)}catch(err){reject(err)}
+  }));
+}
+function prepareRoarBuffer(){
  if(roarBuffer)return Promise.resolve(roarBuffer);
  if(roarBufferPromise)return roarBufferPromise;
- roarBufferPromise=fetch(ROAR,{cache:"force-cache"})
-  .then(r=>{if(!r.ok)throw new Error("roar fetch "+r.status);return r.arrayBuffer()})
-  .then(buf=>new Promise((resolve,reject)=>{
-   try{
-    const p=ctx.decodeAudioData(buf.slice(0));
-    if(p&&typeof p.then==="function")p.then(resolve,reject);
-    else ctx.decodeAudioData(buf,resolve,reject);
-   }catch(err){reject(err)}
-  }))
-  .then(decoded=>{roarBuffer=decoded;return decoded})
-  .catch(()=>{roarBufferPromise=null;return null});
+ roarBufferPromise=decodeBuffer(ROAR,"roar").then(decoded=>{roarBuffer=decoded;return decoded}).catch(()=>{roarBufferPromise=null;return null});
  return roarBufferPromise;
+}
+function prepareFireBuffer(){
+ if(fireBuffer)return Promise.resolve(fireBuffer);
+ if(fireBufferPromise)return fireBufferPromise;
+ fireBufferPromise=decodeBuffer(FIRE_AUDIO,"fire").then(decoded=>{fireBuffer=decoded;return decoded}).catch(()=>{fireBufferPromise=null;return null});
+ return fireBufferPromise;
 }
 function playRoar(){
  const ctx=ensureAudioContext(true);if(!ctx)return;
- if(ctx.state==="suspended"){try{const p=ctx.resume();if(p&&p.catch)p.catch(()=>{})}catch(_){}}
  if(!roarBuffer){prepareRoarBuffer();return}
  try{
   if(roarSource){try{roarSource.stop()}catch(_){}roarSource=null}
-  const src=ctx.createBufferSource(),gain=ctx.createGain();
-  src.buffer=roarBuffer;gain.gain.value=.98;
-  src.connect(gain).connect(ctx.destination);
-  src.onended=()=>{if(roarSource===src)roarSource=null};
-  roarSource=src;src.start(0);
+  const src=ctx.createBufferSource(),gain=ctx.createGain();src.buffer=roarBuffer;gain.gain.value=.98;src.connect(gain).connect(ctx.destination);src.onended=()=>{if(roarSource===src)roarSource=null};roarSource=src;src.start(0)
  }catch(_){}
 }
-function stopRoar(){
- if(roarSource){try{roarSource.stop()}catch(_){}roarSource=null}
+function stopRoar(){if(roarSource){try{roarSource.stop()}catch(_){}roarSource=null}}
+function playFire(){
+ const ctx=ensureAudioContext(false);if(!ctx)return;
+ if(!fireBuffer){prepareFireBuffer();return}
+ try{
+  if(fireSource){try{fireSource.stop()}catch(_){}fireSource=null}
+  const src=ctx.createBufferSource(),gain=ctx.createGain();src.buffer=fireBuffer;src.loop=true;gain.gain.value=.74;src.connect(gain).connect(ctx.destination);src.onended=()=>{if(fireSource===src)fireSource=null};fireSource=src;src.start(0)
+ }catch(_){}
 }
+function stopFire(){if(fireSource){try{fireSource.stop()}catch(_){}fireSource=null}}
 function ensure(){
  if(root&&document.body.contains(root))return root;
  const st=document.createElement("style");st.id="sz-native-flow-style";st.textContent=`
@@ -127,69 +113,42 @@ function ensure(){
  document.head.appendChild(st);root=document.createElement("div");root.id="szNative";root.hidden=true;document.body.appendChild(root);return root
 }
 function bindDragonImage(r){
- const img=r.querySelector(".szDragonImg"),holder=r.querySelector(".szDragon");
- if(!img||!holder)return;
- const ready=()=>img.classList.add("ready");
- const failed=()=>{holder.innerHTML='<span class="szDragonFallback" aria-hidden="true">🐉</span>'};
- img.addEventListener("load",ready,{once:true});
- img.addEventListener("error",failed,{once:true});
- if(img.complete){if(img.naturalWidth>0)ready();else failed()}
+ const img=r.querySelector(".szDragonImg"),holder=r.querySelector(".szDragon");if(!img||!holder)return;
+ const ready=()=>img.classList.add("ready");const failed=()=>{holder.innerHTML='<span class="szDragonFallback" aria-hidden="true">🐉</span>'};
+ img.addEventListener("load",ready,{once:true});img.addEventListener("error",failed,{once:true});if(img.complete){if(img.naturalWidth>0)ready();else failed()}
 }
 function showRitual(){
- phase="heartbeat_intro";tapCount=0;const r=ensure();stopVisualMedia();stopFootstep();stopRoar();ensureAudioContext(true);prepareFootstep();prepareRoarBuffer();r.hidden=false;r.innerHTML=`<div class="szScene"><div class="szRitual"><div class="szDragon"><img class="szDragonImg" src="${EMBLEM}" alt="" decoding="async" fetchpriority="high"></div><div class="szText"></div><div class="szHint"></div></div></div><div class="szFlash"></div>`;bindDragonImage(r);
+ phase="heartbeat_intro";tapCount=0;const r=ensure();stopVisualMedia();stopFootstep();stopRoar();stopFire();ensureAudioContext(true);prepareFootstep();prepareRoarBuffer();prepareFireBuffer();r.hidden=false;r.innerHTML=`<div class="szScene"><div class="szRitual"><div class="szDragon"><img class="szDragonImg" src="${EMBLEM}" alt="" decoding="async" fetchpriority="high"></div><div class="szText"></div><div class="szHint"></div></div></div><div class="szFlash"></div>`;bindDragonImage(r);
  later(()=>{if(phase!=="heartbeat_intro")return;phase="text_reveal";const t=r.querySelector(".szText");if(t)t.textContent="覚者よ、よくきた。"},3800);
  later(()=>{const t=r.querySelector(".szText");if(t)t.innerHTML='覚者よ、よくきた。<br>お前の心臓と引き換えに、この紋章を授けよう。'},5200);
  later(()=>{if(phase!=="text_reveal")return;phase="tap_wait";const h=r.querySelector(".szHint");if(h)h.textContent="画面を3回タップ"},7200)
 }
 function ritualTap(){
- if(phase!=="tap_wait")return;tapCount++;const d=root&&root.querySelector(".szDragon");
- if(d){d.style.transform=`scale(${1+tapCount*.035})`;d.style.filter=`brightness(${1+tapCount*.28}) drop-shadow(0 0 ${28+tapCount*13}px #c32b1999)`}
+ if(phase!=="tap_wait")return;tapCount++;const d=root&&root.querySelector(".szDragon");if(d){d.style.transform=`scale(${1+tapCount*.035})`;d.style.filter=`brightness(${1+tapCount*.28}) drop-shadow(0 0 ${28+tapCount*13}px #c32b1999)`}
  if(tapCount===1){playFootstep(false);return}
  if(tapCount===2){playFootstep(true);return}
  playRoar();later(stopFootstep,80);phase="roar";const f=root.querySelector(".szFlash");if(f){f.classList.add("on");later(()=>f.classList.remove("on"),180)}later(showForge,500)
 }
 function showBrandImpact(){
- if(!root||phase!=="fire")return;
- phase="branding";
- const label=root.querySelector(".szForgeLabel");if(label)label.style.opacity="0";
- const forge=root.querySelector(".szForge");if(!forge)return;
- const impact=document.createElement("div");impact.className="szBrandImpact";impact.innerHTML='<div class="szBrandHeat" aria-hidden="true"></div>';forge.appendChild(impact);
+ if(!root||phase!=="fire")return;phase="branding";const label=root.querySelector(".szForgeLabel");if(label)label.style.opacity="0";const forge=root.querySelector(".szForge");if(!forge)return;const impact=document.createElement("div");impact.className="szBrandImpact";impact.innerHTML='<div class="szBrandHeat" aria-hidden="true"></div>';forge.appendChild(impact)
 }
 function showForge(){
- phase="fire";
- if(!root)return;
- stopVisualMedia();
+ phase="fire";if(!root)return;stopVisualMedia();playFire();
  root.innerHTML=`<div class="szScene szForge"><video class="szFireVfx" muted playsinline autoplay loop preload="auto" src="${FIRE_VFX}" aria-hidden="true"></video><div class="szForgeShade"></div><div class="szForgeCenter"><div class="szForgeLabel">刻印中...</div></div></div>`;
- const video=root.querySelector(".szFireVfx");
- if(video){
-  try{
-   video.muted=true;video.defaultMuted=true;video.volume=0;video.playsInline=true;video.loop=true;video.playbackRate=1.0;video.currentTime=0;
-   video.load();
-   const tryPlay=()=>{try{const p=video.play();if(p&&p.catch)p.catch(()=>{})}catch(_){}};
-   video.addEventListener("canplay",tryPlay,{once:true});
-   tryPlay();
-  }catch(_){}
- }
- later(showBrandImpact,2450);
- later(openNativeDetail,3400)
+ const video=root.querySelector(".szFireVfx");if(video){try{video.muted=true;video.defaultMuted=true;video.volume=0;video.playsInline=true;video.loop=true;video.playbackRate=1.0;video.currentTime=0;video.load();const tryPlay=()=>{try{const p=video.play();if(p&&p.catch)p.catch(()=>{})}catch(_){}};video.addEventListener("canplay",tryPlay,{once:true});tryPlay()}catch(_){}}
+ later(showBrandImpact,2450);later(openNativeDetail,3400)
 }
 function openNativeDetail(){
  if(!targetButton||!document.contains(targetButton)){finish();return}
- phase="burned";muteLegacy();stopFootstep();stopRoar();stopVisualMedia();if(root){root.hidden=true;root.innerHTML=""}
- bypass=true;const button=targetButton;button.click();
- later(()=>{muteLegacy();window.dispatchEvent(new CustomEvent("ca:suzuki-burned",{detail:{trainer_name:"SuzukiPM"}}));phase="idle";targetButton=null},0);
- later(muteLegacy,120)
+ phase="burned";muteLegacy();stopFootstep();stopRoar();stopFire();stopVisualMedia();if(root){root.hidden=true;root.innerHTML=""}
+ bypass=true;const button=targetButton;button.click();later(()=>{muteLegacy();window.dispatchEvent(new CustomEvent("ca:suzuki-burned",{detail:{trainer_name:"SuzukiPM"}}));phase="idle";targetButton=null},0);later(muteLegacy,120)
 }
-function finish(){clearTimers();stopFootstep();stopRoar();stopVisualMedia();phase="idle";tapCount=0;targetButton=null;if(root){root.hidden=true;root.innerHTML=""}muteLegacy()}
+function finish(){clearTimers();stopFootstep();stopRoar();stopFire();stopVisualMedia();phase="idle";tapCount=0;targetButton=null;if(root){root.hidden=true;root.innerHTML=""}muteLegacy()}
 function capture(ev){
- if(bypass){bypass=false;return}
- const t=ev.target;if(!(t instanceof Element))return;
- if(t.closest("#szNative")){if(phase==="tap_wait"){ev.preventDefault();ritualTap()}return}
- if(phase!=="idle")return;const b=t.closest("button");if(!isSuzukiButton(b))return;
- ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();targetButton=b;muteLegacy();showRitual()
+ if(bypass){bypass=false;return}const t=ev.target;if(!(t instanceof Element))return;if(t.closest("#szNative")){if(phase==="tap_wait"){ev.preventDefault();ritualTap()}return}if(phase!=="idle")return;const b=t.closest("button");if(!isSuzukiButton(b))return;ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();targetButton=b;muteLegacy();showRitual()
 }
 document.addEventListener("click",capture,true);
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&phase!=="idle")finish()});
-document.addEventListener("pagehide",()=>{stopRoar();try{if(audioCtx&&audioCtx.state!=="closed")audioCtx.suspend()}catch(_){}});
-muteLegacy();window.CASuzukiSpecial={version:"native-detail-flow-roar-webaudio-20260924-1803",get phase(){return phase},reset:finish};
+document.addEventListener("pagehide",()=>{stopRoar();stopFire();try{if(audioCtx&&audioCtx.state!=="closed")audioCtx.suspend()}catch(_){}});
+muteLegacy();window.CASuzukiSpecial={version:"native-detail-flow-fire-audio-20260924-1810",get phase(){return phase},reset:finish};
 })();
