@@ -3,7 +3,7 @@
 if(!/(?:^|\/)stamp-rally\.html$/.test(location.pathname))return;
 const NAME="suzukipm";
 const EMBLEM="./suzuki-special/dragon-emblem.jpg?v=20260924-1256";
-const FIRE_VFX="./suzuki-special/dragon-fire-vfx.mp4?v=20260924-1542";
+const FIRE_VFX="./suzuki-special/dragon-fire-vfx.mp4?v=20260924-1727";
 let phase="idle",tapCount=0,root=null,targetButton=null,bypass=false,timers=[];
 function later(fn,ms){const id=setTimeout(()=>{timers=timers.filter(x=>x!==id);fn()},ms);timers.push(id);return id}
 function clearTimers(){timers.forEach(clearTimeout);timers=[]}
@@ -34,8 +34,15 @@ function ensure(){
 .szForge{position:absolute;inset:0;overflow:hidden;padding:0;background:#050000}
 .szFireVfx{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center center;transform:scale(1.08);opacity:1;mix-blend-mode:screen;filter:saturate(1.32) contrast(1.10) brightness(1.12);pointer-events:none;z-index:1}
 .szForgeShade{position:absolute;inset:0;z-index:2;background:radial-gradient(ellipse at center,transparent 18%,rgba(5,0,0,.04) 50%,rgba(0,0,0,.34) 100%);pointer-events:none}
-.szForgeCenter{position:relative;z-index:3;text-align:center;pointer-events:none}.szForgeLabel{font-size:24px;font-weight:900;letter-spacing:.08em;color:#fff2e8;text-shadow:0 0 8px rgba(255,116,48,.95),0 0 22px rgba(255,70,12,.75)}
-@keyframes szPulse{50%{transform:scale(1.035);filter:brightness(1.25) drop-shadow(0 0 38px #b72c1988)}}`;
+.szForgeCenter{position:relative;z-index:3;text-align:center;pointer-events:none}.szForgeLabel{font-size:24px;font-weight:900;letter-spacing:.08em;color:#fff2e8;text-shadow:0 0 8px rgba(255,116,48,.95),0 0 22px rgba(255,70,12,.75);transition:opacity .16s ease}
+.szBrandImpact{position:absolute;inset:0;z-index:6;display:grid;place-items:center;pointer-events:none;animation:szBrandScreen .82s ease-out both}
+.szBrandHeat{width:min(74vw,300px);aspect-ratio:1;border-radius:50%;position:relative;background:radial-gradient(circle,#fffbd5 0 7%,#ffd56a 10%,#ff7a1d 22%,rgba(176,27,6,.92) 43%,rgba(65,5,2,.65) 61%,transparent 72%);filter:blur(.2px) drop-shadow(0 0 26px rgba(255,85,20,.95));animation:szBrandPress .82s cubic-bezier(.18,.72,.2,1) both}
+.szBrandHeat:before{content:"";position:absolute;inset:9%;border-radius:50%;border:4px solid rgba(255,241,196,.96);box-shadow:0 0 10px #fff4bf,0 0 28px #ff6a18,inset 0 0 18px #ff7422;animation:szBrandRing .82s ease-out both}
+.szBrandHeat:after{content:"";position:absolute;inset:28%;border-radius:50%;background:radial-gradient(circle,rgba(28,3,1,.88) 0 38%,rgba(98,14,5,.7) 58%,transparent 72%);box-shadow:0 0 18px rgba(255,116,37,.8) inset}
+@keyframes szPulse{50%{transform:scale(1.035);filter:brightness(1.25) drop-shadow(0 0 38px #b72c1988)}}
+@keyframes szBrandScreen{0%{background:rgba(255,248,225,.94)}16%{background:rgba(255,111,28,.38)}100%{background:rgba(0,0,0,.18)}}
+@keyframes szBrandPress{0%{opacity:0;transform:scale(1.55);filter:brightness(2.2) blur(7px) drop-shadow(0 0 58px #fff0b0)}22%{opacity:1;transform:scale(.92);filter:brightness(1.65) blur(1px) drop-shadow(0 0 42px #ff6f1c)}58%{transform:scale(1.02);filter:brightness(1.08) blur(0) drop-shadow(0 0 24px #b9280c)}100%{opacity:.12;transform:scale(.98);filter:brightness(.7) blur(2px) drop-shadow(0 0 8px #3b0703)}}
+@keyframes szBrandRing{0%{opacity:0;transform:scale(.55)}18%{opacity:1;transform:scale(1.08)}55%{opacity:.9;transform:scale(.98)}100%{opacity:.1;transform:scale(.98)}}`;
  document.head.appendChild(st);root=document.createElement("div");root.id="szNative";root.hidden=true;document.body.appendChild(root);return root
 }
 function bindDragonImage(r){
@@ -58,6 +65,13 @@ function ritualTap(){
  if(d){d.style.transform=`scale(${1+tapCount*.035})`;d.style.filter=`brightness(${1+tapCount*.28}) drop-shadow(0 0 ${28+tapCount*13}px #c32b1999)`}
  if(tapCount<3)return;phase="roar";const f=root.querySelector(".szFlash");if(f){f.classList.add("on");later(()=>f.classList.remove("on"),180)}later(showForge,500)
 }
+function showBrandImpact(){
+ if(!root||phase!=="fire")return;
+ phase="branding";
+ const label=root.querySelector(".szForgeLabel");if(label)label.style.opacity="0";
+ const forge=root.querySelector(".szForge");if(!forge)return;
+ const impact=document.createElement("div");impact.className="szBrandImpact";impact.innerHTML='<div class="szBrandHeat" aria-hidden="true"></div>';forge.appendChild(impact);
+}
 function showForge(){
  phase="fire";
  if(!root)return;
@@ -73,6 +87,7 @@ function showForge(){
    tryPlay();
   }catch(_){}
  }
+ later(showBrandImpact,2450);
  later(openNativeDetail,3400)
 }
 function openNativeDetail(){
@@ -92,5 +107,5 @@ function capture(ev){
 }
 document.addEventListener("click",capture,true);
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&phase!=="idle")finish()});
-muteLegacy();window.CASuzukiSpecial={version:"native-detail-flow-fullscreen-fire-20260924-1542",get phase(){return phase},reset:finish};
+muteLegacy();window.CASuzukiSpecial={version:"native-detail-flow-brand-impact-20260924-1727",get phase(){return phase},reset:finish};
 })();
