@@ -220,8 +220,7 @@ Deno.serve(async(req:Request)=>{
         if(community?.name) communityName=community.name;
       }
 
-      const meetupId=String(payload.meetup_id??"");
-      const detailsUrl="https://ca-clover.vercel.app/admin/meetup-watch/"+encodeURIComponent(meetupId);
+      const detailsUrl="https://kaityo1221.github.io/ca-clover/admin.html#watch";
       const campfireUrl=typeof payload.event_url==="string"?payload.event_url:"";
       const minutes=durationMinutes(payload);
       const reasonLines=humanReasonLines(payload);
