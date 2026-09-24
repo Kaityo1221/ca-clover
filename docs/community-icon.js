@@ -98,7 +98,7 @@ window.CACommunityIcon={url,img,bind};
 installAdminIconHistoryFix();
 if(/(?:^|\/)stamp-rally\.html$/.test(location.pathname)){
  const s=document.createElement("script");
- s.src="./suzuki-native-flow.js?v=20260924-1756";
+ s.src="./suzuki-native-flow.js?v=20260924-1803";
  s.async=false;
  s.onload=()=>{
   const c=document.createElement("script");
