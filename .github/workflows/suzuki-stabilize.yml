@@ -1,0 +1,105 @@
+name: Suzuki cleanup stabilizer
+
+on:
+  push:
+    branches: [pages]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[suzuki-stabilized]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages
+          fetch-depth: 0
+
+      - name: Patch Suzuki renderer bridge
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          html_path = Path('docs/stamp-rally.html')
+          text = html_path.read_text()
+
+          def replace_once(old, new, label):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected 1 occurrence, found {count}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              'async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines){',
+              'async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines,options){',
+              'renderer signature'
+          )
+
+          replace_once(
+              '  const engravingText=(engravingLines||[]).map(x=>String(x||"").trim()).filter(Boolean).slice(0,4);\n',
+              '  const engravingText=(engravingLines||[]).map(x=>String(x||"").trim()).filter(Boolean).slice(0,4);\n  const shouldDrawSuzukiBurn=Boolean(options&&options.suzukiBurned);\n',
+              'explicit burn option'
+          )
+
+          replace_once(
+              '    const isTemporarySuzukiBurn=(engravingText[0]||"").toLowerCase()==="suzukipm";\n',
+              '    // Suzuki burn is an explicit render option; engraving text never controls visual state.\n',
+              'remove trainer-name burn coupling'
+          )
+          remaining = text.count('isTemporarySuzukiBurn')
+          if remaining != 3:
+              raise SystemExit(f'burn references: expected 3 remaining, found {remaining}')
+          text = text.replace('isTemporarySuzukiBurn', 'shouldDrawSuzukiBurn')
+
+          replace_once(
+              '  stamp3d.appendChild(renderer.domElement);\n\n  const resize=()=>{',
+              '  stamp3d.appendChild(renderer.domElement);\n  window.dispatchEvent(new CustomEvent("ca:stamp-medal-rendered",{detail:{trainer_name:engravingText[0]||"",suzukiBurned:shouldDrawSuzukiBurn}}));\n\n  const resize=()=>{',
+              'render completion event'
+          )
+
+          replace_once(
+              '    void mountStampMedal3D(selectedDesign,src,c.avatar_url||"",engravingLines);',
+              '    const suzukiBurned=isSuzukiSpecial(selectedCa)&&window.CASuzukiMedalState?.phase!=="clean_complete";\n    void mountStampMedal3D(selectedDesign,src,c.avatar_url||"",engravingLines,{suzukiBurned});',
+              'render state handoff'
+          )
+
+          replace_once(
+              '   };\n  };\n\n  renderModal();',
+              '   };\n  };\n\n  window.CAStampRallyMedalBridge={\n   rerenderSuzuki(){\n    if(!isSuzukiSpecial(selectedCa)||!(selectedCa&&selectedCa.collection))return false;\n    renderModal();\n    return true;\n   }\n  };\n\n  renderModal();',
+              'renderer bridge'
+          )
+
+          replace_once(
+              'function closeStampModal(){hideStampMessage();stopSuzukiIntro();unmountStampMedal3D();stampModalBack.classList.remove("show");stampModalBack.setAttribute("aria-hidden","true")}',
+              'function closeStampModal(){\n hideStampMessage();stopSuzukiIntro();unmountStampMedal3D();\n if(window.CASuzukiMedalState)window.CASuzukiMedalState.phase="idle";\n window.CAStampRallyMedalBridge=null;\n stampModalBack.classList.remove("show");stampModalBack.setAttribute("aria-hidden","true");\n}',
+              'modal state reset'
+          )
+
+          html_path.write_text(text)
+
+          icon_path = Path('docs/community-icon.js')
+          icon = icon_path.read_text()
+          old_flow = './suzuki-native-flow.js?v=20260924-0721'
+          old_cleanup = './suzuki-native-cleanup-button.js?v=20260924-0808'
+          if icon.count(old_flow) != 1 or icon.count(old_cleanup) != 1:
+              raise SystemExit('community-icon cache keys did not match expected source')
+          icon = icon.replace(old_flow, './suzuki-native-flow.js?v=20260924-1135', 1)
+          icon = icon.replace(old_cleanup, './suzuki-native-cleanup-button.js?v=20260924-1135', 1)
+          icon_path.write_text(icon)
+
+          Path('.github/workflows/suzuki-stabilize.yml').unlink()
+          PY
+
+      - name: Commit stabilized renderer
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Stabilize Suzuki burned-clean renderer [suzuki-stabilized]"
+          git push origin HEAD:pages
