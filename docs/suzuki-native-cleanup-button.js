@@ -3,17 +3,18 @@
 if(!/(?:^|\/)stamp-rally\.html$/.test(location.pathname))return;
 
 // TEMP SuzukiPM-only native medal cleanup.
-// No fake soot overlay: brush the existing burned 3D medal, then re-render
-// the same native medal without the temporary Suzuki scorch texture.
+// The native medal renderer owns the burned/clean visual. This file only
+// owns SuzukiPM's one-modal state machine, brush FX, and cleanup lifecycle.
 let cleanupRow=null;
-let burnedSession=false;
 let running=false;
 let brushOverlay=null;
+let brushAnimation=null;
 let finishTimer=null;
 let rerenderTimeout=null;
+let startRaf1=0;
+let startRaf2=0;
 let lastActivateAt=0;
-let originalLowerCase=null;
-let lowerCasePatched=false;
+let waitingForCleanRender=false;
 
 const style=document.createElement("style");
 style.id="suzuki-native-cleanup-button-style";
@@ -35,44 +36,23 @@ function modal(){return document.getElementById("stampModalBack")}
 function area(){return document.getElementById("stampZoomArea")}
 function controls(){return document.getElementById("stampDesignControls")}
 function closeButton(){return document.getElementById("stampClose")}
+function medalState(){return window.CASuzukiMedalState||null}
+function setPhase(phase){window.CASuzukiMedalState={trainer_name:"SuzukiPM",phase}}
+function resetPhase(){if(window.CASuzukiMedalState)window.CASuzukiMedalState.phase="idle"}
 
-function restoreSuzukiLowerCase(){
- if(!lowerCasePatched)return;
- if(originalLowerCase)String.prototype.toLowerCase=originalLowerCase;
- originalLowerCase=null;
- lowerCasePatched=false;
-}
-
-function patchSuzukiLowerCase(){
- restoreSuzukiLowerCase();
- originalLowerCase=String.prototype.toLowerCase;
- const nativeLower=originalLowerCase;
- String.prototype.toLowerCase=function(){
-  const raw=String(this);
-  const lowered=nativeLower.call(this);
-  if(raw==="SuzukiPM"||lowered==="suzukipm")return "suzukipm-clean";
-  return lowered;
- };
- lowerCasePatched=true;
-}
-
-function clearBrush(){
+function cleanupSuzukiCleanupFx(options){
+ const opts=options||{};
  if(finishTimer){clearTimeout(finishTimer);finishTimer=null}
+ if(rerenderTimeout){clearTimeout(rerenderTimeout);rerenderTimeout=null}
+ if(startRaf1){cancelAnimationFrame(startRaf1);startRaf1=0}
+ if(startRaf2){cancelAnimationFrame(startRaf2);startRaf2=0}
+ if(brushAnimation){try{brushAnimation.cancel()}catch(_){}brushAnimation=null}
  if(brushOverlay){brushOverlay.remove();brushOverlay=null}
  document.querySelectorAll(".szNativeBrushOverlay").forEach(el=>el.remove());
  running=false;
-}
-
-function clearRerender(){
- if(rerenderTimeout){clearTimeout(rerenderTimeout);rerenderTimeout=null}
- restoreSuzukiLowerCase();
-}
-
-function removeButton(){
- clearBrush();
- clearRerender();
- if(cleanupRow){cleanupRow.remove();cleanupRow=null}
- burnedSession=false;
+ waitingForCleanRender=false;
+ if(!opts.keepButton&&cleanupRow){cleanupRow.remove();cleanupRow=null}
+ if(opts.resetState)resetPhase();
 }
 
 function isSuzukiDetail(){
@@ -101,8 +81,9 @@ function positionOverlay(el,host){
  return true;
 }
 
+function cleanupButton(){return document.querySelector(".szNativeCleanupBtn")}
 function markDone(){
- const button=document.querySelector(".szNativeCleanupBtn");
+ const button=cleanupButton();
  if(!button)return;
  button.disabled=true;
  button.classList.remove("szFail");
@@ -111,7 +92,7 @@ function markDone(){
 }
 
 function markFailed(){
- const button=document.querySelector(".szNativeCleanupBtn");
+ const button=cleanupButton();
  if(!button)return;
  button.disabled=false;
  button.classList.remove("szDone");
@@ -120,55 +101,35 @@ function markFailed(){
 }
 
 function rerenderCleanNativeMedal(){
- const c=controls();
- const dir=c&&c.querySelector("[data-design-dir]");
- if(!dir){markFailed();return}
-
- // With Design 1/1 the native arrows are disabled. Temporarily enable one
- // so its existing onclick handler re-renders the same selected design.
- const oldCanvas=document.querySelector("#stamp3d canvas");
- patchSuzukiLowerCase();
- const wasDisabled=dir.disabled;
- if(wasDisabled)dir.disabled=false;
-
- try{
-  dir.click();
- }catch(_){
-  if(document.contains(dir)&&wasDisabled)dir.disabled=true;
-  clearRerender();
+ setPhase("clean_complete");
+ waitingForCleanRender=true;
+ const bridge=window.CAStampRallyMedalBridge;
+ let started=false;
+ try{started=!!(bridge&&typeof bridge.rerenderSuzuki==="function"&&bridge.rerenderSuzuki())}catch(_){started=false}
+ if(!started){
+  waitingForCleanRender=false;
+  setPhase("burned");
   markFailed();
   return;
  }
-
- // renderModal rebuilds the design controls, so the old disabled button is
- // normally detached immediately. Restore it only if it somehow survived.
- if(document.contains(dir)&&wasDisabled)dir.disabled=true;
-
- const started=performance.now();
- const waitForCanvas=()=>{
-  const next=document.querySelector("#stamp3d canvas");
-  const loading=document.getElementById("stamp3d")?.textContent?.includes("3Dメダルを準備中");
-  if(next&&next!==oldCanvas&&!loading){
-   requestAnimationFrame(()=>{
-    clearRerender();
-    markDone();
-    window.dispatchEvent(new CustomEvent("ca:suzuki-cleanup-complete",{detail:{trainer_name:"SuzukiPM"}}));
-   });
-   return;
-  }
-  if(performance.now()-started>7000){
-   clearRerender();
-   markFailed();
-   return;
-  }
-  requestAnimationFrame(waitForCanvas);
- };
- requestAnimationFrame(waitForCanvas);
  rerenderTimeout=setTimeout(()=>{
-  clearRerender();
-  if(!document.querySelector(".szNativeCleanupBtn.szDone"))markFailed();
- },7500);
+  rerenderTimeout=null;
+  if(!waitingForCleanRender)return;
+  waitingForCleanRender=false;
+  markFailed();
+ },10000);
 }
+
+window.addEventListener("ca:stamp-medal-rendered",e=>{
+ if(!waitingForCleanRender)return;
+ const detail=e.detail||{};
+ if(String(detail.trainer_name||"").trim().toLowerCase()!=="suzukipm")return;
+ if(detail.suzukiBurned!==false)return;
+ waitingForCleanRender=false;
+ if(rerenderTimeout){clearTimeout(rerenderTimeout);rerenderTimeout=null}
+ markDone();
+ window.dispatchEvent(new CustomEvent("ca:suzuki-cleanup-complete",{detail:{trainer_name:"SuzukiPM"}}));
+});
 
 function animateBrush(el){
  const frames=[
@@ -185,27 +146,34 @@ function animateBrush(el){
  const finish=()=>{
   if(finished)return;
   finished=true;
-  clearBrush();
+  brushAnimation=null;
+  cleanupSuzukiCleanupFx({keepButton:true});
   rerenderCleanNativeMedal();
   window.dispatchEvent(new CustomEvent("ca:suzuki-brush-finished",{detail:{trainer_name:"SuzukiPM"}}));
  };
  try{
-  const a=el.animate(frames,{duration:2350,easing:"cubic-bezier(.42,.02,.58,.98)",fill:"forwards"});
-  a.onfinish=finish;
+  brushAnimation=el.animate(frames,{duration:2350,easing:"cubic-bezier(.42,.02,.58,.98)",fill:"forwards"});
+  brushAnimation.onfinish=finish;
   finishTimer=setTimeout(finish,2550);
  }catch(_){
   el.style.transition="transform 2.2s ease,opacity .3s ease 2s";
-  requestAnimationFrame(()=>{el.style.transform="translate(92px,16%) rotate(9deg)";el.style.opacity="0"});
+  startRaf1=requestAnimationFrame(()=>{
+   startRaf1=0;
+   el.style.transform="translate(92px,16%) rotate(9deg)";
+   el.style.opacity="0";
+  });
   finishTimer=setTimeout(finish,2400);
  }
 }
 
 function runBrush(){
- if(running)return true;
+ if(running||medalState()?.phase==="cleaning"||medalState()?.phase==="clean_complete")return false;
  const m=modal();
  const host=visibleMedalHost();
- const button=document.querySelector(".szNativeCleanupBtn");
- if(!m||!m.classList.contains("show")||!host||!button)return false;
+ const button=cleanupButton();
+ if(!m||!m.classList.contains("show")||!host||!button||!isSuzukiDetail())return false;
+ cleanupSuzukiCleanupFx({keepButton:true});
+ setPhase("cleaning");
  running=true;
  button.disabled=true;
  button.classList.remove("szDone","szFail");
@@ -216,7 +184,13 @@ function runBrush(){
  brushOverlay.innerHTML='<div class="szNativeBrush" aria-hidden="true"></div>';
  document.body.appendChild(brushOverlay);
  const brush=brushOverlay.querySelector(".szNativeBrush");
- requestAnimationFrame(()=>requestAnimationFrame(()=>animateBrush(brush)));
+ startRaf1=requestAnimationFrame(()=>{
+  startRaf1=0;
+  startRaf2=requestAnimationFrame(()=>{
+   startRaf2=0;
+   if(brush&&document.contains(brush))animateBrush(brush);
+  });
+ });
  return true;
 }
 
@@ -230,7 +204,7 @@ function activate(e){
 
 function insertButton(){
  const m=modal(),c=controls();
- if(!burnedSession||!m||!c||!isSuzukiDetail())return false;
+ if(medalState()?.phase!=="burned"||!m||!c||!isSuzukiDetail())return false;
  if(cleanupRow&&document.contains(cleanupRow))return true;
  cleanupRow=document.createElement("div");
  cleanupRow.className="szNativeCleanupRow";
@@ -249,21 +223,30 @@ function tryInsert(attempt){
 }
 
 window.addEventListener("ca:suzuki-burned",()=>{
- burnedSession=true;
+ cleanupSuzukiCleanupFx({resetState:false});
+ setPhase("burned");
  requestAnimationFrame(()=>tryInsert(0));
 });
 
 const close=closeButton();
-if(close)close.addEventListener("click",removeButton,true);
+if(close)close.addEventListener("click",()=>cleanupSuzukiCleanupFx({resetState:true}),true);
 const m=modal();
-if(m)m.addEventListener("click",e=>{if(e.target===m)removeButton()},true);
-window.addEventListener("pagehide",removeButton);
+if(m)m.addEventListener("click",e=>{if(e.target===m)cleanupSuzukiCleanupFx({resetState:true})},true);
+const c=controls();
+if(c)c.addEventListener("click",e=>{
+ const target=e.target instanceof Element?e.target.closest("[data-modal-ca]"):null;
+ if(!target)return;
+ if(/SuzukiPM/i.test(target.textContent||""))return;
+ cleanupSuzukiCleanupFx({resetState:true});
+},true);
+window.addEventListener("pagehide",()=>cleanupSuzukiCleanupFx({resetState:true}));
 
 window.CASuzukiNativeCleanup={
- version:"native-burn-cleanup-single-design-20260924-0808",
- get armed(){return burnedSession},
+ version:"native-burn-cleanup-state-20260924-1135",
+ get phase(){return medalState()?.phase||"idle"},
  get running(){return running},
  run:runBrush,
- remove:removeButton
+ remove(){cleanupSuzukiCleanupFx({resetState:true})},
+ cleanup:cleanupSuzukiCleanupFx
 };
 })();
