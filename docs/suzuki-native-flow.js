@@ -5,7 +5,13 @@ const NAME="suzukipm";
 let phase="idle",tapCount=0,root=null,targetButton=null,bypass=false,timers=[];
 function later(fn,ms){const id=setTimeout(()=>{timers=timers.filter(x=>x!==id);fn()},ms);timers.push(id);return id}
 function clearTimers(){timers.forEach(clearTimeout);timers=[]}
-function isSuzukiButton(b){return b instanceof HTMLButtonElement&&b.matches("button.stamp[data-community]")&&String(b.textContent||"").toLowerCase().includes(NAME)}
+function isSuzukiButton(b){
+ if(!(b instanceof HTMLButtonElement)||!b.matches("button.stamp[data-community]"))return false;
+ return Array.from(b.querySelectorAll(".caname")).some(el=>{
+  const text=String(el.textContent||"").replace(/^[●○]\s*/,"").trim().toLowerCase();
+  return text===NAME;
+ });
+}
 function muteLegacy(){const a=document.getElementById("suzukiHeartbeatAudio");if(!a)return;try{a.muted=true;a.volume=0;a.pause();a.currentTime=0}catch(_){}}
 function ensure(){
  if(root&&document.body.contains(root))return root;
@@ -53,5 +59,5 @@ function capture(ev){
 }
 document.addEventListener("click",capture,true);
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&phase!=="idle")finish()});
-muteLegacy();window.CASuzukiSpecial={version:"native-detail-flow-20260924-0705",get phase(){return phase},reset:finish};
+muteLegacy();window.CASuzukiSpecial={version:"native-detail-flow-20260924-1135",get phase(){return phase},reset:finish};
 })();
