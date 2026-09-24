@@ -3,7 +3,7 @@
 if(!/(?:^|\/)stamp-rally\.html$/.test(location.pathname))return;
 const NAME="suzukipm";
 const EMBLEM="./suzuki-special/dragon-emblem.jpg?v=20260924-1256";
-const FIRE_VFX="./suzuki-special/dragon-fire-vfx.mp4?v=20260924-1525";
+const FIRE_VFX="./suzuki-special/dragon-fire-vfx.mp4?v=20260924-1534";
 let phase="idle",tapCount=0,root=null,targetButton=null,bypass=false,timers=[];
 function later(fn,ms){const id=setTimeout(()=>{timers=timers.filter(x=>x!==id);fn()},ms);timers.push(id);return id}
 function clearTimers(){timers.forEach(clearTimeout);timers=[]}
@@ -31,10 +31,10 @@ function ensure(){
 .szDragonImg{width:100%;height:100%;object-fit:contain;display:block;opacity:0;transition:opacity .3s ease;mix-blend-mode:screen}.szDragonImg.ready{opacity:.96}.szDragonFallback{font-size:118px;line-height:1}
 .szText{min-height:105px;margin-top:18px;color:#cbb0a8;font-weight:700;line-height:1.9;letter-spacing:.06em}.szHint{margin-top:14px;color:#9e7770;font-size:12px;font-weight:900}
 .szFlash{position:absolute;inset:0;pointer-events:none;opacity:0;background:#fff;transition:opacity .12s}.szFlash.on{opacity:.9}
-.szForge{position:absolute;inset:0;overflow:hidden;padding:0;background:radial-gradient(circle at 50% 45%,#6f180b 0,#240705 34%,#050000 72%)}
-.szFireVfx{position:absolute;inset:-8%;width:116%;height:116%;object-fit:cover;opacity:.96;mix-blend-mode:screen;filter:saturate(1.2) contrast(1.08) brightness(1.03);pointer-events:none}
-.szForgeShade{position:absolute;inset:0;background:radial-gradient(circle at center,transparent 18%,rgba(5,0,0,.16) 48%,rgba(0,0,0,.72) 100%);pointer-events:none}
-.szForgeCenter{position:relative;z-index:2;text-align:center;pointer-events:none}.szForgeDragon{font-size:70px;filter:drop-shadow(0 0 20px rgba(255,95,24,.72));animation:szFire 3.2s ease both}.szForgeLabel{margin-top:10px;font-weight:900;color:#f2c2a7;text-shadow:0 0 14px rgba(255,88,24,.55)}
+.szForge{position:absolute;inset:0;overflow:hidden;padding:0;background:radial-gradient(circle at 50% 50%,#6f180b 0,#240705 35%,#050000 74%)}
+.szFireVfx{position:absolute;left:50%;top:50%;width:min(155vw,760px);height:auto;aspect-ratio:568/240;object-fit:contain;transform:translate(-50%,-50%) scale(1.06);opacity:1;mix-blend-mode:screen;filter:saturate(1.35) contrast(1.12) brightness(1.18);pointer-events:none;z-index:1}
+.szForgeShade{position:absolute;inset:0;z-index:2;background:radial-gradient(ellipse at center,transparent 12%,rgba(5,0,0,.08) 48%,rgba(0,0,0,.60) 100%);pointer-events:none}
+.szForgeCenter{position:relative;z-index:3;text-align:center;pointer-events:none}.szForgeDragon{font-size:70px;filter:drop-shadow(0 0 20px rgba(255,95,24,.72));animation:szFire 3.2s ease both}.szForgeLabel{margin-top:10px;font-weight:900;color:#f2c2a7;text-shadow:0 0 14px rgba(255,88,24,.55)}
 @keyframes szPulse{50%{transform:scale(1.035);filter:brightness(1.25) drop-shadow(0 0 38px #b72c1988)}}
 @keyframes szFire{0%{opacity:0;transform:scale(.6)}25%{opacity:1;transform:scale(1.12)}75%{opacity:1;transform:scale(1)}100%{opacity:.3;transform:scale(1.18)}}`;
  document.head.appendChild(st);root=document.createElement("div");root.id="szNative";root.hidden=true;document.body.appendChild(root);return root
@@ -63,12 +63,15 @@ function showForge(){
  phase="fire";
  if(!root)return;
  stopVisualMedia();
- root.innerHTML=`<div class="szScene szForge"><video class="szFireVfx" muted playsinline preload="metadata" src="${FIRE_VFX}" aria-hidden="true"></video><div class="szForgeShade"></div><div class="szForgeCenter"><div class="szForgeDragon">🐉</div><div class="szForgeLabel">刻印中...</div></div></div>`;
+ root.innerHTML=`<div class="szScene szForge"><video class="szFireVfx" muted playsinline autoplay loop preload="auto" src="${FIRE_VFX}" aria-hidden="true"></video><div class="szForgeShade"></div><div class="szForgeCenter"><div class="szForgeDragon">🐉</div><div class="szForgeLabel">刻印中...</div></div></div>`;
  const video=root.querySelector(".szFireVfx");
  if(video){
   try{
-   video.muted=true;video.volume=0;video.playsInline=true;video.playbackRate=1.08;video.currentTime=0;
-   const p=video.play();if(p&&p.catch)p.catch(()=>{});
+   video.muted=true;video.defaultMuted=true;video.volume=0;video.playsInline=true;video.loop=true;video.playbackRate=1.0;video.currentTime=0;
+   video.load();
+   const tryPlay=()=>{try{const p=video.play();if(p&&p.catch)p.catch(()=>{})}catch(_){}};
+   video.addEventListener("canplay",tryPlay,{once:true});
+   tryPlay();
   }catch(_){}
  }
  later(openNativeDetail,3400)
@@ -90,5 +93,5 @@ function capture(ev){
 }
 document.addEventListener("click",capture,true);
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&phase!=="idle")finish()});
-muteLegacy();window.CASuzukiSpecial={version:"native-detail-flow-fire-vfx-20260924-1525",get phase(){return phase},reset:finish};
+muteLegacy();window.CASuzukiSpecial={version:"native-detail-flow-fire-vfx-20260924-1534",get phase(){return phase},reset:finish};
 })();
