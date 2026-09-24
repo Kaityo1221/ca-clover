@@ -225,4 +225,10 @@ if(/(?:^|\/)stamp-rally\.html$/.test(location.pathname)){
  };
  document.head.appendChild(s)
 }
+if(/(?:^|\/)stamp-(?:rally|exchange)\.html$/.test(location.pathname)){
+ const t=document.createElement("script");
+ t.src="./stamp-virtual-test.js?v=20260924-2328";
+ t.async=false;
+ document.head.appendChild(t)
+}
 })();
