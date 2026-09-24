@@ -124,7 +124,11 @@ Deno.serve(async(req:Request)=>{
           admin,
           community.id,
           club.avatarUrl??null,
-          {generateMissingThumbnail,ensureArchive:true},
+          {
+            generateMissingThumbnail,
+            ensureArchive:true,
+            allowUrlFallbackChange:false,
+          },
         );
         if(!community.avatar_thumbnail_path&&observed.thumbnail_path) thumbnailBackfilled++;
         if(observed.changed){
