@@ -84,7 +84,16 @@ function playFire(){
  if(!fireBuffer){prepareFireBuffer();return}
  try{
   if(fireSource){try{fireSource.stop()}catch(_){}fireSource=null}
-  const src=ctx.createBufferSource(),gain=ctx.createGain();src.buffer=fireBuffer;src.loop=true;gain.gain.value=.74;src.connect(gain).connect(ctx.destination);src.onended=()=>{if(fireSource===src)fireSource=null};fireSource=src;src.start(0)
+  const src=ctx.createBufferSource();
+  const body=ctx.createBiquadFilter(),presence=ctx.createBiquadFilter(),cut=ctx.createBiquadFilter(),comp=ctx.createDynamicsCompressor(),gain=ctx.createGain();
+  src.buffer=fireBuffer;src.loop=true;
+  body.type="lowshelf";body.frequency.value=320;body.gain.value=6;
+  presence.type="peaking";presence.frequency.value=900;presence.Q.value=.7;presence.gain.value=3.5;
+  cut.type="lowpass";cut.frequency.value=4200;cut.Q.value=.45;
+  comp.threshold.value=-22;comp.knee.value=18;comp.ratio.value=3;comp.attack.value=.006;comp.release.value=.18;
+  const now=ctx.currentTime;gain.gain.setValueAtTime(.02,now);gain.gain.exponentialRampToValueAtTime(1.35,now+.08);gain.gain.exponentialRampToValueAtTime(1.18,now+.48);
+  src.connect(body).connect(presence).connect(cut).connect(comp).connect(gain).connect(ctx.destination);
+  src.onended=()=>{if(fireSource===src)fireSource=null};fireSource=src;src.start(0)
  }catch(_){}
 }
 function stopFire(){if(fireSource){try{fireSource.stop()}catch(_){}fireSource=null}}
@@ -135,7 +144,7 @@ function showBrandImpact(){
 function showForge(){
  phase="fire";if(!root)return;stopVisualMedia();playFire();
  root.innerHTML=`<div class="szScene szForge"><video class="szFireVfx" muted playsinline autoplay loop preload="auto" src="${FIRE_VFX}" aria-hidden="true"></video><div class="szForgeShade"></div><div class="szForgeCenter"><div class="szForgeLabel">刻印中...</div></div></div>`;
- const video=root.querySelector(".szFireVfx");if(video){try{video.muted=true;video.defaultMuted=true;video.volume=0;video.playsInline=true;video.loop=true;video.playbackRate=1.0;video.currentTime=0;video.load();const tryPlay=()=>{try{const p=video.play();if(p&&p.catch)p.catch(()=>{})}catch(_){}};video.addEventListener("canplay",tryPlay,{once:true});tryPlay()}catch(_){}}
+ const video=root.querySelector(".szFireVfx");if(video){try{video.muted=true;video.defaultMuted=true;video.volume=0;video.playsInline=true;video.loop=true;video.playbackRate=1.0;video.currentTime=0;video.load();const tryPlay=()=>{try{const p=video.play();if(p&&p.catch)p.catch(()=>{})}catch(_){}};video.addEventListener("canplay",tryPlay,{once:true});tryPlay()}catch(_){} }
  later(showBrandImpact,2450);later(openNativeDetail,3400)
 }
 function openNativeDetail(){
@@ -150,5 +159,5 @@ function capture(ev){
 document.addEventListener("click",capture,true);
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&phase!=="idle")finish()});
 document.addEventListener("pagehide",()=>{stopRoar();stopFire();try{if(audioCtx&&audioCtx.state!=="closed")audioCtx.suspend()}catch(_){}});
-muteLegacy();window.CASuzukiSpecial={version:"native-detail-flow-fire-audio-20260924-1810",get phase(){return phase},reset:finish};
+muteLegacy();window.CASuzukiSpecial={version:"native-detail-flow-fire-audio-boost-20260924-1815",get phase(){return phase},reset:finish};
 })();
