@@ -1,6 +1,48 @@
 (function(){
 "use strict";
 function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]);}
+function cleanVisibleTextNode(node){
+ if(!node||node.nodeType!==Node.TEXT_NODE)return;
+ const parent=node.parentElement;
+ if(!parent||parent.closest("script,style,pre,code,textarea"))return;
+ const before=node.nodeValue||"";
+ if(!before.includes("\\n")&&!/(^|\s)\/n(?=\s|$)/.test(before))return;
+ const after=before.replace(/\\n/g,"\n").replace(/(^|\s)\/n(?=\s|$)/g,"$1");
+ if(after!==before)node.nodeValue=after;
+}
+function cleanVisibleBreakArtifacts(root){
+ if(!root)return;
+ if(root.nodeType===Node.TEXT_NODE){cleanVisibleTextNode(root);return;}
+ const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+ while(walker.nextNode())cleanVisibleTextNode(walker.currentNode);
+}
+function repairStampRallyStyleBreaks(){
+ if(!/(?:^|\/)stamp-rally\.html$/.test(location.pathname))return;
+ document.querySelectorAll("style").forEach(style=>{
+  const before=style.textContent||"";
+  const after=before.replace(/\\n(?=[.#@])/g,"\n");
+  if(after!==before)style.textContent=after;
+ });
+}
+function installBreakArtifactCleanup(){
+ const run=()=>{
+  cleanVisibleBreakArtifacts(document.documentElement);
+  repairStampRallyStyleBreaks();
+ };
+ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run,{once:true});
+ else run();
+ const observer=new MutationObserver(mutations=>{
+  for(const mutation of mutations){
+   if(mutation.type==="characterData")cleanVisibleTextNode(mutation.target);
+   for(const node of mutation.addedNodes)cleanVisibleBreakArtifacts(node);
+  }
+ });
+ const start=()=>{
+  if(document.documentElement)observer.observe(document.documentElement,{childList:true,subtree:true,characterData:true});
+ };
+ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});
+ else start();
+}
 function url(client,community){if(!community)return"";if(community.avatar_thumbnail_path){const data=client.storage.from("community-icon-thumbs").getPublicUrl(community.avatar_thumbnail_path).data;return data.publicUrl+(community.avatar_last_changed_at?"?v="+encodeURIComponent(community.avatar_last_changed_at):"")}return community.avatar_url||""}
 function img(client,community,attrs){const src=url(client,community),original=community&&community.avatar_url||"";if(!src)return"";return '<img data-ca-community-icon="1" data-original="'+esc(original)+'" src="'+esc(src)+'" '+(attrs||"")+'>'}
 function bind(root){(root||document).querySelectorAll('img[data-ca-community-icon="1"]').forEach(image=>{if(image.dataset.caBound==="1")return;image.dataset.caBound="1";image.addEventListener("error",()=>{const original=image.dataset.original||"";if(original&&image.dataset.caOriginalTried!=="1"&&image.src!==original){image.dataset.caOriginalTried="1";image.src=original;return}image.style.display="none"})})}
@@ -95,6 +137,7 @@ html.ca-admin-modal-open,body.ca-admin-modal-open{overflow:hidden!important;over
  observer.observe(document.body,{childList:true,subtree:true});
 }
 window.CACommunityIcon={url,img,bind};
+installBreakArtifactCleanup();
 installAdminIconHistoryFix();
 if(/(?:^|\/)stamp-rally\.html$/.test(location.pathname)){
  const s=document.createElement("script");
