@@ -227,7 +227,7 @@ if(/(?:^|\/)stamp-rally\.html$/.test(location.pathname)){
 }
 if(/(?:^|\/)stamp-(?:rally|exchange)\.html$/.test(location.pathname)){
  const t=document.createElement("script");
- t.src="./stamp-virtual-test.js?v=20260924-2328";
+ t.src="./stamp-virtual-test-v2.js?v=20260924-2342";
  t.async=false;
  document.head.appendChild(t)
 }
