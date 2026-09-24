@@ -210,9 +210,9 @@ function installAdminPendingCommunityCountFix(){
  else start();
 }
 window.CACommunityIcon={url,img,bind};
+installAdminPendingCommunityCountFix();
 installBreakArtifactCleanup();
 installAdminIconHistoryFix();
-installAdminPendingCommunityCountFix();
 if(/(?:^|\/)stamp-rally\.html$/.test(location.pathname)){
  const s=document.createElement("script");
  s.src="./suzuki-native-flow.js?v=20260924-1836";
