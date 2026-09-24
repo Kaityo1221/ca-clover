@@ -57,6 +57,30 @@ function enhanceAdminIconHistory(root){
   Array.from(row.children).forEach(item=>item.classList.add("icon-history-item"));
  });
 }
+function enhanceAdminModalImages(root){
+ if(!/(?:^|\/)admin\.html$/.test(location.pathname))return;
+ const scope=root&&root.querySelectorAll?root:document;
+ const avatars=[];
+ if(scope.matches&&scope.matches(".adminmodal .comparebox .avatar,.adminmodal .icon-history-item .avatar"))avatars.push(scope);
+ scope.querySelectorAll(".adminmodal .comparebox .avatar,.adminmodal .icon-history-item .avatar").forEach(avatar=>avatars.push(avatar));
+ avatars.forEach(avatar=>{
+  avatar.classList.add("ca-admin-modal-avatar");
+  let fallback=avatar.querySelector(":scope > .icon-fallback");
+  if(!fallback){
+   fallback=document.createElement("span");
+   fallback.className="icon-fallback ca-admin-modal-icon-fallback";
+   fallback.textContent="🍀";
+   avatar.insertBefore(fallback,avatar.firstChild);
+  }
+  avatar.querySelectorAll("img").forEach(image=>{
+   image.dataset.caCommunityIcon="1";
+   if(!image.dataset.original)image.dataset.original=image.getAttribute("src")||"";
+   image.removeAttribute("width");
+   image.removeAttribute("height");
+  });
+  bind(avatar);
+ });
+}
 let adminModalScrollY=0;
 let adminModalLocked=false;
 function syncAdminModalScrollLock(){
@@ -107,16 +131,19 @@ function installAdminIconHistoryFix(){
 html.ca-admin-modal-open,body.ca-admin-modal-open{overflow:hidden!important;overscroll-behavior:none!important}
 .adminmodalback{position:fixed!important;inset:0!important;width:100%!important;height:100dvh!important;max-height:100dvh!important;overflow:hidden!important;overscroll-behavior:none!important;touch-action:pan-y!important}
 .adminmodal{max-height:calc(100dvh - 32px)!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-y!important}
+.comparebox .avatar,.icon-history-item .avatar{position:relative!important;overflow:hidden!important;display:grid!important;place-items:center!important}
+.comparebox .avatar .icon-fallback,.icon-history-item .avatar .icon-fallback{position:absolute!important;inset:0!important;display:grid!important;place-items:center!important;z-index:0!important;font-size:34px!important}
+.comparebox .avatar img,.icon-history-item .avatar img{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;object-fit:cover!important;object-position:50% 50%!important;display:block!important;z-index:1!important;margin:0!important;padding:0!important;transform:none!important}
 .icon-history-row{display:flex!important;align-items:stretch!important;gap:14px!important;overflow-x:auto!important;overflow-y:hidden!important;padding:4px 2px 12px!important;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
 .icon-history-item{min-width:138px!important;padding:12px 10px 10px!important;border:1px solid #e5eed7;border-radius:20px;background:#f8fafc;text-align:center;scroll-snap-align:start}
-.icon-history-item .avatar{position:relative!important;width:112px!important;height:112px!important;margin:0 auto 8px!important;border-radius:999px!important;overflow:hidden!important;border:4px solid #fff!important;background:#f7fee7!important;display:grid!important;place-items:center!important;box-shadow:0 8px 22px rgba(77,124,15,.12)!important}
-.icon-history-item .avatar img{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;object-fit:cover!important;display:block!important}
+.icon-history-item .avatar{width:112px!important;height:112px!important;margin:0 auto 8px!important;border-radius:999px!important;border:4px solid #fff!important;background:#f7fee7!important;box-shadow:0 8px 22px rgba(77,124,15,.12)!important}
 @media(max-width:820px){.adminmodalback{padding:12px!important;align-items:flex-start!important}.adminmodal{max-height:calc(100dvh - 24px)!important}.icon-history-item{min-width:146px!important}.icon-history-item .avatar{width:120px!important;height:120px!important}}
 `;
  document.head.appendChild(style);
  document.addEventListener("touchstart",closeAdminIconModalNow,{capture:true,passive:false});
  document.addEventListener("pointerdown",ev=>{if(ev.pointerType!=="touch")closeAdminIconModalNow(ev)},true);
  enhanceAdminIconHistory(document);
+ enhanceAdminModalImages(document);
  syncAdminModalScrollLock();
  const observer=new MutationObserver(mutations=>{
   let modalChanged=false;
@@ -124,7 +151,11 @@ html.ca-admin-modal-open,body.ca-admin-modal-open{overflow:hidden!important;over
    for(const node of mutation.addedNodes){
     if(node.nodeType===1){
      enhanceAdminIconHistory(node);
-     if(node.matches&&node.matches(".adminmodal"))enhanceAdminIconHistory(document);
+     enhanceAdminModalImages(node);
+     if(node.matches&&node.matches(".adminmodal")){
+      enhanceAdminIconHistory(document);
+      enhanceAdminModalImages(document);
+     }
      if((node.matches&&node.matches(".adminmodalback,.adminmodal"))||(node.querySelector&&node.querySelector(".adminmodalback,.adminmodal")))modalChanged=true;
     }
    }
