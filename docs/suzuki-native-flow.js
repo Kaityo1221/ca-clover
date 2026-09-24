@@ -7,7 +7,7 @@ const FIRE_VFX="./suzuki-special/dragon-fire-vfx.mp4?v=20260924-1727";
 const FOOTSTEP="./suzuki-special/monster-footstep.mp3?v=20260924-1748";
 const ROAR="./suzuki-special/dragon-roar.mp3?v=20260924-1803";
 const FIRE_AUDIO="./suzuki-special/dragon-fire.mp3?v=20260924-1810";
-let phase="idle",tapCount=0,root=null,targetButton=null,bypass=false,timers=[],footstepAudio=null;
+let phase="idle",tapCount=0,root=null,targetButton=null,bypass=false,timers=[],footstepAudio=null,lastOverlayTouchAt=0;
 let audioCtx=null,roarBuffer=null,roarBufferPromise=null,roarSource=null,fireBuffer=null,fireBufferPromise=null,fireSource=null;
 function later(fn,ms){const id=setTimeout(()=>{timers=timers.filter(x=>x!==id);fn()},ms);timers.push(id);return id}
 function clearTimers(){timers.forEach(clearTimeout);timers=[]}
@@ -105,7 +105,7 @@ function ensure(){
  if(root&&document.body.contains(root))return root;
  const st=document.createElement("style");st.id="sz-native-flow-style";st.textContent=`
 #suzukiIntroBack{display:none!important}
-#szNative{position:fixed;inset:0;z-index:900;background:#000;color:#fff;font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;overflow:hidden}
+#szNative{position:fixed;inset:0;z-index:900;background:#000;color:#fff;font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;overflow:hidden;touch-action:none;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #szNative *{box-sizing:border-box}.szScene{position:absolute;inset:0;display:grid;place-items:center;padding:24px}.szRitual{text-align:center;width:min(390px,100%)}
 .szDragon{width:min(76vw,320px);aspect-ratio:1;margin:auto;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:radial-gradient(circle,#72170d55 0 15%,#25080666 45%,transparent 70%);filter:drop-shadow(0 0 28px #a5271677);transition:transform .25s,filter .25s;animation:szPulse 1s ease-in-out infinite}
 .szDragonImg{width:100%;height:100%;object-fit:contain;display:block;opacity:0;transition:opacity .3s ease;mix-blend-mode:screen}.szDragonImg.ready{opacity:.96}.szDragonFallback{font-size:118px;line-height:1}
@@ -123,7 +123,18 @@ function ensure(){
 @keyframes szBrandScreen{0%{background:rgba(255,248,225,.94)}16%{background:rgba(255,111,28,.38)}100%{background:rgba(0,0,0,.18)}}
 @keyframes szBrandPress{0%{opacity:0;transform:scale(1.55);filter:brightness(2.2) blur(7px) drop-shadow(0 0 58px #fff0b0)}22%{opacity:1;transform:scale(.92);filter:brightness(1.65) blur(1px) drop-shadow(0 0 42px #ff6f1c)}58%{transform:scale(1.02);filter:brightness(1.08) blur(0) drop-shadow(0 0 24px #b9280c)}100%{opacity:.12;transform:scale(.98);filter:brightness(.7) blur(2px) drop-shadow(0 0 8px #3b0703)}}
 @keyframes szBrandRing{0%{opacity:0;transform:scale(.55)}18%{opacity:1;transform:scale(1.08)}55%{opacity:.9;transform:scale(.98)}100%{opacity:.1;transform:scale(.98)}}`;
- document.head.appendChild(st);root=document.createElement("div");root.id="szNative";root.hidden=true;document.body.appendChild(root);return root
+ document.head.appendChild(st);
+ root=document.createElement("div");root.id="szNative";root.hidden=true;
+ root.addEventListener("touchstart",ev=>{if(root.hidden)return;ev.preventDefault();ev.stopPropagation()},{passive:false});
+ root.addEventListener("touchmove",ev=>{if(root.hidden)return;ev.preventDefault();ev.stopPropagation()},{passive:false});
+ root.addEventListener("touchend",ev=>{
+  if(root.hidden)return;
+  lastOverlayTouchAt=Date.now();
+  ev.preventDefault();ev.stopPropagation();
+  if(phase==="tap_wait")ritualTap();
+ },{passive:false});
+ ["gesturestart","gesturechange","gestureend"].forEach(type=>root.addEventListener(type,ev=>{if(!root.hidden)ev.preventDefault()},{passive:false}));
+ document.body.appendChild(root);return root
 }
 function bindDragonImage(r){
  const img=r.querySelector(".szDragonImg"),holder=r.querySelector(".szDragon");if(!img||!holder)return;
@@ -165,12 +176,22 @@ function openNativeDetail(){
  phase="burned";muteLegacy();stopFootstep();stopRoar();stopFire();stopVisualMedia();if(root){root.hidden=true;root.innerHTML=""}
  bypass=true;const button=targetButton;button.click();later(()=>{muteLegacy();window.dispatchEvent(new CustomEvent("ca:suzuki-burned",{detail:{trainer_name:"SuzukiPM"}}));phase="idle";targetButton=null},0);later(muteLegacy,120)
 }
-function finish(){clearTimers();stopFootstep();stopRoar();stopFire();stopVisualMedia();phase="idle";tapCount=0;targetButton=null;if(root){root.hidden=true;root.innerHTML=""}muteLegacy()}
+function finish(){clearTimers();stopFootstep();stopRoar();stopFire();stopVisualMedia();phase="idle";tapCount=0;targetButton=null;lastOverlayTouchAt=0;if(root){root.hidden=true;root.innerHTML=""}muteLegacy()}
 function capture(ev){
- if(bypass){bypass=false;return}const t=ev.target;if(!(t instanceof Element))return;if(t.closest("#szNative")){if(phase==="tap_wait"){ev.preventDefault();ritualTap()}return}if(phase!=="idle")return;const b=t.closest("button");if(!isSuzukiButton(b))return;ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();targetButton=b;muteLegacy();showRitual()
+ if(bypass){bypass=false;return}
+ const t=ev.target;if(!(t instanceof Element))return;
+ if(t.closest("#szNative")){
+  ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();
+  if(Date.now()-lastOverlayTouchAt<800)return;
+  if(phase==="tap_wait")ritualTap();
+  return
+ }
+ if(phase!=="idle")return;
+ const b=t.closest("button");if(!isSuzukiButton(b))return;
+ ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();targetButton=b;muteLegacy();showRitual()
 }
 document.addEventListener("click",capture,true);
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&phase!=="idle")finish()});
 document.addEventListener("pagehide",()=>{stopRoar();stopFire();try{if(audioCtx&&audioCtx.state!=="closed")audioCtx.suspend()}catch(_){}});
-muteLegacy();window.CASuzukiSpecial={version:"native-detail-flow-roar-gated-20260924-1822",get phase(){return phase},reset:finish};
+muteLegacy();window.CASuzukiSpecial={version:"native-detail-flow-zoom-guard-20260924-1827",get phase(){return phase},reset:finish};
 })();
