@@ -141,6 +141,15 @@ function loadMeetupWatchFinish(){
  script.async=false;
  document.head.appendChild(script);
 }
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>{start();loadMeetupWatchFinish()},{once:true});
-else {start();loadMeetupWatchFinish()}
+function loadAdminIconHealth(){
+ if(document.querySelector('script[data-ca-admin-icon-health="1"]'))return;
+ const script=document.createElement("script");
+ script.dataset.caAdminIconHealth="1";
+ script.src="./admin-icon-health.js?v=20260925-2015";
+ script.async=false;
+ document.head.appendChild(script);
+}
+function boot(){start();loadMeetupWatchFinish();loadAdminIconHealth()}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});
+else boot();
 })();
