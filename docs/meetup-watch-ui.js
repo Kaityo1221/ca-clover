@@ -91,7 +91,6 @@ async function renderWatch(){
  if(!(await isAdminSession()))return;
  app=document.getElementById("app");if(!app||!isWatch())return;
  const serial=++renderSerial;
- app.dataset.caWatchEnhanced="1";
  app.innerHTML='<button id="watchBack" class="btn line">← 管理メニュー</button><section class="card hero section"><span class="pill violet">MEETUP WATCH</span><h1 style="margin-top:10px">🔍 要確認Meetup</h1><p class="muted strong">検知は不正認定ではありません。事実を確認し、必要な場合だけ本人確認・対応へ進めます。</p></section><div class="actions section"><button id="discordTest" class="btn line">🔔 Discordテスト通知</button><button id="windowsBtn" class="btn line">🕐 イベント時間マスター</button></div><div id="watchMsg"></div><div id="watchShell" class="section"><div class="notice">読み込み中...</div></div>';
  document.getElementById("watchBack").onclick=()=>{location.hash="home"};
  document.getElementById("windowsBtn").onclick=()=>{location.hash="windows"};
@@ -136,13 +135,13 @@ async function renderWatch(){
 function schedule(){
  clearTimeout(scheduled);scheduled=setTimeout(()=>{
   if(!isWatch())return;app=document.getElementById("app");if(!app)return;
-  if(app.dataset.caWatchEnhanced!=="1")renderWatch();
+  if(!document.getElementById("watchShell"))renderWatch();
  },80)
 }
 function start(){
  installStyle();app=document.getElementById("app");
- window.addEventListener("hashchange",()=>{app=document.getElementById("app");if(!isWatch()){if(app)delete app.dataset.caWatchEnhanced;return;}schedule()});
- if(app)new MutationObserver(()=>{if(isWatch()&&app.dataset.caWatchEnhanced!=="1")schedule()}).observe(app,{childList:true,subtree:false});
+ window.addEventListener("hashchange",()=>{app=document.getElementById("app");if(!isWatch())return;schedule()});
+ if(app)new MutationObserver(()=>{if(isWatch()&&!document.getElementById("watchShell"))schedule()}).observe(app,{childList:true,subtree:false});
  if(isWatch())schedule();
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
