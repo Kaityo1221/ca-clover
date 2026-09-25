@@ -177,17 +177,17 @@ async function mountVirtualMedal3D(item){
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
   renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure=1.04;
+  renderer.toneMappingExposure=.94;
 
   const scene=new THREE.Scene();
   scene.add(new THREE.HemisphereLight(0xffffff,0x6f685f,1.7));
-  const keyLight=new THREE.DirectionalLight(0xffffff,3.1);
+  const keyLight=new THREE.DirectionalLight(0xffffff,2.55);
   keyLight.position.set(2.4,3.2,4.2);
   scene.add(keyLight);
-  const rimLight=new THREE.DirectionalLight(0xffe5b4,1.6);
+  const rimLight=new THREE.DirectionalLight(0xffe5b4,1.35);
   rimLight.position.set(-3.2,.8,-2.4);
   scene.add(rimLight);
-  const backFillLight=new THREE.DirectionalLight(0xffffff,.72);
+  const backFillLight=new THREE.DirectionalLight(0xffffff,.65);
   backFillLight.position.set(.35,1.15,-4.2);
   scene.add(backFillLight);
   const pmrem=new THREE.PMREMGenerator(renderer);
@@ -209,6 +209,8 @@ async function mountVirtualMedal3D(item){
   controls.target.set(0,0,0);
 
   const holder=new THREE.Group();
+  holder.rotation.x=-.055;
+  holder.rotation.y=.22;
   scene.add(holder);
 
   const gltf=await new GLTFLoader().loadAsync("./models/medal_template_final.glb?v=7");
@@ -252,9 +254,10 @@ async function mountVirtualMedal3D(item){
      :new THREE.MeshPhysicalMaterial();
    activeFaceMaterial.color.set(0xffffff);
    activeFaceMaterial.metalness=0;
-   activeFaceMaterial.roughness=.18;
-   activeFaceMaterial.clearcoat=.25;
-   activeFaceMaterial.clearcoatRoughness=.2;
+   activeFaceMaterial.roughness=.30;
+   activeFaceMaterial.clearcoat=.12;
+   activeFaceMaterial.clearcoatRoughness=.32;
+   if("reflectivity" in activeFaceMaterial)activeFaceMaterial.reflectivity=.24;
    const loader=new THREE.TextureLoader();
    const candidates=[publicThumb(item),item.avatar_url,zoomImg?.currentSrc,zoomImg?.src].filter((v,i,a)=>v&&a.indexOf(v)===i);
    for(const url of candidates){
@@ -308,15 +311,15 @@ async function mountVirtualMedal3D(item){
     backShell.geometry.computeBoundingBox();
     const bounds=backShell.geometry.boundingBox;
     if(bounds){
-     const shellSize=bounds.getSize(new THREE.Vector3());
-     const shellCenter=bounds.getCenter(new THREE.Vector3());
-     engravingGeometry=new THREE.PlaneGeometry(shellSize.x*.84,shellSize.y*.84);
-     engravingMaterial=new THREE.MeshBasicMaterial({map:engravingTexture,transparent:true,alphaTest:.02,depthTest:true,depthWrite:false,side:THREE.FrontSide,toneMapped:false});
-     const overlay=new THREE.Mesh(engravingGeometry,engravingMaterial);
-     overlay.position.set(shellCenter.x,shellCenter.y-shellSize.y*.035,bounds.min.z-Math.max(shellSize.z*.04,.35));
-     overlay.rotation.y=Math.PI;
-     overlay.renderOrder=1000;
-     backShell.add(overlay);
+      const shellSize=bounds.getSize(new THREE.Vector3());
+      const shellCenter=bounds.getCenter(new THREE.Vector3());
+      engravingGeometry=new THREE.PlaneGeometry(shellSize.x*.84,shellSize.y*.84);
+      engravingMaterial=new THREE.MeshBasicMaterial({map:engravingTexture,transparent:true,alphaTest:.02,depthTest:true,depthWrite:false,side:THREE.FrontSide,toneMapped:false});
+      const overlay=new THREE.Mesh(engravingGeometry,engravingMaterial);
+      overlay.position.set(shellCenter.x,shellCenter.y-shellSize.y*.035,bounds.min.z-Math.max(shellSize.z*.04,.35));
+      overlay.rotation.y=Math.PI;
+      overlay.renderOrder=1000;
+      backShell.add(overlay);
     }
    }
   }
