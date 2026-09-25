@@ -134,6 +134,14 @@ function start(){
  if(nav)new MutationObserver(schedule).observe(nav,{childList:true,subtree:true,characterData:true});
  window.addEventListener("hashchange",schedule);
 }
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});
-else start();
+function loadMeetupWatchFinish(){
+ if(document.querySelector('script[data-ca-meetup-watch-finish="1"]'))return;
+ const script=document.createElement("script");
+ script.dataset.caMeetupWatchFinish="1";
+ script.src="./meetup-watch-ui.js?v=20260925-1231";
+ script.async=false;
+ document.head.appendChild(script);
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>{start();loadMeetupWatchFinish()},{once:true});
+else {start();loadMeetupWatchFinish()}
 })();
