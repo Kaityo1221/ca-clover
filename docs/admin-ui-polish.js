@@ -137,7 +137,7 @@ function loadMeetupWatchFinish(){
  if(document.querySelector('script[data-ca-meetup-watch-finish="1"]'))return;
  const script=document.createElement("script");
  script.dataset.caMeetupWatchFinish="1";
- script.src="./meetup-watch-ui.js?v=20260925-1240";
+ script.src="./meetup-watch-ui.js?v=20260925-1245";
  script.async=false;
  document.head.appendChild(script);
 }
