@@ -9,8 +9,8 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <style>
 :root{font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#213018;background:#f8faf6}
-*{box-sizing:border-box}body{margin:0}.top{position:sticky;top:0;z-index:1500;background:rgba(255,255,255,.94);border-bottom:1px solid #e5efd9;backdrop-filter:blur(12px)}.topin{max-width:1180px;margin:auto;padding:12px 18px;display:flex;align-items:center;gap:12px}.logo{font-size:28px;text-decoration:none}.brand{font-weight:950;color:#365314}.grow{flex:1}.btn,.pillbtn{border:0;border-radius:999px;padding:10px 15px;font-weight:900;cursor:pointer;background:#bef264;color:#365314}.btn.line,.pillbtn{background:#fff;border:1px solid #d9f99d}.pillbtn.on{background:#bef264;border-color:#a3e635}.wrap{max-width:1180px;margin:auto;padding:24px 16px 60px}.card{background:white;border:1px solid #e7f1dc;border-radius:24px;padding:18px;box-shadow:0 10px 28px rgba(54,83,20,.05)}.hero{background:linear-gradient(135deg,#f7fee7,#fff)}.section{margin-top:16px}.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.between{justify-content:space-between}.muted{color:#64748b}.strong{font-weight:800}.tiny{font-size:11px}.small{font-size:12px}.pill{display:inline-flex;border-radius:999px;padding:6px 10px;background:#ecfccb;color:#4d7c0f;font-size:11px;font-weight:900}.pill.slate{background:#f1f5f9;color:#475569}.pill.amber{background:#fef3c7;color:#92400e}.grid{display:grid;gap:12px}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.metric{background:#fff;border:1px solid #e7f1dc;border-radius:20px;padding:15px}.metric b{display:block;font-size:24px;margin-top:6px}.controls{display:flex;flex-wrap:wrap;gap:8px}.input{width:100%;border:1px solid #d9f99d;border-radius:16px;background:#fff;padding:11px 13px;font-weight:800;color:#334155}.controlgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.mapstage{position:relative}.mapstage.fullscreen{position:fixed;inset:0;z-index:2000;background:#fff}.mapstage.fullscreen .mapwrap{height:100dvh;border:0;border-radius:0}.mapwrap{height:560px;border-radius:24px;overflow:hidden;border:1px solid #d9f99d;background:#eef4e8}.mapwrap.scroll-mode{touch-action:pan-y}.mapwrap.interact-mode{touch-action:none}.maptoggle{display:none;position:absolute;right:12px;top:12px;z-index:1200;border:0;border-radius:999px;padding:10px 14px;background:#bef264;color:#365314;font-size:12px;font-weight:900;box-shadow:0 8px 22px rgba(54,83,20,.20)}.maptoggle.on{background:#0f172a;color:#fff}.table{width:100%;border-collapse:collapse;font-size:12px}.table th,.table td{text-align:left;padding:10px;border-bottom:1px solid #eef2e8}.table th{color:#64748b;font-size:11px}.notice{border-radius:18px;padding:13px;background:#fef3c7;color:#92400e;font-weight:800}.searchlist{display:grid;gap:7px}.searchitem{width:100%;text-align:left;border:1px solid #e7f1dc;background:#fff;border-radius:14px;padding:10px;cursor:pointer}.leaflet-popup-content a{color:#4d7c0f;font-weight:900}.version{text-align:center;color:#94a3b8;font-size:10px;margin-top:24px}
-@media(max-width:760px){.g3,.controlgrid{grid-template-columns:1fr}.mapwrap{height:62vh}.maptoggle{display:block}.mapwrap.scroll-mode .leaflet-control-zoom{display:none}.wrap{padding-top:14px}.card{padding:15px}.topin{align-items:flex-start}.brand{display:none}}
+*{box-sizing:border-box}html,body{min-height:100%}body{margin:0}.top{position:sticky;top:0;z-index:1500;background:rgba(255,255,255,.94);border-bottom:1px solid #e5efd9;backdrop-filter:blur(12px)}.topin{max-width:1180px;margin:auto;padding:12px 18px;display:flex;align-items:center;gap:12px}.logo{font-size:28px;text-decoration:none}.brand{font-weight:950;color:#365314}.grow{flex:1}.btn,.pillbtn{border:0;border-radius:999px;padding:10px 15px;font-weight:900;cursor:pointer;background:#bef264;color:#365314}.btn.line,.pillbtn{background:#fff;border:1px solid #d9f99d}.pillbtn.on{background:#bef264;border-color:#a3e635}.wrap{max-width:1180px;margin:auto;padding:24px 16px 60px}.card{background:white;border:1px solid #e7f1dc;border-radius:24px;padding:18px;box-shadow:0 10px 28px rgba(54,83,20,.05)}.hero{background:linear-gradient(135deg,#f7fee7,#fff)}.section{margin-top:16px}.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.between{justify-content:space-between}.muted{color:#64748b}.strong{font-weight:800}.tiny{font-size:11px}.small{font-size:12px}.pill{display:inline-flex;border-radius:999px;padding:6px 10px;background:#ecfccb;color:#4d7c0f;font-size:11px;font-weight:900}.pill.slate{background:#f1f5f9;color:#475569}.pill.amber{background:#fef3c7;color:#92400e}.grid{display:grid;gap:12px}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.metric{background:#fff;border:1px solid #e7f1dc;border-radius:20px;padding:15px}.metric b{display:block;font-size:24px;margin-top:6px}.controls{display:flex;flex-wrap:wrap;gap:8px}.input{width:100%;border:1px solid #d9f99d;border-radius:16px;background:#fff;padding:11px 13px;font-weight:800;color:#334155}.controlgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.mapstage{position:relative}.mapstage.fullscreen{position:fixed;inset:0;z-index:2000;background:#fff}.mapstage.fullscreen .mapwrap{height:100dvh;border:0;border-radius:0}.mapwrap{height:560px;border-radius:24px;overflow:hidden;border:1px solid #d9f99d;background:#eef4e8}.mapwrap.scroll-mode{touch-action:pan-y;pointer-events:none}.mapwrap.interact-mode{touch-action:none;pointer-events:auto}.maptoggle{display:none;position:absolute;right:12px;top:12px;z-index:1200;border:0;border-radius:999px;padding:10px 14px;background:#bef264;color:#365314;font-size:12px;font-weight:900;box-shadow:0 8px 22px rgba(54,83,20,.20)}.maptoggle.on{background:#0f172a;color:#fff}.maphint{display:none;position:absolute;left:12px;bottom:12px;z-index:1100;max-width:230px;border-radius:14px;padding:9px 11px;background:rgba(15,23,42,.82);color:#fff;font-size:11px;font-weight:850;line-height:1.45;pointer-events:none;backdrop-filter:blur(8px)}.mapstage.fullscreen .maphint{display:none!important}.table{width:100%;border-collapse:collapse;font-size:12px}.table th,.table td{text-align:left;padding:10px;border-bottom:1px solid #eef2e8}.table th{color:#64748b;font-size:11px}.notice{border-radius:18px;padding:13px;background:#fef3c7;color:#92400e;font-weight:800}.searchlist{display:grid;gap:7px}.searchitem{width:100%;text-align:left;border:1px solid #e7f1dc;background:#fff;border-radius:14px;padding:10px;cursor:pointer}.leaflet-popup-content a{color:#4d7c0f;font-weight:900}.version{text-align:center;color:#94a3b8;font-size:10px;margin-top:24px}
+@media(max-width:760px){.g3,.controlgrid{grid-template-columns:1fr}.mapwrap{height:62vh;min-height:360px}.maptoggle{display:block}.maphint{display:block}.mapwrap.scroll-mode .leaflet-control-zoom{display:none}.wrap{padding-top:14px;padding-bottom:calc(60px + env(safe-area-inset-bottom))}.card{padding:15px}.topin{align-items:center;padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}.brand{display:none}.mapstage.fullscreen .maptoggle{position:fixed;top:max(12px,calc(env(safe-area-inset-top) + 8px));right:max(12px,calc(env(safe-area-inset-right) + 8px));z-index:2200}}
 </style>
 </head>
 <body>
@@ -27,19 +27,45 @@ const app=document.getElementById("app");
 const periods=[[30,"30日"],[90,"90日"],[180,"180日"],[365,"1年"],[0,"全期間"]];
 const metrics=[["checkin_count","✅ Check-in"],["meetup_count","🔥 Meetup"],["ca_meetup_count","🍀 CA Meetup"],["rsvp_count","📨 RSVP"]];
 let period=30,metric="checkin_count",mode="activity",pref="all",search="",rows=[],allRows=[],map=null,selected=null,mapInteract=false;
+let pageScrollY=0,pageLocked=false,resizeTimer=null;
 function e(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]})}
 function n(v){return Number(v||0).toLocaleString("ja-JP")}
 function labelFor(list,value){const x=list.find(function(v){return v[0]===value});return x?x[1]:""}
 function daysSince(v){if(!v)return null;return Math.floor((Date.now()-Date.parse(v))/86400000)}
+function isMobile(){return window.matchMedia("(max-width:760px)").matches}
+function lockPage(){
+ if(pageLocked)return;
+ pageScrollY=window.scrollY||window.pageYOffset||0;
+ document.body.style.position="fixed";
+ document.body.style.top="-"+pageScrollY+"px";
+ document.body.style.left="0";
+ document.body.style.right="0";
+ document.body.style.width="100%";
+ document.body.style.overflow="hidden";
+ pageLocked=true;
+}
+function unlockPage(){
+ if(!pageLocked)return;
+ document.body.style.position="";
+ document.body.style.top="";
+ document.body.style.left="";
+ document.body.style.right="";
+ document.body.style.width="";
+ document.body.style.overflow="";
+ const y=pageScrollY;
+ pageLocked=false;
+ requestAnimationFrame(function(){window.scrollTo(0,y)});
+}
 async function login(){await client.auth.signInWithOAuth({provider:"google",options:{redirectTo:ROOT+"map.html"}})}
 async function guard(){
  const got=await client.auth.getSession(),session=got.data.session||null;
  if(!session){app.innerHTML='<section class="card hero"><h1>🗾 Activity Map</h1><p class="muted strong">ログインが必要です</p><button id="login" class="btn section">Googleでログイン</button></section>';document.getElementById("login").onclick=login;return false}
  const p=await client.from("profiles").select("role").eq("id",session.user.id).maybeSingle();
- if(p.data?.role!=="admin"){location.replace(ROOT+"#my");return false}
+ if(p.error||p.data?.role!=="admin"){location.replace(ROOT+"#my");return false}
  return true;
 }
 async function load(){
+ if(mapInteract&&isMobile()){mapInteract=false;unlockPage()}
  app.innerHTML='<section class="card hero"><h1>🗾 Activity Map</h1><p class="muted strong">全国Communityを読み込み中...</p></section>';
  const r=await Promise.all([
   client.rpc("activity_map_summary",{p_days:period}),
@@ -74,10 +100,10 @@ function render(){
   (searchMatches.length?'<div class="searchlist section">'+searchMatches.map(function(x){return '<button class="searchitem" data-find="'+e(x.community_id)+'"><b>'+e(x.community_name)+'</b><div class="tiny muted">'+e(x.prefecture||"—")+'</div></button>'}).join("")+'</div>':'')+
   '</section>'+
   '<section class="grid g3 section"><div class="metric"><span class="tiny strong muted">対象Community</span><b>'+n(visible.length)+'</b></div><div class="metric"><span class="tiny strong muted">活動あり</span><b>'+n(active)+'</b></div><div class="metric"><span class="tiny strong muted">'+e(labelFor(metrics,metric))+' 合計</span><b>'+n(total)+'</b><div class="tiny muted">最終 '+(latest?new Date(latest).toLocaleDateString("ja-JP"):"—")+'</div></div></section>'+
-  '<div class="mapstage section"><div id="map" class="mapwrap"></div><button id="mapToggle" class="maptoggle">🗺️ 地図を操作</button></div>'+
+  '<div class="mapstage section"><div id="map" class="mapwrap"></div><button id="mapToggle" class="maptoggle" type="button">🗺️ 地図を操作</button><div class="maphint">↕ このままページをスクロールできます<br>地図を見るときは「地図を操作」</div></div>'+
   '<section class="card section"><h2>📊 上位Community / '+e(labelFor(periods,period))+'</h2><div style="overflow:auto"><table class="table"><thead><tr><th>Community</th><th>都道府県</th><th>'+e(labelFor(metrics,metric))+'</th><th>最終開催</th></tr></thead><tbody>'+top.map(function(x){return '<tr><td><b>'+e(x.community_name)+'</b></td><td>'+e(x.prefecture||"—")+'</td><td>'+n(x[metric])+'</td><td>'+(x.last_event_at?new Date(x.last_event_at).toLocaleDateString("ja-JP"):"—")+'</td></tr>'}).join("")+'</tbody></table></div></section>'+
   '<section class="card section"><h2>🗾 都道府県サマリー</h2><div style="overflow:auto"><table class="table"><thead><tr><th>都道府県</th><th>Community</th><th>活動あり</th><th>'+e(labelFor(metrics,metric))+'</th></tr></thead><tbody>'+Object.keys(grouped).sort(function(a,b){return a.localeCompare(b,"ja")}).map(function(k){const g=grouped[k];return '<tr><td><b>'+e(k)+'</b></td><td>'+n(g.count)+'</td><td>'+n(g.active)+'</td><td>'+n(g.total)+'</td></tr>'}).join("")+'</tbody></table></div></section>'+
-  '<div class="version">Pages Activity Map / 2026-09-21</div>';
+  '<div class="version">Pages Activity Map / 2026-09-25</div>';
  bind();
  drawMap(visible);
 }
@@ -92,30 +118,36 @@ function bind(){
  const toggle=document.getElementById("mapToggle");
  if(toggle)toggle.onclick=function(){mapInteract=!mapInteract;applyMapInteraction()};
 }
-function isMobile(){return window.matchMedia("(max-width:760px)").matches}
 function applyMapInteraction(){
  const el=document.getElementById("map"),toggle=document.getElementById("mapToggle"),stage=document.querySelector(".mapstage");
  if(!el)return;
+ if(!isMobile())mapInteract=false;
  const active=!isMobile()||mapInteract;
  el.classList.toggle("interact-mode",active);
  el.classList.toggle("scroll-mode",!active);
  if(stage)stage.classList.toggle("fullscreen",active&&isMobile());
- document.body.style.overflow=active&&isMobile()?"hidden":"";
+ if(active&&isMobile())lockPage();else unlockPage();
  if(toggle){
   toggle.textContent=active&&isMobile()?"× 地図を閉じる":"🗺️ 地図を操作";
   toggle.classList.toggle("on",active&&isMobile());
+  toggle.setAttribute("aria-pressed",active&&isMobile()?"true":"false");
  }
  if(map){
-  ["dragging","touchZoom","doubleClickZoom","boxZoom","keyboard","scrollWheelZoom"].forEach(function(key){
+  ["dragging","touchZoom","doubleClickZoom","boxZoom","keyboard","scrollWheelZoom","tap"].forEach(function(key){
    const handler=map[key];
    if(handler&&typeof handler.enable==="function"&&typeof handler.disable==="function"){active?handler.enable():handler.disable()}
   });
-  if(typeof map.invalidateSize==="function")setTimeout(function(){map.invalidateSize()},0);
+  if(typeof map.invalidateSize==="function")setTimeout(function(){map.invalidateSize()},40);
  }
+}
+function closeMobileMap(){
+ if(!mapInteract)return;
+ mapInteract=false;
+ applyMapInteraction();
 }
 function drawMap(visible){
  if(map){map.remove();map=null}
- if(!visible.length){document.getElementById("map").innerHTML='<div style="padding:30px" class="muted strong">条件に一致するCommunityがありません。</div>';return}
+ if(!visible.length){document.getElementById("map").innerHTML='<div style="padding:30px" class="muted strong">条件に一致するCommunityがありません。</div>';applyMapInteraction();return}
  const active=!isMobile()||mapInteract;
  map=L.map("map",{zoomControl:true,scrollWheelZoom:active,dragging:active,touchZoom:active,doubleClickZoom:active,boxZoom:active,keyboard:active});
  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap contributors",maxZoom:18}).addTo(map);
@@ -124,15 +156,24 @@ function drawMap(visible){
  const max=Math.max(1,...visible.map(function(x){return Number(x[metric]||0)}));
  const lastMap=new Map(allRows.map(function(x){return [x.community_id,x.last_event_at]}));
  visible.forEach(function(x){
+  const lat=Number(x.latitude),lng=Number(x.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;
   const value=Number(x[metric]||0),scaled=value>0?Math.sqrt(value/max):0,last=lastMap.get(x.community_id)||null,days=daysSince(last);
   let color=value>0?"#4d7c0f":"#94a3b8",fill=value>0?"#84cc16":"#cbd5e1",radius=value>0?7+scaled*17:5,opacity=value>0?.38+scaled*.5:.16;
   if(mode==="recency"){radius=10;opacity=.72;if(days===null){color="#94a3b8";fill="#cbd5e1"}else if(days<=30){color="#4d7c0f";fill="#84cc16"}else if(days<=90){color="#b45309";fill="#fbbf24"}else{color="#475569";fill="#94a3b8"}}
   const html='<div style="min-width:230px"><div style="font-size:11px;font-weight:900;color:#65a30d">'+e(x.prefecture||"—")+'</div><div style="font-weight:950;margin-top:3px">'+e(x.community_name)+'</div><div style="font-size:11px;color:#64748b;margin-top:8px">'+e(labelFor(periods,period))+' / Meetup '+n(x.meetup_count)+' / CA '+n(x.ca_meetup_count)+' / RSVP '+n(x.rsvp_count)+' / Check-in '+n(x.checkin_count)+'</div><div style="font-size:11px;color:#64748b;margin-top:5px">最終開催: '+(last?new Date(last).toLocaleDateString("ja-JP"):"履歴なし")+'</div><a href="./#community:'+encodeURIComponent(x.community_id)+'">Community詳細を見る →</a></div>';
-  const marker=L.circleMarker([Number(x.latitude),Number(x.longitude)],{radius:radius,color:color,weight:1.5,fillColor:fill,fillOpacity:opacity}).bindPopup(html,{maxWidth:340}).addTo(map);
-  if(selected===x.community_id){map.setView([Number(x.latitude),Number(x.longitude)],14);marker.openPopup()}
+  const marker=L.circleMarker([lat,lng],{radius:radius,color:color,weight:1.5,fillColor:fill,fillOpacity:opacity}).bindPopup(html,{maxWidth:340}).addTo(map);
+  if(selected===x.community_id){map.setView([lat,lng],14);marker.openPopup()}
  });
  applyMapInteraction();
 }
+window.addEventListener("keydown",function(ev){if(ev.key==="Escape")closeMobileMap()});
+window.addEventListener("pagehide",function(){mapInteract=false;unlockPage()});
+window.addEventListener("resize",function(){
+ clearTimeout(resizeTimer);resizeTimer=setTimeout(function(){
+  if(!isMobile()&&mapInteract)mapInteract=false;
+  applyMapInteraction();
+ },120);
+});
 (async function(){if(await guard())await load()})();
 })();
 </script>
