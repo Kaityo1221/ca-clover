@@ -5,7 +5,7 @@ if(!/(?:^|\/)admin\.html$/.test(location.pathname))return;
 const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
 const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
 const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
-const app=document.getElementById("app");
+let app=null;
 const STATUS_OPTIONS=[
  ["unreviewed","未確認"],
  ["contact_host","本人確認"],
@@ -26,6 +26,11 @@ function fmt(v){if(!v)return"—";const d=new Date(v);return Number.isFinite(d.g
 function duration(a,b){if(!a||!b)return null;const d=(Date.parse(b)-Date.parse(a))/60000;return Number.isFinite(d)?Math.round(d):null}
 function isWatch(){return (location.hash||"#home").slice(1)==="watch"}
 function statusClass(status){if(status==="unreviewed")return"amber";if(status==="contact_host"||status==="sop_in_progress")return"blue";if(status==="completed")return"slate";return""}
+async function isAdminSession(){
+ const got=await client.auth.getSession();const session=got.data.session||null;if(!session)return false;
+ const p=await client.from("profiles").select("role").eq("id",session.user.id).maybeSingle();
+ return !p.error&&p.data?.role==="admin";
+}
 function copyText(text){
  if(navigator.clipboard&&navigator.clipboard.writeText)return navigator.clipboard.writeText(text);
  const ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();return Promise.resolve();
@@ -74,7 +79,7 @@ async function testDiscord(){
  if(out)out.innerHTML=r.error?'<div class="notice err section">'+e(r.error.message)+'</div>':'<div class="notice ok section">Discordテスト通知を送信しました</div>';
 }
 async function saveCase(caseId){
- const card=document.querySelector('[data-watch-case="'+CSS.escape(caseId)+'"]');if(!card)return;
+ const card=[...document.querySelectorAll("[data-watch-case]")].find(x=>x.dataset.watchCase===caseId);if(!card)return;
  const select=card.querySelector("[data-watch-status]");const note=card.querySelector("[data-watch-note]");const button=card.querySelector("[data-watch-save]");
  button.disabled=true;button.textContent="保存中...";
  const r=await client.functions.invoke("meetup-watch-admin",{body:{action:"set_status",caseId,status:select.value,note:note.value}});
@@ -82,7 +87,9 @@ async function saveCase(caseId){
  button.textContent="保存しました ✓";setTimeout(()=>renderWatch(),450);
 }
 async function renderWatch(){
- if(!isWatch()||!app)return;
+ if(!isWatch())return;
+ if(!(await isAdminSession()))return;
+ app=document.getElementById("app");if(!app||!isWatch())return;
  const serial=++renderSerial;
  app.dataset.caWatchEnhanced="1";
  app.innerHTML='<button id="watchBack" class="btn line">← 管理メニュー</button><section class="card hero section"><span class="pill violet">MEETUP WATCH</span><h1 style="margin-top:10px">🔍 要確認Meetup</h1><p class="muted strong">検知は不正認定ではありません。事実を確認し、必要な場合だけ本人確認・対応へ進めます。</p></section><div class="actions section"><button id="discordTest" class="btn line">🔔 Discordテスト通知</button><button id="windowsBtn" class="btn line">🕐 イベント時間マスター</button></div><div id="watchMsg"></div><div id="watchShell" class="section"><div class="notice">読み込み中...</div></div>';
@@ -101,6 +108,7 @@ async function renderWatch(){
   cids.length?client.from("watch_community_state").select("community_id,hot_until,hot_reasons").in("community_id",cids):Promise.resolve({data:[]})
  ]);
  if(serial!==renderSerial||!isWatch())return;
+ const fetchError=mr.error||fr.error||com.error||hot.error;if(fetchError){document.getElementById("watchShell").innerHTML='<div class="notice err">'+e(fetchError.message||String(fetchError))+'</div>';return;}
  const mm=new Map((mr.data||[]).map(x=>[x.id,x])),cm=new Map((com.data||[]).map(x=>[x.id,x])),hm=new Map((hot.data||[]).map(x=>[x.community_id,x]));
  const findings=fr.data||[];
  const counts=Object.fromEntries(STATUS_OPTIONS.map(([key])=>[key,cases.filter(x=>x.status===key).length]));
@@ -123,9 +131,19 @@ async function renderWatch(){
  document.getElementById("watchShell").innerHTML=html;
  document.querySelectorAll("[data-watch-filter]").forEach(b=>b.onclick=()=>{currentFilter=b.dataset.watchFilter;sessionStorage.setItem("ca-watch-filter",currentFilter);renderWatch()});
  document.querySelectorAll("[data-watch-save]").forEach(b=>b.onclick=()=>saveCase(b.closest("[data-watch-case]").dataset.watchCase));
- document.querySelectorAll("[data-watch-copy]").forEach(b=>b.onclick=async()=>{const id=b.dataset.watchCopy,cs=cases.find(x=>x.id===id),m=cs&&mm.get(cs.meetup_id),fs=cs?findings.filter(x=>x.meetup_id===cs.meetup_id):[];if(!cs)return;await copyText(contactTemplate(cs.flags||[],fs));const old=b.textContent;b.textContent="✓ コピーしました";setTimeout(()=>{if(document.body.contains(b))b.textContent=old},1500)});
+ document.querySelectorAll("[data-watch-copy]").forEach(b=>b.onclick=async()=>{const id=b.dataset.watchCopy,cs=cases.find(x=>x.id===id),fs=cs?findings.filter(x=>x.meetup_id===cs.meetup_id):[];if(!cs)return;await copyText(contactTemplate(cs.flags||[],fs));const old=b.textContent;b.textContent="✓ コピーしました";setTimeout(()=>{if(document.body.contains(b))b.textContent=old},1500)});
 }
-function schedule(){clearTimeout(scheduled);scheduled=setTimeout(()=>{if(!isWatch())return;if(app&&app.dataset.caWatchEnhanced!=="1")renderWatch()},80)}
-function start(){installStyle();window.addEventListener("hashchange",()=>{if(!isWatch()){if(app)delete app.dataset.caWatchEnhanced;return;}schedule()});if(app)new MutationObserver(()=>{if(isWatch()&&app.dataset.caWatchEnhanced!=="1")schedule()}).observe(app,{childList:true,subtree:false});if(isWatch())schedule()}
+function schedule(){
+ clearTimeout(scheduled);scheduled=setTimeout(()=>{
+  if(!isWatch())return;app=document.getElementById("app");if(!app)return;
+  if(app.dataset.caWatchEnhanced!=="1")renderWatch();
+ },80)
+}
+function start(){
+ installStyle();app=document.getElementById("app");
+ window.addEventListener("hashchange",()=>{app=document.getElementById("app");if(!isWatch()){if(app)delete app.dataset.caWatchEnhanced;return;}schedule()});
+ if(app)new MutationObserver(()=>{if(isWatch()&&app.dataset.caWatchEnhanced!=="1")schedule()}).observe(app,{childList:true,subtree:false});
+ if(isWatch())schedule();
+}
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
 })();
