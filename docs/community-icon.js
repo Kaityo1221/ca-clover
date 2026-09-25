@@ -213,6 +213,12 @@ window.CACommunityIcon={url,img,bind};
 installAdminPendingCommunityCountFix();
 installBreakArtifactCleanup();
 installAdminIconHistoryFix();
+if(/(?:^|\/)admin\.html$/.test(location.pathname)){
+ const p=document.createElement("script");
+ p.src="./admin-ui-polish.js?v=20260925-1212";
+ p.async=false;
+ document.head.appendChild(p);
+}
 if(/(?:^|\/)stamp-rally\.html$/.test(location.pathname)){
  const s=document.createElement("script");
  s.src="./suzuki-native-flow.js?v=20260924-1836";
