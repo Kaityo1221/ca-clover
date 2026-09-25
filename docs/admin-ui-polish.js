@@ -91,11 +91,11 @@ function polishClaims(){
 }
 function polishAll(){
  polishHeader();
+ polishClaims();
  document.querySelectorAll(".pill").forEach(translatePill);
  translateRoleButtons(document);
  translateStatusLines(document);
  polishMenu();
- polishClaims();
  document.querySelectorAll(".pill").forEach(levelClass);
 }
 
