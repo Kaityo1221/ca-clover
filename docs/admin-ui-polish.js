@@ -87,7 +87,6 @@ function polishClaims(){
    if(raw==="pending")setText(pill,"承認待ち");
    else translatePill(pill);
   });
- });
 }
 function polishAll(){
  polishHeader();
@@ -138,7 +137,7 @@ function loadMeetupWatchFinish(){
  if(document.querySelector('script[data-ca-meetup-watch-finish="1"]'))return;
  const script=document.createElement("script");
  script.dataset.caMeetupWatchFinish="1";
- script.src="./meetup-watch-ui.js?v=20260925-1231";
+ script.src="./meetup-watch-ui.js?v=20260925-1240";
  script.async=false;
  document.head.appendChild(script);
 }
