@@ -1,52 +1,65 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-labelledby="title desc">
   <title id="title">CA Clover official clover B</title>
-  <desc id="desc">Four independently addressable clover leaves for monthly activity growth.</desc>
+  <desc id="desc">Soft illustrated four leaf clover with independently addressable leaves.</desc>
   <defs>
-    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#315b35" flood-opacity=".16"/>
+    <filter id="softShadow" x="-35%" y="-35%" width="170%" height="180%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#315b35" flood-opacity=".18"/>
     </filter>
+    <filter id="softBlur"><feGaussianBlur stdDeviation="7"/></filter>
     <linearGradient id="stemGradient" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#70bf58"/>
-      <stop offset="1" stop-color="#2f7f45"/>
+      <stop offset="0" stop-color="#92df63"/>
+      <stop offset=".52" stop-color="#58b84d"/>
+      <stop offset="1" stop-color="#267b43"/>
     </linearGradient>
-    <path id="leafShape" d="M200 197 C181 178 137 162 126 121 C114 78 143 49 177 58 C191 62 199 72 200 88 C201 72 209 62 223 58 C257 49 286 78 274 121 C263 162 219 178 200 197 Z"/>
-    <path id="leafHighlight" d="M199 188 C183 168 155 155 144 128 C134 104 144 79 165 71 C148 92 150 121 164 143 C174 159 188 170 199 188 Z"/>
+    <radialGradient id="leafGloss" cx="31%" cy="23%" r="62%">
+      <stop offset="0" stop-color="#fff" stop-opacity=".74"/>
+      <stop offset=".24" stop-color="#f4ffd8" stop-opacity=".48"/>
+      <stop offset=".58" stop-color="#fff" stop-opacity=".10"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="leafShade" x1="15%" y1="10%" x2="85%" y2="92%">
+      <stop offset="0" stop-color="#214c31" stop-opacity="0"/>
+      <stop offset=".6" stop-color="#275d35" stop-opacity=".035"/>
+      <stop offset="1" stop-color="#16472b" stop-opacity=".22"/>
+    </linearGradient>
+    <path id="leafShape" d="M200 199 C188 187 164 175 145 157 C121 134 116 101 135 79 C151 61 176 59 190 74 C196 80 199 88 200 98 C201 88 204 80 210 74 C224 59 249 61 265 79 C284 101 279 134 255 157 C236 175 212 187 200 199 Z"/>
+    <path id="leafGlowPatch" d="M196 190 C181 176 158 163 145 145 C132 126 129 103 139 88 C149 74 165 68 180 73 C164 83 155 100 157 119 C160 147 179 169 196 190 Z"/>
+    <path id="leafSoftSpec" d="M170 86 C182 78 191 80 198 91 C188 88 180 93 174 102 C169 110 166 119 165 128 C158 111 159 95 170 86 Z"/>
     <g id="leafVeins">
-      <path d="M200 190 C200 161 199 128 200 89"/>
-      <path d="M200 151 C185 137 173 124 162 107"/>
-      <path d="M200 137 C215 126 227 113 238 96"/>
-      <path d="M200 167 C185 158 173 149 161 138"/>
-      <path d="M200 160 C215 151 228 142 240 130"/>
+      <path d="M200 191 C200 163 200 132 200 99"/>
+      <path d="M200 153 C185 141 174 129 164 114"/>
+      <path d="M200 138 C215 127 226 115 237 99"/>
+      <path d="M200 169 C184 160 171 151 159 139"/>
+      <path d="M200 161 C215 152 229 143 241 132"/>
     </g>
   </defs>
   <style>
-    .leaf-fill{fill:#67c567;stroke:#438d4c;stroke-width:1.6;stroke-linejoin:round}
-    .leaf-highlight{fill:#fff;opacity:.18}
-    .vein{fill:none;stroke:#245d38;stroke-width:1.4;stroke-linecap:round;opacity:.25}
+    .leaf-fill{fill:#67c95c;stroke:#368c49;stroke-width:.85;stroke-opacity:.45;stroke-linejoin:round}
+    .leaf-gloss{fill:url(#leafGloss);opacity:.96}
+    .leaf-shade{fill:url(#leafShade);opacity:.9}
+    .leaf-spec{fill:#fff;opacity:.13;filter:url(#softBlur)}
+    .vein{fill:none;stroke:#2d6c3b;stroke-width:1.15;stroke-linecap:round;opacity:.22}
     .leaf-group{filter:url(#softShadow)}
-    #stem{fill:none;stroke:url(#stemGradient);stroke-width:12;stroke-linecap:round}
-    #stem-highlight{fill:none;stroke:#b6e695;stroke-width:3;stroke-linecap:round;opacity:.65}
+    #stem{fill:none;stroke:url(#stemGradient);stroke-width:10;stroke-linecap:round}
+    #stem-highlight{fill:none;stroke:#d8f5a7;stroke-width:2.1;stroke-linecap:round;opacity:.72}
   </style>
-  <path id="stem" d="M198 202 C190 238 179 274 161 308 C151 327 145 344 143 357"/>
-  <path id="stem-highlight" d="M195 211 C188 247 176 282 160 312"/>
+  <path id="stem" d="M198 202 C191 236 181 271 164 307 C154 328 149 344 148 358"/>
+  <path id="stem-highlight" d="M195 211 C190 244 179 280 164 312"/>
   <g id="leaf-top" class="leaf-group">
     <use href="#leafShape" class="leaf-fill"/>
-    <use href="#leafHighlight" class="leaf-highlight"/>
+    <use href="#leafShape" class="leaf-shade"/>
+    <use href="#leafShape" class="leaf-gloss"/>
+    <use href="#leafGlowPatch" fill="#f2ff9b" opacity=".12"/>
+    <use href="#leafSoftSpec" class="leaf-spec"/>
     <g class="vein"><use href="#leafVeins"/></g>
   </g>
   <g id="leaf-right" class="leaf-group" transform="rotate(90 200 200)">
-    <use href="#leafShape" class="leaf-fill"/>
-    <use href="#leafHighlight" class="leaf-highlight"/>
-    <g class="vein"><use href="#leafVeins"/></g>
+    <use href="#leafShape" class="leaf-fill"/><use href="#leafShape" class="leaf-shade"/><use href="#leafShape" class="leaf-gloss"/><use href="#leafGlowPatch" fill="#f2ff9b" opacity=".12"/><use href="#leafSoftSpec" class="leaf-spec"/><g class="vein"><use href="#leafVeins"/></g>
   </g>
   <g id="leaf-bottom" class="leaf-group" transform="rotate(180 200 200)">
-    <use href="#leafShape" class="leaf-fill"/>
-    <use href="#leafHighlight" class="leaf-highlight"/>
-    <g class="vein"><use href="#leafVeins"/></g>
+    <use href="#leafShape" class="leaf-fill"/><use href="#leafShape" class="leaf-shade"/><use href="#leafShape" class="leaf-gloss"/><use href="#leafGlowPatch" fill="#f2ff9b" opacity=".12"/><use href="#leafSoftSpec" class="leaf-spec"/><g class="vein"><use href="#leafVeins"/></g>
   </g>
   <g id="leaf-left" class="leaf-group" transform="rotate(270 200 200)">
-    <use href="#leafShape" class="leaf-fill"/>
-    <use href="#leafHighlight" class="leaf-highlight"/>
-    <g class="vein"><use href="#leafVeins"/></g>
+    <use href="#leafShape" class="leaf-fill"/><use href="#leafShape" class="leaf-shade"/><use href="#leafShape" class="leaf-gloss"/><use href="#leafGlowPatch" fill="#f2ff9b" opacity=".12"/><use href="#leafSoftSpec" class="leaf-spec"/><g class="vein"><use href="#leafVeins"/></g>
   </g>
 </svg>
