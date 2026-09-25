@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 
 // Shared visual baseline for CA Clover 3D medals.
 // Keeps official and virtual-test medals visually identical without touching
@@ -34,7 +34,6 @@ function applyPreset(renderer,scene){
  if(!front)return;
  renderer.toneMappingExposure=PRESET.exposure;
 
- // The holder is the direct child of the scene that owns the imported medal.
  let medalRoot=front;
  while(medalRoot.parent&&medalRoot.parent!==scene)medalRoot=medalRoot.parent;
  if(medalRoot.parent===scene){
