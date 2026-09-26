@@ -50,7 +50,7 @@
   const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
   const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
   const ROOT="https://kaityo1221.github.io/ca-clover/";
-  const VERSION="my-community-20260926-init1";
+  const VERSION="my-community-20260926-badges1";
   const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}
   });
@@ -266,7 +266,7 @@
     const since=period===null?null:new Date(Date.now()-period*24*60*60*1000).toISOString();
 
     let meetupQuery=client.from("meetups")
-      .select("id,title,starts_at,ends_at,location,event_url,details,is_ca_meetup,rsvp_count,checkin_count")
+      .select("id,title,starts_at,ends_at,location,event_url,details,is_ca_meetup,rsvp_count,checkin_count,is_passcode_reward_eligible")
       .eq("community_id",id)
       .order("starts_at",{ascending:false})
       .limit(period===null?500:50);
@@ -306,7 +306,7 @@
       html+='<div class="notice section">この期間のMeetupデータはありません。</div>';
     }else{
       html+='<div class="section">'+meetups.map(function(m,index){
-        return '<button type="button" class="claim clickable" style="display:block;width:100%;text-align:left;margin-top:10px" data-meetup-index="'+index+'"><div class="row between wraprow"><div><div class="tiny strong" style="color:#65a30d">'+e(fmt(m.starts_at))+'</div><h3 style="margin-top:5px">'+e(m.title)+'</h3><div class="small muted strong" style="margin-top:4px">📍 '+e(m.location||"場所未取得")+'</div></div><div class="tags" style="margin-top:0">'+(m.is_ca_meetup?'<span class="pill">CA Meetup</span>':'')+'<span class="pill">概要を見る →</span></div></div><div class="tags"><span class="pill slate">RSVP '+e(m.rsvp_count==null?"—":m.rsvp_count)+'</span><span class="pill slate">Check-in '+e(m.checkin_count==null?"—":m.checkin_count)+'</span></div></button>';
+        return '<button type="button" class="claim clickable" style="display:block;width:100%;text-align:left;margin-top:10px" data-meetup-index="'+index+'"><div class="row between wraprow"><div><div class="tiny strong" style="color:#65a30d">'+e(fmt(m.starts_at))+'</div><h3 style="margin-top:5px">'+e(m.title)+'</h3><div class="small muted strong" style="margin-top:4px">📍 '+e(m.location||"場所未取得")+'</div></div><div class="tags" style="margin-top:0">'+(m.is_ca_meetup?'<span title="Host: Ambassador" aria-label="Host: Ambassador">🟪</span>':'')+(m.is_passcode_reward_eligible===true?'<span title="Rewards" aria-label="Rewards">🎁</span>':'')+'<span class="pill">概要を見る →</span></div></div><div class="tags"><span class="pill slate">RSVP '+e(m.rsvp_count==null?"—":m.rsvp_count)+'</span><span class="pill slate">Check-in '+e(m.checkin_count==null?"—":m.checkin_count)+'</span></div></button>';
       }).join("")+'</div>';
     }
     html+='</section><div class="version">mirror '+VERSION+'</div>';
