@@ -17,6 +17,7 @@ const EVENT_FIELDS=`
   }
   checkedInMembersCount
   members(first: 1) { totalCount }
+  isPasscodeRewardEligible
   campfireLiveEvent { eventName }
 `;
 
@@ -34,6 +35,7 @@ const PUBLIC_ACTIVITY_EVENT_FIELDS=`
   createdByCommunityAmbassador
   checkedInMembersCount
   members(first: 1) { totalCount }
+  isPasscodeRewardEligible
   campfireLiveEvent { eventName }
 `;
 
