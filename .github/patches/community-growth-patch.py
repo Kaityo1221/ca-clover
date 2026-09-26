@@ -1,0 +1,87 @@
+from pathlib import Path
+
+p = Path("docs/index.html")
+s = p.read_text()
+
+if "function memberGrowthHtml(rows,periodLabel,fallbackCount)" in s:
+    print("Community Growth already applied")
+    raise SystemExit(0)
+
+s = s.replace(
+    'const VERSION="my-community-20260927-period-rate1";',
+    'const VERSION="my-community-20260927-growth1";',
+    1,
+)
+
+helper = r'''  function memberGrowthHtml(rows,periodLabel,fallbackCount){
+    const points=(rows||[]).map(function(row){return {date:String(row.observed_on||""),count:Number(row.member_count)}}).filter(function(row){return row.date&&Number.isFinite(row.count)});
+    const latest=points.length?points[points.length-1].count:(Number.isFinite(Number(fallbackCount))?Number(fallbackCount):null);
+    const previous=points.length>1?points[points.length-2].count:null;
+    const first=points.length>1?points[0].count:null;
+    function deltaText(value){
+      if(value==null||!Number.isFinite(value))return "—";
+      if(value===0)return "±0";
+      return (value>0?"+":"")+value.toLocaleString("ja-JP");
+    }
+    const previousDelta=latest!=null&&previous!=null?latest-previous:null;
+    const periodDelta=latest!=null&&first!=null?latest-first:null;
+    let chart="";
+    if(!points.length){
+      chart='<div class="notice section">人数履歴はまだありません。日次スナップショット取得後に表示されます。</div>';
+    }else{
+      const width=Math.max(560,points.length*36),height=190,left=54,right=22,top=22,bottom=38;
+      const counts=points.map(function(row){return row.count});
+      const min=Math.min.apply(null,counts),max=Math.max.apply(null,counts),spread=Math.max(1,max-min);
+      const x=function(i){return points.length===1?width/2:left+(width-left-right)*(i/(points.length-1))};
+      const y=function(v){return top+(height-top-bottom)*(1-(v-min)/spread)};
+      const path=points.map(function(row,i){return (i?"L":"M")+x(i).toFixed(1)+" "+y(row.count).toFixed(1)}).join(" ");
+      const labelStep=Math.max(1,Math.ceil(points.length/6));
+      const labels=points.map(function(row,i){
+        if(i!==0&&i!==points.length-1&&i%labelStep!==0)return "";
+        const d=row.date.split("-");
+        return '<text x="'+x(i).toFixed(1)+'" y="'+(height-12)+'" text-anchor="middle" font-size="10" fill="#64748b">'+e((Number(d[1])||0)+"/"+(Number(d[2])||0))+'</text>';
+      }).join("");
+      const circles=points.map(function(row,i){return '<circle cx="'+x(i).toFixed(1)+'" cy="'+y(row.count).toFixed(1)+'" r="3.5" fill="#65a30d"><title>'+e(row.date+"  "+row.count.toLocaleString("ja-JP")+"人")+'</title></circle>'}).join("");
+      chart='<div class="trendbox"><svg class="trendsvg" viewBox="0 0 '+width+' '+height+'" role="img" aria-label="Community人数推移" style="min-width:'+width+'px">'+
+        '<line x1="'+left+'" y1="'+top+'" x2="'+left+'" y2="'+(height-bottom)+'" stroke="#e2e8f0"/>'+
+        '<line x1="'+left+'" y1="'+(height-bottom)+'" x2="'+(width-right)+'" y2="'+(height-bottom)+'" stroke="#e2e8f0"/>'+
+        '<text x="8" y="'+(top+4)+'" font-size="10" fill="#64748b">'+e(max.toLocaleString("ja-JP"))+'</text>'+
+        '<text x="8" y="'+(height-bottom+4)+'" font-size="10" fill="#64748b">'+e(min.toLocaleString("ja-JP"))+'</text>'+
+        (points.length>1?'<path d="'+path+'" fill="none" stroke="#65a30d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>':'')+circles+labels+'</svg></div>';
+    }
+    const started=points.length?points[0].date:"";
+    return '<section class="card section"><div class="row between wraprow"><div><h2>🌱 Community Growth / '+e(periodLabel)+'</h2><p class="muted small strong" style="margin:5px 0 0">Community人数の日次記録</p></div><span class="pill">1日1回</span></div>'+
+      '<div class="grid g3 section"><div class="metric"><span class="tiny strong muted">現在のMember</span><b>'+(latest==null?'—':e(latest.toLocaleString("ja-JP")))+'</b></div>'+
+      '<div class="metric"><span class="tiny strong muted">前回比</span><b>'+e(deltaText(previousDelta))+'</b><div class="tiny muted strong" style="margin-top:5px">前日の記録との差</div></div>'+
+      '<div class="metric"><span class="tiny strong muted">期間内変化</span><b>'+e(deltaText(periodDelta))+'</b><div class="tiny muted strong" style="margin-top:5px">'+(points.length>1?e(periodLabel+"の最初の記録から"):"履歴2日目から算出")+'</div></div></div>'+chart+
+      (started?'<div class="tiny muted strong" style="margin-top:9px">蓄積開始 '+e(started.replace(/-/g,"/"))+'</div>':'')+'</section>';
+  }
+'''
+
+marker = '  function meetupCardHtml(m,index){'
+assert marker in s
+s = s.replace(marker, helper + marker, 1)
+
+result_marker = '    const results=await Promise.all([\n      meetupQuery,\n      upcomingQuery,'
+assert result_marker in s
+query_code = '''    const memberSince=period===null?null:new Date(Date.now()-period*24*60*60*1000).toISOString().slice(0,10);\n    let memberSnapshotQuery=client.from("community_member_snapshots")\n      .select("member_count,observed_on,observed_at")\n      .eq("community_id",id)\n      .order("observed_on",{ascending:true})\n      .limit(period===null?500:400);\n    if(memberSince)memberSnapshotQuery=memberSnapshotQuery.gte("observed_on",memberSince);\n\n'''
+s = s.replace(result_marker, query_code + result_marker, 1)
+
+trend_line = '      client.rpc("community_activity_trend",{p_community_id:id,p_bucket:trendBucket,p_days:period})\n    ]);'
+assert trend_line in s
+s = s.replace(
+    trend_line,
+    '      client.rpc("community_activity_trend",{p_community_id:id,p_bucket:trendBucket,p_days:period}),\n      memberSnapshotQuery\n    ]);',
+    1,
+)
+
+result_line = '    const trend=results[4].data||[];'
+assert result_line in s
+s = s.replace(result_line, result_line + '\n    const memberSnapshots=results[5].data||[];', 1)
+
+period_pos = s.index('    html+=\'<div class="periodbar">')
+metrics_pos = s.index('      \'<section class="grid g4 section">', period_pos)
+s = s[:metrics_pos] + '      memberGrowthHtml(memberSnapshots,periodLabel,community.member_count)+\n' + s[metrics_pos:]
+
+p.write_text(s)
+print("Community Growth patch applied")
