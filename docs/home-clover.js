@@ -34,7 +34,7 @@
         return;
       }
       const script=document.createElement("script");
-      script.src="./monthly-clover.js?v=20260926-home1";
+      script.src="./monthly-clover.js?v=20260926-home2";
       script.async=true;
       script.dataset.caMonthlyClover="1";
       script.onload=()=>resolve(Boolean(window.CAMonthlyClover));
