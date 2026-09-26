@@ -395,6 +395,7 @@
       }
       if(token!==renderToken)return;
       if(!models.length){root.innerHTML='<div class="home-clover-status">今月のCloverを読み込めませんでした。</div>';return}
+      window.CAHomeCloverCurrent={uid:session.user.id,models};
       root.innerHTML=models.map(monthHtml).join("");
       models.forEach((model,i)=>{
         const monthlyCards=root.querySelectorAll("[data-monthly-clover]");
