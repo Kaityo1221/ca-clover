@@ -1,0 +1,139 @@
+name: One-time fix startup render 20260926
+
+on:
+  push:
+    branches: [pages]
+    paths:
+      - .github/workflows/one-time-fix-startup-render-20260926.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages
+      - name: Patch startup auth render
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('docs/index.html')
+          text = path.read_text(encoding='utf-8')
+
+          old_version = 'const VERSION="my-community-20260925";'
+          new_version = 'const VERSION="my-community-20260926-init1";'
+          if old_version in text:
+              text = text.replace(old_version, new_version, 1)
+
+          old_state = '  let session=null, profile=null, permissions=new Set(), busy=false, flash=null, communityPeriod=30;'
+          new_state = '  let session=null, profile=null, permissions=new Set(), busy=false, flash=null, communityPeriod=30, renderToken=0;'
+          if old_state not in text:
+              raise SystemExit('state declaration not found')
+          text = text.replace(old_state, new_state, 1)
+
+          old_init = '''  async function init(){
+            const got=await client.auth.getSession();
+            session=got.data.session||null;
+            if(session)await loadProfile();
+            client.auth.onAuthStateChange(async function(_event,newSession){
+              session=newSession||null;
+              if(session)await loadProfile();else {profile=null;permissions=new Set()}
+              render();
+            });
+            window.addEventListener("hashchange",function(){flash=null;render()});
+            render();
+          }'''
+          new_init = '''  async function init(){
+            const got=await client.auth.getSession();
+            session=got.data.session||null;
+            if(session)await loadProfile();
+            client.auth.onAuthStateChange(async function(event,newSession){
+              const previousUserId=session&&session.user?session.user.id:null;
+              const nextSession=newSession||null;
+              const nextUserId=nextSession&&nextSession.user?nextSession.user.id:null;
+              session=nextSession;
+
+              // getSession() already restored the initial session. Supabase emits the
+              // same INITIAL_SESSION once more after subscription; repainting here
+              // makes My Community look as if Safari reloaded the page.
+              if(event==="INITIAL_SESSION"&&previousUserId===nextUserId)return;
+              if((event==="SIGNED_IN"||event==="TOKEN_REFRESHED")&&previousUserId&&previousUserId===nextUserId)return;
+
+              // Invalidate any async My Community render that started before the
+              // auth state genuinely changed, so stale results cannot paint later.
+              renderToken++;
+              if(session)await loadProfile();else {profile=null;permissions=new Set()}
+              render();
+            });
+            window.addEventListener("hashchange",function(){flash=null;render()});
+            render();
+          }'''
+          if old_init not in text:
+              raise SystemExit('init block not found')
+          text = text.replace(old_init, new_init, 1)
+
+          old_decl = '  async function renderMy(){'
+          new_decl = '  async function renderMy(token){'
+          if old_decl not in text:
+              raise SystemExit('renderMy declaration not found')
+          text = text.replace(old_decl, new_decl, 1)
+
+          start = text.index(new_decl)
+          end = text.index('  async function renderCommunity(', start)
+          segment = text[start:end]
+          paint = '    app.innerHTML=html;\n'
+          paint_pos = segment.rfind(paint)
+          if paint_pos < 0:
+              raise SystemExit('renderMy final paint not found')
+          segment = segment[:paint_pos] + '    if(token!=null&&token!==renderToken)return;\n' + segment[paint_pos:]
+          text = text[:start] + segment + text[end:]
+
+          old_render = '''  async function render(){
+            header();
+            if(!session){loginView();return}
+            if(!profile)await loadProfile();
+            header();
+            let v=route();
+            if(v==="admin"&&profile.role!=="admin"){v="my";location.hash="my"}
+            if(v==="account"){renderAccount();return}
+            if(v==="admin"){await renderAdmin();return}
+            if(v.startsWith("community:")){await renderCommunity(decodeURIComponent(v.slice("community:".length)));return}
+            await renderMy();
+          }'''
+          new_render = '''  async function render(){
+            const token=++renderToken;
+            header();
+            if(!session){if(token===renderToken)loginView();return}
+            if(!profile)await loadProfile();
+            if(token!==renderToken)return;
+            header();
+            let v=route();
+            if(v==="admin"&&profile.role!=="admin"){v="my";location.hash="my"}
+            if(v==="account"){renderAccount();return}
+            if(v==="admin"){await renderAdmin();return}
+            if(v.startsWith("community:")){await renderCommunity(decodeURIComponent(v.slice("community:".length)));return}
+            await renderMy(token);
+          }'''
+          if old_render not in text:
+              raise SystemExit('render block not found')
+          text = text.replace(old_render, new_render, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Commit patch
+        shell: bash
+        run: |
+          if git diff --quiet -- docs/index.html; then
+            echo "No changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/index.html
+          git commit -m "fix: prevent duplicate startup render"
+          git push origin pages
