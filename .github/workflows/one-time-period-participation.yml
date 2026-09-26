@@ -29,10 +29,12 @@ jobs:
           new = old + '\n    const periodRate=totalRsvp>0?(totalCheckin/totalRsvp*100):null;\n    const periodRateText=periodRate==null?"算出不可":(Math.abs(periodRate-Math.round(periodRate))<0.05?String(Math.round(periodRate)):periodRate.toFixed(1))+"%";'
           assert old in s
           s = s.replace(old, new, 1)
-          old_metrics = '<section class="grid g3 section"><div class="metric"><span class="tiny strong muted">🔥 Meetup / '+"'+e(periodLabel)+'"+'</span><b>'+"'+meetupCount.toLocaleString(\"ja-JP\")+'"+'</b></div>'+"'+'"+'<div class="metric"><span class="tiny strong muted">🍀 CA Meetup / '+"'+e(periodLabel)+'"+'</span><b>'+"'+caMeetups.toLocaleString(\"ja-JP\")+'"+'</b></div>'+"'+'"+'<div class="metric"><span class="tiny strong muted">✅ Check-in / '+"'+e(periodLabel)+'"+'</span><b>'+"'+totalCheckin.toLocaleString(\"ja-JP\")+'"+'</b></div></section>'
-          new_metrics = '<section class="grid g4 section"><div class="metric"><span class="tiny strong muted">🔥 Meetup / '+"'+e(periodLabel)+'"+'</span><b>'+"'+meetupCount.toLocaleString(\"ja-JP\")+'"+'</b></div>'+"'+'"+'<div class="metric"><span class="tiny strong muted">🍀 CA Meetup / '+"'+e(periodLabel)+'"+'</span><b>'+"'+caMeetups.toLocaleString(\"ja-JP\")+'"+'</b></div>'+"'+'"+'<div class="metric"><span class="tiny strong muted">✅ Check-in / '+"'+e(periodLabel)+'"+'</span><b>'+"'+totalCheckin.toLocaleString(\"ja-JP\")+'"+'</b></div>'+"'+'"+'<div class="metric"><span class="tiny strong muted">📊 参加率 / '+"'+e(periodLabel)+'"+'</span><b>'+"'+e(periodRateText)+'"+'</b>'+"'+(periodRate==null?'"+'<div class="tiny muted strong" style="margin-top:5px">RSVP 0のため</div>'+"':'"+'<div class="tiny muted strong" style="margin-top:5px">RSVP → Check-in</div>'+"')+'"+'</div></section>'
-          assert old_metrics in s
-          s = s.replace(old_metrics, new_metrics, 1)
+          start_marker = "'<section class=\"grid g3 section\"><div class=\"metric\"><span class=\"tiny strong muted\">🔥 Meetup / '"
+          end_marker = "'<div class=\"metric\"><span class=\"tiny strong muted\">✅ Check-in / '+e(periodLabel)+'</span><b>'+totalCheckin.toLocaleString(\"ja-JP\")+'</b></div></section>'"
+          start = s.index(start_marker)
+          end = s.index(end_marker, start) + len(end_marker)
+          replacement = "'<section class=\"grid g4 section\"><div class=\"metric\"><span class=\"tiny strong muted\">🔥 Meetup / '+e(periodLabel)+'</span><b>'+meetupCount.toLocaleString(\"ja-JP\")+'</b></div>'+" + "'<div class=\"metric\"><span class=\"tiny strong muted\">🍀 CA Meetup / '+e(periodLabel)+'</span><b>'+caMeetups.toLocaleString(\"ja-JP\")+'</b></div>'+" + "'<div class=\"metric\"><span class=\"tiny strong muted\">✅ Check-in / '+e(periodLabel)+'</span><b>'+totalCheckin.toLocaleString(\"ja-JP\")+'</b></div>'+" + "'<div class=\"metric\"><span class=\"tiny strong muted\">📊 参加率 / '+e(periodLabel)+'</span><b>'+e(periodRateText)+'</b>'+(periodRate==null?'<div class=\"tiny muted strong\" style=\"margin-top:5px\">RSVP 0のため</div>':'<div class=\"tiny muted strong\" style=\"margin-top:5px\">RSVP → Check-in</div>')+'</div></section>'"
+          s = s[:start] + replacement + s[end:]
           p.write_text(s)
       - name: Commit patch to pages
         run: |
