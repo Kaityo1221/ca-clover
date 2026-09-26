@@ -1,0 +1,38 @@
+name: One-time remove reward icon
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-time-remove-reward-icon.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages
+      - name: Remove reward icon from Meetup cards
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('docs/index.html')
+          s = p.read_text()
+          s = s.replace('const VERSION="my-community-20260927-hostbadge1";', 'const VERSION="my-community-20260927-eventtag-reward1";', 1)
+          old = '''<div class="tags" style="margin-top:0">'+(m.is_passcode_reward_eligible===true?'<span title="Rewards" aria-label="Rewards">🎁</span>':'')+'<span class="pill">概要を見る →</span></div>'''
+          new = '''<div class="tags" style="margin-top:0"><span class="pill">概要を見る →</span></div>'''
+          assert old in s
+          s = s.replace(old, new, 1)
+          s = s.replace('rsvp_count,checkin_count,is_passcode_reward_eligible,campfire_live_event_name', 'rsvp_count,checkin_count,campfire_live_event_name')
+          p.write_text(s)
+      - name: Commit patch to pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/index.html
+          git commit -m "fix: use event tag as reward indicator"
+          git push origin HEAD:pages
