@@ -9,6 +9,7 @@
   let client=null;
   let running=false;
   let renderSeq=0;
+  let lastRoot=null;
 
   function getClient(){
     if(client)return client;
@@ -117,6 +118,7 @@
     if(running)return;
     const root=document.getElementById(ROOT_ID);
     if(!root||root.dataset.ready!=="1")return;
+    if(root===lastRoot&&root.querySelector("#"+GARDEN_ID))return;
     const ids=communityIds();
     if(!ids.length)return;
     const sb=getClient();
@@ -138,7 +140,10 @@
       if(seq!==renderSeq)return;
       const communityMap=new Map(((communityResult&&communityResult.data)||[]).map(x=>[x.id,x.name]));
       const liveRoot=document.getElementById(ROOT_ID);
-      if(liveRoot&&liveRoot.dataset.ready==="1")renderGarden(liveRoot,refreshed,communityMap,new Date());
+      if(liveRoot&&liveRoot.dataset.ready==="1"){
+        renderGarden(liveRoot,refreshed,communityMap,new Date());
+        lastRoot=liveRoot;
+      }
     }catch(err){
       console.warn("Clover Garden archive skipped",err);
     }finally{
@@ -149,7 +154,7 @@
   function schedule(){setTimeout(run,100)}
   const observer=new MutationObserver(schedule);
   observer.observe(document.documentElement,{subtree:true,childList:true});
-  window.addEventListener("hashchange",()=>{renderSeq++;document.getElementById(GARDEN_ID)?.remove();schedule()});
+  window.addEventListener("hashchange",()=>{renderSeq++;lastRoot=null;document.getElementById(GARDEN_ID)?.remove();schedule()});
   window.addEventListener("pageshow",schedule);
   schedule();
 })();
