@@ -20,6 +20,8 @@ type MetricValue={
   checkin_count:number|null;
 };
 
+type SyncMode="normal"|"hot"|"priority"|"final";
+
 function json(data:unknown,status=200){
   return new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json"}});
 }
@@ -38,6 +40,7 @@ function chunks<T>(items:T[],size:number){
 
 async function fetchMetricBatch(eventIds:string[]){
   const ids=[...new Set(eventIds.filter(Boolean))];
+  if(!ids.length) return {values:[] as MetricValue[],errors:[] as string[]};
   const definitions=ids.map((_,index)=>`$id${index}: ID!`).join(", ");
   const fields=ids.map((_,index)=>`e${index}: event(id: $id${index}) {
     id
@@ -78,6 +81,29 @@ async function fetchMetricBatch(eventIds:string[]){
   };
 }
 
+async function loadDueMeetups(
+  admin:ReturnType<typeof createClient>,
+  target:Map<string,MeetupRow>,
+  cutoffIso:string,
+  communityIds?:string[],
+){
+  let byStart=admin.from("meetups")
+    .select("id,campfire_meetup_id,community_id,starts_at,ends_at")
+    .gte("starts_at",cutoffIso);
+  let byEnd=admin.from("meetups")
+    .select("id,campfire_meetup_id,community_id,starts_at,ends_at")
+    .gte("ends_at",cutoffIso);
+  if(communityIds?.length){
+    byStart=byStart.in("community_id",communityIds);
+    byEnd=byEnd.in("community_id",communityIds);
+  }
+  const [startResult,endResult]=await Promise.all([byStart,byEnd]);
+  if(startResult.error) throw startResult.error;
+  if(endResult.error) throw endResult.error;
+  addRows(target,startResult.data as MeetupRow[]|null);
+  addRows(target,endResult.data as MeetupRow[]|null);
+}
+
 Deno.serve(async(req:Request)=>{
   try{
     const supabaseUrl=Deno.env.get("SUPABASE_URL");
@@ -91,8 +117,11 @@ Deno.serve(async(req:Request)=>{
       return json({error:"unauthorized"},401);
     }
 
-    const body=await req.json().catch(()=>({}));
-    const mode=body.mode==="hot"?"hot":"normal";
+    const body=await req.json().catch(()=>({})) as {mode?:string;communityId?:string};
+    const mode:SyncMode=body.mode==="hot"?"hot":body.mode==="priority"?"priority":body.mode==="final"?"final":"normal";
+    const priorityCommunityId=typeof body.communityId==="string"?body.communityId.trim():"";
+    if(mode==="priority"&&!priorityCommunityId) return json({error:"communityId is required for priority mode"},400);
+
     const now=new Date();
     const nowIso=now.toISOString();
     const cutoffIso=new Date(now.getTime()-POST_END_MINUTES*60*1000).toISOString();
@@ -119,23 +148,7 @@ Deno.serve(async(req:Request)=>{
       if(communityError) throw communityError;
       totalCommunities=Math.max(0,Number(count??0)||0);
       const communityIds=(communities??[]).map(row=>row.id);
-
-      if(communityIds.length){
-        const [{data:byStart,error:startError},{data:byEnd,error:endError}]=await Promise.all([
-          admin.from("meetups")
-            .select("id,campfire_meetup_id,community_id,starts_at,ends_at")
-            .in("community_id",communityIds)
-            .gte("starts_at",cutoffIso),
-          admin.from("meetups")
-            .select("id,campfire_meetup_id,community_id,starts_at,ends_at")
-            .in("community_id",communityIds)
-            .gte("ends_at",cutoffIso),
-        ]);
-        if(startError) throw startError;
-        if(endError) throw endError;
-        addRows(meetupMap,byStart as MeetupRow[]|null);
-        addRows(meetupMap,byEnd as MeetupRow[]|null);
-      }
+      if(communityIds.length) await loadDueMeetups(admin,meetupMap,cutoffIso,communityIds);
 
       const [{data:recentEnded,error:recentEndedError},{data:recentNoEnd,error:recentNoEndError}]=await Promise.all([
         admin.from("meetups")
@@ -156,7 +169,7 @@ Deno.serve(async(req:Request)=>{
       offsetAfter=communityIds.length===0||totalCommunities===0||offsetBefore+communityIds.length>=totalCommunities
         ?0
         :offsetBefore+communityIds.length;
-    }else{
+    }else if(mode==="hot"){
       const {data:hotStates,error:hotError}=await admin
         .from("watch_community_state")
         .select("hot_meetup_id,hot_until")
@@ -173,6 +186,14 @@ Deno.serve(async(req:Request)=>{
         if(error) throw error;
         addRows(meetupMap,data as MeetupRow[]|null);
       }
+      offsetAfter=Math.max(0,Number(state.next_offset??0)||0);
+    }else if(mode==="priority"){
+      await loadDueMeetups(admin,meetupMap,cutoffIso,[priorityCommunityId]);
+      offsetAfter=Math.max(0,Number(state.next_offset??0)||0);
+    }else{
+      await loadDueMeetups(admin,meetupMap,cutoffIso);
+      const {count}=await admin.from("communities").select("id",{count:"exact",head:true}).not("campfire_community_id","is",null);
+      totalCommunities=Math.max(0,Number(count??0)||0);
       offsetAfter=Math.max(0,Number(state.next_offset??0)||0);
     }
 
@@ -197,7 +218,7 @@ Deno.serve(async(req:Request)=>{
       await new Promise(resolve=>setTimeout(resolve,120));
     }
 
-    const source=mode==="hot"?"campfire-metric-hot":"campfire-metric-normal";
+    const source=mode==="hot"?"campfire-metric-hot":mode==="priority"?"campfire-metric-priority":mode==="final"?"campfire-metric-final":"campfire-metric-normal";
     const snapshotRows=metricValues
       .map(value=>{
         const meetup=byCampfireId.get(value.id);
@@ -220,19 +241,23 @@ Deno.serve(async(req:Request)=>{
       if(insertError) throw insertError;
     }
 
+    const commonPatch={updated_at:nowIso,last_error:graphErrors.length?graphErrors.join(" | ").slice(0,4000):null};
     const statePatch=mode==="normal"
-      ?{next_offset:offsetAfter,last_normal_at:nowIso,updated_at:nowIso,last_error:graphErrors.length?graphErrors.join(" | ").slice(0,4000):null}
-      :{last_hot_at:nowIso,updated_at:nowIso,last_error:graphErrors.length?graphErrors.join(" | ").slice(0,4000):null};
+      ?{...commonPatch,next_offset:offsetAfter,last_normal_at:nowIso}
+      :mode==="hot"
+        ?{...commonPatch,last_hot_at:nowIso}
+        :commonPatch;
     const {error:updateStateError}=await admin.from("meetup_metric_sync_state").update(statePatch).eq("id",1);
     if(updateStateError) throw updateStateError;
 
     await admin.from("sync_runs").insert({
-      source:mode==="hot"?"meetup-metrics-hot":"meetup-metrics-normal",
+      source:mode==="hot"?"meetup-metrics-hot":mode==="priority"?"meetup-metrics-priority":mode==="final"?"meetup-metrics-final":"meetup-metrics-normal",
       status:graphErrors.length?"partial":"success",
       started_at:nowIso,
       finished_at:new Date().toISOString(),
       details:{
         mode,
+        priority_community_id:priorityCommunityId||null,
         post_end_minutes:POST_END_MINUTES,
         offset_before:offsetBefore,
         offset_after:offsetAfter,
@@ -247,6 +272,7 @@ Deno.serve(async(req:Request)=>{
       ok:true,
       status:graphErrors.length?"partial":"success",
       mode,
+      priorityCommunityId:priorityCommunityId||null,
       offsetBefore,
       offsetAfter,
       dueMeetups:dueMeetups.length,
