@@ -18,6 +18,9 @@ jobs:
           ref: pages
           fetch-depth: 0
 
+      - name: Enable multiline patch matching
+        run: sed -i 's/flags=re.M)/flags=re.M | re.S)/' scripts/one_time_garden_polish.py
+
       - name: Apply Garden polish
         run: python scripts/one_time_garden_polish.py
 
