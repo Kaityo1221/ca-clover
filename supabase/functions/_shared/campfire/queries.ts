@@ -43,6 +43,7 @@ export const CLUB_QUERY=`query CA_Clover_Club($clubId: ID!) {
   club(id: $clubId) {
     id
     name
+    avatarUrl
     address
     location
     createdByCommunityAmbassador
@@ -139,6 +140,7 @@ export const PUBLIC_EVENTS_QUERY=`query CA_Clover_PublicEvents($ids: [ID!]!) {
       name
       clubId
       clubName
+      clubAvatarUrl
       address
       eventTime
       eventEndTime
