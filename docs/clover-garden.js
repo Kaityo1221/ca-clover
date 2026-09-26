@@ -44,9 +44,10 @@
       .clover-year-sheet:before,.clover-year-sheet:after{content:"";position:absolute;top:-7px;width:64px;height:18px;background:rgba(228,211,168,.64);border:1px solid rgba(173,147,101,.18);box-shadow:0 2px 5px rgba(95,70,40,.04);z-index:4}.clover-year-sheet:before{left:18px;transform:rotate(-5deg)}.clover-year-sheet:after{right:22px;transform:rotate(6deg)}
       .clover-sheet-head{position:relative;z-index:3;display:flex;align-items:flex-end;justify-content:space-between;gap:10px}.clover-sheet-year{font-family:"Hiragino Mincho ProN","Yu Mincho",serif;color:#715e43;font-size:22px;font-weight:800;letter-spacing:.06em}.clover-sheet-community{max-width:58%;color:#9b876a;font-size:9px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}.clover-sheet-rule{position:absolute;left:17px;right:17px;top:52px;border-top:1px solid rgba(127,103,72,.13)}
       .clover-sheet-field{position:absolute;left:10px;right:10px;top:62px;bottom:12px}.clover-sheet-field:before{content:"herbarium";position:absolute;right:8px;bottom:2px;color:rgba(113,94,67,.17);font:700 10px/1 Georgia,serif;letter-spacing:.18em;text-transform:uppercase}
-      .clover-specimen{position:absolute;left:var(--x);top:var(--y);width:104px;height:116px;border:0;background:transparent;padding:0;margin:0;transform:translate3d(-50%,-50%,0) rotate(var(--rot));transform-origin:50% 58%;cursor:pointer;-webkit-tap-highlight-color:transparent;z-index:var(--z);filter:drop-shadow(0 4px 4px rgba(64,79,46,.08));transition:transform .32s ease,filter .32s ease;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform-style:preserve-3d}.clover-specimen:active{transform:translate3d(-50%,-50%,0) rotate(var(--rot)) scale(.96)}
-      .clover-specimen:hover{filter:drop-shadow(0 7px 8px rgba(64,79,46,.12))}.clover-specimen.is-drop-pending{opacity:0;filter:none;transform:translate3d(calc(-50% + var(--drop-x,0px)),calc(-50% - 260px),0) rotate(calc(var(--rot) - 6deg)) scale(.985)}.clover-specimen.is-dropping{animation:cloverGardenDrop var(--drop-duration,2.08s) cubic-bezier(.22,.61,.26,1) both;z-index:30;will-change:transform,opacity;filter:none!important;transition:none!important}.clover-specimen.is-dropping .ca-monthly-clover-svg,.clover-specimen.is-drop-pending .ca-monthly-clover-svg,.clover-specimen.is-dropping .clover-specimen-plant>svg,.clover-specimen.is-drop-pending .clover-specimen-plant>svg,.clover-specimen.is-dropping .clover-specimen-plant>img,.clover-specimen.is-drop-pending .clover-specimen-plant>img{filter:none!important}
-      @keyframes cloverGardenDrop{0%{opacity:0;transform:translate3d(calc(-50% + var(--drop-x,0px)),calc(-50% - 260px),0) rotate(calc(var(--rot) - 6deg)) scale(.985)}20%{opacity:1;transform:translate3d(calc(-50% + var(--sway-a,0px)),calc(-50% - 188px),0) rotate(calc(var(--rot) + 3.2deg)) scale(1)}52%{transform:translate3d(calc(-50% + var(--sway-b,0px)),calc(-50% - 92px),0) rotate(calc(var(--rot) - 1.5deg)) scale(1)}78%{transform:translate3d(calc(-50% + var(--sway-c,0px)),calc(-50% - 18px),0) rotate(calc(var(--rot) + .6deg)) scale(1)}90%{transform:translate3d(calc(-50% + var(--slide-x,1px)),calc(-50% + 1px),0) rotate(var(--rot)) scale(1,.972)}100%{opacity:1;transform:translate3d(-50%,-50%,0) rotate(var(--rot)) scale(1)}}
+      .clover-specimen{position:absolute;left:var(--x);top:var(--y);width:104px;height:116px;border:0;background:transparent;padding:0;margin:0;transform:translate3d(-50%,-50%,0);transform-origin:50% 58%;cursor:pointer;-webkit-tap-highlight-color:transparent;z-index:var(--z);filter:drop-shadow(0 4px 4px rgba(64,79,46,.08));transition:transform .32s ease,filter .32s ease;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform-style:preserve-3d}.clover-specimen:active{transform:translate3d(-50%,-50%,0) scale(.96)}
+      .clover-specimen:hover{filter:drop-shadow(0 7px 8px rgba(64,79,46,.12))}.clover-specimen-motion{position:absolute;inset:0;transform:translate3d(0,0,0) rotate(var(--rot));transform-origin:50% 58%;backface-visibility:hidden;-webkit-backface-visibility:hidden;will-change:auto}.clover-specimen.is-drop-pending{opacity:0;filter:none;transform:translate3d(-50%,calc(-50% - 236px),0)}.clover-specimen.is-drop-pending .clover-specimen-motion{transform:translate3d(var(--drop-x,0px),0,0) rotate(calc(var(--rot) - 4deg)) scale(.985)}.clover-specimen.is-dropping{animation:cloverGardenFall var(--drop-duration,2.18s) cubic-bezier(.18,.58,.24,1) var(--drop-delay,0s) both;z-index:30;will-change:transform,opacity;filter:none!important;transition:none!important}.clover-specimen.is-dropping .clover-specimen-motion{animation:cloverGardenDrift var(--drop-duration,2.18s) ease-in-out var(--drop-delay,0s) both;will-change:transform}.clover-specimen.is-dropping .ca-monthly-clover-svg,.clover-specimen.is-drop-pending .ca-monthly-clover-svg,.clover-specimen.is-dropping .clover-specimen-plant>svg,.clover-specimen.is-drop-pending .clover-specimen-plant>svg,.clover-specimen.is-dropping .clover-specimen-plant>img,.clover-specimen.is-drop-pending .clover-specimen-plant>img{filter:none!important}
+      @keyframes cloverGardenFall{0%{opacity:0;transform:translate3d(-50%,calc(-50% - 236px),0)}10%{opacity:1}86%{opacity:1;transform:translate3d(-50%,calc(-50% - 7px),0)}94%{transform:translate3d(-50%,calc(-50% + 1px),0)}100%{opacity:1;transform:translate3d(-50%,-50%,0)}}
+      @keyframes cloverGardenDrift{0%{transform:translate3d(var(--drop-x,0px),0,0) rotate(calc(var(--rot) - 4deg)) scale(.985)}28%{transform:translate3d(var(--sway-a,0px),0,0) rotate(calc(var(--rot) + 1.8deg)) scale(1)}58%{transform:translate3d(var(--sway-b,0px),0,0) rotate(calc(var(--rot) - .9deg)) scale(1)}82%{transform:translate3d(var(--sway-c,0px),0,0) rotate(calc(var(--rot) + .25deg)) scale(1)}93%{transform:translate3d(var(--slide-x,1px),0,0) rotate(var(--rot)) scale(1,.974)}100%{transform:translate3d(0,0,0) rotate(var(--rot)) scale(1)}}
       @keyframes cloverYearShuffle{0%{transform:translate(-50%,-50%) rotate(var(--rot))}48%{transform:translate(calc(-50% + var(--shuffle-x)),calc(-50% + var(--shuffle-y))) rotate(calc(var(--rot) + var(--shuffle-r))) scale(1.015)}100%{transform:translate(-50%,-50%) rotate(var(--rot))}}
       .clover-specimen-plant{position:absolute;left:7px;right:7px;top:0;height:86px;transform:rotate(-1.25deg);pointer-events:none}.clover-specimen-plant .ca-monthly-clover-svg,.clover-specimen-plant>svg,.clover-specimen-plant>img{display:block;width:100%;height:100%;max-width:none;margin:0;object-fit:contain;overflow:visible;filter:drop-shadow(0 4px 4px rgba(47,106,53,.12))}.clover-specimen-plant-fallback>img{object-fit:contain}
       .clover-specimen-tag{position:absolute;left:6px;right:2px;bottom:0;min-height:27px;padding:4px 5px 3px;border:1px solid rgba(144,119,83,.14);border-radius:2px 5px 3px 4px;background:rgba(255,252,237,.83);box-shadow:0 2px 5px rgba(102,78,48,.05);transform:rotate(-1.5deg);color:#6f604e;text-align:center}.clover-specimen-month{display:block;font-family:"Hiragino Mincho ProN","Yu Mincho",serif;font-size:11px;font-weight:800;line-height:1.1}.clover-specimen-name{display:block;margin-top:2px;font-size:7px;font-weight:800;color:#998871;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -147,7 +148,7 @@
     if(!items.length)return;
     items.forEach((el,i)=>{
       el.classList.remove("is-dropping","is-drop-pending");
-      el.style.animationDelay=(i*.12)+"s";
+      el.style.setProperty("--drop-delay",(i*.12)+"s");
       el.classList.add("is-drop-pending");
     });
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
@@ -155,9 +156,10 @@
         if(!el.isConnected)return;
         el.classList.remove("is-drop-pending");
         el.classList.add("is-dropping");
-        el.addEventListener("animationend",()=>{
+        el.addEventListener("animationend",e=>{
+          if(e.animationName!=="cloverGardenFall")return;
           el.classList.remove("is-dropping");
-          el.style.animationDelay="";
+          el.style.removeProperty("--drop-delay");
         },{once:true});
       });
     }));
@@ -291,7 +293,7 @@
     const x=(slot[0]+jitter(seed+"x",2.5)).toFixed(2)+"%";
     const y=(slot[1]+jitter(seed+"y",2.1)).toFixed(2)+"%";
     const rot=(slot[2]+jitter(seed+"r",3.2)).toFixed(2)+"deg";
-    const dropDuration=(1.96+(hash(seed+"d")%27)/100).toFixed(2)+"s";
+    const dropDuration=(2.12+(hash(seed+"d")%19)/100).toFixed(2)+"s";
     const dropX=(jitter(seed+"drop",12)).toFixed(1)+"px";
     const swayA=(jitter(seed+"sa",9)).toFixed(1)+"px";
     const swayB=(jitter(seed+"sb",6)).toFixed(1)+"px";
@@ -302,7 +304,7 @@
     const shuffleR=(jitter(seed+"sr",3.5)).toFixed(1)+"deg";
     const stages=[s.host_stage,s.join_stage,s.exchange_stage,s.continue_stage].map(clampStage);
     const plant=specimenPlantSvg(stages,index);
-    return '<button type="button" class="clover-specimen'+(isNew?' is-drop-pending':'')+'" data-snapshot-index="'+index+'"'+(s._test?' data-test-preview="1"':'')+' style="--x:'+x+';--y:'+y+';--rot:'+rot+';--z:'+(10+month)+';--drop-duration:'+dropDuration+';--drop-x:'+dropX+';--sway-a:'+swayA+';--sway-b:'+swayB+';--sway-c:'+swayC+';--slide-x:'+slideX+';--shuffle-x:'+shuffleX+';--shuffle-y:'+shuffleY+';--shuffle-r:'+shuffleR+'" aria-label="'+esc(month+'月のCloverを開く')+'">'+plant+'<span class="clover-specimen-tag"><span class="clover-specimen-month">'+month+'月'+(s._test?' TEST':'')+'</span><span class="clover-specimen-name">'+esc(communityName||"Community")+'</span></span></button>';
+    return '<button type="button" class="clover-specimen'+(isNew?' is-drop-pending':'')+'" data-snapshot-index="'+index+'"'+(s._test?' data-test-preview="1"':'')+' style="--x:'+x+';--y:'+y+';--rot:'+rot+';--z:'+(10+month)+';--drop-duration:'+dropDuration+';--drop-x:'+dropX+';--sway-a:'+swayA+';--sway-b:'+swayB+';--sway-c:'+swayC+';--slide-x:'+slideX+';--shuffle-x:'+shuffleX+';--shuffle-y:'+shuffleY+';--shuffle-r:'+shuffleR+'" aria-label="'+esc(month+'月のCloverを開く')+'"><span class="clover-specimen-motion">'+plant+'<span class="clover-specimen-tag"><span class="clover-specimen-month">'+month+'月'+(s._test?' TEST':'')+'</span><span class="clover-specimen-name">'+esc(communityName||"Community")+'</span></span></span></button>';
   }
 
   function stageDots(stage){
