@@ -4,6 +4,7 @@ import {
   type CampfireEvent,
 } from "../_shared/campfire/mod.ts";
 import {processMeetupRows,type MeetupWriteRow} from "../_shared/meetup-watch/mod.ts";
+import {syncMeetupRewardEligibility} from "../_shared/meetup-metadata.ts";
 
 const corsHeaders={
   "Access-Control-Allow-Origin":"*",
@@ -230,6 +231,10 @@ Deno.serve(async(req:Request)=>{
 
     const nowIso=new Date().toISOString();
     const rows:Array<Record<string,unknown>>=[];
+    const metadataRows:Array<{
+      campfire_meetup_id:string;
+      is_passcode_reward_eligible:boolean|null;
+    }>=[];
     const unmatchedClubIds=new Set<string>();
     const promotedCommunityIds:Array<Record<string,string>>=[];
     let detailFailures=0;
@@ -278,12 +283,19 @@ Deno.serve(async(req:Request)=>{
           continue;
         }
         rows.push(meetupRow(event,community.id,nowIso));
+        metadataRows.push({
+          campfire_meetup_id:event.id,
+          is_passcode_reward_eligible:typeof event.isPasscodeRewardEligible==="boolean"
+            ?event.isPasscodeRewardEligible
+            :null,
+        });
       }catch{
         detailFailures++;
       }
     }
 
     const diff=await processMeetupRows(admin,rows as MeetupWriteRow[]);
+    const rewardMetadata=await syncMeetupRewardEligibility(admin,metadataRows);
     if(diff.touchedCommunityIds.length){
       const {error:updateError}=await admin
         .from("communities")
@@ -308,7 +320,8 @@ Deno.serve(async(req:Request)=>{
       new_events:diff.newEvents,
       structure_updates:diff.structureUpdates,
       activity_updates:diff.activityUpdates,
-      metadata_updates:diff.metadataUpdates,
+      metadata_updates:rewardMetadata.updated,
+      reward_metadata_checked:rewardMetadata.checked,
       unchanged_events:diff.unchanged,
       watch_evaluated:diff.watchEvaluated,
       watch_cases_touched:diff.watchCasesTouched,
@@ -343,7 +356,8 @@ Deno.serve(async(req:Request)=>{
       newEvents:diff.newEvents,
       structureUpdates:diff.structureUpdates,
       activityUpdates:diff.activityUpdates,
-      metadataUpdates:diff.metadataUpdates,
+      metadataUpdates:rewardMetadata.updated,
+      rewardMetadataChecked:rewardMetadata.checked,
       unchangedEvents:diff.unchanged,
       watchEvaluated:diff.watchEvaluated,
       watchCasesTouched:diff.watchCasesTouched,
