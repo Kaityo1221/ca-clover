@@ -81,9 +81,9 @@
       .ca-monthly-clover-card{position:relative;overflow:hidden;background:linear-gradient(145deg,#fffaf2,#fff,#f1f8eb);border:1px solid #eadfce;border-radius:28px;padding:20px;box-shadow:0 18px 46px rgba(89,103,68,.10)}
       .ca-monthly-clover-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
       .ca-monthly-clover-title{margin:0;color:#3f5f36;font-size:22px;font-weight:950}.ca-monthly-clover-month{font-size:12px;font-weight:950;color:#7b6b58;background:#fff7ea;border:1px solid #eadfce;border-radius:999px;padding:7px 10px}
-      .ca-monthly-clover-body{display:grid;grid-template-columns:minmax(220px,360px) 1fr;align-items:center;gap:18px;margin-top:12px}.ca-monthly-clover-stage{min-width:0}.ca-monthly-clover-svg{width:100%;max-width:350px;display:block;margin:auto;overflow:visible}
+      .ca-monthly-clover-body{display:grid;grid-template-columns:minmax(220px,360px) 1fr;align-items:center;gap:18px;margin-top:12px}.ca-monthly-clover-stage{min-width:0;perspective:760px}.ca-monthly-clover-svg{width:100%;max-width:350px;display:block;margin:auto;overflow:visible}
       .ca-month-leaf{cursor:pointer;filter:url(#caCloverShadow)}
-      .ca-month-leaf-scale{transform-box:fill-box;transform-origin:50% 96%;transform:scale(var(--leaf-scale));opacity:var(--leaf-opacity);transition:transform .48s cubic-bezier(.2,.8,.2,1),opacity .35s ease}
+      .ca-month-leaf-scale{transform-box:fill-box;transform-origin:50% 96%;transform:scale(var(--leaf-scale));opacity:var(--leaf-opacity);transition:transform .48s cubic-bezier(.2,.8,.2,1),opacity .35s ease;transform-style:preserve-3d;backface-visibility:hidden}
       .ca-month-leaf-fill{stroke:#2b8c42;stroke-width:.72;stroke-opacity:.34;stroke-linejoin:round}
       .ca-month-leaf-fill.stage-fill-0{fill:url(#caStage0)}.ca-month-leaf-fill.stage-fill-1{fill:url(#caStage1)}.ca-month-leaf-fill.stage-fill-2{fill:url(#caStage2)}.ca-month-leaf-fill.stage-fill-3{fill:url(#caStage3)}.ca-month-leaf-fill.stage-fill-4{fill:url(#caStage4)}
       .ca-month-leaf-texture{fill:rgba(255,255,255,.02);filter:url(#caLeafTextureFilter);opacity:.72}
@@ -94,8 +94,9 @@
       .ca-month-stem{fill:none;stroke:url(#caStemGradient);stroke-width:9;stroke-linecap:round;filter:url(#caCloverShadow)}.ca-month-stem-hi{fill:none;stroke:#dcf7a2;stroke-width:1.8;stroke-linecap:round;opacity:.78}
       .ca-month-center{fill:#5ebc43;stroke:#d9ef8b;stroke-width:1.3;filter:url(#caCloverShadow)}
       .ca-month-dew circle{fill:url(#caDew);stroke:#fff;stroke-width:.9;stroke-opacity:.8}.ca-month-dew-hi{fill:#fff;opacity:.9;filter:url(#caCloverBlur)}
-      .ca-month-leaf.is-flipping .ca-month-leaf-scale{animation:caCloverFlip .76s cubic-bezier(.22,.76,.25,1)}
-      @keyframes caCloverFlip{0%{transform:scale(var(--leaf-scale)) rotateX(0deg)}42%{transform:scale(var(--leaf-scale)) rotateX(82deg) translateY(-5px)}58%{transform:scale(calc(var(--leaf-scale) * 1.035)) rotateX(98deg) translateY(-4px)}100%{transform:scale(var(--leaf-scale)) rotateX(180deg)}}
+      .ca-month-leaf.is-flipping{pointer-events:none}.ca-month-leaf.is-flipping .ca-month-leaf-scale{animation:caCloverFlip .78s cubic-bezier(.2,.78,.24,1)}.ca-month-leaf.is-flipping .ca-month-leaf-light{animation:caCloverGrowLight .78s ease}
+      @keyframes caCloverFlip{0%{transform:scale(var(--leaf-scale)) rotateX(0deg) translateY(0)}34%{transform:scale(var(--leaf-scale)) rotateX(74deg) translateY(-6px)}56%{transform:scale(calc(var(--leaf-scale) * 1.055)) rotateX(-11deg) translateY(-7px)}78%{transform:scale(calc(var(--leaf-scale) * 1.025)) rotateX(4deg) translateY(-3px)}100%{transform:scale(var(--leaf-scale)) rotateX(0deg) translateY(0)}}
+      @keyframes caCloverGrowLight{0%,100%{opacity:calc(.55 * var(--gloss-opacity))}48%{opacity:calc(.86 * var(--gloss-opacity))}}
       .ca-monthly-clover-legend{display:grid;grid-template-columns:1fr 1fr;gap:9px}.ca-monthly-axis{border:1px solid #e5e7eb;background:rgba(255,255,255,.9);border-radius:18px;padding:12px;text-align:left;cursor:pointer;box-shadow:0 4px 12px rgba(75,85,99,.035)}.ca-monthly-axis b{display:block;color:#355c30;font-size:13px}.ca-monthly-axis span{display:block;color:#748092;font-size:11px;font-weight:800;margin-top:4px}.ca-monthly-axis .dots{display:flex;gap:5px;margin-top:8px}.ca-monthly-axis .dot{width:9px;height:9px;border-radius:50%;background:#e5eadf}.ca-monthly-axis .dot.on{background:#57b95d}.ca-monthly-note{margin:10px 0 0;color:#7b8792;font-size:11px;font-weight:800;line-height:1.6}
       @media(max-width:680px){.ca-monthly-clover-card{padding:17px}.ca-monthly-clover-body{grid-template-columns:1fr;gap:8px}.ca-monthly-clover-stage{max-width:320px;margin:auto}.ca-monthly-clover-legend{grid-template-columns:1fr 1fr}.ca-monthly-clover-title{font-size:20px}}
     `;
@@ -114,11 +115,16 @@
   }
 
   function flip(root,key){
-    if(!root)return;
+    if(!root)return Promise.resolve(false);
     const leaf=root.querySelector('[data-axis="'+key+'"]');
-    if(!leaf)return;
-    leaf.classList.remove("is-flipping"); void leaf.getBoundingClientRect(); leaf.classList.add("is-flipping");
-    setTimeout(()=>leaf.classList.remove("is-flipping"),800);
+    if(!leaf)return Promise.resolve(false);
+    leaf.classList.remove("is-flipping");
+    void leaf.getBoundingClientRect();
+    leaf.classList.add("is-flipping");
+    return new Promise(resolve=>setTimeout(()=>{
+      leaf.classList.remove("is-flipping");
+      resolve(true);
+    },820));
   }
 
   function stagesFromMetrics(metrics){

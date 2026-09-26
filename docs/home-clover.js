@@ -14,6 +14,7 @@
   let client=null;
   let rendering=false;
   let renderToken=0;
+  const activeGrowthControllers=new Set();
 
   function getClient(){
     if(client)return client;
@@ -34,7 +35,7 @@
         return;
       }
       const script=document.createElement("script");
-      script.src="./monthly-clover.js?v=20260926-home2";
+      script.src="./monthly-clover.js?v=20260926-growth1";
       script.async=true;
       script.dataset.caMonthlyClover="1";
       script.onload=()=>resolve(Boolean(window.CAMonthlyClover));
@@ -63,7 +64,7 @@
       .home-week-metric{border:1px solid rgba(226,232,240,.92);border-radius:17px;padding:11px;background:rgba(255,255,255,.82);min-width:0}
       .home-week-metric .label{font-size:11px;font-weight:950;display:flex;align-items:center;gap:5px}.home-week-metric .value{font-size:18px;font-weight:950;margin-top:5px;letter-spacing:-.02em}.home-week-metric .desc{font-size:10px;font-weight:850;color:#94a3b8;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       .home-week-metric.orange .label,.home-week-metric.orange .value{color:#ea580c}.home-week-metric.blue .label,.home-week-metric.blue .value{color:#0284c7}.home-week-metric.rose .label,.home-week-metric.rose .value{color:#e11d48}.home-week-metric.green .label,.home-week-metric.green .value{color:#16a34a}
-      .home-clover-growth{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;padding:10px 13px;border-radius:16px;background:rgba(255,247,237,.88);border:1px solid #fed7aa;color:#c2410c;font-size:12px;font-weight:950;text-align:center}
+      .home-clover-growth{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:10px 12px 10px 13px;border-radius:16px;background:rgba(255,247,237,.88);border:1px solid #fed7aa;color:#c2410c;font-size:12px;font-weight:950;text-align:left}.home-clover-growth-message{flex:1;min-width:0}.home-clover-skip{border:1px solid #fdba74;background:rgba(255,255,255,.9);color:#9a3412;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:950;line-height:1;box-shadow:0 3px 10px rgba(154,52,18,.06)}.home-clover-skip[hidden]{display:none!important}
       .home-clover-status{padding:16px;border-radius:22px;background:#fff;border:1px solid #ecfccb;color:#64748b;font-size:12px;font-weight:850;text-align:center}
       .home-clover-modal{position:fixed;inset:0;z-index:160;background:rgba(15,23,42,.42);padding:16px;display:grid;place-items:center}
       .home-clover-modal-card{width:min(440px,100%);max-height:calc(100dvh - 32px);overflow:auto;background:#fffaf2;border:1px solid #eadfce;border-radius:25px;padding:20px;box-shadow:0 30px 80px rgba(15,23,42,.22)}
@@ -175,6 +176,9 @@
     if(!before)return [];
     return window.CAMonthlyClover.AXES.filter(a=>number(after[a.key])>number(before[a.key])).map(a=>a.key);
   }
+  function cancelAllGrowthAnimations(save){
+    [...activeGrowthControllers].forEach(controller=>controller.cancel(Boolean(save)));
+  }
 
   function monthDetailRows(model,key){
     if(key==="host"){
@@ -213,22 +217,84 @@
       leaf.addEventListener("click",()=>openAxisModal(model,leaf.dataset.axis));
       leaf.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openAxisModal(model,leaf.dataset.axis)}});
     });
+
     const before=previousStages(uid,model.community.id,model.now);
     const grown=grownAxes(before,model.stages);
     const growth=root.querySelector("[data-growth-message]");
+    const skip=root.querySelector("[data-growth-skip]");
+    const reduced=Boolean(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches);
     if(growth){
-      growth.innerHTML=grown.length?'🌱 今回、'+grown.length+'枚の葉が育ちました。':'🍀 今月の活動がCloverに育っています。';
+      growth.textContent=grown.length?'🌱 今回、'+grown.length+'枚の葉が育ちました。':'🍀 今月の活動がCloverに育っています。';
     }
-    if(grown.length&&!matchMedia("(prefers-reduced-motion: reduce)").matches){
-      grown.forEach((key,i)=>setTimeout(()=>window.CAMonthlyClover.flip(root,key),420+i*430));
+
+    // 初回表示は現在値を基準として保存し、成長演出は行わない。
+    if(!before){
+      saveStages(uid,model.community.id,model.now,model.stages);
+      return;
     }
-    saveStages(uid,model.community.id,model.now,model.stages);
+    if(!grown.length||reduced){
+      saveStages(uid,model.community.id,model.now,model.stages);
+      return;
+    }
+
+    if(skip)skip.hidden=false;
+    let cancelled=false;
+    let completed=false;
+    let timers=[];
+    const clearTimers=()=>{
+      timers.forEach(id=>clearTimeout(id));
+      timers=[];
+    };
+    const finish=()=>{
+      if(completed)return;
+      completed=true;
+      clearTimers();
+      root.querySelectorAll(".ca-month-leaf.is-flipping").forEach(leaf=>leaf.classList.remove("is-flipping"));
+      if(skip)skip.hidden=true;
+      saveStages(uid,model.community.id,model.now,model.stages);
+      activeGrowthControllers.delete(controller);
+    };
+    const controller={
+      cancel(save){
+        if(completed)return;
+        cancelled=true;
+        clearTimers();
+        root.querySelectorAll(".ca-month-leaf.is-flipping").forEach(leaf=>leaf.classList.remove("is-flipping"));
+        if(skip)skip.hidden=true;
+        if(save)saveStages(uid,model.community.id,model.now,model.stages);
+        completed=true;
+        activeGrowthControllers.delete(controller);
+      }
+    };
+    activeGrowthControllers.add(controller);
+    if(skip)skip.addEventListener("click",()=>controller.cancel(true),{once:true});
+
+    const schedule=(fn,ms)=>{
+      const id=setTimeout(()=>{
+        timers=timers.filter(x=>x!==id);
+        if(!cancelled)fn();
+      },ms);
+      timers.push(id);
+    };
+    let index=0;
+    const playNext=()=>{
+      if(cancelled)return;
+      if(index>=grown.length){
+        finish();
+        return;
+      }
+      const key=grown[index++];
+      window.CAMonthlyClover.flip(root,key);
+      schedule(playNext,1060);
+    };
+
+    schedule(playNext,420);
   }
 
   function monthHtml(model){
     const label=model.totalCommunities>1?'<div class="home-clover-community-label">'+(model.community.avatar_url?'<img src="'+esc(model.community.avatar_url)+'" alt="">':'🍀')+'<span>'+esc(model.community.name)+'</span></div>':"";
     const monthly=window.CAMonthlyClover.cardHtml({date:model.now,stages:model.stages,details:model.details});
-    return label+monthly+'<div class="home-clover-growth" data-growth-message>🍀 今月の活動がCloverに育っています。</div>'+weeklyHtml(model);
+    return label+monthly+'<div class="home-clover-growth"><span class="home-clover-growth-message" data-growth-message aria-live="polite">🍀 今月の活動がCloverに育っています。</span><button type="button" class="home-clover-skip" data-growth-skip hidden>Skip</button></div>'+weeklyHtml(model);
   }
 
   function findCommunitySection(){
@@ -300,7 +366,7 @@
   const observer=new MutationObserver(schedule);
   function start(){
     observer.observe(document.body,{childList:true,subtree:true});
-    window.addEventListener("hashchange",()=>{renderToken++;document.getElementById(ROOT_ID)?.remove();schedule()});
+    window.addEventListener("hashchange",()=>{cancelAllGrowthAnimations(false);renderToken++;document.getElementById(ROOT_ID)?.remove();schedule()});
     schedule();
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
