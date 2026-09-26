@@ -1,0 +1,37 @@
+name: One-time Growth Title Wrap
+
+on:
+  push:
+    paths:
+      - '.github/workflows/one-time-growth-title-wrap.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages
+      - name: Fix Community Growth title wrapping
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('docs/index.html')
+          s = p.read_text()
+          old = '<h2>🌱 Community Growth / '+"'+e(periodLabel)+'"+'</h2>'
+          new = '<h2 style="word-break:keep-all;overflow-wrap:normal">🌱 Community Growth / '+"'+e(periodLabel)+'"+'</h2>'
+          assert old in s, 'target title not found'
+          s = s.replace(old, new, 1)
+          s = s.replace('const VERSION="my-community-20260927-growth1";', 'const VERSION="my-community-20260927-growth-wrap1";', 1)
+          p.write_text(s)
+          PY
+      - name: Commit patch to pages
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/index.html
+          git commit -m 'fix: keep Community Growth period label together'
+          git push origin pages
