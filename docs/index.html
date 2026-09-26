@@ -50,12 +50,12 @@
   const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
   const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
   const ROOT="https://kaityo1221.github.io/ca-clover/";
-  const VERSION="my-community-20260927-rate1";
+  const VERSION="my-community-20260927-historysplit1";
   const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}
   });
 
-  let session=null, profile=null, permissions=new Set(), busy=false, flash=null, communityPeriod=30, renderToken=0;
+  let session=null, profile=null, permissions=new Set(), busy=false, flash=null, communityPeriod=90, renderToken=0;
   const COMMUNITY_PERIODS=[["1か月",30],["3か月",90],["6か月",180],["1年",365],["全期間",null]];
   const app=document.getElementById("app");
   const nav=document.getElementById("nav");
@@ -74,6 +74,9 @@
     const pct=c/r*100;
     const text=Math.abs(pct-Math.round(pct))<0.05?String(Math.round(pct)):pct.toFixed(1);
     return '<span class="pill slate">参加率 '+e(text)+'%</span>';
+  }
+  function meetupCardHtml(m,index){
+    return '<button type="button" class="claim clickable" style="display:block;width:100%;text-align:left;margin-top:10px" data-meetup-index="'+index+'"><div class="row between wraprow"><div><div class="tiny strong" style="color:#65a30d">'+e(fmt(m.starts_at))+'</div><h3 style="margin-top:5px">'+e(m.title)+'</h3>'+(m.campfire_live_event_name?'<div style="margin-top:6px"><span class="pill" style="max-width:100%;white-space:normal;line-height:1.35;background:#eff6ff;color:#475569">🏷️ '+e(m.campfire_live_event_name)+'</span></div>':'')+'<div class="small muted strong" style="margin-top:4px">📍 '+e(m.location||"場所未取得")+'</div></div><div class="tags" style="margin-top:0">'+(m.is_ca_meetup?'<span title="Host: Ambassador" aria-label="Host: Ambassador">🟪</span>':'')+(m.is_passcode_reward_eligible===true?'<span title="Rewards" aria-label="Rewards">🎁</span>':'')+'<span class="pill">概要を見る →</span></div></div><div class="tags"><span class="pill slate">RSVP '+e(m.rsvp_count==null?"—":m.rsvp_count)+'</span><span class="pill slate">Check-in '+e(m.checkin_count==null?"—":m.checkin_count)+'</span>'+participationRateHtml(m)+'</div></button>';
   }
   function communityIconHtml(community,large){
     const cls=large?"community-avatar large":"community-avatar";
@@ -271,27 +274,40 @@
     }
     const community=base.data;
     const period=communityPeriod;
-    const periodLabel=(COMMUNITY_PERIODS.find(function(item){return item[1]===period})||["1か月"])[0];
+    const periodLabel=(COMMUNITY_PERIODS.find(function(item){return item[1]===period})||["3か月"])[0];
     const trendBucket=activityBucket(period);
+    const nowIso=new Date().toISOString();
     const since=period===null?null:new Date(Date.now()-period*24*60*60*1000).toISOString();
+    const meetupFields="id,title,starts_at,ends_at,location,event_url,details,is_ca_meetup,rsvp_count,checkin_count,is_passcode_reward_eligible,campfire_live_event_name";
 
     let meetupQuery=client.from("meetups")
-      .select("id,title,starts_at,ends_at,location,event_url,details,is_ca_meetup,rsvp_count,checkin_count,is_passcode_reward_eligible,campfire_live_event_name")
+      .select(meetupFields)
       .eq("community_id",id)
+      .lte("starts_at",nowIso)
       .order("starts_at",{ascending:false})
       .limit(period===null?500:50);
     if(since) meetupQuery=meetupQuery.gte("starts_at",since);
 
+    const upcomingQuery=client.from("meetups")
+      .select(meetupFields)
+      .eq("community_id",id)
+      .gt("starts_at",nowIso)
+      .order("starts_at",{ascending:true})
+      .limit(20);
+
     const results=await Promise.all([
       meetupQuery,
+      upcomingQuery,
       client.from("community_ca_members").select("ca_member_id").eq("community_id",id),
       client.rpc("community_activity_summary",{p_community_id:id,p_days:period}),
       client.rpc("community_activity_trend",{p_community_id:id,p_bucket:trendBucket,p_days:period})
     ]);
     const meetups=results[0].data||[];
-    const links=results[1].data||[];
-    const summary=(results[2].data&&results[2].data[0])||{meetup_count:0,ca_meetup_count:0,rsvp_count:0,checkin_count:0,last_event_at:null};
-    const trend=results[3].data||[];
+    const upcoming=results[1].data||[];
+    const links=results[2].data||[];
+    const summary=(results[3].data&&results[3].data[0])||{meetup_count:0,ca_meetup_count:0,rsvp_count:0,checkin_count:0,last_event_at:null};
+    const trend=results[4].data||[];
+    const cardMeetups=upcoming.concat(meetups);
     let cas=[];
     if(links.length){
       const cr=await client.from("ca_members").select("id,trainer_name,ca_level").in("id",links.map(function(x){return x.ca_member_id})).order("ca_level");
@@ -305,8 +321,13 @@
       '<section class="card hero section"><div class="community-hero-row">'+communityIconHtml(community,true)+'<div><span class="pill">'+e(community.prefecture||"—")+'</span><h1 style="margin-top:10px">'+e(community.name)+'</h1></div></div>'+
       '<div class="tags">'+
       cas.map(function(ca){const mine=(profile&&profile.niantic_id?String(profile.niantic_id):"").replace(/^@+/,"").toLowerCase()===String(ca.trainer_name||"").replace(/^@+/,"").toLowerCase();const cls=ca.ca_level==="1st"?"amber":ca.ca_level==="2nd"?"blue":"";return '<span class="pill '+cls+'">'+e(ca.ca_level||"CA")+': '+e(ca.trainer_name)+(mine?'（あなた）':'')+'</span>'}).join("")+
-      '</div><div class="tags"><span class="pill slate">Member: '+e(community.member_count==null?"未取得":Number(community.member_count).toLocaleString("ja-JP"))+'</span></div>'+(community.coverage!=="complete"?'<div class="notice section">⚠️ 一部の過去データが未取得のため、全期間集計は参考値です</div>':'')+(community.campfire_url?'<p><a href="'+e(community.campfire_url)+'" target="_blank" rel="noreferrer" style="color:#65a30d;font-weight:900">Campfireを開く ↗</a></p>':'')+'</section>'+
-      '<div class="periodbar">'+COMMUNITY_PERIODS.map(function(item){return '<button type="button" class="periodbtn '+(item[1]===period?'active':'')+'" data-community-period="'+(item[1]===null?'all':item[1])+'">'+item[0]+'</button>'}).join("")+'</div>'+
+      '</div><div class="tags"><span class="pill slate">Member: '+e(community.member_count==null?"未取得":Number(community.member_count).toLocaleString("ja-JP"))+'</span></div>'+(community.coverage!=="complete"?'<div class="notice section">⚠️ 一部の過去データが未取得のため、全期間集計は参考値です</div>':'')+(community.campfire_url?'<p><a href="'+e(community.campfire_url)+'" target="_blank" rel="noreferrer" style="color:#65a30d;font-weight:900">Campfireを開く ↗</a></p>':'')+'</section>';
+
+    if(upcoming.length){
+      html+='<section class="card section"><h2>📅 今後のMeetup</h2><p class="muted small strong">開催予定 '+upcoming.length+'件</p><div class="section">'+upcoming.map(function(m,index){return meetupCardHtml(m,index)}).join("")+'</div></section>';
+    }
+
+    html+='<div class="periodbar">'+COMMUNITY_PERIODS.map(function(item){return '<button type="button" class="periodbtn '+(item[1]===period?'active':'')+'" data-community-period="'+(item[1]===null?'all':item[1])+'">'+item[0]+'</button>'}).join("")+'</div>'+
       '<section class="grid g3 section"><div class="metric"><span class="tiny strong muted">🔥 Meetup / '+e(periodLabel)+'</span><b>'+meetupCount.toLocaleString("ja-JP")+'</b></div>'+
       '<div class="metric"><span class="tiny strong muted">🍀 CA Meetup / '+e(periodLabel)+'</span><b>'+caMeetups.toLocaleString("ja-JP")+'</b></div>'+
       '<div class="metric"><span class="tiny strong muted">✅ Check-in / '+e(periodLabel)+'</span><b>'+totalCheckin.toLocaleString("ja-JP")+'</b></div></section>'+
@@ -315,9 +336,7 @@
     if(!meetups.length){
       html+='<div class="notice section">この期間のMeetupデータはありません。</div>';
     }else{
-      html+='<div class="section">'+meetups.map(function(m,index){
-        return '<button type="button" class="claim clickable" style="display:block;width:100%;text-align:left;margin-top:10px" data-meetup-index="'+index+'"><div class="row between wraprow"><div><div class="tiny strong" style="color:#65a30d">'+e(fmt(m.starts_at))+'</div><h3 style="margin-top:5px">'+e(m.title)+'</h3>'+(m.campfire_live_event_name?'<div style="margin-top:6px"><span class="pill" style="max-width:100%;white-space:normal;line-height:1.35;background:#eff6ff;color:#475569">🏷️ '+e(m.campfire_live_event_name)+'</span></div>':'')+'<div class="small muted strong" style="margin-top:4px">📍 '+e(m.location||"場所未取得")+'</div></div><div class="tags" style="margin-top:0">'+(m.is_ca_meetup?'<span title="Host: Ambassador" aria-label="Host: Ambassador">🟪</span>':'')+(m.is_passcode_reward_eligible===true?'<span title="Rewards" aria-label="Rewards">🎁</span>':'')+'<span class="pill">概要を見る →</span></div></div><div class="tags"><span class="pill slate">RSVP '+e(m.rsvp_count==null?"—":m.rsvp_count)+'</span><span class="pill slate">Check-in '+e(m.checkin_count==null?"—":m.checkin_count)+'</span>'+participationRateHtml(m)+'</div></button>';
-      }).join("")+'</div>';
+      html+='<div class="section">'+meetups.map(function(m,index){return meetupCardHtml(m,upcoming.length+index)}).join("")+'</div>';
     }
     html+='</section><div class="version">mirror '+VERSION+'</div>';
     app.innerHTML=html;
@@ -331,7 +350,7 @@
     app.querySelectorAll("[data-meetup-index]").forEach(function(b){
       b.onclick=function(){
         const index=Number(b.dataset.meetupIndex);
-        if(Number.isInteger(index)&&meetups[index])openMeetupOverview(meetups[index]);
+        if(Number.isInteger(index)&&cardMeetups[index])openMeetupOverview(cardMeetups[index]);
       };
     });
   }
