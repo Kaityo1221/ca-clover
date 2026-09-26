@@ -44,9 +44,9 @@
       .clover-year-sheet:before,.clover-year-sheet:after{content:"";position:absolute;top:-7px;width:64px;height:18px;background:rgba(228,211,168,.64);border:1px solid rgba(173,147,101,.18);box-shadow:0 2px 5px rgba(95,70,40,.04);z-index:4}.clover-year-sheet:before{left:18px;transform:rotate(-5deg)}.clover-year-sheet:after{right:22px;transform:rotate(6deg)}
       .clover-sheet-head{position:relative;z-index:3;display:flex;align-items:flex-end;justify-content:space-between;gap:10px}.clover-sheet-year{font-family:"Hiragino Mincho ProN","Yu Mincho",serif;color:#715e43;font-size:22px;font-weight:800;letter-spacing:.06em}.clover-sheet-community{max-width:58%;color:#9b876a;font-size:9px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}.clover-sheet-rule{position:absolute;left:17px;right:17px;top:52px;border-top:1px solid rgba(127,103,72,.13)}
       .clover-sheet-field{position:absolute;left:10px;right:10px;top:62px;bottom:12px}.clover-sheet-field:before{content:"herbarium";position:absolute;right:8px;bottom:2px;color:rgba(113,94,67,.17);font:700 10px/1 Georgia,serif;letter-spacing:.18em;text-transform:uppercase}
-      .clover-specimen{position:absolute;left:var(--x);top:var(--y);width:104px;height:116px;border:0;background:transparent;padding:0;margin:0;transform:translate(-50%,-50%) rotate(var(--rot));transform-origin:50% 58%;cursor:pointer;-webkit-tap-highlight-color:transparent;z-index:var(--z);filter:drop-shadow(0 4px 4px rgba(64,79,46,.08));transition:transform .32s ease,filter .32s ease}.clover-specimen:active{transform:translate(-50%,-50%) rotate(var(--rot)) scale(.96)}
-      .clover-specimen:hover{filter:drop-shadow(0 7px 8px rgba(64,79,46,.12))}.clover-specimen.is-drop-pending{opacity:0;transform:translate(calc(-50% + var(--drop-x,0px)),calc(-50% - 280px)) rotate(calc(var(--rot) - 8deg)) scale(.98)}.clover-specimen.is-dropping{animation:cloverGardenDrop var(--drop-duration,2.15s) cubic-bezier(.22,.66,.20,1) both;z-index:30;will-change:transform,opacity}
-      @keyframes cloverGardenDrop{0%{opacity:0;transform:translate(calc(-50% + var(--drop-x,0px)),calc(-50% - 280px)) rotate(calc(var(--rot) - 8deg)) scale(.98)}16%{opacity:1;transform:translate(calc(-50% + var(--sway-a,0px)),calc(-50% - 208px)) rotate(calc(var(--rot) + 4deg)) scale(1)}45%{transform:translate(calc(-50% + var(--sway-b,0px)),calc(-50% - 112px)) rotate(calc(var(--rot) - 2.6deg)) scale(1)}69%{transform:translate(calc(-50% + var(--sway-c,0px)),calc(-50% - 35px)) rotate(calc(var(--rot) + 1.2deg)) scale(1)}84%{transform:translate(calc(-50% + var(--slide-x,1px)),calc(-50% - 1px)) rotate(calc(var(--rot) + .35deg)) scale(1,.97)}92%{transform:translate(calc(-50% + var(--slide-x,1px)),calc(-50% + 1px)) rotate(var(--rot)) scale(1.003,.985)}100%{opacity:1;transform:translate(-50%,-50%) rotate(var(--rot)) scale(1)}}
+      .clover-specimen{position:absolute;left:var(--x);top:var(--y);width:104px;height:116px;border:0;background:transparent;padding:0;margin:0;transform:translate3d(-50%,-50%,0) rotate(var(--rot));transform-origin:50% 58%;cursor:pointer;-webkit-tap-highlight-color:transparent;z-index:var(--z);filter:drop-shadow(0 4px 4px rgba(64,79,46,.08));transition:transform .32s ease,filter .32s ease;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform-style:preserve-3d}.clover-specimen:active{transform:translate3d(-50%,-50%,0) rotate(var(--rot)) scale(.96)}
+      .clover-specimen:hover{filter:drop-shadow(0 7px 8px rgba(64,79,46,.12))}.clover-specimen.is-drop-pending{opacity:0;filter:none;transform:translate3d(calc(-50% + var(--drop-x,0px)),calc(-50% - 260px),0) rotate(calc(var(--rot) - 6deg)) scale(.985)}.clover-specimen.is-dropping{animation:cloverGardenDrop var(--drop-duration,2.08s) cubic-bezier(.22,.61,.26,1) both;z-index:30;will-change:transform,opacity;filter:none!important;transition:none!important}.clover-specimen.is-dropping .ca-monthly-clover-svg,.clover-specimen.is-drop-pending .ca-monthly-clover-svg,.clover-specimen.is-dropping .clover-specimen-plant>svg,.clover-specimen.is-drop-pending .clover-specimen-plant>svg,.clover-specimen.is-dropping .clover-specimen-plant>img,.clover-specimen.is-drop-pending .clover-specimen-plant>img{filter:none!important}
+      @keyframes cloverGardenDrop{0%{opacity:0;transform:translate3d(calc(-50% + var(--drop-x,0px)),calc(-50% - 260px),0) rotate(calc(var(--rot) - 6deg)) scale(.985)}20%{opacity:1;transform:translate3d(calc(-50% + var(--sway-a,0px)),calc(-50% - 188px),0) rotate(calc(var(--rot) + 3.2deg)) scale(1)}52%{transform:translate3d(calc(-50% + var(--sway-b,0px)),calc(-50% - 92px),0) rotate(calc(var(--rot) - 1.5deg)) scale(1)}78%{transform:translate3d(calc(-50% + var(--sway-c,0px)),calc(-50% - 18px),0) rotate(calc(var(--rot) + .6deg)) scale(1)}90%{transform:translate3d(calc(-50% + var(--slide-x,1px)),calc(-50% + 1px),0) rotate(var(--rot)) scale(1,.972)}100%{opacity:1;transform:translate3d(-50%,-50%,0) rotate(var(--rot)) scale(1)}}
       @keyframes cloverYearShuffle{0%{transform:translate(-50%,-50%) rotate(var(--rot))}48%{transform:translate(calc(-50% + var(--shuffle-x)),calc(-50% + var(--shuffle-y))) rotate(calc(var(--rot) + var(--shuffle-r))) scale(1.015)}100%{transform:translate(-50%,-50%) rotate(var(--rot))}}
       .clover-specimen-plant{position:absolute;left:7px;right:7px;top:0;height:86px;transform:rotate(-1.25deg);pointer-events:none}.clover-specimen-plant .ca-monthly-clover-svg,.clover-specimen-plant>svg,.clover-specimen-plant>img{display:block;width:100%;height:100%;max-width:none;margin:0;object-fit:contain;overflow:visible;filter:drop-shadow(0 4px 4px rgba(47,106,53,.12))}.clover-specimen-plant-fallback>img{object-fit:contain}
       .clover-specimen-tag{position:absolute;left:6px;right:2px;bottom:0;min-height:27px;padding:4px 5px 3px;border:1px solid rgba(144,119,83,.14);border-radius:2px 5px 3px 4px;background:rgba(255,252,237,.83);box-shadow:0 2px 5px rgba(102,78,48,.05);transform:rotate(-1.5deg);color:#6f604e;text-align:center}.clover-specimen-month{display:block;font-family:"Hiragino Mincho ProN","Yu Mincho",serif;font-size:11px;font-weight:800;line-height:1.1}.clover-specimen-name{display:block;margin-top:2px;font-size:7px;font-weight:800;color:#998871;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -144,22 +144,23 @@
   function startGardenDrops(section,selector){
     if(!section)return;
     const items=[...section.querySelectorAll(selector||".clover-specimen.is-drop-pending")];
+    if(!items.length)return;
     items.forEach((el,i)=>{
       el.classList.remove("is-dropping","is-drop-pending");
-      el.style.animationDelay="";
-      void el.getBoundingClientRect();
+      el.style.animationDelay=(i*.12)+"s";
       el.classList.add("is-drop-pending");
-      setTimeout(()=>{
+    });
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      items.forEach(el=>{
         if(!el.isConnected)return;
         el.classList.remove("is-drop-pending");
-        el.style.animationDelay=(i*.12)+"s";
         el.classList.add("is-dropping");
         el.addEventListener("animationend",()=>{
           el.classList.remove("is-dropping");
           el.style.animationDelay="";
         },{once:true});
-      },i*120);
-    });
+      });
+    }));
   }
 
   function replayGardenTest(section){
@@ -290,7 +291,7 @@
     const x=(slot[0]+jitter(seed+"x",2.5)).toFixed(2)+"%";
     const y=(slot[1]+jitter(seed+"y",2.1)).toFixed(2)+"%";
     const rot=(slot[2]+jitter(seed+"r",3.2)).toFixed(2)+"deg";
-    const dropDuration=(1.90+(hash(seed+"d")%50)/100).toFixed(2)+"s";
+    const dropDuration=(1.96+(hash(seed+"d")%27)/100).toFixed(2)+"s";
     const dropX=(jitter(seed+"drop",12)).toFixed(1)+"px";
     const swayA=(jitter(seed+"sa",9)).toFixed(1)+"px";
     const swayB=(jitter(seed+"sb",6)).toFixed(1)+"px";
