@@ -38,7 +38,7 @@
     style.textContent=`
       .clover-garden-base{position:relative;border:1px solid #d8e4c8;border-radius:28px;padding:18px;background:linear-gradient(145deg,#fffdf8,#fbf8ef);box-shadow:0 16px 42px rgba(74,90,55,.08);overflow:hidden}
       .clover-garden-base:before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.34;background-image:radial-gradient(circle at 20% 20%,rgba(118,97,70,.08) 0 1px,transparent 1.2px),radial-gradient(circle at 70% 50%,rgba(118,97,70,.06) 0 .8px,transparent 1px);background-size:23px 21px,17px 19px;mix-blend-mode:multiply}
-      .clover-garden-head{position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.clover-garden-title{margin:0;color:#31511f;font-size:clamp(22px,4.5vw,29px);font-weight:950;letter-spacing:-.025em}.clover-garden-sub{margin:5px 0 0;color:#7b8b73;font-size:11px;font-weight:850;line-height:1.6}.clover-garden-badge{flex:0 0 auto;border:1px solid #e2d7be;background:#fff9e9;color:#8b7659;border-radius:999px;padding:6px 10px;font-size:10px;font-weight:950;letter-spacing:.08em}.clover-garden-testbar{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:9px 10px;border:1px solid #c7df9b;border-radius:14px;background:rgba(244,253,229,.92);color:#55713d;font-size:10px;font-weight:900}.clover-garden-replay{flex:0 0 auto;border:1px solid #b7d58a;border-radius:999px;background:#fffef8;color:#4f6c37;padding:6px 9px;font-size:10px;font-weight:950}
+      .clover-garden-head{position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.clover-garden-title{margin:0;color:#31511f;font-size:clamp(22px,4.5vw,29px);font-weight:950;letter-spacing:-.025em}.clover-garden-sub{margin:5px 0 0;color:#7b8b73;font-size:11px;font-weight:850;line-height:1.6}.clover-garden-badge{flex:0 0 auto;border:1px solid #e2d7be;background:#fff9e9;color:#8b7659;border-radius:999px;padding:6px 10px;font-size:10px;font-weight:950;letter-spacing:.08em}.clover-garden-testbar{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:9px 10px;border:1px solid #c7df9b;border-radius:14px;background:rgba(244,253,229,.92);color:#55713d;font-size:10px;font-weight:900}.clover-garden-test-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto}.clover-garden-replay{flex:0 0 auto;border:1px solid #b7d58a;border-radius:999px;background:#fffef8;color:#4f6c37;padding:6px 9px;font-size:10px;font-weight:950}.clover-garden-test-open{background:#eaffbf;border-color:#9fc85d;color:#3f641f}
       .clover-garden-empty{position:relative;z-index:1;margin-top:15px;border:1px dashed #d6ccb8;border-radius:20px;padding:18px;background:rgba(255,252,242,.78);color:#746f62;font-size:12px;font-weight:850;line-height:1.72;text-align:center}.clover-garden-years{position:relative;z-index:1;display:grid;gap:18px;margin-top:16px}
       .clover-year-sheet{position:relative;min-height:430px;border:1px solid #d9ccb3;border-radius:8px 17px 10px 14px;padding:18px 16px 20px;overflow:hidden;background-color:#fbf2d8;background-image:linear-gradient(100deg,rgba(255,255,255,.32),transparent 20%,rgba(139,108,66,.025) 58%,transparent 82%),repeating-linear-gradient(0deg,rgba(115,91,57,.018) 0 1px,transparent 1px 4px),radial-gradient(circle at 12% 18%,rgba(96,71,42,.05) 0 .8px,transparent 1px),radial-gradient(circle at 76% 64%,rgba(96,71,42,.04) 0 .7px,transparent .9px);background-size:auto,auto,19px 17px,23px 21px;box-shadow:0 10px 24px rgba(90,72,48,.09),inset 0 0 34px rgba(143,107,60,.045);transform:rotate(-.18deg)}
       .clover-year-sheet:before,.clover-year-sheet:after{content:"";position:absolute;top:-7px;width:64px;height:18px;background:rgba(228,211,168,.64);border:1px solid rgba(173,147,101,.18);box-shadow:0 2px 5px rgba(95,70,40,.04);z-index:4}.clover-year-sheet:before{left:18px;transform:rotate(-5deg)}.clover-year-sheet:after{right:22px;transform:rotate(6deg)}
@@ -164,6 +164,30 @@
 
   function replayGardenTest(section){
     startGardenDrops(section,".clover-specimen[data-test-preview='1']");
+  }
+
+  function hasAdminAccess(){
+    return [...document.querySelectorAll("#nav button,#nav a")].some(el=>String(el.textContent||"").includes("管理画面"));
+  }
+
+  function setGardenTestMode(enabled){
+    try{sessionStorage.setItem("ca-clover-garden-jump","1")}catch(_){}
+    const url=new URL(location.href);
+    if(enabled)url.searchParams.set("gardenTest","1");
+    else url.searchParams.delete("gardenTest");
+    location.assign(url.toString());
+  }
+
+  function restoreGardenViewport(section){
+    let jump=false;
+    try{
+      jump=sessionStorage.getItem("ca-clover-garden-jump")==="1";
+      if(jump)sessionStorage.removeItem("ca-clover-garden-jump");
+    }catch(_){}
+    if(!jump)return;
+    setTimeout(()=>{
+      if(section&&section.isConnected)section.scrollIntoView({behavior:"smooth",block:"start"});
+    },120);
   }
 
   function armGardenViewportDrop(section){
@@ -384,7 +408,9 @@
         return '<article class="clover-year-sheet" data-year="'+esc(group.year)+'" data-community-id="'+esc(group.communityId)+'" data-has-fresh="'+(hasFresh?'1':'0')+'" data-complete="'+(complete?'1':'0')+'"><div class="clover-sheet-head"><div class="clover-sheet-year">'+esc(group.year)+'年</div>'+(multi?'<div class="clover-sheet-community">'+esc(name)+'</div>':'')+'</div><div class="clover-sheet-rule"></div><div class="clover-sheet-field">'+specimens+'</div><div class="clover-year-complete">'+esc(group.year)+'年のCloverがそろいました。</div></article>';
       }).join('')+'</div>';
     }
-    const testbar=GARDEN_TEST_MODE?'<div class="clover-garden-testbar"><span>🧪 Garden TEST表示です。正式な月末保存には影響しません。</span><button type="button" class="clover-garden-replay" data-garden-replay>演出をもう一度</button></div>':'';
+    const testbar=GARDEN_TEST_MODE
+      ?'<div class="clover-garden-testbar"><span>🧪 Garden TEST表示です。正式な月末保存には影響しません。</span><span class="clover-garden-test-actions"><button type="button" class="clover-garden-replay" data-garden-replay>演出をもう一度</button><button type="button" class="clover-garden-replay" data-garden-test-close>TEST終了</button></span></div>'
+      :(hasAdminAccess()?'<div class="clover-garden-testbar"><span>🧪 今月のCloverでGardenの落下演出を確認できます。</span><button type="button" class="clover-garden-replay clover-garden-test-open" data-garden-test-open>Garden TEST</button></div>':'');
     section.innerHTML='<div class="clover-garden-head"><div><h2 class="clover-garden-title">🍀 Clover Garden</h2><p class="clover-garden-sub">ひと月ごとのCloverを、押し花のように1年のシートへ残していきます。</p></div><span class="clover-garden-badge">'+(GARDEN_TEST_MODE?'TEST':'HERBARIUM')+'</span></div>'+testbar+body+'<div class="clover-garden-note">過去月は、あとから同期されたMeetupがあれば再計算して更新します。</div>';
     root.appendChild(section);
 
@@ -393,6 +419,8 @@
       if(s)openSnapshotModal(s,communityMap.get(s.community_id)||"Community");
     }));
     section.querySelector("[data-garden-replay]")?.addEventListener("click",()=>replayGardenTest(section));
+    section.querySelector("[data-garden-test-open]")?.addEventListener("click",()=>setGardenTestMode(true));
+    section.querySelector("[data-garden-test-close]")?.addEventListener("click",()=>setGardenTestMode(false));
 
     if(!window.matchMedia||!window.matchMedia("(prefers-reduced-motion: reduce)").matches){
       armGardenViewportDrop(section);
@@ -400,6 +428,7 @@
       section.querySelectorAll(".clover-specimen.is-drop-pending").forEach(el=>el.classList.remove("is-drop-pending"));
     }
     maybeSpawnLuckyClover(section);
+    restoreGardenViewport(section);
   }
 
   async function run(){
