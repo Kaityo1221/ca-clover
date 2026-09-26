@@ -50,7 +50,7 @@
   const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
   const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
   const ROOT="https://kaityo1221.github.io/ca-clover/";
-  const VERSION="my-community-20260927-historysplit1";
+  const VERSION="my-community-20260927-hostbadge1";
   const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}
   });
@@ -76,7 +76,7 @@
     return '<span class="pill slate">参加率 '+e(text)+'%</span>';
   }
   function meetupCardHtml(m,index){
-    return '<button type="button" class="claim clickable" style="display:block;width:100%;text-align:left;margin-top:10px" data-meetup-index="'+index+'"><div class="row between wraprow"><div><div class="tiny strong" style="color:#65a30d">'+e(fmt(m.starts_at))+'</div><h3 style="margin-top:5px">'+e(m.title)+'</h3>'+(m.campfire_live_event_name?'<div style="margin-top:6px"><span class="pill" style="max-width:100%;white-space:normal;line-height:1.35;background:#eff6ff;color:#475569">🏷️ '+e(m.campfire_live_event_name)+'</span></div>':'')+'<div class="small muted strong" style="margin-top:4px">📍 '+e(m.location||"場所未取得")+'</div></div><div class="tags" style="margin-top:0">'+(m.is_ca_meetup?'<span title="Host: Ambassador" aria-label="Host: Ambassador">🟪</span>':'')+(m.is_passcode_reward_eligible===true?'<span title="Rewards" aria-label="Rewards">🎁</span>':'')+'<span class="pill">概要を見る →</span></div></div><div class="tags"><span class="pill slate">RSVP '+e(m.rsvp_count==null?"—":m.rsvp_count)+'</span><span class="pill slate">Check-in '+e(m.checkin_count==null?"—":m.checkin_count)+'</span>'+participationRateHtml(m)+'</div></button>';
+    return '<button type="button" class="claim clickable" style="display:block;width:100%;text-align:left;margin-top:10px" data-meetup-index="'+index+'"><div class="row between wraprow"><div><div class="tiny strong" style="color:#65a30d;display:flex;align-items:center;gap:5px">'+e(fmt(m.starts_at))+(m.is_ca_meetup?'<span title="Host: Ambassador" aria-label="Host: Ambassador" style="display:inline-block;font-size:9px;line-height:1">🟪</span>':'')+'</div><h3 style="margin-top:5px">'+e(m.title)+'</h3>'+(m.campfire_live_event_name?'<div style="margin-top:6px"><span class="pill" style="max-width:100%;white-space:normal;line-height:1.35;background:#eff6ff;color:#475569">🏷️ '+e(m.campfire_live_event_name)+'</span></div>':'')+'<div class="small muted strong" style="margin-top:4px">📍 '+e(m.location||"場所未取得")+'</div></div><div class="tags" style="margin-top:0">'+(m.is_passcode_reward_eligible===true?'<span title="Rewards" aria-label="Rewards">🎁</span>':'')+'<span class="pill">概要を見る →</span></div></div><div class="tags"><span class="pill slate">RSVP '+e(m.rsvp_count==null?"—":m.rsvp_count)+'</span><span class="pill slate">Check-in '+e(m.checkin_count==null?"—":m.checkin_count)+'</span>'+participationRateHtml(m)+'</div></button>';
   }
   function communityIconHtml(community,large){
     const cls=large?"community-avatar large":"community-avatar";
