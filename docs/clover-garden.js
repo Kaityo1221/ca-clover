@@ -45,13 +45,10 @@
       .clover-sheet-head{position:relative;z-index:3;display:flex;align-items:flex-end;justify-content:space-between;gap:10px}.clover-sheet-year{font-family:"Hiragino Mincho ProN","Yu Mincho",serif;color:#715e43;font-size:22px;font-weight:800;letter-spacing:.06em}.clover-sheet-community{max-width:58%;color:#9b876a;font-size:9px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}.clover-sheet-rule{position:absolute;left:17px;right:17px;top:52px;border-top:1px solid rgba(127,103,72,.13)}
       .clover-sheet-field{position:absolute;left:10px;right:10px;top:62px;bottom:12px}.clover-sheet-field:before{content:"herbarium";position:absolute;right:8px;bottom:2px;color:rgba(113,94,67,.17);font:700 10px/1 Georgia,serif;letter-spacing:.18em;text-transform:uppercase}
       .clover-specimen{position:absolute;left:var(--x);top:var(--y);width:104px;height:116px;border:0;background:transparent;padding:0;margin:0;transform:translate(-50%,-50%) rotate(var(--rot));transform-origin:50% 58%;cursor:pointer;-webkit-tap-highlight-color:transparent;z-index:var(--z);filter:drop-shadow(0 4px 4px rgba(64,79,46,.08));transition:transform .32s ease,filter .32s ease}.clover-specimen:active{transform:translate(-50%,-50%) rotate(var(--rot)) scale(.96)}
-      .clover-specimen:hover{filter:drop-shadow(0 7px 8px rgba(64,79,46,.12))}.clover-specimen.is-dropping{animation:cloverGardenDrop var(--drop-duration,2.2s) cubic-bezier(.18,.72,.16,1) both;z-index:30}.clover-specimen.is-year-shuffling{animation:cloverYearShuffle 1.55s cubic-bezier(.2,.75,.22,1) both}
+      .clover-specimen:hover{filter:drop-shadow(0 7px 8px rgba(64,79,46,.12))}.clover-specimen.is-drop-pending{opacity:0;transform:translate(calc(-50% + var(--drop-x,0px)),calc(-50% - 240px)) rotate(calc(var(--rot) - 24deg)) scale(.88)}.clover-specimen.is-dropping{animation:cloverGardenDrop var(--drop-duration,2.2s) cubic-bezier(.18,.72,.16,1) both;z-index:30}.clover-specimen.is-year-shuffling{animation:cloverYearShuffle 1.55s cubic-bezier(.2,.75,.22,1) both}
       @keyframes cloverGardenDrop{0%{opacity:0;transform:translate(calc(-50% + var(--drop-x,0px)),calc(-50% - 240px)) rotate(calc(var(--rot) - 24deg)) scale(.88)}42%{opacity:1;transform:translate(calc(-50% + var(--drift-x,0px)),calc(-50% - 38px)) rotate(calc(var(--rot) + 11deg)) scale(1.035,.97)}64%{transform:translate(calc(-50% + var(--drift-x2,0px)),calc(-50% + 7px)) rotate(calc(var(--rot) - 4deg)) scale(.985,1.025)}80%{transform:translate(-50%,calc(-50% - 4px)) rotate(calc(var(--rot) + 2deg)) scale(1.012,.994)}100%{opacity:1;transform:translate(-50%,-50%) rotate(var(--rot)) scale(1)}}
       @keyframes cloverYearShuffle{0%{transform:translate(-50%,-50%) rotate(var(--rot))}48%{transform:translate(calc(-50% + var(--shuffle-x)),calc(-50% + var(--shuffle-y))) rotate(calc(var(--rot) + var(--shuffle-r))) scale(1.015)}100%{transform:translate(-50%,-50%) rotate(var(--rot))}}
-      .clover-specimen-plant{position:absolute;left:8px;top:4px;width:88px;height:88px;transform:rotate(-2deg)}.clover-specimen-stem{position:absolute;left:43px;top:50px;width:6px;height:51px;border-radius:999px;background:linear-gradient(90deg,#83c769,#3f9650);transform:rotate(15deg);transform-origin:50% 0;box-shadow:inset 1px 0 rgba(255,255,255,.5);z-index:0}
-      .clover-specimen-leaf{position:absolute;width:40px;height:40px;border-radius:74% 43% 74% 43%;transform-origin:92% 92%;border:1px solid rgba(37,119,57,.24);box-shadow:inset 4px 4px 10px rgba(255,255,255,.18),inset -4px -5px 9px rgba(24,92,45,.09);opacity:var(--leaf-opacity);filter:saturate(var(--sat));z-index:2}.clover-specimen-leaf:after{content:"";position:absolute;left:9px;top:8px;width:19px;height:25px;border-left:1px solid rgba(235,248,184,.38);border-radius:50%;transform:rotate(-42deg)}
-      .clover-specimen-leaf.stage-0{background:linear-gradient(145deg,#eff5db,#c8dda5);--leaf-opacity:.58;--sat:.70}.clover-specimen-leaf.stage-1{background:linear-gradient(145deg,#e0f2b2,#9dcf69);--leaf-opacity:.78;--sat:.86}.clover-specimen-leaf.stage-2{background:linear-gradient(145deg,#c8ec78,#69b84f);--leaf-opacity:.9;--sat:.98}.clover-specimen-leaf.stage-3{background:linear-gradient(145deg,#aee85c,#3fa34b);--leaf-opacity:.97;--sat:1.06}.clover-specimen-leaf.stage-4{background:linear-gradient(145deg,#9ce147,#218841);--leaf-opacity:1;--sat:1.13}
-      .clover-specimen-leaf.top{left:24px;top:1px;transform:rotate(45deg) scale(var(--leaf-scale))}.clover-specimen-leaf.right{left:47px;top:24px;transform:rotate(135deg) scale(var(--leaf-scale))}.clover-specimen-leaf.bottom{left:24px;top:47px;transform:rotate(225deg) scale(var(--leaf-scale))}.clover-specimen-leaf.left{left:1px;top:24px;transform:rotate(315deg) scale(var(--leaf-scale))}.clover-specimen-center{position:absolute;left:38px;top:38px;width:12px;height:12px;border-radius:50%;background:#4fa147;border:1px solid rgba(225,241,154,.72);box-shadow:0 2px 5px rgba(50,91,42,.12);z-index:3}
+      .clover-specimen-plant{position:absolute;left:6px;right:6px;top:0;height:92px;transform:rotate(-2deg);pointer-events:none}.clover-specimen-plant svg{display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 4px 4px rgba(47,106,53,.12))}
       .clover-specimen-tag{position:absolute;left:6px;right:2px;bottom:0;min-height:27px;padding:4px 5px 3px;border:1px solid rgba(144,119,83,.14);border-radius:2px 5px 3px 4px;background:rgba(255,252,237,.83);box-shadow:0 2px 5px rgba(102,78,48,.05);transform:rotate(-1.5deg);color:#6f604e;text-align:center}.clover-specimen-month{display:block;font-family:"Hiragino Mincho ProN","Yu Mincho",serif;font-size:11px;font-weight:800;line-height:1.1}.clover-specimen-name{display:block;margin-top:2px;font-size:7px;font-weight:800;color:#998871;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       .clover-year-complete{position:absolute;left:50%;bottom:14px;z-index:40;transform:translate(-50%,18px);opacity:0;pointer-events:none;padding:8px 13px;border:1px solid rgba(124,100,66,.18);border-radius:999px;background:rgba(255,250,232,.94);color:#6d5c43;font-size:11px;font-weight:950;box-shadow:0 8px 20px rgba(84,67,43,.10)}.clover-year-complete.show{animation:cloverCompleteMessage 4.2s ease both}@keyframes cloverCompleteMessage{0%{opacity:0;transform:translate(-50%,18px)}14%,76%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-5px)}}
       .clover-lucky{position:absolute;left:var(--lucky-left);top:0;width:54px;height:64px;z-index:90;border:0;background:transparent;padding:0;margin:0;cursor:pointer;-webkit-tap-highlight-color:transparent;transform-origin:50% 50%;filter:drop-shadow(0 4px 6px rgba(38,104,48,.18));animation:cloverLuckyFall var(--lucky-duration,6.1s) cubic-bezier(.23,.57,.22,1) both;will-change:transform,opacity,filter}
@@ -65,7 +62,7 @@
       @keyframes cloverLuckyCaughtGlow{0%{opacity:.28;transform:translate(-50%,-50%) scale(.8)}55%{opacity:.86;transform:translate(-50%,-50%) scale(1.6)}100%{opacity:0;transform:translate(-50%,-50%) scale(2)}}
       .clover-garden-note{position:relative;z-index:1;margin-top:10px;color:#98a08e;font-size:9px;font-weight:800;line-height:1.55}
       .clover-garden-modal{position:fixed;inset:0;z-index:9998;display:grid;place-items:center;padding:18px;background:rgba(34,48,28,.34);backdrop-filter:blur(7px)}.clover-garden-dialog{position:relative;width:min(390px,100%);border:1px solid #dfd1b9;border-radius:25px;padding:20px;background:linear-gradient(145deg,#fffdf8,#fff9e9);box-shadow:0 28px 70px rgba(38,48,31,.24)}.clover-garden-close{position:absolute;right:12px;top:12px;width:34px;height:34px;border:1px solid #e4dbc8;border-radius:50%;background:#fffdf7;color:#806f59;font-size:18px;font-weight:900}.clover-garden-dialog h3{margin:0;padding-right:42px;color:#4a633a;font-size:20px}.clover-garden-dialog-sub{margin:4px 0 14px;color:#97866e;font-size:10px;font-weight:850}.clover-garden-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}.clover-garden-metric{border:1px solid #e7dfd0;border-radius:16px;padding:11px;background:rgba(255,255,255,.78)}.clover-garden-metric b{display:block;color:#49623c;font-size:15px}.clover-garden-metric span{display:block;margin-top:3px;color:#887b69;font-size:9px;font-weight:850}.clover-garden-stage-row{display:flex;gap:4px;margin-top:7px}.clover-garden-stage-dot{width:7px;height:7px;border-radius:50%;background:#e3e1d4}.clover-garden-stage-dot.on{background:#6ab34d}
-      @media(max-width:680px){.clover-garden-base{padding:16px}.clover-year-sheet{min-height:500px;padding-left:12px;padding-right:12px}.clover-sheet-field{left:2px;right:2px;top:64px}.clover-specimen{width:86px;height:105px}.clover-specimen-plant{left:3px;top:5px;transform:scale(.86) rotate(-2deg);transform-origin:top left}.clover-specimen-tag{left:0;right:0}.clover-sheet-community{max-width:52%}}
+      @media(max-width:680px){.clover-garden-base{padding:16px}.clover-year-sheet{min-height:500px;padding-left:12px;padding-right:12px}.clover-sheet-field{left:2px;right:2px;top:64px}.clover-specimen{width:94px;height:126px}.clover-specimen-plant{left:4px;right:4px;top:0;height:94px;transform:rotate(-2deg)}.clover-specimen-tag{left:0;right:0;bottom:1px}.clover-sheet-community{max-width:52%}}
       @media(prefers-reduced-motion:reduce){.clover-specimen.is-dropping,.clover-specimen.is-year-shuffling,.clover-year-complete.show{animation:none!important}.clover-year-complete.show{opacity:1;transform:translate(-50%,0)}.clover-lucky{display:none!important}}
     `;
     document.head.appendChild(style);
@@ -144,15 +141,42 @@
     }));
   }
 
-  function replayGardenTest(section){
+  function startGardenDrops(section,selector){
     if(!section)return;
-    section.querySelectorAll(".clover-specimen[data-test-preview='1']").forEach((el,i)=>{
+    const items=[...section.querySelectorAll(selector||".clover-specimen.is-drop-pending")];
+    items.forEach((el,i)=>{
       el.classList.remove("is-dropping");
+      el.classList.add("is-drop-pending");
       el.style.animationDelay="";
       void el.getBoundingClientRect();
-      el.style.animationDelay=(i*.16)+"s";
-      el.classList.add("is-dropping");
+      setTimeout(()=>{
+        if(!el.isConnected)return;
+        el.classList.remove("is-drop-pending");
+        el.style.animationDelay=(i*.16)+"s";
+        el.classList.add("is-dropping");
+        el.addEventListener("animationend",()=>el.classList.remove("is-dropping"),{once:true});
+      },i*150);
     });
+  }
+
+  function replayGardenTest(section){
+    startGardenDrops(section,".clover-specimen[data-test-preview='1']");
+  }
+
+  function armGardenViewportDrop(section){
+    if(!section)return;
+    const pending=section.querySelector(".clover-specimen.is-drop-pending");
+    if(!pending)return;
+    if(!("IntersectionObserver" in window)){
+      setTimeout(()=>startGardenDrops(section),180);
+      return;
+    }
+    const observer=new IntersectionObserver(entries=>{
+      if(!entries.some(entry=>entry.isIntersecting&&entry.intersectionRatio>=.14))return;
+      observer.disconnect();
+      setTimeout(()=>startGardenDrops(section),220);
+    },{threshold:[.14,.28],rootMargin:"0px 0px -8% 0px"});
+    observer.observe(section);
   }
 
   function seenState(uid,snapshots){
@@ -175,6 +199,29 @@
     return new Set([...fresh,...testKeys]);
   }
 
+  function specimenPlantSvg(stages,index){
+    const colors=[
+      ["#f1f8df","#c7dfaa"],
+      ["#e5f6bd","#9dce69"],
+      ["#ccf07c","#65b84d"],
+      ["#b9ed60","#2f9d47"],
+      ["#aee94f","#208640"]
+    ];
+    const leafPath="M60 59 C49 50 34 43 27 31 C20 19 24 8 34 4 C44 0 55 7 59 18 C60 21 60 24 60 27 C60 24 61 21 62 18 C66 7 77 0 87 4 C97 8 101 19 94 31 C87 43 72 50 60 59 Z";
+    const rotations=[0,90,180,270];
+    const defs=[];
+    const leaves=stages.map((stage,i)=>{
+      const st=clampStage(stage),scale=.78+st*.055;
+      const gid="cgLeaf"+index+"_"+i;
+      const c=colors[st];
+      defs.push('<linearGradient id="'+gid+'" x1="15%" y1="10%" x2="88%" y2="92%"><stop offset="0" stop-color="'+c[0]+'"/><stop offset="1" stop-color="'+c[1]+'"/></linearGradient>');
+      return '<g transform="rotate('+rotations[i]+' 60 60) translate(60 60) scale('+scale.toFixed(3)+') translate(-60 -60)"><path d="'+leafPath+'" fill="url(#'+gid+')" stroke="#2b8c42" stroke-width=".8" stroke-opacity=".34"/><path d="M60 56 C60 45 60 34 60 23" fill="none" stroke="#e7f5a7" stroke-width="1" stroke-linecap="round" opacity="'+(.18+st*.10).toFixed(2)+'"/></g>';
+    }).join('');
+    const stemId="cgStem"+index;
+    defs.push('<linearGradient id="'+stemId+'" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b8ef6f"/><stop offset=".55" stop-color="#5fbd46"/><stop offset="1" stop-color="#237039"/></linearGradient>');
+    return '<span class="clover-specimen-plant" aria-hidden="true"><svg viewBox="0 0 120 122"><defs>'+defs.join('')+'</defs><path d="M60 62 C58 78 52 94 46 116" fill="none" stroke="url(#'+stemId+')" stroke-width="5.5" stroke-linecap="round"/><path d="M59 64 C56 79 52 94 48 108" fill="none" stroke="#d9f3a0" stroke-width="1.2" stroke-linecap="round" opacity=".72"/>'+leaves+'<circle cx="60" cy="60" r="4.4" fill="#58b846" stroke="#d9ef8b" stroke-width="1"/></svg></span>';
+  }
+
   function specimenHtml(s,communityName,isNew,index){
     const d=new Date(s.month_start+"T00:00:00");
     const month=Math.max(1,Math.min(12,d.getMonth()+1));
@@ -191,12 +238,8 @@
     const shuffleY=(jitter(seed+"sy",6)).toFixed(1)+"px";
     const shuffleR=(jitter(seed+"sr",3.5)).toFixed(1)+"deg";
     const stages=[s.host_stage,s.join_stage,s.exchange_stage,s.continue_stage].map(clampStage);
-    const plant='<span class="clover-specimen-plant" aria-hidden="true"><i class="clover-specimen-stem"></i>'+
-      '<i class="clover-specimen-leaf top stage-'+stages[0]+'" style="--leaf-scale:'+leafScale(stages[0])+'"></i>'+
-      '<i class="clover-specimen-leaf right stage-'+stages[1]+'" style="--leaf-scale:'+leafScale(stages[1])+'"></i>'+
-      '<i class="clover-specimen-leaf bottom stage-'+stages[2]+'" style="--leaf-scale:'+leafScale(stages[2])+'"></i>'+
-      '<i class="clover-specimen-leaf left stage-'+stages[3]+'" style="--leaf-scale:'+leafScale(stages[3])+'"></i><i class="clover-specimen-center"></i></span>';
-    return '<button type="button" class="clover-specimen'+(isNew?' is-dropping':'')+'" data-snapshot-index="'+index+'"'+(s._test?' data-test-preview="1"':'')+' style="--x:'+x+';--y:'+y+';--rot:'+rot+';--z:'+(10+month)+';--drop-duration:'+dropDuration+';--drift-x:'+driftX+';--drift-x2:'+driftX2+';--drop-x:'+dropX+';--shuffle-x:'+shuffleX+';--shuffle-y:'+shuffleY+';--shuffle-r:'+shuffleR+'" aria-label="'+esc(month+'月のCloverを開く')+'">'+plant+'<span class="clover-specimen-tag"><span class="clover-specimen-month">'+month+'月'+(s._test?' TEST':'')+'</span><span class="clover-specimen-name">'+esc(communityName||"Community")+'</span></span></button>';
+    const plant=specimenPlantSvg(stages,index);
+    return '<button type="button" class="clover-specimen'+(isNew?' is-drop-pending':'')+'" data-snapshot-index="'+index+'"'+(s._test?' data-test-preview="1"':'')+' style="--x:'+x+';--y:'+y+';--rot:'+rot+';--z:'+(10+month)+';--drop-duration:'+dropDuration+';--drift-x:'+driftX+';--drift-x2:'+driftX2+';--drop-x:'+dropX+';--shuffle-x:'+shuffleX+';--shuffle-y:'+shuffleY+';--shuffle-r:'+shuffleR+'" aria-label="'+esc(month+'月のCloverを開く')+'">'+plant+'<span class="clover-specimen-tag"><span class="clover-specimen-month">'+month+'月'+(s._test?' TEST':'')+'</span><span class="clover-specimen-name">'+esc(communityName||"Community")+'</span></span></button>';
   }
 
   function stageDots(stage){
@@ -314,22 +357,9 @@
     section.querySelector("[data-garden-replay]")?.addEventListener("click",()=>replayGardenTest(section));
 
     if(!window.matchMedia||!window.matchMedia("(prefers-reduced-motion: reduce)").matches){
-      section.querySelectorAll(".clover-year-sheet[data-has-fresh='1']").forEach((sheet,sheetIndex)=>{
-        const fresh=sheet.querySelectorAll(".clover-specimen.is-dropping");
-        fresh.forEach((el,i)=>{el.style.animationDelay=(sheetIndex*.12+i*.22)+"s"});
-        if(sheet.dataset.complete==="1"){
-          const maxDelay=Math.max(0,fresh.length-1)*220+2450;
-          setTimeout(()=>{
-            sheet.querySelectorAll(".clover-specimen").forEach((el,i)=>{
-              el.style.animationDelay=(i*24)+"ms";
-              el.classList.add("is-year-shuffling");
-              setTimeout(()=>el.classList.remove("is-year-shuffling"),1750+i*24);
-            });
-            const msg=sheet.querySelector(".clover-year-complete");
-            if(msg){msg.classList.add("show");setTimeout(()=>msg.classList.remove("show"),4300)}
-          },maxDelay);
-        }
-      });
+      armGardenViewportDrop(section);
+    }else{
+      section.querySelectorAll(".clover-specimen.is-drop-pending").forEach(el=>el.classList.remove("is-drop-pending"));
     }
     maybeSpawnLuckyClover(section);
   }
