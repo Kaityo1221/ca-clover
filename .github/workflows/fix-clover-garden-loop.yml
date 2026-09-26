@@ -1,0 +1,33 @@
+name: Fix Clover Garden observer guard
+
+on:
+  push:
+    branches: [pages]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages
+          fetch-depth: 0
+      - name: Apply observer guard
+        run: python scripts/fix-clover-garden-loop.py
+      - name: Syntax check
+        run: node --check docs/clover-garden.js
+      - name: Commit patch
+        run: |
+          if git diff --quiet -- docs/clover-garden.js; then
+            echo "No patch needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/clover-garden.js
+          git commit -m "fix: guard Clover Garden observer rerenders"
+          git push origin HEAD:pages
