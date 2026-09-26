@@ -21,7 +21,7 @@
     .hero{background:linear-gradient(135deg,#ecfccb,#fff,#ecfdf5)}h1,h2,h3{color:#365314;margin:0}h1{font-size:clamp(28px,5vw,44px);letter-spacing:-.03em}h2{font-size:23px}p{line-height:1.7}
     .muted{color:#64748b}.small{font-size:12px}.tiny{font-size:11px}.strong{font-weight:900}.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:6px 10px;background:#ecfccb;color:#4d7c0f;font-size:12px;font-weight:900}
     .pill.amber{background:#fef3c7;color:#92400e}.pill.violet{background:#ede9fe;color:#6d28d9}.pill.blue{background:#e0f2fe;color:#075985}.pill.rose{background:#ffe4e6;color:#be123c}.pill.slate{background:#f1f5f9;color:#475569}
-    .grid{display:grid;gap:14px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .grid{display:grid;gap:14px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
     .btn{border:0;border-radius:16px;padding:13px 16px;font-weight:950;background:#84cc16;color:#1a2e05;width:100%}.stamp-rally-open{display:inline-flex;width:auto;margin-left:46px;align-items:center;justify-content:center;text-decoration:none}.btn.dark{background:#365314;color:white}.btn.line{background:white;border:1px solid #d9f99d;color:#4d7c0f}.btn.rose{background:#fff1f2;border:1px solid #fecdd3;color:#be123c}.btn:disabled{opacity:.45;cursor:not-allowed}
     .input{width:100%;border:1px solid #d9f99d;border-radius:16px;padding:13px 14px;background:#fff;font-weight:750;outline:none}.input:focus{border-color:#84cc16;box-shadow:0 0 0 4px rgba(132,204,22,.12)}
     .section{margin-top:18px}.notice{border-radius:18px;padding:14px 16px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12px;font-weight:800;line-height:1.6}
@@ -33,7 +33,7 @@
     .actions{display:flex;gap:8px;flex-wrap:wrap}.actions .btn{width:auto;min-width:90px;padding:10px 14px}.linkbtn{border:0;background:none;color:#65a30d;font-weight:900;padding:0}.periodbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.periodbtn{border:1px solid #d9f99d;background:#fff;color:#4d7c0f;border-radius:999px;padding:10px 16px;font-weight:950;white-space:nowrap}.periodbtn.active{background:#a3e635;border-color:#84cc16;color:#365314}@media(max-width:480px){.periodbar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.periodbtn{width:100%;min-width:0;padding:8px 2px;font-size:11px;line-height:1.1;text-align:center}.community-avatar.large{width:72px;height:72px;flex-basis:72px;border-radius:23px;font-size:32px}.community-hero-row{align-items:flex-start}}
     .center{text-align:center}.spacer{height:8px}.version{font-size:10px;color:#94a3b8;text-align:center;margin-top:18px}.modalback{position:fixed;inset:0;z-index:100;background:rgba(15,23,42,.46);overflow-y:auto;overscroll-behavior:contain;padding:16px;display:flex;align-items:center;justify-content:center}.modal{width:min(680px,100%);max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:#fff;border:1px solid #ecfccb;border-radius:28px;padding:22px;box-shadow:0 30px 80px rgba(15,23,42,.24)}.modalgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#f7fee7;border-radius:18px;padding:14px}.modaltext{white-space:pre-wrap;border:1px solid #e2e8f0;background:#f8fafc;border-radius:18px;padding:14px;line-height:1.7}.closebtn{border:0;width:40px;height:40px;border-radius:999px;background:#f1f5f9;font-weight:950;font-size:18px}.extbtn{display:flex;align-items:center;justify-content:center;text-decoration:none;border-radius:16px;padding:13px 16px;font-weight:950;background:#fff;border:1px solid #d9f99d;color:#4d7c0f}
     .login{max-width:470px;margin:8vh auto 0}.login .logo{margin:0 auto;width:78px;height:78px;border-radius:26px;font-size:38px}
-    @media(max-width:760px){.g2,.g3{grid-template-columns:1fr}.topin{align-items:flex-start}.nav{max-width:55vw;justify-content:flex-end}.brandblock{display:none}.wrap{padding-top:14px}.card{padding:18px}.modalback{align-items:flex-start;padding:12px}.modal{max-height:calc(100dvh - 24px);padding:18px}.modal>.row:first-child{position:sticky;top:-18px;z-index:5;background:#fff;padding:18px 0 10px}}
+    @media(max-width:760px){.g2,.g3,.g4{grid-template-columns:1fr}.topin{align-items:flex-start}.nav{max-width:55vw;justify-content:flex-end}.brandblock{display:none}.wrap{padding-top:14px}.card{padding:18px}.modalback{align-items:flex-start;padding:12px}.modal{max-height:calc(100dvh - 24px);padding:18px}.modal>.row:first-child{position:sticky;top:-18px;z-index:5;background:#fff;padding:18px 0 10px}}
   </style>
 </head>
 <body>
@@ -50,7 +50,7 @@
   const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
   const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
   const ROOT="https://kaityo1221.github.io/ca-clover/";
-  const VERSION="my-community-20260927-eventtag-reward1";
+  const VERSION="my-community-20260927-period-rate1";
   const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}
   });
@@ -317,6 +317,8 @@
     const totalCheckin=Number(summary.checkin_count||0);
     const caMeetups=Number(summary.ca_meetup_count||0);
     const meetupCount=Number(summary.meetup_count||0);
+    const periodRate=totalRsvp>0?(totalCheckin/totalRsvp*100):null;
+    const periodRateText=periodRate==null?"算出不可":(Math.abs(periodRate-Math.round(periodRate))<0.05?String(Math.round(periodRate)):periodRate.toFixed(1))+"%";
     let html='<button id="backMy" class="linkbtn">← My Community</button>'+
       '<section class="card hero section"><div class="community-hero-row">'+communityIconHtml(community,true)+'<div><span class="pill">'+e(community.prefecture||"—")+'</span><h1 style="margin-top:10px">'+e(community.name)+'</h1></div></div>'+
       '<div class="tags">'+
@@ -328,9 +330,7 @@
     }
 
     html+='<div class="periodbar">'+COMMUNITY_PERIODS.map(function(item){return '<button type="button" class="periodbtn '+(item[1]===period?'active':'')+'" data-community-period="'+(item[1]===null?'all':item[1])+'">'+item[0]+'</button>'}).join("")+'</div>'+
-      '<section class="grid g3 section"><div class="metric"><span class="tiny strong muted">🔥 Meetup / '+e(periodLabel)+'</span><b>'+meetupCount.toLocaleString("ja-JP")+'</b></div>'+
-      '<div class="metric"><span class="tiny strong muted">🍀 CA Meetup / '+e(periodLabel)+'</span><b>'+caMeetups.toLocaleString("ja-JP")+'</b></div>'+
-      '<div class="metric"><span class="tiny strong muted">✅ Check-in / '+e(periodLabel)+'</span><b>'+totalCheckin.toLocaleString("ja-JP")+'</b></div></section>'+
+      '<section class="grid g4 section"><div class="metric"><span class="tiny strong muted">🔥 Meetup / '+e(periodLabel)+'</span><b>'+meetupCount.toLocaleString("ja-JP")+'</b></div>'+'<div class="metric"><span class="tiny strong muted">🍀 CA Meetup / '+e(periodLabel)+'</span><b>'+caMeetups.toLocaleString("ja-JP")+'</b></div>'+'<div class="metric"><span class="tiny strong muted">✅ Check-in / '+e(periodLabel)+'</span><b>'+totalCheckin.toLocaleString("ja-JP")+'</b></div>'+'<div class="metric"><span class="tiny strong muted">📊 参加率 / '+e(periodLabel)+'</span><b>'+e(periodRateText)+'</b>'+(periodRate==null?'<div class="tiny muted strong" style="margin-top:5px">RSVP 0のため</div>':'<div class="tiny muted strong" style="margin-top:5px">RSVP → Check-in</div>')+'</div></section>'+
       activityChartHtml(trend,trendBucket,periodLabel)+
       '<section class="card section"><h2>🔥 Meetup履歴 / '+e(periodLabel)+'</h2><p class="muted small strong">RSVP '+totalRsvp.toLocaleString("ja-JP")+' / Check-in '+totalCheckin.toLocaleString("ja-JP")+' · '+(period===null?'最大500件':'最新50件')+'表示</p>';
     if(!meetups.length){
