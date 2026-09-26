@@ -80,7 +80,7 @@ jobs:
           start = text.index(new_decl)
           end = text.index('  async function renderCommunity(', start)
           segment = text[start:end]
-          paint = '    app.innerHTML=html;\n'
+          paint = '    app.innerHTML=html+\'<div class="version">mirror \'+VERSION+\'</div>\';\n'
           paint_pos = segment.rfind(paint)
           if paint_pos < 0:
               raise SystemExit('renderMy final paint not found')
