@@ -42,6 +42,7 @@ export type CampfireEvent={
   creator?:CampfireEventCreator|null;
   checkedInMembersCount?:number|null;
   members?:CampfireMemberCount|null;
+  isPasscodeRewardEligible?:boolean|null;
   campfireLiveEvent?:CampfireLiveEvent|null;
 };
 
