@@ -17,9 +17,9 @@
     const n=Number(value)||0;
     return Math.max(0,Math.min(4,Math.round(n)));
   }
-  function hostStage(count){return count<=0?0:count===1?1:count===2?2:count===3?3:4}
-  function joinStage(count){return count<=0?0:count<5?1:count<15?2:count<30?3:4}
-  function exchangeStage(count){return count<=0?0:count===1?1:count===2?2:count<5?3:4}
+  function hostStage(count){return count<=0?0:count<3?1:count<5?2:count<8?3:4}
+  function joinStage(count){return count<=0?0:count<50?1:count<200?2:count<500?3:4}
+  function exchangeStage(count){return count<=0?0:count<2?1:count<4?2:count<6?3:4}
   function continueStage(count){return count<=0?0:count===1?1:count===2?2:count===3?3:4}
 
   function monthLabel(date){
