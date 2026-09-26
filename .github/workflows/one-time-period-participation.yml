@@ -25,25 +25,12 @@ jobs:
           s = s.replace('const VERSION="my-community-20260927-eventtag-reward1";', 'const VERSION="my-community-20260927-period-rate1";', 1)
           s = s.replace('.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}', '.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}', 1)
           s = s.replace('@media(max-width:760px){.g2,.g3{grid-template-columns:1fr}', '@media(max-width:760px){.g2,.g3,.g4{grid-template-columns:1fr}', 1)
-          old = '''    const totalRsvp=Number(summary.rsvp_count||0);
-    const totalCheckin=Number(summary.checkin_count||0);
-    const caMeetups=Number(summary.ca_meetup_count||0);
-    const meetupCount=Number(summary.meetup_count||0);'''
-          new = '''    const totalRsvp=Number(summary.rsvp_count||0);
-    const totalCheckin=Number(summary.checkin_count||0);
-    const caMeetups=Number(summary.ca_meetup_count||0);
-    const meetupCount=Number(summary.meetup_count||0);
-    const periodRate=totalRsvp>0?(totalCheckin/totalRsvp*100):null;
-    const periodRateText=periodRate==null?"算出不可":(Math.abs(periodRate-Math.round(periodRate))<0.05?String(Math.round(periodRate)):periodRate.toFixed(1))+"%";'''
+          old = '    const totalRsvp=Number(summary.rsvp_count||0);\n    const totalCheckin=Number(summary.checkin_count||0);\n    const caMeetups=Number(summary.ca_meetup_count||0);\n    const meetupCount=Number(summary.meetup_count||0);'
+          new = old + '\n    const periodRate=totalRsvp>0?(totalCheckin/totalRsvp*100):null;\n    const periodRateText=periodRate==null?"算出不可":(Math.abs(periodRate-Math.round(periodRate))<0.05?String(Math.round(periodRate)):periodRate.toFixed(1))+"%";'
           assert old in s
           s = s.replace(old, new, 1)
-          old_metrics = '''      '<section class="grid g3 section"><div class="metric"><span class="tiny strong muted">🔥 Meetup / '+e(periodLabel)+'</span><b>'+meetupCount.toLocaleString("ja-JP")+'</b></div>'+
-      '<div class="metric"><span class="tiny strong muted">🍀 CA Meetup / '+e(periodLabel)+'</span><b>'+caMeetups.toLocaleString("ja-JP")+'</b></div>'+
-      '<div class="metric"><span class="tiny strong muted">✅ Check-in / '+e(periodLabel)+'</span><b>'+totalCheckin.toLocaleString("ja-JP")+'</b></div></section>'+'''
-          new_metrics = '''      '<section class="grid g4 section"><div class="metric"><span class="tiny strong muted">🔥 Meetup / '+e(periodLabel)+'</span><b>'+meetupCount.toLocaleString("ja-JP")+'</b></div>'+
-      '<div class="metric"><span class="tiny strong muted">🍀 CA Meetup / '+e(periodLabel)+'</span><b>'+caMeetups.toLocaleString("ja-JP")+'</b></div>'+
-      '<div class="metric"><span class="tiny strong muted">✅ Check-in / '+e(periodLabel)+'</span><b>'+totalCheckin.toLocaleString("ja-JP")+'</b></div>'+ 
-      '<div class="metric"><span class="tiny strong muted">📊 参加率 / '+e(periodLabel)+'</span><b>'+e(periodRateText)+'</b>'+(periodRate==null?'<div class="tiny muted strong" style="margin-top:5px">RSVP 0のため</div>':'<div class="tiny muted strong" style="margin-top:5px">RSVP → Check-in</div>')+'</div></section>'+'''
+          old_metrics = '<section class="grid g3 section"><div class="metric"><span class="tiny strong muted">🔥 Meetup / '+"'+e(periodLabel)+'"+'</span><b>'+"'+meetupCount.toLocaleString(\"ja-JP\")+'"+'</b></div>'+"'+'"+'<div class="metric"><span class="tiny strong muted">🍀 CA Meetup / '+"'+e(periodLabel)+'"+'</span><b>'+"'+caMeetups.toLocaleString(\"ja-JP\")+'"+'</b></div>'+"'+'"+'<div class="metric"><span class="tiny strong muted">✅ Check-in / '+"'+e(periodLabel)+'"+'</span><b>'+"'+totalCheckin.toLocaleString(\"ja-JP\")+'"+'</b></div></section>'
+          new_metrics = '<section class="grid g4 section"><div class="metric"><span class="tiny strong muted">🔥 Meetup / '+"'+e(periodLabel)+'"+'</span><b>'+"'+meetupCount.toLocaleString(\"ja-JP\")+'"+'</b></div>'+"'+'"+'<div class="metric"><span class="tiny strong muted">🍀 CA Meetup / '+"'+e(periodLabel)+'"+'</span><b>'+"'+caMeetups.toLocaleString(\"ja-JP\")+'"+'</b></div>'+"'+'"+'<div class="metric"><span class="tiny strong muted">✅ Check-in / '+"'+e(periodLabel)+'"+'</span><b>'+"'+totalCheckin.toLocaleString(\"ja-JP\")+'"+'</b></div>'+"'+'"+'<div class="metric"><span class="tiny strong muted">📊 参加率 / '+"'+e(periodLabel)+'"+'</span><b>'+"'+e(periodRateText)+'"+'</b>'+"'+(periodRate==null?'"+'<div class="tiny muted strong" style="margin-top:5px">RSVP 0のため</div>'+"':'"+'<div class="tiny muted strong" style="margin-top:5px">RSVP → Check-in</div>'+"')+'"+'</div></section>'
           assert old_metrics in s
           s = s.replace(old_metrics, new_metrics, 1)
           p.write_text(s)
