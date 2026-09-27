@@ -12,7 +12,7 @@
   document.head.appendChild(periods);
 
   const reach=document.createElement("script");
-  reach.src="./reach-phase7.js?v=20260928-reach7a1";
+  reach.src="./reach-phase7.js?v=20260928-reach7b1";
   reach.async=false;
   document.head.appendChild(reach);
 })();
