@@ -3,6 +3,14 @@
 
   const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
   const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
+  const HOUR=60*60*1000;
+  const CHECKPOINTS=[
+    {key:"plus24",label:"+24h",kind:"after-create",offset:24*HOUR,tolerance:12*HOUR},
+    {key:"minus3d",label:"3日前",kind:"before-start",offset:-72*HOUR,tolerance:12*HOUR},
+    {key:"minus1d",label:"前日",kind:"before-start",offset:-24*HOUR,tolerance:12*HOUR},
+    {key:"minus1h",label:"1時間前",kind:"before-start",offset:-1*HOUR,tolerance:2*HOUR},
+    {key:"start",label:"開催時",kind:"before-start",offset:0,tolerance:2*HOUR}
+  ];
   let client=null;
   let mountToken=0;
 
@@ -56,6 +64,11 @@
       .reach7-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
       .reach7-badge{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:950;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe}
       .reach7-badge.partial{background:#fff7ed;color:#c2410c;border-color:#fed7aa}
+      .reach7-checkpoint-title{margin:0;color:#4c1d95;font-size:17px;font-weight:950}
+      .reach7-checkpoints{display:grid;grid-template-columns:repeat(5,minmax(112px,1fr));gap:8px;overflow-x:auto;padding-bottom:2px}
+      .reach7-checkpoint{border:1px solid #ddd6fe;border-radius:16px;padding:11px 12px;background:#fff;min-width:112px}
+      .reach7-checkpoint .label{font-size:10px;font-weight:950;color:#7c3aed}.reach7-checkpoint .value{font-size:20px;font-weight:950;color:#4c1d95;margin-top:4px}.reach7-checkpoint .sub{font-size:9px;font-weight:850;color:#94a3b8;margin-top:3px;white-space:nowrap}
+      .reach7-checkpoint.pending{background:#f8fafc;border-color:#e2e8f0}.reach7-checkpoint.pending .label,.reach7-checkpoint.pending .value{color:#64748b}
       .reach7-chartbox{overflow-x:auto;border:1px solid #ede9fe;border-radius:20px;background:#fff;margin-top:12px}
       .reach7-svg{display:block;width:100%;min-width:760px}
       .reach7-note{font-size:11px;font-weight:850;color:#64748b;line-height:1.65;margin-top:10px}
@@ -63,6 +76,54 @@
       @media(max-width:760px){.reach7-summary{grid-template-columns:1fr 1fr}.reach7-metric{padding:12px}.reach7-metric b{font-size:21px}}
     `;
     document.head.appendChild(style);
+  }
+
+  function checkpointTarget(checkpoint,meetup){
+    const start=new Date(meetup.starts_at).getTime();
+    const created=meetup.campfire_created_at?new Date(meetup.campfire_created_at).getTime():NaN;
+    if(checkpoint.kind==="after-create")return Number.isFinite(created)?created+checkpoint.offset:NaN;
+    return Number.isFinite(start)?start+checkpoint.offset:NaN;
+  }
+
+  function nearestRow(rows,target){
+    let best=null,bestDiff=Infinity;
+    rows.forEach(function(row){
+      const diff=Math.abs(row.time-target);
+      if(diff<bestDiff){best=row;bestDiff=diff}
+    });
+    return {row:best,diff:bestDiff};
+  }
+
+  function checkpointData(rows,meetup){
+    const now=Date.now();
+    const start=new Date(meetup.starts_at).getTime();
+    const created=meetup.campfire_created_at?new Date(meetup.campfire_created_at).getTime():NaN;
+    return CHECKPOINTS.map(function(checkpoint){
+      const target=checkpointTarget(checkpoint,meetup);
+      if(!Number.isFinite(target))return {...checkpoint,target,state:"unknown"};
+      if(checkpoint.kind==="after-create"&&Number.isFinite(start)&&target>start)return {...checkpoint,target,state:"not-applicable"};
+      if(Number.isFinite(created)&&target<created)return {...checkpoint,target,state:"before-create"};
+      if(target>now)return {...checkpoint,target,state:"future"};
+      const nearest=nearestRow(rows,target);
+      if(!nearest.row||nearest.diff>checkpoint.tolerance)return {...checkpoint,target,state:"missing"};
+      return {
+        ...checkpoint,
+        target,
+        state:"observed",
+        row:nearest.row,
+        diff:nearest.diff,
+        approx:nearest.diff>15*60*1000
+      };
+    });
+  }
+
+  function checkpointCardHtml(item){
+    if(item.state==="observed"){
+      return '<div class="reach7-checkpoint"><div class="label">'+esc(item.label)+'</div><div class="value">'+(item.approx?'≈':'')+item.row.rsvp.toLocaleString("ja-JP")+'</div><div class="sub">観測 '+esc(fmtDateTime(item.row.observed_at))+'</div></div>';
+    }
+    const text=item.state==="future"?"まだ":item.state==="before-create"?"未作成":item.state==="not-applicable"?"対象外":item.state==="missing"?"記録なし":"不明";
+    const sub=item.state==="future"?"チェックポイント未到達":item.state==="before-create"?"Meetup作成前":item.state==="not-applicable"?"開催まで24時間未満":item.state==="missing"?"近い実測値なし":"時刻を判定できません";
+    return '<div class="reach7-checkpoint pending"><div class="label">'+esc(item.label)+'</div><div class="value">'+esc(text)+'</div><div class="sub">'+esc(sub)+'</div></div>';
   }
 
   function chartHtml(points,meetup){
@@ -73,6 +134,7 @@
     }).filter(function(p){return Number.isFinite(p.time)}).sort(function(a,b){return a.time-b.time});
     if(!rows.length)return '<div class="reach7-empty">表示できる観測データがありません。</div>';
 
+    const checkpoints=checkpointData(rows,meetup);
     const W=900,H=300,L=55,R=24,T=28,B=48,PW=W-L-R,PH=H-T-B;
     const minX=rows[0].time,maxX=rows[rows.length-1].time;
     const xSpan=Math.max(1,maxX-minX);
@@ -96,6 +158,12 @@
         svg+='<text x="'+xx.toFixed(1)+'" y="'+(H-20)+'" text-anchor="middle" font-size="10" font-weight="800" fill="#64748b">'+esc(fmtDateTime(r.observed_at))+'</text>';
       }
     });
+    checkpoints.filter(function(item){return item.state==="observed"&&item.row}).forEach(function(item,index){
+      const xx=x(item.row.time),yy=y(item.row.rsvp),labelY=34+(index%2)*14;
+      svg+='<line x1="'+xx.toFixed(1)+'" x2="'+xx.toFixed(1)+'" y1="'+(T+8)+'" y2="'+(T+PH)+'" stroke="#c4b5fd" stroke-width="1.5" stroke-dasharray="5 5"/>';
+      svg+='<circle cx="'+xx.toFixed(1)+'" cy="'+yy.toFixed(1)+'" r="8" fill="white" stroke="#6d28d9" stroke-width="2.5"><title>'+esc(item.label+' '+(item.approx?'約 ':'')+item.row.rsvp+' RSVP')+'</title></circle>';
+      svg+='<text x="'+xx.toFixed(1)+'" y="'+labelY+'" text-anchor="middle" font-size="9" font-weight="950" fill="#6d28d9">'+esc(item.label)+'</text>';
+    });
     svg+='<text x="'+L+'" y="16" font-size="11" font-weight="900" fill="#6d28d9">RSVP</text></svg>';
 
     const first=rows[0],last=rows[rows.length-1];
@@ -113,7 +181,8 @@
         '<div class="reach7-metric"><span>観測内の伸び</span><b>'+(growth>=0?'+':'')+growth.toLocaleString("ja-JP")+'</b></div>'+
         '<div class="reach7-metric"><span>Check-in</span><b>'+latestCheckin.toLocaleString("ja-JP")+'</b></div>'+
       '</div>'+
-      '<div><h2 style="font-size:19px">📣 RSVPの伸び</h2><p class="muted small strong" style="margin:5px 0 0">実際に取得したスナップショットを時系列で表示</p><div class="reach7-chartbox">'+svg+'</div><div class="reach7-note">Phase 7Aでは実測値だけを表示しています。+24h / 3日前 / 前日 / 1時間前 / 開催時のチェックポイントは次の段階で重ねます。</div></div>'+
+      '<div><h3 class="reach7-checkpoint-title">⏱ RSVPチェックポイント</h3><p class="muted small strong" style="margin:5px 0 9px">告知後と開催前の節目で、RSVPがどこまで伸びたかを確認</p><div class="reach7-checkpoints">'+checkpoints.map(checkpointCardHtml).join('')+'</div></div>'+
+      '<div><h2 style="font-size:19px">📣 RSVPの伸び</h2><p class="muted small strong" style="margin:5px 0 0">実際に取得したスナップショットを時系列で表示</p><div class="reach7-chartbox">'+svg+'</div><div class="reach7-note">Phase 7B: +24h / 3日前 / 前日 / 1時間前 / 開催時を追加しました。完全一致する観測がない場合は最も近い実測値を使い、15分以上ずれる値には「≈」を付けています。十分近い観測がない場合は「記録なし」と表示します。</div></div>'+
     '</div>';
   }
 
@@ -173,7 +242,7 @@
       select.addEventListener("change",renderSelected);
       renderSelected();
     }catch(err){
-      console.warn("Reach Phase 7A failed",err);
+      console.warn("Reach Phase 7B failed",err);
       root.innerHTML='<div class="reach7-empty">Reachデータの読み込みに失敗しました。少し時間を置いて再度開いてください。</div>';
     }
   }
