@@ -15,4 +15,9 @@
   growth.src="./growth-period-inline.js?v=20260928-growth-inline1";
   growth.async=false;
   document.head.appendChild(growth);
+
+  const insights=document.createElement("script");
+  insights.src="./insights-period-inline.js?v=20260928-insights-inline1";
+  insights.async=false;
+  document.head.appendChild(insights);
 })();
