@@ -52,7 +52,7 @@
   const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
   const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
   const ROOT="https://kaityo1221.github.io/ca-clover/";
-  const VERSION="my-community-20260927-community-hub4";
+  const VERSION="my-community-20260927-feature-focus1";
   const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}
   });
@@ -183,6 +183,15 @@
   }
   function route(){return (location.hash||"#my").slice(1)}
   function go(v){location.hash=v}
+  function scrollToCommunityFeature(){
+    const target=document.getElementById("communityFeaturePanel");
+    if(!target)return;
+    const sticky=document.querySelector(".top");
+    const offset=(sticky?sticky.getBoundingClientRect().height:0)+12;
+    const y=target.getBoundingClientRect().top+window.scrollY-offset;
+    const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({top:Math.max(0,y),behavior:reduce?"auto":"smooth"});
+  }
   function setFlash(text,type){flash={text:text,type:type||"ok"};render()}
   function flashHtml(){
     if(!flash)return "";
@@ -414,7 +423,7 @@
       html+='</section>';
     }else{
       const current=featureMeta[communityFeatureView]||featureMeta.growth;
-      html+='<section class="card section"><div class="feature-page-head"><div><span class="pill">'+current.icon+' '+e(current.label)+'</span><h2 style="margin-top:9px">'+e(current.title)+'</h2></div>'+(communityFeatureView!=="reach"?'<div class="periodbar" style="margin-top:0">'+COMMUNITY_PERIODS.map(function(item){return '<button type="button" class="periodbtn '+(item[1]===period?'active':'')+'" data-community-period="'+(item[1]===null?'all':item[1])+'">'+item[0]+'</button>'}).join("")+'</div>':'')+'</div></section>';
+      html+='<section id="communityFeaturePanel" class="card section"><div class="feature-page-head"><div><span class="pill">'+current.icon+' '+e(current.label)+'</span><h2 style="margin-top:9px">'+e(current.title)+'</h2></div>'+(communityFeatureView!=="reach"?'<div class="periodbar" style="margin-top:0">'+COMMUNITY_PERIODS.map(function(item){return '<button type="button" class="periodbtn '+(item[1]===period?'active':'')+'" data-community-period="'+(item[1]===null?'all':item[1])+'">'+item[0]+'</button>'}).join("")+'</div>':'')+'</div></section>';
       if(communityFeatureView==="growth"){
         html+=memberGrowthHtml(memberSnapshots,periodLabel,community.member_count);
       }else if(communityFeatureView==="activity"){
@@ -433,7 +442,11 @@
       void renderCommunity(id);
     };
     app.querySelectorAll("[data-community-feature]").forEach(function(b){
-      b.onclick=function(){communityFeatureView=b.dataset.communityFeature||"home";void renderCommunity(id)};
+      b.onclick=async function(){
+        communityFeatureView=b.dataset.communityFeature||"home";
+        await renderCommunity(id);
+        requestAnimationFrame(function(){requestAnimationFrame(scrollToCommunityFeature)});
+      };
     });
     app.querySelectorAll("[data-community-period]").forEach(function(b){
       b.onclick=function(){
