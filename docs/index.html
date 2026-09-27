@@ -115,7 +115,7 @@
         (points.length>1?'<path d="'+path+'" fill="none" stroke="#65a30d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>':'')+circles+labels+'</svg></div>';
     }
     const started=points.length?points[0].date:"";
-    return '<section class="card section"><div class="row between wraprow"><div><h2 style="word-break:keep-all;overflow-wrap:normal">🌱 Community Growth / '+e(periodLabel)+'</h2><p class="muted small strong" style="margin:5px 0 0">Community人数の日次記録</p></div><span class="pill">1日1回</span></div>'+
+    return '<section class="card section"><div class="row between wraprow"><div><h2 style="word-break:keep-all;overflow-wrap:normal">🌱 Community Growth</h2><p class="muted small strong" style="margin:5px 0 0">Community人数の日次記録</p></div><span class="pill">同期は1日1回行われます</span></div>'+
       '<div class="grid g3 section"><div class="metric"><span class="tiny strong muted">現在のMember</span><b>'+(latest==null?'—':e(latest.toLocaleString("ja-JP")))+'</b></div>'+
       '<div class="metric"><span class="tiny strong muted">前回比</span><b>'+e(deltaText(previousDelta))+'</b><div class="tiny muted strong" style="margin-top:5px">前日の記録との差</div></div>'+
       '<div class="metric"><span class="tiny strong muted">期間内変化</span><b>'+e(deltaText(periodDelta))+'</b><div class="tiny muted strong" style="margin-top:5px">'+(points.length>1?e(periodLabel+"の最初の記録から"):"履歴2日目から算出")+'</div></div></div>'+chart+
@@ -179,7 +179,7 @@
       svg+='<circle cx="'+x(i)+'" cy="'+cy(r.checkin_count)+'" r="4" fill="#65a30d" stroke="white" stroke-width="2"><title>'+e(activityLabel(r.bucket,bucket,rows.length)+' Check-in '+r.checkin_count.toLocaleString("ja-JP"))+'</title></circle>';
     });
     svg+='<text x="'+L+'" y="14" font-size="10" font-weight="800" fill="#b45309">Meetup回数</text><text x="'+(W-R)+'" y="14" text-anchor="end" font-size="10" font-weight="800" fill="#4d7c0f">Check-in数</text></svg>';
-    return '<section class="card section"><h2>📈 Activity推移 / '+e(periodLabel)+'</h2><p class="muted small strong">'+e(activityUnit(bucket))+' / Meetup回数とCheck-in数の推移</p><div class="trendlegend"><span>🟨 Meetup回数</span><span>🟢 Check-in数</span></div><div class="trendbox">'+svg+'</div></section>';
+    return '<section class="card section"><h2>📈 Activity推移</h2><p class="muted small strong">'+e(activityUnit(bucket))+' / Meetup回数とCheck-in数の推移</p><div class="trendlegend"><span>🟨 Meetup回数</span><span>🟢 Check-in数</span></div><div class="trendbox">'+svg+'</div></section>';
   }
   function route(){return (location.hash||"#my").slice(1)}
   function go(v){location.hash=v}
