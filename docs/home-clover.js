@@ -15,4 +15,9 @@
   reach.src="./reach-phase7.js?v=20260928-reach7b1";
   reach.async=false;
   document.head.appendChild(reach);
+
+  const reachCompare=document.createElement("script");
+  reachCompare.src="./reach-phase7c.js?v=20260928-reach7c1";
+  reachCompare.async=false;
+  document.head.appendChild(reachCompare);
 })();
