@@ -7,7 +7,7 @@
   document.head.appendChild(core);
 
   const focus=document.createElement("script");
-  focus.src="./activity-period-focus.js?v=20260927-activity-focus1";
+  focus.src="./activity-period-focus.js?v=20260928-activity-inline1";
   focus.async=false;
   document.head.appendChild(focus);
 })();
