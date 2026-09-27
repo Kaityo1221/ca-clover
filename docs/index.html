@@ -52,7 +52,7 @@
   const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
   const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
   const ROOT="https://kaityo1221.github.io/ca-clover/";
-  const VERSION="my-community-20260927-community-hub1";
+  const VERSION="my-community-20260927-community-hub2";
   const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}
   });
@@ -309,14 +309,7 @@
       const access=await client.from("community_memberships").select("community_id").eq("user_id",session.user.id).eq("community_id",id).maybeSingle();
       if(access.error||!access.data){
         app.innerHTML='<section class="card center"><h2>このCommunityは表示できません</h2><p class="muted strong">My Communityに割り当てられたCommunityだけを表示できます。</p><button id="backMy" class="btn line section">My Communityへ戻る</button></section>';
-        document.getElementById("backMy").onclick=function(){
-      if(communityFeatureView==="home"){go("my");return}
-      communityFeatureView="home";
-      void renderCommunity(id);
-    };
-    app.querySelectorAll("[data-community-feature]").forEach(function(b){
-      b.onclick=function(){communityFeatureView=b.dataset.communityFeature||"home";void renderCommunity(id)};
-    });
+        document.getElementById("backMy").onclick=function(){go("my")};
         return;
       }
     }
@@ -434,7 +427,14 @@
     }
     html+='<div class="version">mirror '+VERSION+'</div>';
     app.innerHTML=html;
-    document.getElementById("backMy").onclick=function(){go("my")};
+    document.getElementById("backMy").onclick=function(){
+      if(communityFeatureView==="home"){go("my");return}
+      communityFeatureView="home";
+      void renderCommunity(id);
+    };
+    app.querySelectorAll("[data-community-feature]").forEach(function(b){
+      b.onclick=function(){communityFeatureView=b.dataset.communityFeature||"home";void renderCommunity(id)};
+    });
     app.querySelectorAll("[data-community-period]").forEach(function(b){
       b.onclick=function(){
         communityPeriod=b.dataset.communityPeriod==="all"?null:Number(b.dataset.communityPeriod);
