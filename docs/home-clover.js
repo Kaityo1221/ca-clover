@@ -6,18 +6,8 @@
   core.async=false;
   document.head.appendChild(core);
 
-  const focus=document.createElement("script");
-  focus.src="./activity-period-focus.js?v=20260928-activity-inline1";
-  focus.async=false;
-  document.head.appendChild(focus);
-
-  const growth=document.createElement("script");
-  growth.src="./growth-period-inline.js?v=20260928-growth-inline1";
-  growth.async=false;
-  document.head.appendChild(growth);
-
-  const insights=document.createElement("script");
-  insights.src="./insights-period-inline.js?v=20260928-insights-inline1";
-  insights.async=false;
-  document.head.appendChild(insights);
+  const periods=document.createElement("script");
+  periods.src="./community-period-inline.js?v=20260928-period-shared1";
+  periods.async=false;
+  document.head.appendChild(periods);
 })();
