@@ -52,7 +52,7 @@
   const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
   const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
   const ROOT="https://kaityo1221.github.io/ca-clover/";
-  const VERSION="my-community-20260927-period-focus1";
+  const VERSION="my-community-20260927-feature-focus1";
   const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}
   });
@@ -115,7 +115,7 @@
         (points.length>1?'<path d="'+path+'" fill="none" stroke="#65a30d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>':'')+circles+labels+'</svg></div>';
     }
     const started=points.length?points[0].date:"";
-    return '<section id="communityFeatureBody" class="card section"><div class="row between wraprow"><div><h2 style="word-break:keep-all;overflow-wrap:normal">🌱 Community Growth</h2><p class="muted small strong" style="margin:5px 0 0">Community人数の日次記録</p></div><span class="pill">同期は1日1回行われます</span></div>'+
+    return '<section class="card section"><div class="row between wraprow"><div><h2 style="word-break:keep-all;overflow-wrap:normal">🌱 Community Growth</h2><p class="muted small strong" style="margin:5px 0 0">Community人数の日次記録</p></div><span class="pill">同期は1日1回行われます</span></div>'+
       '<div class="grid g3 section"><div class="metric"><span class="tiny strong muted">現在のMember</span><b>'+(latest==null?'—':e(latest.toLocaleString("ja-JP")))+'</b></div>'+
       '<div class="metric"><span class="tiny strong muted">前回比</span><b>'+e(deltaText(previousDelta))+'</b><div class="tiny muted strong" style="margin-top:5px">前日の記録との差</div></div>'+
       '<div class="metric"><span class="tiny strong muted">期間内変化</span><b>'+e(deltaText(periodDelta))+'</b><div class="tiny muted strong" style="margin-top:5px">'+(points.length>1?e(periodLabel+"の最初の記録から"):"履歴2日目から算出")+'</div></div></div>'+chart+
@@ -179,11 +179,12 @@
       svg+='<circle cx="'+x(i)+'" cy="'+cy(r.checkin_count)+'" r="4" fill="#65a30d" stroke="white" stroke-width="2"><title>'+e(activityLabel(r.bucket,bucket,rows.length)+' Check-in '+r.checkin_count.toLocaleString("ja-JP"))+'</title></circle>';
     });
     svg+='<text x="'+L+'" y="14" font-size="10" font-weight="800" fill="#b45309">Meetup回数</text><text x="'+(W-R)+'" y="14" text-anchor="end" font-size="10" font-weight="800" fill="#4d7c0f">Check-in数</text></svg>';
-    return '<section id="communityFeatureBody" class="card section"><h2>📈 Activity推移</h2><p class="muted small strong">'+e(activityUnit(bucket))+' / Meetup回数とCheck-in数の推移</p><div class="trendlegend"><span>🟨 Meetup回数</span><span>🟢 Check-in数</span></div><div class="trendbox">'+svg+'</div></section>';
+    return '<section class="card section"><h2>📈 Activity推移</h2><p class="muted small strong">'+e(activityUnit(bucket))+' / Meetup回数とCheck-in数の推移</p><div class="trendlegend"><span>🟨 Meetup回数</span><span>🟢 Check-in数</span></div><div class="trendbox">'+svg+'</div></section>';
   }
   function route(){return (location.hash||"#my").slice(1)}
   function go(v){location.hash=v}
-  function scrollToTarget(target){
+  function scrollToCommunityFeature(){
+    const target=document.getElementById("communityFeaturePanel");
     if(!target)return;
     const sticky=document.querySelector(".top");
     const offset=(sticky?sticky.getBoundingClientRect().height:0)+12;
@@ -191,8 +192,6 @@
     const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     window.scrollTo({top:Math.max(0,y),behavior:reduce?"auto":"smooth"});
   }
-  function scrollToCommunityFeature(){scrollToTarget(document.getElementById("communityFeaturePanel"))}
-  function scrollToCommunityFeatureBody(){scrollToTarget(document.getElementById("communityFeatureBody"))}
   function setFlash(text,type){flash={text:text,type:type||"ok"};render()}
   function flashHtml(){
     if(!flash)return "";
@@ -430,9 +429,9 @@
       }else if(communityFeatureView==="activity"){
         html+=activityChartHtml(trend,trendBucket,periodLabel);
       }else if(communityFeatureView==="insights"){
-        html+='<section id="communityFeatureBody" class="grid g4 section"><div class="metric"><span class="tiny strong muted">🔥 Meetup / '+e(periodLabel)+'</span><b>'+meetupCount.toLocaleString("ja-JP")+'</b></div><div class="metric"><span class="tiny strong muted">🍀 CA Meetup / '+e(periodLabel)+'</span><b>'+caMeetups.toLocaleString("ja-JP")+'</b></div><div class="metric"><span class="tiny strong muted">✅ Check-in / '+e(periodLabel)+'</span><b>'+totalCheckin.toLocaleString("ja-JP")+'</b></div><div class="metric"><span class="tiny strong muted">📊 参加率 / '+e(periodLabel)+'</span><b>'+e(periodRateText)+'</b>'+(periodRate==null?'<div class="tiny muted strong" style="margin-top:5px">RSVP 0のため</div>':'<div class="tiny muted strong" style="margin-top:5px">RSVP → Check-in</div>')+'</div></section>';
+        html+='<section class="grid g4 section"><div class="metric"><span class="tiny strong muted">🔥 Meetup / '+e(periodLabel)+'</span><b>'+meetupCount.toLocaleString("ja-JP")+'</b></div><div class="metric"><span class="tiny strong muted">🍀 CA Meetup / '+e(periodLabel)+'</span><b>'+caMeetups.toLocaleString("ja-JP")+'</b></div><div class="metric"><span class="tiny strong muted">✅ Check-in / '+e(periodLabel)+'</span><b>'+totalCheckin.toLocaleString("ja-JP")+'</b></div><div class="metric"><span class="tiny strong muted">📊 参加率 / '+e(periodLabel)+'</span><b>'+e(periodRateText)+'</b>'+(periodRate==null?'<div class="tiny muted strong" style="margin-top:5px">RSVP 0のため</div>':'<div class="tiny muted strong" style="margin-top:5px">RSVP → Check-in</div>')+'</div></section>';
       }else if(communityFeatureView==="reach"){
-        html+='<section id="communityFeatureBody" class="card section"><h2>📣 Reach</h2><p class="muted strong">Meetup作成後にRSVPがどのように増えていったかを見る機能を、ここに追加します。</p><div class="notice section">Phase 7で実装予定です。データ蓄積は進めています。</div></section>';
+        html+='<section class="card section"><h2>📣 Reach</h2><p class="muted strong">Meetup作成後にRSVPがどのように増えていったかを見る機能を、ここに追加します。</p><div class="notice section">Phase 7で実装予定です。データ蓄積は進めています。</div></section>';
       }
     }
     html+='<div class="version">mirror '+VERSION+'</div>';
@@ -450,10 +449,9 @@
       };
     });
     app.querySelectorAll("[data-community-period]").forEach(function(b){
-      b.onclick=async function(){
+      b.onclick=function(){
         communityPeriod=b.dataset.communityPeriod==="all"?null:Number(b.dataset.communityPeriod);
-        await renderCommunity(id);
-        requestAnimationFrame(function(){requestAnimationFrame(scrollToCommunityFeatureBody)});
+        void renderCommunity(id);
       };
     });
     app.querySelectorAll("[data-history-limit]").forEach(function(b){
