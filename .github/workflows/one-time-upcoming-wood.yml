@@ -1,0 +1,31 @@
+name: One-time Upcoming Wood
+
+on:
+  push:
+    paths:
+      - '.github/workflows/one-time-upcoming-wood.yml'
+      - '.github/scripts/patch_upcoming_wood.py'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Preserve patch script
+        run: cp .github/scripts/patch_upcoming_wood.py /tmp/patch_upcoming_wood.py
+      - name: Switch to pages
+        run: git fetch origin pages && git checkout pages
+      - name: Patch upcoming Meetup carousel
+        run: python /tmp/patch_upcoming_wood.py
+      - name: Commit patch to pages
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/index.html
+          git commit -m 'feat: make upcoming Meetups a wooden swipe carousel'
+          git push origin pages
