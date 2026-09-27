@@ -50,13 +50,14 @@
   const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
   const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
   const ROOT="https://kaityo1221.github.io/ca-clover/";
-  const VERSION="my-community-20260927-event-tag-only1";
+  const VERSION="my-community-20260927-history-count1";
   const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}
   });
 
-  let session=null, profile=null, permissions=new Set(), busy=false, flash=null, communityPeriod=90, renderToken=0;
+  let session=null, profile=null, permissions=new Set(), busy=false, flash=null, communityPeriod=90, meetupHistoryLimit=25, communityFeatureView="home", renderToken=0;
   const COMMUNITY_PERIODS=[["1か月",30],["3か月",90],["6か月",180],["1年",365],["全期間",null]];
+  const MEETUP_HISTORY_LIMITS=[25,50,100];
   const app=document.getElementById("app");
   const nav=document.getElementById("nav");
 
@@ -328,8 +329,7 @@
       .eq("community_id",id)
       .lte("starts_at",nowIso)
       .order("starts_at",{ascending:false})
-      .limit(period===null?500:50);
-    if(since) meetupQuery=meetupQuery.gte("starts_at",since);
+      .limit(meetupHistoryLimit);
 
     const upcomingQuery=client.from("meetups")
       .select(meetupFields)
@@ -370,6 +370,8 @@
     const totalCheckin=Number(summary.checkin_count||0);
     const caMeetups=Number(summary.ca_meetup_count||0);
     const meetupCount=Number(summary.meetup_count||0);
+    const historyRsvp=meetups.reduce(function(sum,m){const v=Number(m.rsvp_count);return sum+(Number.isFinite(v)?v:0)},0);
+    const historyCheckin=meetups.reduce(function(sum,m){const v=Number(m.checkin_count);return sum+(Number.isFinite(v)?v:0)},0);
     const periodRate=totalRsvp>0?(totalCheckin/totalRsvp*100):null;
     const periodRateText=periodRate==null?"算出不可":(Math.abs(periodRate-Math.round(periodRate))<0.05?String(Math.round(periodRate)):periodRate.toFixed(1))+"%";
     let html='<button id="backMy" class="linkbtn">← My Community</button>'+
@@ -386,7 +388,7 @@
       memberGrowthHtml(memberSnapshots,periodLabel,community.member_count)+
       '<section class="grid g4 section"><div class="metric"><span class="tiny strong muted">🔥 Meetup / '+e(periodLabel)+'</span><b>'+meetupCount.toLocaleString("ja-JP")+'</b></div>'+'<div class="metric"><span class="tiny strong muted">🍀 CA Meetup / '+e(periodLabel)+'</span><b>'+caMeetups.toLocaleString("ja-JP")+'</b></div>'+'<div class="metric"><span class="tiny strong muted">✅ Check-in / '+e(periodLabel)+'</span><b>'+totalCheckin.toLocaleString("ja-JP")+'</b></div>'+'<div class="metric"><span class="tiny strong muted">📊 参加率 / '+e(periodLabel)+'</span><b>'+e(periodRateText)+'</b>'+(periodRate==null?'<div class="tiny muted strong" style="margin-top:5px">RSVP 0のため</div>':'<div class="tiny muted strong" style="margin-top:5px">RSVP → Check-in</div>')+'</div></section>'+
       activityChartHtml(trend,trendBucket,periodLabel)+
-      '<section class="card section"><h2>🔥 Meetup履歴 / '+e(periodLabel)+'</h2><p class="muted small strong">RSVP '+totalRsvp.toLocaleString("ja-JP")+' / Check-in '+totalCheckin.toLocaleString("ja-JP")+' · '+(period===null?'最大500件':'最新50件')+'表示</p>';
+      '<section class="card section"><div class="row between wraprow"><div><h2>🔥 Meetup履歴</h2><p class="muted small strong">RSVP '+historyRsvp.toLocaleString("ja-JP")+' / Check-in '+historyCheckin.toLocaleString("ja-JP")+' · 最新'+meetupHistoryLimit+'件表示</p></div><div class="periodbar" style="margin-top:0">'+MEETUP_HISTORY_LIMITS.map(function(n){return '<button type="button" class="periodbtn '+(n===meetupHistoryLimit?'active':'')+'" data-history-limit="'+n+'">'+n+'件</button>'}).join("")+'</div></div>';
     if(!meetups.length){
       html+='<div class="notice section">この期間のMeetupデータはありません。</div>';
     }else{
@@ -398,6 +400,12 @@
     app.querySelectorAll("[data-community-period]").forEach(function(b){
       b.onclick=function(){
         communityPeriod=b.dataset.communityPeriod==="all"?null:Number(b.dataset.communityPeriod);
+        void renderCommunity(id);
+      };
+    });
+    app.querySelectorAll("[data-history-limit]").forEach(function(b){
+      b.onclick=function(){
+        meetupHistoryLimit=Number(b.dataset.historyLimit)||25;
         void renderCommunity(id);
       };
     });
