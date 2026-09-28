@@ -49,10 +49,12 @@
       .reach7c-pill{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;background:#f5f3ff;border:1px solid #ddd6fe;color:#6d28d9;font-size:10px;font-weight:950;white-space:nowrap}
       .reach7c-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:12px;width:100%;max-width:100%;min-width:0}
       .reach7c-card{border:1px solid #ede9fe;border-radius:16px;padding:11px;background:linear-gradient(145deg,#fff,#faf5ff);min-width:0;max-width:100%;overflow:hidden}
+      .reach7c-card.pending{background:#f8fafc;border-color:#e2e8f0}
       .reach7c-label{font-size:10px;font-weight:950;color:#7c3aed}
       .reach7c-current{font-size:19px;font-weight:950;color:#4c1d95;margin-top:5px;overflow-wrap:anywhere}
       .reach7c-base{font-size:10px;font-weight:850;color:#64748b;margin-top:5px;line-height:1.45;overflow-wrap:anywhere}
       .reach7c-diff{font-size:11px;font-weight:950;margin-top:4px;color:#475569;overflow-wrap:anywhere}
+      .reach7c-card.pending .reach7c-base,.reach7c-card.pending .reach7c-diff{color:#94a3b8}
       .reach7c-empty{margin-top:12px;padding:13px 14px;border:1px dashed #c4b5fd;border-radius:16px;background:#faf5ff;color:#6d28d9;font-size:11px;font-weight:850;line-height:1.65;overflow-wrap:anywhere}
       .reach7c-pattern{margin-top:10px;padding:12px 14px;border-radius:16px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:11px;font-weight:900;line-height:1.65;overflow-wrap:anywhere}
       @media(max-width:760px){.reach7c-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.reach7c-card:last-child{grid-column:1/-1}}
@@ -162,6 +164,9 @@
       const base=median(baseValues);
       const current=currentHit?currentHit.value:null;
       const diff=current!=null&&base!=null?current-base:null;
+      if(!baseValues.length){
+        return '<div class="reach7c-card pending"><div class="reach7c-label">'+esc(cp.label)+'</div><div class="reach7c-current">今回 '+esc(fmtValue(current))+'</div><div class="reach7c-base">過去データ 蓄積中</div><div class="reach7c-diff">比較できる記録なし</div></div>';
+      }
       return '<div class="reach7c-card"><div class="reach7c-label">'+esc(cp.label)+'</div><div class="reach7c-current">今回 '+esc(fmtValue(current))+'</div><div class="reach7c-base">過去中央値 '+esc(fmtValue(base))+'<br>比較 '+baseValues.length+'件</div><div class="reach7c-diff">差 '+esc(fmtDiff(diff))+'</div></div>';
     }).join("");
 
@@ -202,7 +207,7 @@
       model={meetups,rowsByMeetup,meetupById:new Map(meetups.map(function(m){return [m.id,m]}))};
       renderComparison(select);
     }catch(err){
-      console.warn("Reach Phase 7C failed",err);
+      console.warn("Reach comparison failed",err);
     }
   }
 
@@ -212,9 +217,6 @@
     if(!reachOn||!select)return;
     ensureStyle();
 
-    // Important: rendering the comparison mutates #reach7Body. The observer below
-    // sees that mutation, so re-rendering here for the same select would create an
-    // endless mutation -> render -> mutation loop on Safari.
     if(mountedSelect===select)return;
 
     mountedSelect=select;
