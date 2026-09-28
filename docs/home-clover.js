@@ -20,4 +20,9 @@
   reachCompare.src="./reach-phase7c.js?v=20260928-reach7c1";
   reachCompare.async=false;
   document.head.appendChild(reachCompare);
+
+  const reachLayout=document.createElement("script");
+  reachLayout.src="./reach-mobile-layout-fix.js?v=20260928-reach-mobile-fix1";
+  reachLayout.async=false;
+  document.head.appendChild(reachLayout);
 })();
