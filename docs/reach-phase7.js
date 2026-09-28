@@ -52,28 +52,33 @@
     const style=document.createElement("style");
     style.id="caReachPhase7Style";
     style.textContent=`
-      .reach7-wrap{display:grid;gap:18px}
+      .reach7-wrap,.reach7-picker,#reach7Root,#reach7Body{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+      .reach7-wrap{display:grid;gap:18px;overflow-x:hidden}
       .reach7-picker{display:grid;gap:8px}
       .reach7-picker label{font-size:11px;font-weight:950;color:#64748b}
-      .reach7-select{width:100%;border:1px solid #ddd6fe;border-radius:16px;padding:13px 14px;background:#fff;color:#4338ca;font-weight:900;outline:none}
+      .reach7-select{width:100%;max-width:100%;min-width:0;border:1px solid #ddd6fe;border-radius:16px;padding:13px 14px;background:#fff;color:#4338ca;font-weight:900;outline:none}
       .reach7-select:focus{border-color:#a78bfa;box-shadow:0 0 0 4px rgba(167,139,250,.13)}
-      .reach7-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-      .reach7-metric{border:1px solid #ede9fe;border-radius:18px;padding:14px;background:linear-gradient(145deg,#fff,#faf5ff)}
+      .reach7-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:100%;min-width:0}
+      .reach7-metric{min-width:0;border:1px solid #ede9fe;border-radius:18px;padding:14px;background:linear-gradient(145deg,#fff,#faf5ff);overflow:hidden}
       .reach7-metric span{display:block;font-size:10px;font-weight:950;color:#7c3aed}
       .reach7-metric b{display:block;margin-top:5px;font-size:23px;color:#4c1d95;letter-spacing:-.02em}
-      .reach7-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+      .reach7-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;min-width:0}
       .reach7-badge{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:950;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe}
       .reach7-badge.partial{background:#fff7ed;color:#c2410c;border-color:#fed7aa}
       .reach7-checkpoint-title{margin:0;color:#4c1d95;font-size:17px;font-weight:950}
-      .reach7-checkpoints{display:grid;grid-template-columns:repeat(5,minmax(112px,1fr));gap:8px;overflow-x:auto;padding-bottom:2px}
-      .reach7-checkpoint{border:1px solid #ddd6fe;border-radius:16px;padding:11px 12px;background:#fff;min-width:112px}
-      .reach7-checkpoint .label{font-size:10px;font-weight:950;color:#7c3aed}.reach7-checkpoint .value{font-size:20px;font-weight:950;color:#4c1d95;margin-top:4px}.reach7-checkpoint .sub{font-size:9px;font-weight:850;color:#94a3b8;margin-top:3px;white-space:nowrap}
+      .reach7-checkpoints{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding-bottom:2px;width:100%;min-width:0}
+      .reach7-checkpoint{border:1px solid #ddd6fe;border-radius:16px;padding:11px 12px;background:#fff;min-width:0;overflow:hidden}
+      .reach7-checkpoint .label{font-size:10px;font-weight:950;color:#7c3aed}.reach7-checkpoint .value{font-size:20px;font-weight:950;color:#4c1d95;margin-top:4px}.reach7-checkpoint .sub{font-size:9px;font-weight:850;color:#94a3b8;margin-top:3px;white-space:normal;overflow-wrap:anywhere}
       .reach7-checkpoint.pending{background:#f8fafc;border-color:#e2e8f0}.reach7-checkpoint.pending .label,.reach7-checkpoint.pending .value{color:#64748b}
-      .reach7-chartbox{overflow-x:auto;border:1px solid #ede9fe;border-radius:20px;background:#fff;margin-top:12px}
-      .reach7-svg{display:block;width:100%;min-width:760px}
-      .reach7-note{font-size:11px;font-weight:850;color:#64748b;line-height:1.65;margin-top:10px}
-      .reach7-empty{padding:18px;border:1px dashed #c4b5fd;border-radius:18px;background:#faf5ff;color:#6d28d9;font-size:12px;font-weight:900;line-height:1.7}
-      @media(max-width:760px){.reach7-summary{grid-template-columns:1fr 1fr}.reach7-metric{padding:12px}.reach7-metric b{font-size:21px}}
+      .reach7-chartbox{width:100%;max-width:100%;min-width:0;overflow:hidden;border:1px solid #ede9fe;border-radius:20px;background:#fff;margin-top:12px}
+      .reach7-svg{display:block;width:100%;max-width:100%;min-width:0;height:auto}
+      .reach7-note{font-size:11px;font-weight:850;color:#64748b;line-height:1.65;margin-top:10px;overflow-wrap:anywhere}
+      .reach7-empty{padding:18px;border:1px dashed #c4b5fd;border-radius:18px;background:#faf5ff;color:#6d28d9;font-size:12px;font-weight:900;line-height:1.7;overflow-wrap:anywhere}
+      @media(max-width:760px){
+        .reach7-metric{padding:12px}.reach7-metric b{font-size:21px}
+        .reach7-checkpoints{grid-template-columns:repeat(2,minmax(0,1fr))}
+        .reach7-checkpoints>.reach7-checkpoint:last-child:nth-child(odd){grid-column:1/-1}
+      }
     `;
     document.head.appendChild(style);
   }
@@ -182,7 +187,7 @@
         '<div class="reach7-metric"><span>Check-in</span><b>'+latestCheckin.toLocaleString("ja-JP")+'</b></div>'+
       '</div>'+
       '<div><h3 class="reach7-checkpoint-title">⏱ RSVPチェックポイント</h3><p class="muted small strong" style="margin:5px 0 9px">告知後と開催前の節目で、RSVPがどこまで伸びたかを確認</p><div class="reach7-checkpoints">'+checkpoints.map(checkpointCardHtml).join('')+'</div></div>'+
-      '<div><h2 style="font-size:19px">📣 RSVPの伸び</h2><p class="muted small strong" style="margin:5px 0 0">実際に取得したスナップショットを時系列で表示</p><div class="reach7-chartbox">'+svg+'</div><div class="reach7-note">Phase 7B: +24h / 3日前 / 前日 / 1時間前 / 開催時を追加しました。完全一致する観測がない場合は最も近い実測値を使い、15分以上ずれる値には「≈」を付けています。十分近い観測がない場合は「記録なし」と表示します。</div></div>'+
+      '<div><h2 style="font-size:19px">📣 RSVPの伸び</h2><p class="muted small strong" style="margin:5px 0 0">実際に取得したスナップショットを時系列で表示</p><div class="reach7-chartbox">'+svg+'</div><div class="reach7-note">※「≈」はチェックポイント時刻と観測時刻に15分以上の差がある値です。近い観測がない場合は「記録なし」と表示します。</div></div>'+
     '</div>';
   }
 
@@ -242,7 +247,7 @@
       select.addEventListener("change",renderSelected);
       renderSelected();
     }catch(err){
-      console.warn("Reach Phase 7B failed",err);
+      console.warn("Reach failed",err);
       root.innerHTML='<div class="reach7-empty">Reachデータの読み込みに失敗しました。少し時間を置いて再度開いてください。</div>';
     }
   }
