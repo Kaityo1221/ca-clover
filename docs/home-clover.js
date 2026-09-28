@@ -12,17 +12,15 @@
   document.head.appendChild(periods);
 
   const reach=document.createElement("script");
-  reach.src="./reach-phase7.js?v=20260928-reach7b1";
+  reach.src="./reach-phase7.js?v=20260928-reach7b-stable2";
   reach.async=false;
   document.head.appendChild(reach);
 
-  const reachCompare=document.createElement("script");
-  reachCompare.src="./reach-phase7c.js?v=20260928-reach7c1";
-  reachCompare.async=false;
-  document.head.appendChild(reachCompare);
+  // Reach Phase 7C is temporarily disabled while its observer loop is fixed.
+  // Keep the stable 7B view available instead of risking Safari lockups.
 
   const reachLayout=document.createElement("script");
-  reachLayout.src="./reach-mobile-layout-fix.js?v=20260928-reach-mobile-fix1";
+  reachLayout.src="./reach-mobile-layout-fix.js?v=20260928-reach-mobile-stable2";
   reachLayout.async=false;
   document.head.appendChild(reachLayout);
 })();
