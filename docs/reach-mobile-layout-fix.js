@@ -6,6 +6,9 @@
     const style=document.createElement("style");
     style.id="caReachMobileLayoutFix";
     style.textContent=`
+      html,body{max-width:100%;overflow-x:hidden}
+      #app{min-width:0;max-width:100%;overflow-x:clip}
+
       [data-reach-phase7="1"],
       #reach7Root,
       #reach7Body,
@@ -25,11 +28,12 @@
         box-sizing:border-box;
       }
 
+      [data-reach-phase7="1"],
       #reach7Root,
       #reach7Body,
       .reach7-wrap,
       .reach7c{
-        overflow-x:hidden;
+        overflow-x:clip;
       }
 
       .reach7-picker > *,
@@ -43,6 +47,7 @@
       }
 
       .reach7-select{
+        display:block;
         width:100% !important;
         max-width:100% !important;
         min-width:0 !important;
@@ -86,9 +91,22 @@
         white-space:normal !important;
       }
 
+      .reach7-checkpoints{
+        grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+        gap:8px !important;
+        overflow:visible !important;
+      }
+
+      .reach7-checkpoints > .reach7-checkpoint:last-child:nth-child(odd){
+        grid-column:1/-1;
+      }
+
       .reach7-chartbox{
-        overflow-x:hidden !important;
-        overflow-y:hidden !important;
+        width:100% !important;
+        max-width:100% !important;
+        min-width:0 !important;
+        overflow:hidden !important;
+        contain:inline-size;
       }
 
       .reach7-svg{
@@ -99,48 +117,17 @@
         height:auto !important;
       }
 
-      @media(max-width:760px){
-        .reach7-summary{
-          grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-        }
+      .reach7c-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+      }
 
-        .reach7-checkpoints{
-          grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-          gap:8px !important;
-          overflow:visible !important;
-        }
-
-        .reach7-checkpoints > .reach7-checkpoint:last-child:nth-child(odd){
-          grid-column:1/-1;
-        }
-
-        .reach7c-grid{
-          grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-        }
-
-        .reach7c-grid > .reach7c-card:last-child:nth-child(odd){
-          grid-column:1/-1;
-        }
+      .reach7c-grid > .reach7c-card:last-child:nth-child(odd){
+        grid-column:1/-1;
       }
     `;
     document.head.appendChild(style);
   }
 
-  function resetHorizontalOffset(){
-    if(!document.querySelector('.feature-app.reach.on'))return;
-    if(document.documentElement)document.documentElement.scrollLeft=0;
-    if(document.body)document.body.scrollLeft=0;
-  }
-
   ensureStyle();
-  const observer=new MutationObserver(function(){
-    ensureStyle();
-    resetHorizontalOffset();
-  });
-  observer.observe(document.documentElement,{childList:true,subtree:true});
-  document.addEventListener("DOMContentLoaded",function(){
-    ensureStyle();
-    resetHorizontalOffset();
-  },{once:true});
-  resetHorizontalOffset();
+  document.addEventListener("DOMContentLoaded",ensureStyle,{once:true});
 })();
