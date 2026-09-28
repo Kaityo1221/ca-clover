@@ -42,20 +42,20 @@
     const style=document.createElement("style");
     style.id="caReachPhase7CStyle";
     style.textContent=`
-      .reach7c{margin-top:18px;padding-top:18px;border-top:1px solid #ede9fe}
-      .reach7c-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
-      .reach7c-title{margin:0;color:#4c1d95;font-size:18px;font-weight:950}
-      .reach7c-sub{margin:5px 0 0;color:#64748b;font-size:11px;font-weight:850;line-height:1.6}
+      .reach7c{margin-top:18px;padding-top:18px;border-top:1px solid #ede9fe;width:100%;max-width:100%;min-width:0;box-sizing:border-box;overflow-x:clip}
+      .reach7c-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;min-width:0}
+      .reach7c-title{margin:0;color:#4c1d95;font-size:18px;font-weight:950;overflow-wrap:anywhere}
+      .reach7c-sub{margin:5px 0 0;color:#64748b;font-size:11px;font-weight:850;line-height:1.6;overflow-wrap:anywhere}
       .reach7c-pill{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;background:#f5f3ff;border:1px solid #ddd6fe;color:#6d28d9;font-size:10px;font-weight:950;white-space:nowrap}
-      .reach7c-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:12px}
-      .reach7c-card{border:1px solid #ede9fe;border-radius:16px;padding:11px;background:linear-gradient(145deg,#fff,#faf5ff);min-width:0}
+      .reach7c-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:12px;width:100%;max-width:100%;min-width:0}
+      .reach7c-card{border:1px solid #ede9fe;border-radius:16px;padding:11px;background:linear-gradient(145deg,#fff,#faf5ff);min-width:0;max-width:100%;overflow:hidden}
       .reach7c-label{font-size:10px;font-weight:950;color:#7c3aed}
-      .reach7c-current{font-size:19px;font-weight:950;color:#4c1d95;margin-top:5px}
-      .reach7c-base{font-size:10px;font-weight:850;color:#64748b;margin-top:5px;line-height:1.45}
-      .reach7c-diff{font-size:11px;font-weight:950;margin-top:4px;color:#475569}
-      .reach7c-empty{margin-top:12px;padding:13px 14px;border:1px dashed #c4b5fd;border-radius:16px;background:#faf5ff;color:#6d28d9;font-size:11px;font-weight:850;line-height:1.65}
-      .reach7c-pattern{margin-top:10px;padding:12px 14px;border-radius:16px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:11px;font-weight:900;line-height:1.65}
-      @media(max-width:760px){.reach7c-grid{grid-template-columns:1fr 1fr}.reach7c-card:last-child{grid-column:1/-1}}
+      .reach7c-current{font-size:19px;font-weight:950;color:#4c1d95;margin-top:5px;overflow-wrap:anywhere}
+      .reach7c-base{font-size:10px;font-weight:850;color:#64748b;margin-top:5px;line-height:1.45;overflow-wrap:anywhere}
+      .reach7c-diff{font-size:11px;font-weight:950;margin-top:4px;color:#475569;overflow-wrap:anywhere}
+      .reach7c-empty{margin-top:12px;padding:13px 14px;border:1px dashed #c4b5fd;border-radius:16px;background:#faf5ff;color:#6d28d9;font-size:11px;font-weight:850;line-height:1.65;overflow-wrap:anywhere}
+      .reach7c-pattern{margin-top:10px;padding:12px 14px;border-radius:16px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:11px;font-weight:900;line-height:1.65;overflow-wrap:anywhere}
+      @media(max-width:760px){.reach7c-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.reach7c-card:last-child{grid-column:1/-1}}
     `;
     document.head.appendChild(style);
   }
@@ -211,10 +211,12 @@
     const select=document.getElementById("reach7MeetupSelect");
     if(!reachOn||!select)return;
     ensureStyle();
-    if(mountedSelect===select){
-      if(model)renderComparison(select);
-      return;
-    }
+
+    // Important: rendering the comparison mutates #reach7Body. The observer below
+    // sees that mutation, so re-rendering here for the same select would create an
+    // endless mutation -> render -> mutation loop on Safari.
+    if(mountedSelect===select)return;
+
     mountedSelect=select;
     model=null;
     select.addEventListener("change",function(){
