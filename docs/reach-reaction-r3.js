@@ -121,6 +121,8 @@
     if(!feature||!root||!root.parentElement)return false;
     if(document.getElementById("reachReactionR3"))return true;
     if(!window.CAReachReactionR1||typeof window.CAReachReactionR1.loadCommunity!=="function")return false;
+    const r2=document.getElementById("reachReactionR2");
+    if(!r2||!r2.parentElement||r2.parentElement!==root.parentElement)return false;
     const id=communityId();
     if(!id)return false;
 
@@ -131,9 +133,7 @@
     box.className="reaction-r3";
     box.dataset.version=VERSION;
     box.innerHTML='<div class="reaction-r3-wait">おすすめ作成タイミングを分析中...</div>';
-    const r2=document.getElementById("reachReactionR2");
-    if(r2&&r2.parentElement===root.parentElement)r2.insertAdjacentElement("afterend",box);
-    else root.parentElement.insertBefore(box,root);
+    r2.insertAdjacentElement("afterend",box);
 
     try{
       let result=window.CAReachReactionR2LastResult;
