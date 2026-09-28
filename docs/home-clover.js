@@ -31,6 +31,11 @@
   reactionRecommendation.async=false;
   document.head.appendChild(reactionRecommendation);
 
+  const reactionHeatmap=document.createElement("script");
+  reactionHeatmap.src="./reach-reaction-r4.js?v=20260928-r4-heatmap1";
+  reactionHeatmap.async=false;
+  document.head.appendChild(reactionHeatmap);
+
   const reach=document.createElement("script");
   reach.src="./reach-phase7.js?v=20260928-reach-v1-polish1";
   reach.async=false;
