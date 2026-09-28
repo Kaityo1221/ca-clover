@@ -16,10 +16,20 @@
   reaction.async=false;
   document.head.appendChild(reaction);
 
+  const reactionWindow=document.createElement("script");
+  reactionWindow.src="./reach-reaction-window12.js?v=20260928-window12-1";
+  reactionWindow.async=false;
+  document.head.appendChild(reactionWindow);
+
   const reactionCard=document.createElement("script");
   reactionCard.src="./reach-reaction-r2.js?v=20260928-r2-card1";
   reactionCard.async=false;
   document.head.appendChild(reactionCard);
+
+  const reactionRecommendation=document.createElement("script");
+  reactionRecommendation.src="./reach-reaction-r3.js?v=20260928-r3-recommendation1";
+  reactionRecommendation.async=false;
+  document.head.appendChild(reactionRecommendation);
 
   const reach=document.createElement("script");
   reach.src="./reach-phase7.js?v=20260928-reach-v1-polish1";
