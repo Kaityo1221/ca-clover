@@ -41,18 +41,17 @@
       .reach7d-title{margin:0;color:#365314;font-size:17px;font-weight:950}
       .reach7d-sub{margin:5px 0 0;color:#64748b;font-size:11px;font-weight:850;line-height:1.55}
       .reach7d-pill{display:inline-flex;align-items:center;border-radius:999px;padding:6px 9px;background:#ecfccb;border:1px solid #d9f99d;color:#4d7c0f;font-size:10px;font-weight:950;white-space:nowrap}
-      .reach7d-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px;min-width:0}
+      .reach7d-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px;min-width:0}
       .reach7d-card{min-width:0;border:1px solid #e2e8f0;border-radius:15px;padding:11px;background:#fff;overflow:hidden}
+      .reach7d-card.pending{background:#f8fafc}
       .reach7d-label{font-size:10px;font-weight:950;color:#64748b}
       .reach7d-value{margin-top:4px;font-size:20px;font-weight:950;color:#365314;overflow-wrap:anywhere}
+      .reach7d-card.pending .reach7d-value{color:#64748b;font-size:16px}
       .reach7d-meta{margin-top:4px;font-size:9px;font-weight:850;color:#94a3b8;line-height:1.45;overflow-wrap:anywhere}
       .reach7d-next{margin-top:10px;padding:10px 12px;border-radius:14px;background:#fff;border:1px solid #ecfccb;color:#475569;font-size:11px;font-weight:900;line-height:1.55;overflow-wrap:anywhere}
       .reach7d-note{margin-top:8px;color:#64748b;font-size:10px;font-weight:850;line-height:1.55}
       .reach7d-ended{padding:12px 14px;border:1px dashed #cbd5e1;border-radius:16px;background:#f8fafc;color:#64748b;font-size:11px;font-weight:850;line-height:1.6}
-      @media(max-width:760px){
-        .reach7d-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-        .reach7d-card:last-child{grid-column:1/-1}
-      }
+      @media(max-width:760px){.reach7d-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
     `;
     document.head.appendChild(style);
   }
@@ -176,14 +175,16 @@
       const diff=stage.median==null?null:latest.rsvp-stage.median;
       const d24=growth24h(rows);
       const next=nextCheckpoint(selected);
-      const paceText=stage.median==null
-        ?"同時期の過去データがまだ不足しています。"
-        :(diff===0?"過去Meetupの同時期中央値と同じです。":diff>0?"過去Meetupの同時期中央値を "+fmtDiff(diff)+" 上回っています。":"過去Meetupの同時期中央値を "+Math.abs(diff).toLocaleString("ja-JP")+" 下回っています。");
+      const hasComparison=stage.count>0&&stage.median!=null;
+      const paceText=hasComparison
+        ?(diff===0?"過去Meetupの同時期中央値と同じペースです。":diff>0?"過去Meetupの同時期中央値を "+fmtDiff(diff)+" 上回っています。":"過去Meetupの同時期中央値を "+Math.abs(diff).toLocaleString("ja-JP")+" 下回っています。")
+        :"同時期の過去Meetupデータを蓄積中です。比較できる記録が増えると自動で表示します。";
       section.innerHTML='<div class="reach7d-head"><div><h3 class="reach7d-title">📡 開催前サマリー</h3><p class="reach7d-sub">いまのRSVPペースを、同じCommunityの過去Meetupと同じ「開催までの残り時間」で比べます。</p></div><span class="reach7d-pill">LIVE</span></div>'+
         '<div class="reach7d-grid">'+
+          '<div class="reach7d-card"><div class="reach7d-label">現在RSVP</div><div class="reach7d-value">'+latest.rsvp.toLocaleString("ja-JP")+'</div><div class="reach7d-meta">最新観測値</div></div>'+
           '<div class="reach7d-card"><div class="reach7d-label">直近24h</div><div class="reach7d-value">'+(d24==null?'—':fmtDiff(d24))+'</div><div class="reach7d-meta">RSVPの増減</div></div>'+
-          '<div class="reach7d-card"><div class="reach7d-label">過去同時期中央値</div><div class="reach7d-value">'+fmtNum(stage.median)+'</div><div class="reach7d-meta">比較 '+stage.count+'件</div></div>'+
-          '<div class="reach7d-card"><div class="reach7d-label">中央値との差</div><div class="reach7d-value">'+fmtDiff(diff)+'</div><div class="reach7d-meta">現在RSVP '+latest.rsvp.toLocaleString("ja-JP")+'</div></div>'+
+          '<div class="reach7d-card '+(hasComparison?'':'pending')+'"><div class="reach7d-label">過去同時期中央値</div><div class="reach7d-value">'+(hasComparison?fmtNum(stage.median):'蓄積中')+'</div><div class="reach7d-meta">'+(hasComparison?'比較 '+stage.count+'件':'比較できる記録なし')+'</div></div>'+
+          '<div class="reach7d-card '+(hasComparison?'':'pending')+'"><div class="reach7d-label">中央値との差</div><div class="reach7d-value">'+(hasComparison?fmtDiff(diff):'算出前')+'</div><div class="reach7d-meta">'+(hasComparison?'同時期との比較':'過去データ蓄積後に表示')+'</div></div>'+
         '</div>'+
         '<div class="reach7d-next">'+esc(paceText)+(next?'　次のチェックポイントは「'+esc(next.label)+'」で、'+esc(untilText(next.time))+'です。':'')+'</div>'+
         '<div class="reach7d-note">※ 比較は取得できたスナップショットだけを使用します。データが増えるほど比較精度が上がります。</div>';
