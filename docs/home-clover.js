@@ -17,7 +17,7 @@
   document.head.appendChild(reaction);
 
   const reactionWindow=document.createElement("script");
-  reactionWindow.src="./reach-reaction-window12.js?v=20260928-window12-1";
+  reactionWindow.src="./reach-reaction-window12.js?v=20260928-window12-2";
   reactionWindow.async=false;
   document.head.appendChild(reactionWindow);
 
@@ -27,7 +27,7 @@
   document.head.appendChild(reactionCard);
 
   const reactionRecommendation=document.createElement("script");
-  reactionRecommendation.src="./reach-reaction-r3.js?v=20260928-r3-recommendation1";
+  reactionRecommendation.src="./reach-reaction-r3.js?v=20260928-r3-recommendation2";
   reactionRecommendation.async=false;
   document.head.appendChild(reactionRecommendation);
 
