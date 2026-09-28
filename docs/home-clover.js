@@ -16,8 +16,10 @@
   reach.async=false;
   document.head.appendChild(reach);
 
-  // Reach Phase 7C is temporarily disabled while its observer loop is fixed.
-  // Keep the stable 7B view available instead of risking Safari lockups.
+  const reachCompare=document.createElement("script");
+  reachCompare.src="./reach-phase7c.js?v=20260928-reach7c-stable1";
+  reachCompare.async=false;
+  document.head.appendChild(reachCompare);
 
   const reachLayout=document.createElement("script");
   reachLayout.src="./reach-mobile-layout-fix.js?v=20260928-reach-mobile-stable2";
