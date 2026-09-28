@@ -12,7 +12,7 @@
   document.head.appendChild(periods);
 
   const reach=document.createElement("script");
-  reach.src="./reach-phase7.js?v=20260928-reach7b-stable2";
+  reach.src="./reach-phase7.js?v=20260928-reach-v1-polish1";
   reach.async=false;
   document.head.appendChild(reach);
 
@@ -22,7 +22,7 @@
   document.head.appendChild(reachCompare);
 
   const reachOps=document.createElement("script");
-  reachOps.src="./reach-phase7d.js?v=20260928-reach7d1";
+  reachOps.src="./reach-phase7d.js?v=20260928-reach7d-polish1";
   reachOps.async=false;
   document.head.appendChild(reachOps);
 
