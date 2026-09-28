@@ -16,6 +16,11 @@
   reaction.async=false;
   document.head.appendChild(reaction);
 
+  const reactionCard=document.createElement("script");
+  reactionCard.src="./reach-reaction-r2.js?v=20260928-r2-card1";
+  reactionCard.async=false;
+  document.head.appendChild(reactionCard);
+
   const reach=document.createElement("script");
   reach.src="./reach-phase7.js?v=20260928-reach-v1-polish1";
   reach.async=false;
