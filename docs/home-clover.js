@@ -17,7 +17,7 @@
   document.head.appendChild(reach);
 
   const reachCompare=document.createElement("script");
-  reachCompare.src="./reach-phase7c.js?v=20260928-reach7c-stable1";
+  reachCompare.src="./reach-phase7c.js?v=20260928-reach7c-polish1";
   reachCompare.async=false;
   document.head.appendChild(reachCompare);
 
