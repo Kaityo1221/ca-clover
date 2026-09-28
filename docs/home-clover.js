@@ -11,6 +11,11 @@
   periods.async=false;
   document.head.appendChild(periods);
 
+  const reaction=document.createElement("script");
+  reaction.src="./reach-reaction-r1.js?v=20260928-r1-foundation1";
+  reaction.async=false;
+  document.head.appendChild(reaction);
+
   const reach=document.createElement("script");
   reach.src="./reach-phase7.js?v=20260928-reach-v1-polish1";
   reach.async=false;
