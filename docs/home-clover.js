@@ -21,6 +21,11 @@
   reachCompare.async=false;
   document.head.appendChild(reachCompare);
 
+  const reachOps=document.createElement("script");
+  reachOps.src="./reach-phase7d.js?v=20260928-reach7d1";
+  reachOps.async=false;
+  document.head.appendChild(reachOps);
+
   const reachLayout=document.createElement("script");
   reachLayout.src="./reach-mobile-layout-fix.js?v=20260928-reach-mobile-stable2";
   reachLayout.async=false;
