@@ -16,6 +16,11 @@
   growthTheme.async=false;
   document.head.appendChild(growthTheme);
 
+  const activityTheme=document.createElement("script");
+  activityTheme.src="./community-activity-theme.js?v=20261001-activity-quickstart1";
+  activityTheme.async=false;
+  document.head.appendChild(activityTheme);
+
   const reaction=document.createElement("script");
   reaction.src="./reach-reaction-r1.js?v=20260928-r1-foundation1";
   reaction.async=false;
