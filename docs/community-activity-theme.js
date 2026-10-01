@@ -5,34 +5,6 @@
   const STYLE_ID="caCommunityActivityTheme";
   const decoratedHeads=new WeakSet();
   const decoratedPanels=new WeakSet();
-  let observedChart=null;
-  const chartObserver=new ResizeObserver(function(){fitChartLabels()});
-
-  function fitChartLabels(){
-    if(!observedChart)return;
-    const width=observedChart.getBoundingClientRect().width;
-    if(!width)return;
-    const scale=String(observedChart.viewBox.baseVal.width/width);
-    if(observedChart.style.getPropertyValue("--activity-label-scale")!==scale){
-      observedChart.style.setProperty("--activity-label-scale",scale);
-    }
-    // Keep every original tick readable. Use two text rows only when adjacent
-    // labels would overlap; their values and horizontal positions stay put.
-    const ticks=Array.from(observedChart.querySelectorAll('text[text-anchor="middle"]'));
-    let stagger=false;
-    for(let i=1;i<ticks.length;i++){
-      const gap=(Number(ticks[i].getAttribute("x"))-Number(ticks[i-1].getAttribute("x")))/Number(scale);
-      const textWidth=(ticks[i].getBBox().width+ticks[i-1].getBBox().width)/2;
-      if(gap<textWidth+3)stagger=true;
-    }
-    ticks.forEach(function(tick,i){
-      const offset=stagger&&i%2?"18px":"0px";
-      if(tick.style.getPropertyValue("--activity-tick-offset")!==offset){
-        tick.style.setProperty("--activity-tick-offset",offset);
-      }
-    });
-  }
-
   function ensureStyle(){
     if(document.getElementById(STYLE_ID))return;
     const style=document.createElement("style");
@@ -97,22 +69,16 @@
       }
       .ca-activity-key-line::before{content:"";width:18px;height:3px;border-radius:3px;background:var(--activity-primary)}
       .ca-activity-panel .trendbox{
-        min-width:0;max-width:100%;overflow:hidden;border-color:var(--activity-border);
+        min-width:0;max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
+        overscroll-behavior-x:contain;border-color:var(--activity-border);
         border-radius:16px;padding:18px 28px;background:#fff;
       }
-      .ca-activity-panel .trendsvg{display:block;width:100%;max-width:100%;min-width:0!important;height:290px;overflow:visible}
+      .ca-activity-panel .trendsvg{display:block;width:100%;max-width:none;min-width:760px!important;height:auto;overflow:visible}
       .ca-activity-panel .trendsvg rect[rx]{fill:var(--activity-light)}
       .ca-activity-panel .trendsvg polyline{stroke:var(--activity-primary);vector-effect:non-scaling-stroke}
       .ca-activity-panel .trendsvg circle{fill:var(--activity-primary);stroke:var(--activity-primary);stroke-width:1px;vector-effect:non-scaling-stroke}
       .ca-activity-panel .trendsvg line{stroke:var(--activity-border);vector-effect:non-scaling-stroke}
-      .ca-activity-panel .trendsvg text{
-        fill:var(--activity-body);transform-box:fill-box;transform-origin:left center;
-        transform:scaleX(var(--activity-label-scale,1));
-      }
-      .ca-activity-panel .trendsvg text[text-anchor="end"]{transform-origin:right center}
-      .ca-activity-panel .trendsvg text[text-anchor="middle"]{
-        transform-origin:center;transform:translateY(var(--activity-tick-offset,0px)) scaleX(var(--activity-label-scale,1));
-      }
+      .ca-activity-panel .trendsvg text{fill:var(--activity-body)}
       .ca-activity-panel .trendsvg text:nth-last-child(2){fill:var(--activity-heading)}
       .ca-activity-panel .trendsvg text:last-child{fill:var(--activity-primary)}
       @media(max-width:760px){
@@ -158,9 +124,8 @@
     key.dataset.activityThemeLegend="1";
     key.innerHTML='<span class="ca-activity-key-bars">Meetup回数（棒）</span><span class="ca-activity-key-line">Check-in数（線）</span>';
     chart.before(key);
-    // Only the rendered viewport changes; every existing axis value, bar,
-    // line coordinate and tooltip stays untouched, including the empty chart.
-    svg.setAttribute("preserveAspectRatio","none");
+    // Keep the original wide SVG so mobile users can swipe horizontally
+    // without changing any axis value, bar, line coordinate or tooltip.
     decoratedPanels.add(panel);
   }
 
@@ -177,24 +142,11 @@
     app.querySelectorAll(".ca-activity-head,.ca-activity-panel").forEach(function(node){
       if(!isActivity||node!==head&&node!==panel)node.classList.remove("ca-activity-head","ca-activity-panel");
     });
-    if(!isActivity){
-      chartObserver.disconnect();
-      observedChart=null;
-      return;
-    }
+    if(!isActivity)return;
     decorateHead(head);
     decoratePanel(panel);
     if(decoratedHeads.has(head)&&!head.classList.contains("ca-activity-head"))head.classList.add("ca-activity-head");
     if(decoratedPanels.has(panel)&&!panel.classList.contains("ca-activity-panel"))panel.classList.add("ca-activity-panel");
-    const svg=panel.querySelector("svg");
-    if(svg!==observedChart){
-      chartObserver.disconnect();
-      observedChart=svg;
-      if(svg){
-        fitChartLabels();
-        chartObserver.observe(svg);
-      }
-    }
   }
 
   function init(){
