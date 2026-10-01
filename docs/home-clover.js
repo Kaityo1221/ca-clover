@@ -11,6 +11,11 @@
   periods.async=false;
   document.head.appendChild(periods);
 
+  const growthTheme=document.createElement("script");
+  growthTheme.src="./community-growth-theme.js?v=20261001-growth-quickstart1";
+  growthTheme.async=false;
+  document.head.appendChild(growthTheme);
+
   const reaction=document.createElement("script");
   reaction.src="./reach-reaction-r1.js?v=20260928-r1-foundation1";
   reaction.async=false;
