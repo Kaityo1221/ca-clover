@@ -17,7 +17,7 @@
   document.head.appendChild(growthTheme);
 
   const activityTheme=document.createElement("script");
-  activityTheme.src="./community-activity-theme.js?v=20261001-activity-quickstart1";
+  activityTheme.src="./community-activity-theme.js?v=20261002-activity-scroll1";
   activityTheme.async=false;
   document.head.appendChild(activityTheme);
 
