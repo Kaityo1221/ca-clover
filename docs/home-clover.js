@@ -66,6 +66,11 @@
   reachOps.async=false;
   document.head.appendChild(reachOps);
 
+  const minigames=document.createElement("script");
+  minigames.src="./community-minigames-placeholder.js?v=20261003-1";
+  minigames.async=false;
+  document.head.appendChild(minigames);
+
   const reachLayout=document.createElement("script");
   reachLayout.src="./reach-mobile-layout-fix.js?v=20260928-reach-mobile-stable2";
   reachLayout.async=false;
