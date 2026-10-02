@@ -66,7 +66,7 @@
   reachOps.async=false;
   document.head.appendChild(reachOps);
 
-  const reachLayout=document.createElement("script");
+  const minigames=document.createElement("script");\n  minigames.src="./community-minigames-placeholder.js?v=20261003-1";\n  minigames.async=false;\n  document.head.appendChild(minigames);\n\n  const reachLayout=document.createElement("script");
   reachLayout.src="./reach-mobile-layout-fix.js?v=20260928-reach-mobile-stable2";
   reachLayout.async=false;
   document.head.appendChild(reachLayout);
