@@ -5,6 +5,7 @@ const CAMPFIRE_GRAPHQL_ENDPOINT="https://niantic-social-api.nianticlabs.com/grap
 const NORMAL_COMMUNITY_BATCH=10;
 const GRAPHQL_BATCH=20;
 const POST_END_MINUTES=60;
+const REACTION_WINDOW_HOURS=25;
 
 type MeetupRow={
   id:string;
@@ -191,24 +192,15 @@ Deno.serve(async(req:Request)=>{
       await loadDueMeetups(admin,meetupMap,cutoffIso,[priorityCommunityId]);
       offsetAfter=Math.max(0,Number(state.next_offset??0)||0);
     }else if(mode==="reaction"){
-      const firstWindowStart=new Date(now.getTime()-6*60*60*1000).toISOString();
-      const checkpoint24Start=new Date(now.getTime()-(24*60+45)*60*1000).toISOString();
-      const checkpoint24End=new Date(now.getTime()-(24*60-45)*60*1000).toISOString();
-
-      const [firstWindow,checkpoint24]=await Promise.all([
-        admin.from("meetups")
-          .select("id,campfire_meetup_id,community_id,starts_at,ends_at")
-          .gte("campfire_created_at",firstWindowStart)
-          .lte("campfire_created_at",nowIso),
-        admin.from("meetups")
-          .select("id,campfire_meetup_id,community_id,starts_at,ends_at")
-          .gte("campfire_created_at",checkpoint24Start)
-          .lte("campfire_created_at",checkpoint24End),
-      ]);
-      if(firstWindow.error) throw firstWindow.error;
-      if(checkpoint24.error) throw checkpoint24.error;
-      addRows(meetupMap,firstWindow.data as MeetupRow[]|null);
-      addRows(meetupMap,checkpoint24.data as MeetupRow[]|null);
+      const reactionWindowStart=new Date(
+        now.getTime()-REACTION_WINDOW_HOURS*60*60*1000
+      ).toISOString();
+      const reactionWindow=await admin.from("meetups")
+        .select("id,campfire_meetup_id,community_id,starts_at,ends_at")
+        .gte("campfire_created_at",reactionWindowStart)
+        .lte("campfire_created_at",nowIso);
+      if(reactionWindow.error) throw reactionWindow.error;
+      addRows(meetupMap,reactionWindow.data as MeetupRow[]|null);
       offsetAfter=Math.max(0,Number(state.next_offset??0)||0);
     }else{
       await loadDueMeetups(admin,meetupMap,cutoffIso);
@@ -218,6 +210,7 @@ Deno.serve(async(req:Request)=>{
     }
 
     const dueMeetups=[...meetupMap.values()].filter(row=>{
+      if(mode==="reaction") return true;
       const endRaw=row.ends_at??row.starts_at;
       if(!endRaw) return false;
       const end=Date.parse(endRaw);
