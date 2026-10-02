@@ -1,8 +1,10 @@
 (function(){
   "use strict";
 
-  const VERSION="reach-reaction-r1-20260928";
+  const VERSION="reach-reaction-r1-20261002-r1-reliable1";
   const TIME_ZONE="Asia/Tokyo";
+  const REACTION_RELIABLE_FROM="2026-10-02T04:43:55.543Z";
+  const REACTION_RELIABLE_FROM_MS=new Date(REACTION_RELIABLE_FROM).getTime();
   const HOUR=60*60*1000;
   const FIRST_OBSERVATION_LIMIT=6*HOUR;
   const CHECKPOINT_TOLERANCE=3*HOUR;
@@ -185,6 +187,7 @@
   function analyzeMeetup(meetup,snapshotRows,options){
     options=options||{};
     const now=options.now==null?Date.now():new Date(options.now).getTime();
+    const reliableFrom=options.reliableFrom==null?REACTION_RELIABLE_FROM_MS:new Date(options.reliableFrom).getTime();
     const created=meetup.campfire_created_at?new Date(meetup.campfire_created_at).getTime():NaN;
     const starts=meetup.starts_at?new Date(meetup.starts_at).getTime():NaN;
     const classification=Number.isFinite(created)?classifyCreatedAt(meetup.campfire_created_at):null;
@@ -207,11 +210,16 @@
       growth6h:null,
       growth24h:null,
       eligibleObservation:false,
-      matured24h:Number.isFinite(created)&&Number.isFinite(now)&&now>=created+24*HOUR
+      matured24h:Number.isFinite(created)&&Number.isFinite(now)&&now>=created+24*HOUR,
+      reliableCollection:Number.isFinite(created)&&(!Number.isFinite(reliableFrom)||created>=reliableFrom)
     };
 
     if(!Number.isFinite(created)){
       result.exclusionReason="missing_created_at";
+      return result;
+    }
+    if(Number.isFinite(reliableFrom)&&created<reliableFrom){
+      result.exclusionReason="before_reliable_collection";
       return result;
     }
     if(!rows.length){
@@ -324,7 +332,9 @@
     },function(_k,r){return r.classification.weekday+" "+r.classification.twoHourLabel});
     return {
       timeZone:TIME_ZONE,
+      reliableCollectionStart:REACTION_RELIABLE_FROM,
       totalMeetups:analyses.length,
+      reliableMeetupCount:analyses.filter(function(row){return row.reliableCollection}).length,
       eligibleObservationCount:eligible.length,
       analyzable24hCount:analyzable.length,
       pending24hCount:pending.length,
@@ -392,6 +402,7 @@
   window.CAReachReactionR1={
     VERSION,
     TIME_ZONE,
+    REACTION_RELIABLE_FROM,
     FIRST_OBSERVATION_LIMIT_HOURS:FIRST_OBSERVATION_LIMIT/HOUR,
     CHECKPOINT_TOLERANCE_HOURS:CHECKPOINT_TOLERANCE/HOUR,
     classifyCreatedAt,
