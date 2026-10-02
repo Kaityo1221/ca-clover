@@ -46,6 +46,11 @@
   reactionHeatmap.async=false;
   document.head.appendChild(reactionHeatmap);
 
+  const reactionTiming=document.createElement("script");
+  reactionTiming.src="./reach-reaction-r5.js?v=20261002-r5-timing1";
+  reactionTiming.async=false;
+  document.head.appendChild(reactionTiming);
+
   const reach=document.createElement("script");
   reach.src="./reach-phase7.js?v=20260928-reach-v1-polish1";
   reach.async=false;
