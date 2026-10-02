@@ -22,7 +22,7 @@
   document.head.appendChild(activityTheme);
 
   const reaction=document.createElement("script");
-  reaction.src="./reach-reaction-r1.js?v=20260928-r1-foundation1";
+  reaction.src="./reach-reaction-r1.js?v=20261002-r1-reliable1";
   reaction.async=false;
   document.head.appendChild(reaction);
 
