@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#eff6e8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>関東CA Network | CA Clover</title>
+<style>
+:root{font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#403a35;background:#fbf8f3}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 12% 4%,rgba(111,151,88,.12),transparent 24rem),linear-gradient(180deg,#fffdf9,#f8f3eb 72%,#f4efe7)}
+a{text-decoration:none;color:inherit}.top{position:sticky;top:0;z-index:20;background:rgba(255,253,249,.92);backdrop-filter:blur(18px);border-bottom:1px solid #e7ddd1}
+.topin{max-width:760px;margin:auto;padding:12px 14px;display:flex;align-items:center;gap:10px}.back{width:40px;height:40px;border-radius:14px;background:#edf5e8;display:grid;place-items:center;font-size:20px;font-weight:950;color:#587747}.grow{flex:1}.pill{border-radius:999px;background:#edf5e8;padding:7px 11px;font-size:10px;font-weight:950;color:#587747}
+.wrap{max-width:760px;margin:auto;padding:18px 14px 56px}.hero{border:1px solid #d8e5d0;background:linear-gradient(135deg,#edf6e8,#fff8e9 72%);border-radius:30px;padding:20px;box-shadow:0 18px 44px rgba(78,98,59,.10)}
+.kicker{font-size:10px;font-weight:950;letter-spacing:.17em;color:#6e8b60}h1{margin:5px 0 0;font-size:28px;letter-spacing:-.03em;color:#394334}.hero p{margin:8px 0 0;font-size:12px;line-height:1.7;font-weight:800;color:#746b61}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.stat{border:1px solid rgba(255,255,255,.85);border-radius:20px;background:rgba(255,255,255,.78);padding:13px 14px}.stat small{display:block;font-size:9px;font-weight:950;color:#8e857d;letter-spacing:.04em}.stat strong{display:block;margin-top:3px;font-size:24px;color:#3f4939}.stat strong span{font-size:12px;color:#9b938b}
+.mapcard{margin-top:16px;border:1px solid #e1d8cd;border-radius:30px;background:rgba(255,255,255,.9);padding:14px;box-shadow:0 14px 36px rgba(72,65,55,.08)}.maphead{display:flex;align-items:flex-start;gap:10px;padding:3px 4px 10px}.maphead strong{display:block;font-size:15px;color:#43543c}.maphead small{display:block;margin-top:4px;font-size:10px;line-height:1.5;font-weight:800;color:#938980}.legend{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:9px;font-weight:900;color:#9a9189;white-space:nowrap}.legendline{width:24px;border-top:2px dashed #d3cec7}
+.map{position:relative;aspect-ratio:1.12/1;width:100%;overflow:hidden;border-radius:24px;background:linear-gradient(180deg,rgba(241,246,237,.8),rgba(250,248,244,.9));border:1px solid #ece5dc}.map svg{position:absolute;inset:0;width:100%;height:100%}.land{fill:#f4f0e9;stroke:#e1d8cc;stroke-width:3}.connection{stroke:#d2cdc6;stroke-width:2.2;stroke-dasharray:7 8;stroke-linecap:round;opacity:.72}
+.node{position:absolute;transform:translate(-50%,-50%);width:74px;min-height:54px;border:1px solid #d9d5cf;border-radius:18px;background:#f5f3f0;box-shadow:0 7px 18px rgba(80,73,66,.07);display:grid;place-items:center;padding:7px 6px;text-align:center}.node b{font-size:12px;color:#625d58}.node span{margin-top:2px;font-size:8px;font-weight:950;color:#aaa39c}
+.preview{margin-top:13px;border:1px dashed #d6cabd;border-radius:20px;background:#fffaf4;padding:12px 14px;font-size:10px;line-height:1.65;font-weight:800;color:#8a7d71}.preview strong{color:#5d7b50}.prefcounts{margin-top:14px;display:flex;flex-wrap:wrap;gap:7px}.prefcounts span{border-radius:999px;background:#f1eee9;padding:7px 10px;font-size:9px;font-weight:950;color:#776f68}
+@media(min-width:600px){.mapcard{padding:18px}.node{width:86px;min-height:58px}.node b{font-size:13px}}
+</style>
+</head>
+<body>
+<header class="top"><div class="topin"><a class="back" href="./stamp-rally.html" aria-label="スタンプ一覧へ戻る">‹</a><strong style="font-size:14px;color:#405b36">関東CA Network</strong><div class="grow"></div><span class="pill">PHASE K1</span></div></header>
+<main class="wrap">
+<section class="hero">
+<div class="kicker">CA CLOVER / KANTO NETWORK</div>
+<h1>関東CA Network 🍀</h1>
+<p>異なる都県のCA同士がスタンプ交換すると、その都県どうしを結ぶラインが開通する共通マップです。</p>
+<div class="stats"><div class="stat"><small>関東CA</small><strong>0 <span>/ 52</span></strong></div><div class="stat"><small>都県間接続</small><strong>0 <span>/ 21 OPEN</span></strong></div></div>
+</section>
+<section class="mapcard">
+<div class="maphead"><div><strong>1都6県 Connection Map</strong><small>現在はUI確認用。全21ラインを未開通状態で表示しています。</small></div><div class="legend"><span class="legendline"></span>未開通</div></div>
+<div class="map" id="networkMap">
+<svg viewBox="0 0 1000 880" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><path class="land" d="M104 173 L236 70 L438 72 L548 126 L726 104 L871 200 L835 322 L903 426 L826 564 L779 732 L610 796 L455 735 L355 820 L212 732 L177 592 L78 506 L139 377 Z"/><g id="connectionLayer"></g></svg>
+<div class="node" style="left:22%;top:24%"><b>群馬</b><span>0 / 6</span></div>
+<div class="node" style="left:48%;top:18%"><b>栃木</b><span>0 / 6</span></div>
+<div class="node" style="left:76%;top:28%"><b>茨城</b><span>0 / 6</span></div>
+<div class="node" style="left:39%;top:43%"><b>埼玉</b><span>0 / 6</span></div>
+<div class="node" style="left:45%;top:62%"><b>東京</b><span>0 / 6</span></div>
+<div class="node" style="left:74%;top:60%"><b>千葉</b><span>0 / 6</span></div>
+<div class="node" style="left:31%;top:78%"><b>神奈川</b><span>0 / 6</span></div>
+</div>
+<div class="prefcounts"><span>茨城 2 CA</span><span>栃木 5 CA</span><span>群馬 4 CA</span><span>埼玉 6 CA</span><span>千葉 10 CA</span><span>東京 17 CA</span><span>神奈川 8 CA</span></div>
+<div class="preview"><strong>Phase K1</strong>：見た目確認専用です。DB・交換履歴には未接続で、実際の交換をしてもまだラインは開通しません。</div>
+</section>
+</main>
+<script>
+(function(){
+"use strict";
+const nodes={"群馬":[220,211],"栃木":[480,158],"茨城":[760,246],"埼玉":[390,378],"東京":[450,545],"千葉":[740,528],"神奈川":[310,686]};
+const names=Object.keys(nodes),layer=document.getElementById("connectionLayer");
+for(let i=0;i<names.length;i++)for(let j=i+1;j<names.length;j++){const [x1,y1]=nodes[names[i]],[x2,y2]=nodes[names[j]];const line=document.createElementNS("http://www.w3.org/2000/svg","line");line.setAttribute("x1",x1);line.setAttribute("y1",y1);line.setAttribute("x2",x2);line.setAttribute("y2",y2);line.setAttribute("class","connection");line.setAttribute("data-pair",names[i]+"-"+names[j]);layer.appendChild(line);}
+})();
+</script>
+</body>
+</html>
