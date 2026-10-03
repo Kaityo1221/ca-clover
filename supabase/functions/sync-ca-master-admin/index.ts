@@ -45,7 +45,6 @@ Deno.serve(async(req:Request)=>{
       headers:{
         "Content-Type":"application/json",
         "apikey":anonKey,
-        "Authorization":"Bearer "+anonKey,
         [CRON_HEADER]:secret,
       },
       body:"{}",
