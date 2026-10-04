@@ -28,7 +28,7 @@ function ensureStyle(){
  const style=document.createElement("style");style.id=STYLE_ID;
  style.textContent=`
 .community-hub-layout{position:relative}
-.community-hub-layout>.community-minigames-btn{position:absolute;right:0;top:0;z-index:4;min-width:132px;height:46px;border:1px solid #fdba74;border-radius:18px;background:linear-gradient(145deg,#fff7ed,#ffedd5);box-shadow:0 6px 16px rgba(194,65,12,.12);color:#9a3412;font-weight:950;font-size:12px;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;white-space:nowrap}
+.community-hub-layout>.community-minigames-btn{position:absolute;right:0;top:-18px;z-index:4;min-width:132px;height:46px;border:1px solid #fdba74;border-radius:18px;background:linear-gradient(145deg,#fff7ed,#ffedd5);box-shadow:0 6px 16px rgba(194,65,12,.12);color:#9a3412;font-weight:950;font-size:12px;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;white-space:nowrap}
 .community-hub-layout>.community-minigames-btn:active{transform:translateY(1px)}
 .community-minigames-btn .game-icon{font-size:18px;line-height:1}
 .ca-minigames-view{max-width:920px;margin:0 auto}
@@ -51,7 +51,7 @@ function ensureStyle(){
 .ca-minigames-item-desc{margin-top:4px;color:#64748b;font-size:11px;font-weight:800;line-height:1.5}
 .ca-minigames-soon{display:inline-flex;margin-top:7px;border-radius:999px;background:#f1f5f9;color:#64748b;padding:4px 8px;font-size:9px;font-weight:950}
 @media(max-width:760px){.ca-minigames-entry-grid,.ca-minigames-list{grid-template-columns:1fr}.ca-minigames-entry{padding:18px}}
-@media(max-width:480px){.community-hub-layout>.community-minigames-btn{min-width:124px;height:42px;padding:0 10px}.community-hub-layout>.community-minigames-btn+div .community-hero-row>div:last-child{min-width:0}.community-hub-layout>.community-minigames-btn+div .community-hero-row h1{font-size:clamp(25px,8.2vw,34px);line-height:1.05;overflow-wrap:normal;word-break:normal}.ca-minigames-head{display:block}.ca-minigames-back{margin-bottom:14px}}
+@media(max-width:480px){.community-hub-layout>.community-minigames-btn{top:-20px;min-width:124px;height:42px;padding:0 10px}.community-hub-layout>.community-minigames-btn+div .community-hero-row>div:last-child{min-width:0}.community-hub-layout>.community-minigames-btn+div .community-hero-row h1{font-size:clamp(25px,8.2vw,34px);line-height:1.05;overflow-wrap:normal;word-break:normal}.ca-minigames-head{display:block}.ca-minigames-back{margin-bottom:14px}}
 `;
  document.head.appendChild(style);
 }
@@ -80,12 +80,17 @@ function install(){
  ensureStyle();
  const button=document.createElement("button");button.type="button";button.className="community-minigames-btn";button.setAttribute("aria-label","ミニゲーム集");
  button.innerHTML='<span class="game-icon">🎮</span><span>ミニゲーム集</span><span aria-hidden="true">›</span>';
- button.addEventListener("click",function(){renderHub()});
+ button.addEventListener("click",function(){history.pushState({caMinigames:true},"",location.href);renderHub()});
  hub.insertBefore(button,hub.firstChild);
 }
 ensureStyle();
 let timer=0;function schedule(){clearTimeout(timer);timer=setTimeout(install,80)}
 new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
 window.addEventListener("hashchange",schedule);
+window.addEventListener("popstate",function(){
+ if((location.hash||"").indexOf("#community:")===0&&document.querySelector(".ca-minigames-view")){
+  window.dispatchEvent(new HashChangeEvent("hashchange"));
+ }
+});
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",schedule,{once:true});else schedule();
 })();
