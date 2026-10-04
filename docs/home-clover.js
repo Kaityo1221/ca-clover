@@ -67,7 +67,7 @@
   document.head.appendChild(reachOps);
 
   const minigames=document.createElement("script");
-  minigames.src="./community-minigames-placeholder.js?v=20261004-1";
+  minigames.src="./community-minigames-placeholder.js?v=20261004-2";
   minigames.async=false;
   document.head.appendChild(minigames);
 
