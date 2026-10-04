@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#eff6e8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>関東CA Network | CA Clover</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!--
 Kanto prefecture vector outlines derived from:
 PA4KEV/japan-vector-map (MIT License)
@@ -58,11 +59,11 @@ h1{margin:5px 0 0;font-size:28px;letter-spacing:-.03em;color:#394334}
 .maphead strong{display:block;font-size:15px;color:#43543c}
 .maphead small{display:block;margin-top:4px;font-size:10px;line-height:1.5;font-weight:800;color:#938980}
 .legend{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:9px;font-weight:900;color:#9a9189;white-space:nowrap}
-.legendline{width:24px;border-top:2px dashed #cbd3c5}
+.legendline{width:24px;border-top:2px dashed #cbd3c5}.legendline.open{border-top-style:solid;border-top-color:#5f8e50}
 .map{position:relative;aspect-ratio:1/1;width:100%;overflow:hidden;border-radius:24px;background:radial-gradient(circle at 70% 20%,rgba(197,220,190,.18),transparent 42%),linear-gradient(180deg,#f8fbf6,#f8f5ef);border:1px solid #e7e1d8}
 .map svg{display:block;width:100%;height:100%}
 .pref-shape{fill:#f0ede7;stroke:#bcb4aa;stroke-width:1.2;stroke-linejoin:round;vector-effect:non-scaling-stroke}
-.connection{stroke:#aebba6;stroke-width:1.05;stroke-dasharray:3 4;stroke-linecap:round;opacity:.42;vector-effect:non-scaling-stroke}
+.connection{stroke:#aebba6;stroke-width:1.05;stroke-dasharray:3 4;stroke-linecap:round;opacity:.42;vector-effect:non-scaling-stroke;transition:stroke .25s ease,stroke-width .25s ease,opacity .25s ease}.connection.open{stroke:#5f8e50;stroke-width:2.2;stroke-dasharray:none;opacity:.95}.pref-shape.connected{fill:#edf5e8;stroke:#9eb092}.anchor.open{fill:#5f8e50;stroke:#fff;stroke-width:1.4}
 .anchor{fill:#fff;stroke:#8fa183;stroke-width:1;vector-effect:non-scaling-stroke}
 .maplabel{font-size:5.3px;font-weight:950;fill:#514b45;text-anchor:middle;paint-order:stroke;stroke:#fff;stroke-width:2.4;stroke-linejoin:round}
 .mapcount{font-size:3.5px;font-weight:900;fill:#8d867f;text-anchor:middle;paint-order:stroke;stroke:#fff;stroke-width:1.8}
@@ -78,7 +79,7 @@ h1{margin:5px 0 0;font-size:28px;letter-spacing:-.03em;color:#394334}
 <header class="top"><div class="topin">
 <a class="back" href="./stamp-rally.html" aria-label="スタンプ一覧へ戻る">‹</a>
 <strong style="font-size:14px;color:#405b36">関東CA Network</strong>
-<div class="grow"></div><span class="pill">PHASE K1</span>
+<div class="grow"></div><span class="pill">PHASE K3</span>
 </div></header>
 
 <main class="wrap">
@@ -88,14 +89,14 @@ h1{margin:5px 0 0;font-size:28px;letter-spacing:-.03em;color:#394334}
 <p>異なる都県のCA同士がスタンプ交換すると、その都県どうしを結ぶラインが開通する共通マップです。</p>
 <div class="stats">
 <div class="stat"><small>関東CA</small><strong>0 <span>/ 52</span></strong></div>
-<div class="stat"><small>都県間接続</small><strong>0 <span>/ 21 OPEN</span></strong></div>
+<div class="stat"><small>都県間接続</small><strong><span id="openScoreValue" style="font-size:24px;color:#3f4939">0</span> <span>/ 21 OPEN</span></strong></div>
 </div>
 </section>
 
 <section class="mapcard">
 <div class="maphead">
 <div><strong>1都6県 Connection Map</strong><small>実際の関東地方の輪郭に、都県間の21ラインを重ねています。</small></div>
-<div class="legend"><span class="legendline"></span>未開通</div>
+<div class="legend"><span class="legendline"></span>未開通&nbsp;&nbsp;<span class="legendline open"></span>開通</div>
 </div>
 
 <div class="map">
@@ -112,13 +113,13 @@ h1{margin:5px 0 0;font-size:28px;letter-spacing:-.03em;color:#394334}
 <g id="connectionLayer"></g>
 <g id="anchorLayer"></g>
 <g aria-hidden="true">
-<text class="maplabel" x="1369" y="1183">群馬</text><text class="mapcount" x="1369" y="1189">0 / 6</text>
-<text class="maplabel" x="1425" y="1166">栃木</text><text class="mapcount" x="1425" y="1172">0 / 6</text>
-<text class="maplabel" x="1468" y="1194">茨城</text><text class="mapcount" x="1468" y="1200">0 / 6</text>
-<text class="maplabel" x="1393" y="1221">埼玉</text><text class="mapcount" x="1393" y="1227">0 / 6</text>
-<text class="maplabel" x="1394" y="1250">東京</text><text class="mapcount" x="1394" y="1256">0 / 6</text>
-<text class="maplabel" x="1389" y="1282">神奈川</text><text class="mapcount" x="1389" y="1288">0 / 6</text>
-<text class="maplabel" x="1461" y="1280">千葉</text><text class="mapcount" x="1461" y="1286">0 / 6</text>
+<text class="maplabel" x="1369" y="1183">群馬</text><text class="mapcount" data-pref-count="群馬" x="1369" y="1189">0 / 6</text>
+<text class="maplabel" x="1425" y="1166">栃木</text><text class="mapcount" data-pref-count="栃木" x="1425" y="1172">0 / 6</text>
+<text class="maplabel" x="1468" y="1194">茨城</text><text class="mapcount" data-pref-count="茨城" x="1468" y="1200">0 / 6</text>
+<text class="maplabel" x="1393" y="1221">埼玉</text><text class="mapcount" data-pref-count="埼玉" x="1393" y="1227">0 / 6</text>
+<text class="maplabel" x="1394" y="1250">東京</text><text class="mapcount" data-pref-count="東京" x="1394" y="1256">0 / 6</text>
+<text class="maplabel" x="1389" y="1282">神奈川</text><text class="mapcount" data-pref-count="神奈川" x="1389" y="1288">0 / 6</text>
+<text class="maplabel" x="1461" y="1280">千葉</text><text class="mapcount" data-pref-count="千葉" x="1461" y="1286">0 / 6</text>
 </g>
 </svg>
 </div>
@@ -126,7 +127,7 @@ h1{margin:5px 0 0;font-size:28px;letter-spacing:-.03em;color:#394334}
 <div class="prefcounts">
 <span>茨城 2 CA</span><span>栃木 5 CA</span><span>群馬 4 CA</span><span>埼玉 6 CA</span><span>千葉 10 CA</span><span>東京 17 CA</span><span>神奈川 8 CA</span>
 </div>
-<div class="preview"><strong>Phase K1</strong>：見た目確認専用です。DB・交換履歴には未接続で、実際の交換をしてもまだラインは開通しません。</div>
+<div id="networkStatus" class="preview"><strong>Phase K3</strong>：接続状況を読み込み中です…</div>
 <div class="source">Map outline: PA4KEV/japan-vector-map (MIT)</div>
 </section>
 </main>
@@ -134,6 +135,11 @@ h1{margin:5px 0 0;font-size:28px;letter-spacing:-.03em;color:#394334}
 <script>
 (function(){
 "use strict";
+const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
+const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
+const ROOT="https://kaityo1221.github.io/ca-clover/";
+const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
+
 const nodes={
  "群馬":[1369,1183],
  "栃木":[1425,1166],
@@ -144,17 +150,40 @@ const nodes={
  "千葉":[1461,1280]
 };
 const names=Object.keys(nodes);
+const nameOrder=new Map(names.map((name,index)=>[name,index]));
 const connectionLayer=document.getElementById("connectionLayer");
 const anchorLayer=document.getElementById("anchorLayer");
+const openScoreValue=document.getElementById("openScoreValue");
+const networkStatus=document.getElementById("networkStatus");
+const lineByPair=new Map();
+const anchorByPref=new Map();
+
+function shortPref(value){
+ return String(value||"").replace(/(東京都|府|県)$/u,m=>m==="東京都"?"東京":"");
+}
+function canonicalPair(a,b){
+ const aa=shortPref(a),bb=shortPref(b);
+ if(!nameOrder.has(aa)||!nameOrder.has(bb)||aa===bb)return null;
+ return nameOrder.get(aa)<nameOrder.get(bb)?aa+"-"+bb:bb+"-"+aa;
+}
+function setStatus(message,isError){
+ networkStatus.innerHTML=(isError?"<strong>読み込みエラー</strong>：":"<strong>Phase K3</strong>：")+message;
+ networkStatus.style.background=isError?"#fff1f2":"#fffaf4";
+ networkStatus.style.borderColor=isError?"#fecdd3":"#d6cabd";
+ networkStatus.style.color=isError?"#be123c":"#8a7d71";
+}
+
 for(let i=0;i<names.length;i++){
  for(let j=i+1;j<names.length;j++){
   const [x1,y1]=nodes[names[i]], [x2,y2]=nodes[names[j]];
+  const pair=names[i]+"-"+names[j];
   const line=document.createElementNS("http://www.w3.org/2000/svg","line");
   line.setAttribute("x1",x1);line.setAttribute("y1",y1);
   line.setAttribute("x2",x2);line.setAttribute("y2",y2);
   line.setAttribute("class","connection");
-  line.setAttribute("data-pair",names[i]+"-"+names[j]);
+  line.setAttribute("data-pair",pair);
   connectionLayer.appendChild(line);
+  lineByPair.set(pair,line);
  }
 }
 for(const name of names){
@@ -162,8 +191,58 @@ for(const name of names){
  const circle=document.createElementNS("http://www.w3.org/2000/svg","circle");
  circle.setAttribute("cx",cx);circle.setAttribute("cy",cy);
  circle.setAttribute("r","1.9");circle.setAttribute("class","anchor");
+ circle.setAttribute("data-pref",name);
  anchorLayer.appendChild(circle);
+ anchorByPref.set(name,circle);
 }
+
+async function loadConnections(){
+ const sessionResult=await client.auth.getSession();
+ const session=sessionResult.data.session;
+ if(!session){
+  location.href=ROOT;
+  return;
+ }
+
+ const {data,error}=await client.rpc("stamp_kanto_open_connections");
+ if(error){
+  console.error("Kanto connection load failed",error);
+  setStatus("接続状況を取得できませんでした。スタンプ一覧から入り直してください。",true);
+  return;
+ }
+
+ const degree=new Map(names.map(name=>[name,0]));
+ let opened=0;
+
+ for(const row of data||[]){
+  const a=shortPref(row.prefecture_a),b=shortPref(row.prefecture_b);
+  const pair=canonicalPair(a,b);
+  const line=pair?lineByPair.get(pair):null;
+  if(!line||line.classList.contains("open"))continue;
+
+  line.classList.add("open");
+  line.setAttribute("aria-label",a+"と"+b+"は開通済み");
+  opened++;
+  degree.set(a,(degree.get(a)||0)+1);
+  degree.set(b,(degree.get(b)||0)+1);
+ }
+
+ openScoreValue.textContent=String(opened);
+
+ for(const name of names){
+  const count=degree.get(name)||0;
+  const countEl=document.querySelector('[data-pref-count="'+name+'"]');
+  if(countEl)countEl.textContent=count+" / 6";
+  if(count>0){
+   anchorByPref.get(name)?.classList.add("open");
+   document.querySelector('[data-pref="'+name+'"]')?.classList.add("connected");
+  }
+ }
+
+ setStatus("実データ接続済み。異なる都県のCA同士で交換が完了すると、そのラインが自動で開通します。",false);
+}
+
+loadConnections();
 })();
 </script>
 </body>
