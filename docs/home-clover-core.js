@@ -359,7 +359,7 @@
     return h?h.closest("section"):null;
   }
   function findLab(){
-    return [...document.querySelectorAll("section.card.section")].find(s=>s.textContent.includes("CA Stamp Rally LAB"))||null;
+    return [...document.querySelectorAll("section.card.section")].find(s=>s.textContent.includes("CA Stamp Rally"))||null;
   }
 
   async function renderHomeClover(){
@@ -371,7 +371,7 @@
     if(!buttons.length)return;
     const existing=document.getElementById(ROOT_ID);
     if(existing&&existing.dataset.ready==="1"){
-      const lab=findLab(); if(lab&&existing.nextElementSibling!==lab)existing.after(lab);
+      const lab=findLab(); if(lab&&communitySection.nextElementSibling!==lab)communitySection.after(lab);
       return;
     }
     rendering=true;
@@ -412,7 +412,7 @@
         }
       });
       root.dataset.ready="1";
-      const lab=findLab(); if(lab)root.after(lab);
+      const lab=findLab(); if(lab)communitySection.after(lab);
     }finally{
       rendering=false;
     }
