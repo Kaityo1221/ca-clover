@@ -192,7 +192,7 @@
     const details={
       host:metrics.meetups?"今月 "+metrics.meetups+"回開催":"今月はまだ開催記録なし",
       join:metrics.checkins?"Check-in "+metrics.checkins.toLocaleString("ja-JP")+"人":"Check-in記録なし",
-      exchange:metrics.exchanges?"交流 "+metrics.exchanges+"回":"今月はまだ交流記録なし",
+      exchange:"CAとの交流 "+metrics.exchanges+"回",
       continue:activeWeeks?"活動した週 "+activeWeeks+"週":"今月はまだ活動週なし"
     };
     return {
