@@ -50,7 +50,7 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
 @media(min-width:600px){.stamps{grid-template-columns:repeat(4,minmax(0,1fr));gap:22px 15px}.medal{width:94px;height:94px}.cname{font-size:11px}.caname{font-size:9px}}
 @media(min-width:900px){.stamps{grid-template-columns:repeat(5,minmax(0,1fr))}}
 
-.japanmap{margin-top:14px;border:1px solid #d5e3ce;border-radius:28px;background:linear-gradient(180deg,#f8fcf5,#fff);padding:16px;box-shadow:0 12px 30px rgba(75,105,62,.08)}.japanmaphead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}.japanmap h2{margin:3px 0 0;font-size:20px;color:#3d4938}.mapscore{text-align:right;font-size:24px;font-weight:950;color:#4f7d3b}.mapscore span{font-size:11px;color:#8ca082}.mapbox{margin-top:12px;overflow:hidden;border:1px solid #e2eadc;border-radius:22px;background:#fff;padding:3px}.mapbox svg{display:block;width:100%;height:auto}.mapbox .prefecture{fill:#eee;stroke:#8f948d;stroke-width:1;cursor:pointer;transition:fill .18s ease,stroke .18s ease}.mapbox .prefecture.acquired{fill:#78a866;stroke:#527943;stroke-width:1.4}.mapnote{margin-top:9px;border-radius:16px;background:#eef5e9;padding:10px 12px;font-size:9px;line-height:1.55;font-weight:850;color:#6d7d65}.mapcredit{margin-top:5px;text-align:right;font-size:7px;font-weight:800;color:#a0a79b}
+.japanmap{margin-top:14px;border:1px solid #d5e3ce;border-radius:28px;background:linear-gradient(180deg,#f8fcf5,#fff);padding:16px;box-shadow:0 12px 30px rgba(75,105,62,.08)}.japanmaphead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}.japanmap h2{margin:3px 0 0;font-size:18px;line-height:1.35;color:#3d4938;white-space:nowrap}.mapscore{text-align:right;font-size:24px;font-weight:950;color:#4f7d3b}.mapscore span{font-size:11px;color:#8ca082}.mapbox{margin-top:12px;overflow:hidden;border:1px solid #e2eadc;border-radius:22px;background:#fff;padding:3px}.mapbox svg{display:block;width:100%;height:auto}.mapbox .prefecture{fill:#eee;stroke:#8f948d;stroke-width:1;cursor:pointer;transition:fill .18s ease,stroke .18s ease}.mapbox .prefecture.acquired{fill:#78a866;stroke:#527943;stroke-width:1.4}.mapnote{margin-top:9px;border-radius:16px;background:#eef5e9;padding:10px 12px;font-size:9px;line-height:1.55;font-weight:850;color:#6d7d65}.mapcredit{margin-top:5px;text-align:right;font-size:7px;font-weight:800;color:#a0a79b}
 </style>
 </head>
 <body>
@@ -715,7 +715,14 @@ async function load(){
  const all=communities.flatMap(c=>c.cas),got=all.filter(c=>c.acquired).length;
  totalScore.innerHTML=got+' <span>/ '+all.length+'</span>';
 
- const acquiredPrefectures=new Set(communities.filter(c=>c.cas.some(ca=>ca.acquired)).map(c=>c.prefecture).filter(Boolean));
+ const acquiredCommunityIds=[...new Set(collectionRows.map(x=>x.community_id).filter(Boolean))];
+ let acquiredPrefectures=new Set(communities.filter(c=>c.cas.some(ca=>ca.acquired)).map(c=>c.prefecture).filter(Boolean));
+ if(acquiredCommunityIds.length){
+  const communityPrefResult=await client.from("communities").select("id,prefecture").in("id",acquiredCommunityIds);
+  if(!communityPrefResult.error){
+   acquiredPrefectures=new Set((communityPrefResult.data||[]).map(x=>x.prefecture).filter(Boolean));
+  }
+ }
  mapScore.innerHTML=acquiredPrefectures.size+' <span>/ 47</span>';
  try{
   const mapText=await fetch("./assets/geolonia-map-mobile.svg?v=1",{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error("map");return r.text()});
