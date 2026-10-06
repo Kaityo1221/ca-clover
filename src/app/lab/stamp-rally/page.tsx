@@ -6,6 +6,7 @@ import { useAuthProfile } from "@/lib/use-auth-profile";
 import { PREFECTURE_ORDER, prefectureEnglishLabel } from "@/lib/prefecture-order";
 import { CommunityIcon } from "@/components/community-icon";
 import { StampMedal3D } from "@/components/stamp-medal-3d";
+import { StampJapanMap } from "@/components/stamp-japan-map";
 
 type CommunityRow = {
   id: string;
@@ -522,6 +523,15 @@ export default function Page() {
     };
   }, [stampCommunities]);
 
+  const acquiredPrefectures = useMemo(() => {
+    const prefectures = new Set<string>();
+    for (const community of stampCommunities) {
+      if (!community.prefecture) continue;
+      if (community.cas.some((ca) => ca.acquired)) prefectures.add(community.prefecture);
+    }
+    return prefectures;
+  }, [stampCommunities]);
+
   const byPrefecture = useMemo(() => {
     const map = new Map<string, StampCommunity[]>();
     for (const community of stampCommunities) {
@@ -701,17 +711,20 @@ export default function Page() {
         </div>
       </section>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <Link
-          href="/lab/stamp-rally/events"
-          className="flex items-center justify-between rounded-[22px] border border-[#e1c9aa] bg-[#fffaf1] px-5 py-4 shadow-[0_8px_22px_rgba(92,69,45,.06)]"
-        >
-          <div>
-            <div className="text-sm font-black text-[#7a5c35]">🎪 イベントモード</div>
-            <div className="mt-0.5 text-[10px] font-bold text-[#938478]">参加イベントと日替わりミッション</div>
-          </div>
-          <span className="text-xl font-black text-[#9a7444]">→</span>
-        </Link>
+      <StampJapanMap
+        acquiredPrefectures={acquiredPrefectures}
+        acquiredStampCount={totalProgress.acquired}
+        onSelectPrefecture={(prefecture)=>{
+          setOpenPrefectures(current=>new Set(current).add(prefecture));
+          const region=REGION_GROUPS.find(group=>group.prefectures.some(name=>name===prefecture));
+          if(region) setOpenRegions(current=>new Set(current).add(region.name));
+          window.setTimeout(()=>{
+            document.getElementById("stamp-prefecture-"+prefecture)?.scrollIntoView({behavior:"smooth",block:"center"});
+          },50);
+        }}
+      />
+
+      <div className="mt-4">
         <Link
           href="/lab/stamp-rally/exchange"
           className="flex items-center justify-between rounded-[22px] border border-[#d9c4ad] bg-white px-5 py-4 shadow-[0_8px_22px_rgba(92,69,45,.06)]"
@@ -756,7 +769,7 @@ export default function Page() {
                   const prefectureCas = rows.flatMap((community) => community.cas);
                   const acquiredCount = prefectureCas.filter((ca) => ca.acquired).length;
 
-                  return <div key={prefecture} className="overflow-hidden rounded-[22px] border border-[#eadfd4] bg-white">
+                  return <div id={"stamp-prefecture-"+prefecture} key={prefecture} className="scroll-mt-6 overflow-hidden rounded-[22px] border border-[#eadfd4] bg-white">
                     <button
                       type="button"
                       onClick={() => togglePrefecture(prefecture)}
