@@ -266,7 +266,7 @@ async function assignments(){
  const profiles=p.data||[],communities=c.data||[],memberships=m.data||[],caRows=ca.data||[],caLinks=links.data||[],identities=ids.data||[];
  const caMap=new Map(caRows.map(x=>[x.id,x]));
  const sel=document.getElementById("userSel");
- sel.innerHTML=profiles.map(x=>{const count=memberships.filter(m=>m.user_id===x.id).length;const identity=identities.find(i=>i.user_id===x.id&&i.is_primary);const member=identity?caMap.get(identity.ca_member_id):null;const label=x.niantic_id||member?.trainer_name||"SCOPELY EXPLORE ID 未登録";return '<option value="'+x.id+'">'+(count?'✅ ':'')+e(label)+(member?' / '+e(member.trainer_name)+' '+e(member.ca_level||""):'')+' ('+e(x.role)+')</option>'}).join("");
+ sel.innerHTML=profiles.map(x=>{const count=memberships.filter(m=>m.user_id===x.id).length;const label=x.niantic_id||"SCOPELY EXPLORE ID 未登録";return '<option value="'+x.id+'">'+(count?'✅ ':'')+e(label)+' ('+e(x.role)+')</option>'}).join("");
  function draw(){
   const uid=sel.value,q=document.getElementById("assnSearch").value.trim().toLowerCase();
   const assigned=new Set(memberships.filter(x=>x.user_id===uid).map(x=>x.community_id));
