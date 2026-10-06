@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>CA Clover Stamp Rally LAB</title>
+<title>CA Clover Medal Rally LAB</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>\n<script src="./community-icon.js"></script>\n<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 <style>
 :root{font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#403a35;background:#fff8ef}
@@ -56,26 +56,26 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
 <body>
 <header class="top"><div class="topin">
   <a class="logo" href="./">🍀</a>
-  <strong style="font-size:14px;color:#405b36">CA Stamp Rally LAB</strong>
+  <strong style="font-size:14px;color:#405b36">CA Medal Rally</strong>
   <div class="grow"></div>
   <a id="stampBackLink" class="btn" href="./">CA Clover Home</a>
 </div></header>
 <main class="wrap">
   <section class="hero">
-    <div class="kicker">CA CLOVER STAMP RALLY</div>
-    <h1>全国スタンプ一覧</h1>
-    <p>地方を開いて、都道府県ごとのCommunityメダルを眺めるスタンプシート。</p>
+    <div class="kicker">CA CLOVER MEDAL RALLY</div>
+    <h1>全国メダル一覧</h1>
+    <p>地方を開いて、都道府県ごとのCommunityメダルを眺めるメダルコレクション。</p>
     <div class="summary">
       <div><small>出会ったCA</small><div id="totalScore" class="score">— <span>/ —</span></div></div>
-      <div class="note">実際に交換して取得したスタンプだけを表示しています</div>
+      <div class="note">実際に交換して取得したメダルだけを表示しています</div>
     </div>
   </section>
   <section class="japanmap" aria-labelledby="japanMapTitle">
     <div class="japanmaphead"><div><div class="kicker">JAPAN MAP</div><h2 id="japanMapTitle">出会いで、日本が緑になる。</h2></div><div><div id="mapScore" class="mapscore">— <span>/ 47</span></div><div class="sub">交流した都道府県</div></div></div>
     <div id="mapBox" class="mapbox"><div class="loading" style="margin:0;box-shadow:none">日本地図を準備中... 🗾</div></div>
-    <div class="mapnote">CAとスタンプ交換すると、そのCAのCommunityがある都道府県が点灯します。</div>
+    <div class="mapnote">CAとメダル交換すると、そのCAのCommunityがある都道府県が点灯します。</div>
     <div class="mapcredit">Map: Geolonia Japanese Prefectures / GFDL</div>
-  </section>\n\n\n  <a class="exchange-card" href="./stamp-exchange.html"><span><strong>🤝 スタンプ交換</strong><small>QRで1対1交換する</small></span><span class="arrow">→</span></a>\n  <div id="status" class="loading">スタンプシートを準備中... 🍀</div>
+  </section>\n\n\n  <a class="exchange-card" href="./stamp-exchange.html"><span><strong>🤝 メダル交換</strong><small>QRで1対1交換する</small></span><span class="arrow">→</span></a>\n  <div id="status" class="loading">メダルコレクションを準備中... 🍀</div>
   <section id="regions" class="regions" hidden></section>
   <div class="footer">🍀 取得時デザインを保存し、新デザインは既取得者へ自動追加します。お気に入りの旧デザインは表紙に固定できます。</div>
 </main>
@@ -856,7 +856,7 @@ async function load(){
      designHtml='<div class="notice section">デザイン履歴を準備中です。</div>';
     }
    }else if(selectedCa){
-    designHtml='<div class="notice section">このCAスタンプは未取得です。</div>';
+    designHtml='<div class="notice section">このCAメダルは未取得です。</div>';
    }
 
    stampDesignControls.innerHTML='<div class="actions section" style="justify-content:center">'+caButtons+'</div>'+historyHtml+designHtml;
