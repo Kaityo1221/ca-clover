@@ -359,7 +359,8 @@
     return h?h.closest("section"):null;
   }
   function findLab(){
-    return [...document.querySelectorAll("section.card.section")].find(s=>s.textContent.includes("CA Medal Rally"))||null;
+    const link=document.querySelector(".stamp-rally-open");
+    return link?link.closest("section.card.section"):null;
   }
 
   async function renderHomeClover(){
