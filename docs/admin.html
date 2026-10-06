@@ -254,41 +254,40 @@ async function accounts(){
 }
 
 async function assignments(){
- app.innerHTML=title("home","ASSIGNMENTS","🛠️ Community権限調整","通常は申請承認時に自動割当されます。ここは手動補正・追加担当・解除用です。")+'<section class="card section"><label class="tiny strong muted">対象アカウント</label><select id="userSel" class="input section"></select><div id="assnMeta" class="small muted strong section"></div></section><div class="tiny strong muted section">変更先Communityを検索</div><input id="assnSearch" class="input section" placeholder="Community名・都道府県で検索"><div id="assnList" class="grid g3 section"></div>';
- const [p,c,m]=await Promise.all([
-  client.from("profiles").select("id,email,niantic_id,role").neq("role","pending").order("email"),
+ app.innerHTML=title("home","ASSIGNMENTS","🛠️ CA割り当て","Googleログインは継続し、ここではSCOPELY EXPLORE IDとCA本人を中心に管理します。")+'<section class="card section"><label class="tiny strong muted">対象CAアカウント</label><select id="userSel" class="input section"></select><div id="assnMeta" class="small muted strong section"></div></section><div class="tiny strong muted section">変更先Communityを検索</div><input id="assnSearch" class="input section" placeholder="Community名・都道府県で検索"><div id="assnList" class="grid g3 section"></div>';
+ const [p,c,m,ca,links,ids]=await Promise.all([
+  client.from("profiles").select("id,niantic_id,role").neq("role","pending").order("niantic_id"),
   client.from("communities").select("id,name,prefecture").order("prefecture").order("name"),
-  client.from("community_memberships").select("user_id,community_id")
+  client.from("community_memberships").select("user_id,community_id"),
+  client.from("ca_members").select("id,trainer_name,ca_level,prefecture,status").order("trainer_name"),
+  client.from("community_ca_members").select("community_id,ca_member_id"),
+  client.from("user_ca_identities").select("user_id,ca_member_id,community_id,is_primary")
  ]);
- const profiles=p.data||[],communities=c.data||[],memberships=m.data||[];
- const sel=document.getElementById("userSel");sel.innerHTML=profiles.map(x=>{const count=memberships.filter(m=>m.user_id===x.id).length;return '<option value="'+x.id+'">'+(count?'✅ ':'')+e(x.email||x.niantic_id||x.id)+' ('+e(x.role)+')'+(count?' / '+count+' Community':'')+'</option>'}).join("");
+ const profiles=p.data||[],communities=c.data||[],memberships=m.data||[],caRows=ca.data||[],caLinks=links.data||[],identities=ids.data||[];
+ const caMap=new Map(caRows.map(x=>[x.id,x]));
+ const sel=document.getElementById("userSel");
+ sel.innerHTML=profiles.map(x=>{const count=memberships.filter(m=>m.user_id===x.id).length;const identity=identities.find(i=>i.user_id===x.id&&i.is_primary);const member=identity?caMap.get(identity.ca_member_id):null;const label=x.niantic_id||member?.trainer_name||"SCOPELY EXPLORE ID 未登録";return '<option value="'+x.id+'">'+(count?'✅ ':'')+e(label)+(member?' / '+e(member.trainer_name)+' '+e(member.ca_level||""):'')+' ('+e(x.role)+')</option>'}).join("");
  function draw(){
   const uid=sel.value,q=document.getElementById("assnSearch").value.trim().toLowerCase();
   const assigned=new Set(memberships.filter(x=>x.user_id===uid).map(x=>x.community_id));
-  const currentId=[...assigned][0]||null;const currentCommunity=currentId?communities.find(x=>x.id===currentId):null;document.getElementById("assnMeta").innerHTML='<div class="tiny strong muted">現在の認証済みCommunity</div><div class="strong" style="margin-top:5px">'+e(currentCommunity?currentCommunity.name:"未設定")+'</div>'+(assigned.size>1?'<div class="tiny strong" style="margin-top:7px;color:#92400e">⚠ 複数設定を検出しました。次回変更時に1つへ整理されます。</div>':'');
+  const currentId=[...assigned][0]||null,currentCommunity=currentId?communities.find(x=>x.id===currentId):null;
+  const primary=identities.find(i=>i.user_id===uid&&i.is_primary),primaryCa=primary?caMap.get(primary.ca_member_id):null;
+  document.getElementById("assnMeta").innerHTML='<div class="tiny strong muted">現在の認証済みCommunity</div><div class="strong" style="margin-top:5px">'+e(currentCommunity?currentCommunity.name:"未設定")+'</div><div class="tiny strong muted section">CA本人</div><div class="strong" style="margin-top:5px">'+e(primaryCa?(primaryCa.trainer_name+" / "+(primaryCa.ca_level||"CA")):"未設定")+'</div>'+(assigned.size>1?'<div class="tiny strong" style="margin-top:7px;color:#92400e">⚠ 複数設定を検出しました。次回変更時に1つへ整理されます。</div>':'');
   const filtered=communities.filter(x=>!q||(x.name+" "+(x.prefecture||"")).toLowerCase().includes(q));
   document.getElementById("assnList").innerHTML=filtered.map(x=>{
-    const owners=profiles.filter(p=>memberships.some(m=>m.community_id===x.id&&m.user_id===p.id));
     const on=assigned.has(x.id);
-    const ownedByOther=!on&&owners.length>0;
-    const ownerLabel=owners.map(p=>p.niantic_id||p.email||"CA").join(" / ");
-    const style=on
-      ?"text-align:left;border-color:#84cc16;background:#f7fee7"
-      :ownedByOther
-        ?"text-align:left;border-color:#bae6fd;background:#f0f9ff"
-        :"text-align:left";
-    const badge=on
-      ?'<span class="pill">✅ 現在のCommunity</span>'
-      :ownedByOther
-        ?'<span class="pill blue">✅ 他CAが認証済み</span>'
-        :'<span class="pill slate">変更先に選択</span>';
-    return '<button class="card" style="'+style+'" data-cid="'+x.id+'" '+(on?'disabled':'')+'>'+badge+'<h3 class="section">'+e(x.name)+'</h3><div class="small muted strong">'+e(x.prefecture||"—")+'</div>'+(owners.length?'<div class="tiny muted strong section">CA Clover: '+e(ownerLabel)+'</div>':'')+'</button>';
+    const candidates=caLinks.filter(l=>l.community_id===x.id).map(l=>caMap.get(l.ca_member_id)).filter(Boolean);
+    const owners=profiles.filter(p=>memberships.some(m=>m.community_id===x.id&&m.user_id===p.id));
+    const ownerLabel=owners.map(p=>p.niantic_id||"認証済みCA").join(" / ");
+    const style=on?"border-color:#84cc16;background:#f7fee7":owners.length?"border-color:#bae6fd;background:#f0f9ff":"";
+    const badge=on?'<span class="pill">✅ 現在のCommunity</span>':owners.length?'<span class="pill blue">✅ 他CAが認証済み</span>':'<span class="pill slate">割り当て先</span>';
+    const choices=candidates.length?'<div class="section"><div class="tiny strong muted">CA本人を選択</div><div class="actions section">'+candidates.map(ca=>'<button class="btn '+(ca.ca_level==="2nd"?"line":"")+'" data-assign-ca="'+e(ca.id)+'" data-cid="'+e(x.id)+'">'+e(ca.trainer_name)+' · '+e(ca.ca_level||"CA")+'</button>').join("")+'</div></div>':'<div class="notice section">このCommunityにCAマスターの紐付けがありません。CA本人Identityは作成できません。</div>';
+    return '<section class="card" style="'+style+'">'+badge+'<h3 class="section">'+e(x.name)+'</h3><div class="small muted strong">'+e(x.prefecture||"—")+'</div>'+(owners.length?'<div class="tiny muted strong section">CA Clover: '+e(ownerLabel)+'</div>':'')+choices+'</section>';
   }).join("");
-  document.querySelectorAll("[data-cid]").forEach(b=>b.onclick=async()=>{const cid=b.dataset.cid;if(assigned.has(cid))return;b.disabled=true;const currentIds=[...assigned];for(const currentId of currentIds){const rr=await client.functions.invoke("admin-manage",{body:{action:"set_membership",userId:uid,communityId:currentId,assigned:false}});if(rr.error){alert(rr.error.message);b.disabled=false;return}}const r=await client.functions.invoke("admin-manage",{body:{action:"set_membership",userId:uid,communityId:cid,assigned:true}});if(r.error){alert(r.error.message);b.disabled=false;return}for(let i=memberships.length-1;i>=0;i--){if(memberships[i].user_id===uid)memberships.splice(i,1)}memberships.push({user_id:uid,community_id:cid});draw()});
+  document.querySelectorAll("[data-assign-ca]").forEach(b=>b.onclick=async()=>{const cid=b.dataset.cid,caMemberId=b.dataset.assignCa;b.disabled=true;const currentIds=[...assigned];for(const currentId of currentIds){if(currentId===cid)continue;const rr=await client.functions.invoke("admin-manage",{body:{action:"set_membership",userId:uid,communityId:currentId,assigned:false}});if(rr.error){alert(rr.error.message);b.disabled=false;return}}const r=await client.functions.invoke("admin-manage",{body:{action:"set_membership",userId:uid,communityId:cid,caMemberId,assigned:true}});if(r.error){alert(r.error.message);b.disabled=false;return}for(let i=memberships.length-1;i>=0;i--){if(memberships[i].user_id===uid)memberships.splice(i,1)}memberships.push({user_id:uid,community_id:cid});for(let i=identities.length-1;i>=0;i--){if(identities[i].user_id===uid)identities.splice(i,1)}identities.push({user_id:uid,ca_member_id:caMemberId,community_id:cid,is_primary:true});draw()});
  }
  sel.onchange=draw;document.getElementById("assnSearch").oninput=draw;draw();
 }
-
 async function campfire(){
  app.innerHTML=title("home","HISTORY BACKFILL","📚 過去履歴接続","activeFeed / archivedFeedを使った過去履歴の補完用tokenを管理します。通常同期には不要です。")+'<div id="cfState" class="section">'+msg("読み込み中...")+'</div><section class="card section"><span class="pill slate">任意接続</span><h2 class="section">過去履歴用Tokenを登録・更新</h2><p class="small muted strong">生tokenはSupabase Vaultへ保存され、画面には再表示しません。期限切れでも公開Meetup・Community人数・Check-in・アイコンなどの通常同期は継続します。</p><textarea id="token" class="input section" style="min-height:120px" placeholder="eyJ..."></textarea><div class="actions section"><button id="saveToken" class="btn">保存</button><button id="testToken" class="btn line">接続テスト</button><button id="clearToken" class="btn rose">削除</button></div><div id="cfMsg"></div></section>';
  async function load(){const r=await client.functions.invoke("campfire-token-admin",{body:{action:"status"}});const s=r.data?.state||{},status=String(s.status||"missing");const label=status==="ready"?"過去履歴を取得できます":status==="expiring"?"Tokenの期限が近づいています":status==="expired"?"過去履歴の追加取得を停止中":status==="missing"?"過去履歴は未接続":"接続状態を確認してください";const note=status==="ready"?msg("過去履歴の補完が利用できます。通常同期はtokenなしでも動作します。","ok"):status==="expired"?msg("公開Meetup・Community人数・Check-in・アイコンなどの通常同期は継続しています。必要なときだけtokenを更新してください。"):status==="expiring"?msg("期限切れ後も通常同期は継続します。過去履歴を追加取得したいときに更新してください。"):status==="missing"?msg("過去履歴の追加取得は未接続です。通常同期は継続しています。"):s.last_error?msg(s.last_error,"err"):"";document.getElementById("cfState").innerHTML='<section class="card"><div class="row between wraprow"><div><div class="tiny strong muted">過去履歴接続</div><h2 class="section">'+e(label)+'</h2></div>'+historyTokenPill(status)+'</div><div class="grid g2 section"><div><div class="tiny muted strong">Token account</div><div class="strong">'+e(s.token_email||"未登録")+'</div></div><div><div class="tiny muted strong">有効期限</div><div class="strong">'+e(fmt(s.expires_at))+'</div></div><div><div class="tiny muted strong">最終確認</div><div class="strong">'+e(fmt(s.last_validated_at))+'</div></div><div><div class="tiny muted strong">最終過去履歴同期</div><div class="strong">'+e(fmt(s.last_sync_at))+'</div></div></div>'+note+'</section>'}
