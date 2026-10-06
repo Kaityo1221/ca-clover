@@ -30,7 +30,7 @@
 <body>
 <main class="wrap">
   <div class="head"><a class="back" href="./stamp-events.html">← イベントモード</a><span class="pill">大交換 MODE</span></div>
-  <section class="hero"><div class="icon">🪙</div><h1>みんなで大交換</h1><p>ひとつのQRから集まって、開始時にいる全員どうしで一気にスタンプ交換します。</p></section>
+  <section class="hero"><div class="icon">🪙</div><h1>みんなで大交換</h1><p>ひとつのQRから集まって、開始時にいる全員どうしで一気にメダル交換します。</p></section>
   <div id="net"></div><div id="phase"></div><div id="message"></div>
   <div id="app"></div>
   <div class="foot">開始時に参加者を固定し、全ペアを先に登録してから保存します。主催者の接続が5分以上途切れたルームは自動終了します。</div>
@@ -178,7 +178,7 @@ function render(){
  if(room.status==="completed"){
   html+='<section class="card complete"><div style="font-size:50px">🎉</div><h2>大交換 完了！</h2><div class="small">'+room.frozen_participant_count+'人で交換しました。あなたには '+room.each_receives+' 枚分の交換結果が保存されています。</div><div class="medals">'+room.participants.map((p,i)=>'<div class="fly" style="left:'+((i+1)/(room.participants.length+1)*100)+'%;animation-delay:'+(i*55)+'ms">'+iconHtml(p)+'</div>').join("")+'</div>'+(room.my_role==="host"?'<button id="end" class="btn primary">終了</button>':'<div class="notice" style="background:#eef6e9;color:#587848">主催者が「終了」を押すまで、この結果画面を共有します。</div>')+'</section>';
  }
- if(["closed","expired"].includes(room.status))html+='<section class="card center"><div style="font-size:42px">'+(room.status==="expired"?"⏰":"🍀")+'</div><h2>'+(room.status==="expired"?"イベント終了":"大交換ルーム終了")+'</h2><a class="btn primary" style="display:block" href="./stamp-rally.html">スタンプ一覧へ</a></section>';
+ if(["closed","expired"].includes(room.status))html+='<section class="card center"><div style="font-size:42px">'+(room.status==="expired"?"⏰":"🍀")+'</div><h2>'+(room.status==="expired"?"イベント終了":"大交換ルーム終了")+'</h2><a class="btn primary" style="display:block" href="./stamp-rally.html">メダル一覧へ</a></section>';
  if(room.my_role==="host"&&room.status!=="processing"&&!["closed","expired","completed"].includes(room.status))html+='<button id="end" class="btn muted" style="margin-top:14px">ルームを終了</button>';
 
  app.innerHTML=html;window.CACommunityIcon.bind(app);
