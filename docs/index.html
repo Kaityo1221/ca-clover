@@ -291,7 +291,7 @@
     }
 
     if(profile.role==="admin"||permissions.has("S")){
-      html+='<section class="card section" style="border-color:#f0d7bd;background:linear-gradient(135deg,#fff8ef,#fff,#edf7e8)"><div class="row"><div style="font-size:34px">🍀</div><div><span class="pill">MEDAL RALLY</span><h2 style="margin-top:8px">CA Medal Rally</h2><p class="muted small strong">全国のCAとの出会いをメダルで記録します。</p></div></div><a class="btn section stamp-rally-open" href="./stamp-rally.html">メダルラリーを開く →</a></section>';
+      html+='<section class="card section" style="border-color:#f0d7bd;background:linear-gradient(135deg,#fff8ef,#fff,#edf7e8)"><div class="row"><div style="font-size:34px">🍀</div><div><span class="pill">MEDAL RALLY</span><h2 style="margin-top:8px">CA Medal Rally</h2><p class="muted small strong">全国のCAとの出会いをメダルで記録します。</p></div></div><div class="section" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:stretch"><a class="btn stamp-rally-open" href="./stamp-rally.html" style="display:flex;margin:0;width:100%;min-height:52px">メダルラリーを開く →</a><a class="btn line" href="./stamp-exchange.html" aria-label="QRでメダル交換" style="display:flex;align-items:center;justify-content:center;gap:7px;width:auto;min-width:108px;min-height:52px;text-decoration:none;font-size:15px">▦ QR交換</a></div></section>';
     }
 
     if(profile.role==="pending"&&claims.length){
