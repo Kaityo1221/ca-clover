@@ -49,6 +49,8 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
 @keyframes suzukiRitualFade{0%{opacity:0}8%{opacity:1}86%{opacity:1}100%{opacity:0}}@keyframes suzukiHeartPulse{0%,100%{transform:scale(1);filter:brightness(.78)}7%{transform:scale(1.045);filter:brightness(1.55)}17%{transform:scale(.985);filter:brightness(.92)}28%{transform:scale(1.028);filter:brightness(1.28)}42%{transform:scale(1);filter:brightness(.82)}}@keyframes suzukiRuneWake{0%,20%{opacity:.12;text-shadow:0 0 0 transparent}42%{opacity:.72;text-shadow:0 0 10px rgba(173,38,20,.72)}65%,100%{opacity:.38;text-shadow:0 0 5px rgba(135,28,17,.45)}}@keyframes suzukiLineOne{0%,18%{opacity:0;transform:translateY(8px)}30%,100%{opacity:1;transform:translateY(0)}}@keyframes suzukiLineTwo{0%,42%{opacity:0;transform:translateY(8px)}56%,100%{opacity:1;transform:translateY(0)}}@keyframes suzukiAsh{0%{transform:translate3d(0,-8px,0) rotate(0deg);opacity:0}20%{opacity:.55}100%{transform:translate3d(var(--ash-x),110vh,0) rotate(220deg);opacity:0}}
 @media(min-width:600px){.stamps{grid-template-columns:repeat(4,minmax(0,1fr));gap:22px 15px}.medal{width:94px;height:94px}.cname{font-size:11px}.caname{font-size:9px}}
 @media(min-width:900px){.stamps{grid-template-columns:repeat(5,minmax(0,1fr))}}
+
+.japanmap{margin-top:14px;border:1px solid #d5e3ce;border-radius:28px;background:linear-gradient(180deg,#f8fcf5,#fff);padding:16px;box-shadow:0 12px 30px rgba(75,105,62,.08)}.japanmaphead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}.japanmap h2{margin:3px 0 0;font-size:20px;color:#3d4938}.mapscore{text-align:right;font-size:24px;font-weight:950;color:#4f7d3b}.mapscore span{font-size:11px;color:#8ca082}.mapbox{margin-top:12px;overflow:hidden;border:1px solid #e2eadc;border-radius:22px;background:#fff;padding:3px}.mapbox svg{display:block;width:100%;height:auto}.mapbox .prefecture{fill:#eee;stroke:#8f948d;stroke-width:1;cursor:pointer;transition:fill .18s ease,stroke .18s ease}.mapbox .prefecture.acquired{fill:#78a866;stroke:#527943;stroke-width:1.4}.mapnote{margin-top:9px;border-radius:16px;background:#eef5e9;padding:10px 12px;font-size:9px;line-height:1.55;font-weight:850;color:#6d7d65}.mapcredit{margin-top:5px;text-align:right;font-size:7px;font-weight:800;color:#a0a79b}
 </style>
 </head>
 <body>
@@ -67,6 +69,12 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
       <div><small>出会ったCA</small><div id="totalScore" class="score">— <span>/ —</span></div></div>
       <div class="note">実際に交換して取得したスタンプだけを表示しています</div>
     </div>
+  </section>
+  <section class="japanmap" aria-labelledby="japanMapTitle">
+    <div class="japanmaphead"><div><div class="kicker">JAPAN MAP</div><h2 id="japanMapTitle">出会いで、日本が緑になる。</h2></div><div><div id="mapScore" class="mapscore">— <span>/ 47</span></div><div class="sub">交流した都道府県</div></div></div>
+    <div id="mapBox" class="mapbox"><div class="loading" style="margin:0;box-shadow:none">日本地図を準備中... 🗾</div></div>
+    <div class="mapnote">CAとスタンプ交換すると、そのCAのCommunityがある都道府県が点灯します。</div>
+    <div class="mapcredit">Map: Geolonia Japanese Prefectures / GFDL</div>
   </section>\n  <a class="exchange-card" href="./stamp-kanto.html" style="background:#f4faef;border-color:#cfe1c5"><span><strong style="color:#4f753f">🍀 関東CA Network</strong><small>1都6県のつながりを見る</small></span><span class="arrow" style="color:#5f8e50">→</span></a>\n  <a class="exchange-card" href="./stamp-events.html" style="background:#fffaf1;border-color:#e1c9aa"><span><strong style="color:#7a5c35">🎪 イベントモード</strong><small>参加イベントと日替わりミッション</small></span><span class="arrow" style="color:#9a7444">→</span></a>\n  <a class="exchange-card" href="./stamp-exchange.html"><span><strong>🤝 スタンプ交換</strong><small>QRで1対1交換する</small></span><span class="arrow">→</span></a>\n  <div id="status" class="loading">スタンプシートを準備中... 🍀</div>
   <section id="regions" class="regions" hidden></section>
   <div class="footer">🍀 取得時デザインを保存し、新デザインは既取得者へ自動追加します。お気に入りの旧デザインは表紙に固定できます。</div>
@@ -114,6 +122,8 @@ const status=document.getElementById("status");
 const stampBackLink=document.getElementById("stampBackLink");
 const regionsEl=document.getElementById("regions");
 const totalScore=document.getElementById("totalScore");
+const mapScore=document.getElementById("mapScore");
+const mapBox=document.getElementById("mapBox");
 const stampModalBack=document.getElementById("stampModalBack");
 const stampClose=document.getElementById("stampClose");
 const stamp3d=document.getElementById("stamp3d");
@@ -704,6 +714,29 @@ async function load(){
  stampCommunityById=new Map(communities.map(c=>[c.id,c]));
  const all=communities.flatMap(c=>c.cas),got=all.filter(c=>c.acquired).length;
  totalScore.innerHTML=got+' <span>/ '+all.length+'</span>';
+
+ const acquiredPrefectures=new Set(communities.filter(c=>c.cas.some(ca=>ca.acquired)).map(c=>c.prefecture).filter(Boolean));
+ mapScore.innerHTML=acquiredPrefectures.size+' <span>/ 47</span>';
+ try{
+  const mapText=await fetch("./assets/geolonia-map-mobile.svg?v=1",{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error("map");return r.text()});
+  mapBox.innerHTML=mapText;
+  mapBox.querySelectorAll(".prefecture").forEach(el=>{
+   const code=Number(el.dataset.code||0),pref=prefectureOrder[code-1]||"";
+   if(acquiredPrefectures.has(pref))el.classList.add("acquired");
+   el.setAttribute("aria-label",pref+(acquiredPrefectures.has(pref)?" 交換済み":" 未交換"));
+   el.setAttribute("tabindex","0");
+   const openPref=()=>{
+    const buttons=[...regionsEl.querySelectorAll(".prefbtn")];
+    const btn=buttons.find(b=>b.querySelector(".prefname")?.textContent===pref);
+    if(!btn)return;
+    const region=btn.closest(".region"),prefEl=btn.closest(".pref");
+    region?.classList.add("open");prefEl?.classList.add("open");
+    prefEl?.scrollIntoView({behavior:"smooth",block:"center"});
+   };
+   el.addEventListener("click",openPref);
+   el.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openPref()}});
+  });
+ }catch(_){mapBox.innerHTML='<div class="error" style="margin:0">日本地図を読み込めませんでした。</div>'}
 
  const byPref=new Map();
  communities.forEach(c=>{
