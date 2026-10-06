@@ -713,7 +713,7 @@ async function load(){
 
  stampCommunityById=new Map(communities.map(c=>[c.id,c]));
  const all=communities.flatMap(c=>c.cas),got=all.filter(c=>c.acquired).length;
- totalScore.innerHTML=got+' <span>/ '+all.length+'</span>';
+ totalScore.innerHTML=got+'<span style="font-size:14px;margin-left:4px">人</span>';
 
  const acquiredCommunityIds=[...new Set(collectionRows.map(x=>x.community_id).filter(Boolean))];
  let acquiredPrefectures=new Set(communities.filter(c=>c.cas.some(ca=>ca.acquired)).map(c=>c.prefecture).filter(Boolean));
@@ -923,6 +923,5 @@ stampClose.onclick=closeStampModal;
 stampModalBack.addEventListener("click",e=>{if(e.target===stampModalBack)closeStampModal()});
 load();
 })();
-</script>
-<script src="./stamp-virtual-test-v5.js?v=6"></script>\n</body>
+</script>\n</body>
 </html>
