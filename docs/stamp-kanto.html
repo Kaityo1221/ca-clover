@@ -207,7 +207,7 @@ async function loadConnections(){
  const {data,error}=await client.rpc("stamp_kanto_open_connections");
  if(error){
   console.error("Kanto connection load failed",error);
-  setStatus("接続状況を取得できませんでした。スタンプ一覧から入り直してください。",true);
+  setStatus("接続状況を取得できませんでした。メダル一覧から入り直してください。",true);
   return;
  }
 
