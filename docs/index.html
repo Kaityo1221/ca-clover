@@ -272,10 +272,6 @@
     let html='<section class="card hero"><span class="pill">MY COMMUNITY</span><h1 style="margin-top:12px">My Communityへようこそ。🍀</h1><p class="muted strong">'+heroText+'</p>'+(profile.role!=="pending"?'<div class="tags"><span class="pill">✅ 認証済み '+communities.length+' Community</span></div>':'')+'</section>';
     html+=flashHtml();
 
-    if(profile.role==="admin"||permissions.has("S")){
-      html+='<section class="card section" style="border-color:#f0d7bd;background:linear-gradient(135deg,#fff8ef,#fff,#edf7e8)"><div class="row"><div style="font-size:34px">🍀</div><div><span class="pill">S / STAMP RALLY LAB</span><h2 style="margin-top:8px">CA Stamp Rally LAB</h2><p class="muted small strong">全国スタンプシートのテストページを開きます。</p></div></div><a class="btn section stamp-rally-open" href="./stamp-rally.html">スタンプラリーを開く →</a></section>';
-    }
-
     if(profile.role==="pending"){
       html+='<section class="notice section"><div class="tiny strong">初回CA登録</div><h3 style="margin-top:5px;color:#78350f">Campfire URLでCA確認をします</h3><p>Niantic IDを登録してから、コミュニティ招待URLまたは自分が主催したミートアップ共有URLを提出してください。会長が承認するとCAアカウント化とCommunity割当が同時に完了します。</p>'+(profile.niantic_id?'<span class="pill amber">Niantic ID: '+e(profile.niantic_id)+' ✓</span>':'<button id="toAccount" class="btn line">先にNiantic IDを登録 →</button>')+'</section>';
     }
@@ -292,6 +288,10 @@
       html+='<section class="section"><h2>あなたのCommunity</h2><div class="grid g2 section">'+communities.map(function(c){
         return '<button type="button" class="claim clickable" style="text-align:left;width:100%;position:relative" data-community="'+e(c.id)+'"><span class="pill" style="position:absolute;right:14px;top:14px">✅ 認証済み</span><div class="row" style="align-items:center;padding-right:86px">'+communityIconHtml(c,false)+'<div style="min-width:0"><span class="pill">'+e(c.prefecture||"—")+'</span><h3 style="margin-top:7px">'+e(c.name)+'</h3></div></div><p class="muted small strong">Member: '+e(c.member_count==null?"未取得":Number(c.member_count).toLocaleString("ja-JP"))+'</p>'+(c.coverage!=="complete"?'<div class="notice section">⚠️ 一部の過去データが未取得のため、全期間集計は参考値です</div>':'')+'<div class="small strong" style="color:#65a30d;margin-top:10px">Community情報を見る →</div></button>'
       }).join("")+'</div></section>';
+    }
+
+    if(profile.role==="admin"||permissions.has("S")){
+      html+='<section class="card section" style="border-color:#f0d7bd;background:linear-gradient(135deg,#fff8ef,#fff,#edf7e8)"><div class="row"><div style="font-size:34px">🍀</div><div><span class="pill">STAMP RALLY</span><h2 style="margin-top:8px">CA Stamp Rally</h2><p class="muted small strong">全国のCAとの出会いをスタンプで記録します。</p></div></div><a class="btn section stamp-rally-open" href="./stamp-rally.html">スタンプラリーを開く →</a></section>';
     }
 
     if(profile.role==="pending"&&claims.length){
