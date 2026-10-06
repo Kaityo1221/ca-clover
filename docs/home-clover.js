@@ -2,7 +2,7 @@
   "use strict";
 
   const core=document.createElement("script");
-  core.src="./home-clover-core.js?v=20260927-activity-focus1";
+  core.src="./home-clover-core.js?v=20261006-medal-order1";
   core.async=false;
   document.head.appendChild(core);
 
