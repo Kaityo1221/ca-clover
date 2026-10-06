@@ -8,7 +8,7 @@
   const ARCHIVE_START=new Date(2026,8,1); // 2026-09-01 JST
   const SEEN_KEY_PREFIX="ca-clover-garden-seen:";
   const LUCKY_CLOVER_CHANCE=0.005; // 0.5% per Garden view. Decorative only, never saved.
-  const CURRENT_CLOVER_MODE=new URLSearchParams(location.search).get("currentClover")==="1";
+  let currentCloverMode=new URLSearchParams(location.search).get("currentClover")==="1";
   let client=null;
   let running=false;
   let renderSeq=0;
@@ -120,7 +120,7 @@
 
 
   function currentMonthPreviewSnapshots(uid){
-    if(!CURRENT_CLOVER_MODE)return [];
+    if(!currentCloverMode)return [];
     const current=window.CAHomeCloverCurrent;
     if(!current||current.uid!==uid||!Array.isArray(current.models))return [];
     return current.models.map(model=>({
@@ -174,11 +174,17 @@
   }
 
   function setCurrentCloverMode(enabled){
-    try{sessionStorage.setItem("ca-clover-garden-jump","1")}catch(_){}
+    currentCloverMode=Boolean(enabled);
     const url=new URL(location.href);
-    if(enabled)url.searchParams.set("currentClover","1");
+    if(currentCloverMode)url.searchParams.set("currentClover","1");
     else url.searchParams.delete("currentClover");
-    location.assign(url.toString());
+    history.replaceState(history.state,"",url.toString());
+
+    // Keep the current viewport. Re-render Garden in place instead of
+    // navigating/reloading the whole My Community page.
+    renderSeq++;
+    lastRoot=null;
+    run();
   }
 
   function restoreGardenViewport(section){
@@ -411,10 +417,10 @@
         return '<article class="clover-year-sheet" data-year="'+esc(group.year)+'" data-community-id="'+esc(group.communityId)+'" data-has-fresh="'+(hasFresh?'1':'0')+'" data-complete="'+(complete?'1':'0')+'"><div class="clover-sheet-head"><div class="clover-sheet-year">'+esc(group.year)+'年</div>'+(multi?'<div class="clover-sheet-community">'+esc(name)+'</div>':'')+'</div><div class="clover-sheet-rule"></div><div class="clover-sheet-field">'+specimens+'</div><div class="clover-year-complete">'+esc(group.year)+'年のCloverがそろいました。</div></article>';
       }).join('')+'</div>';
     }
-    const testbar=CURRENT_CLOVER_MODE
+    const testbar=currentCloverMode
       ?'<div class="clover-garden-testbar"><span>🍀 今月のCloverをプレビュー中です。正式な月末保存には影響しません。</span><span class="clover-current-clover-actions"><button type="button" class="clover-garden-replay" data-garden-replay>演出をもう一度</button><button type="button" class="clover-garden-replay" data-current-clover-close>閉じる</button></span></div>'
       :(hasAdminAccess()?'<div class="clover-garden-testbar"><span>🍀 今月の活動から育っているCloverを落として見ることができます。</span><button type="button" class="clover-garden-replay clover-current-clover-open" data-current-clover-open>今月のClover</button></div>':'');
-    section.innerHTML='<div class="clover-garden-head"><div><h2 class="clover-garden-title">🍀 Clover Garden</h2><p class="clover-garden-sub">ひと月ごとのCloverを、押し花のように1年のシートへ残していきます。</p></div><span class="clover-garden-badge">'+(CURRENT_CLOVER_MODE?'THIS MONTH':'HERBARIUM')+'</span></div>'+testbar+body+'<div class="clover-garden-note">過去月は、あとから同期されたMeetupがあれば再計算して更新します。</div>';
+    section.innerHTML='<div class="clover-garden-head"><div><h2 class="clover-garden-title">🍀 Clover Garden</h2><p class="clover-garden-sub">ひと月ごとのCloverを、押し花のように1年のシートへ残していきます。</p></div><span class="clover-garden-badge">'+(currentCloverMode?'THIS MONTH':'HERBARIUM')+'</span></div>'+testbar+body+'<div class="clover-garden-note">過去月は、あとから同期されたMeetupがあれば再計算して更新します。</div>';
     root.appendChild(section);
 
     section.querySelectorAll("[data-snapshot-index]").forEach(btn=>btn.addEventListener("click",()=>{
