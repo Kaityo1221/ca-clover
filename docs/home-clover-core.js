@@ -245,7 +245,7 @@
       const shared=model.exchangeShared?'<div class="home-clover-modal-row">※ 複数Community担当のため、交流はCAアカウント共通の記録です。</div>':"";
       const rule='<div class="home-clover-modal-row">同じ相手でも別日の交換・再会は交流として数えます。同じ相手・同じ日は1回です。</div>';
       const events=model.exchangeEvents||[];
-      return shared+rule+(events.length?events.map(x=>'<div class="home-clover-modal-row"><b>'+esc(new Date(x.occurred_at).toLocaleDateString("ja-JP"))+'</b>　'+(x.kind==="reunion"?'再会':'初交換')+' ・ '+esc(x.event_name||x.location||"CA Stamp Rally交換")+'</div>').join(""):'<div class="home-clover-modal-row">今月はまだ交流記録がありません。</div>');
+      return shared+rule+(events.length?events.map(x=>'<div class="home-clover-modal-row"><b>'+esc(new Date(x.occurred_at).toLocaleDateString("ja-JP"))+'</b>　'+(x.kind==="reunion"?'再会':'初交換')+' ・ '+esc(x.event_name||x.location||"CA Medal Rally交換")+'</div>').join(""):'<div class="home-clover-modal-row">今月はまだ交流記録がありません。</div>');
     }
     const weeks=[...new Set(model.meetups.map(m=>weekKey(m.starts_at)).filter(Boolean))];
     return weeks.length?weeks.map((w,i)=>'<div class="home-clover-modal-row"><b>活動週 '+(i+1)+'</b>　'+esc(w)+'</div>').join(""):'<div class="home-clover-modal-row">今月はまだ活動週がありません。</div>';
@@ -359,7 +359,7 @@
     return h?h.closest("section"):null;
   }
   function findLab(){
-    return [...document.querySelectorAll("section.card.section")].find(s=>s.textContent.includes("CA Stamp Rally"))||null;
+    return [...document.querySelectorAll("section.card.section")].find(s=>s.textContent.includes("CA Medal Rally"))||null;
   }
 
   async function renderHomeClover(){
