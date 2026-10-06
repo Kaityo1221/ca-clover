@@ -77,7 +77,7 @@ h1{margin:5px 0 0;font-size:28px;letter-spacing:-.03em;color:#394334}
 </head>
 <body>
 <header class="top"><div class="topin">
-<a class="back" href="./stamp-rally.html" aria-label="スタンプ一覧へ戻る">‹</a>
+<a class="back" href="./stamp-rally.html" aria-label="メダル一覧へ戻る">‹</a>
 <strong style="font-size:14px;color:#405b36">関東CA Network</strong>
 <div class="grow"></div><span class="pill">PHASE K3</span>
 </div></header>
@@ -86,7 +86,7 @@ h1{margin:5px 0 0;font-size:28px;letter-spacing:-.03em;color:#394334}
 <section class="hero">
 <div class="kicker">CA CLOVER / KANTO NETWORK</div>
 <h1>関東CA Network 🍀</h1>
-<p>異なる都県のCA同士がスタンプ交換すると、その都県どうしを結ぶラインが開通する共通マップです。</p>
+<p>異なる都県のCA同士がメダル交換すると、その都県どうしを結ぶラインが開通する共通マップです。</p>
 <div class="stats">
 <div class="stat"><small>関東CA</small><strong>0 <span>/ 52</span></strong></div>
 <div class="stat"><small>都県間接続</small><strong><span id="openScoreValue" style="font-size:24px;color:#3f4939">0</span> <span>/ 21 OPEN</span></strong></div>
@@ -207,7 +207,7 @@ async function loadConnections(){
  const {data,error}=await client.rpc("stamp_kanto_open_connections");
  if(error){
   console.error("Kanto connection load failed",error);
-  setStatus("接続状況を取得できませんでした。スタンプ一覧から入り直してください。",true);
+  setStatus("接続状況を取得できませんでした。メダル一覧から入り直してください。",true);
   return;
  }
 
