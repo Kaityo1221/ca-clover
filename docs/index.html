@@ -456,8 +456,17 @@
     });
     app.querySelectorAll("[data-history-limit]").forEach(function(b){
       b.onclick=function(){
+        const historySection=b.closest("section");
+        const previousTop=historySection?historySection.getBoundingClientRect().top:null;
         meetupHistoryLimit=Number(b.dataset.historyLimit)||25;
-        void renderCommunity(id);
+        void renderCommunity(id).then(function(){
+          if(previousTop===null)return;
+          const heading=[...app.querySelectorAll("h2")].find(function(el){return el.textContent.includes("Meetup履歴")});
+          const nextSection=heading&&heading.closest("section");
+          if(!nextSection)return;
+          const delta=nextSection.getBoundingClientRect().top-previousTop;
+          window.scrollBy({top:delta,behavior:"instant"});
+        });
       };
     });
     app.querySelectorAll("[data-meetup-index]").forEach(function(b){
