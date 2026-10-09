@@ -350,7 +350,7 @@
   function monthHtml(model){
     const label=model.totalCommunities>1?'<div class="home-clover-community-label">'+(model.community.avatar_url?'<img src="'+esc(model.community.avatar_url)+'" alt="">':'🍀')+'<span>'+esc(model.community.name)+'</span></div>':"";
     const monthly=window.CAMonthlyClover.cardHtml({date:model.now,stages:model.stages,details:model.details});
-    return label+monthly+'<div class="home-clover-growth"><span class="home-clover-growth-message" data-growth-message aria-live="polite">🍀 今月の活動がCloverに育っています。</span><button type="button" class="home-clover-skip" data-growth-skip hidden>Skip</button></div>'+weeklyHtml(model);
+    return label+monthly+'<div class="home-clover-growth"><span class="home-clover-growth-message" data-growth-message aria-live="polite">🍀 今月の活動がCloverに育っています。</span><button type="button" class="home-clover-skip" data-growth-skip hidden>Skip</button></div>';
   }
 
   function findCommunitySection(){
@@ -406,9 +406,7 @@
           card.parentNode.insertBefore(scope,card);
           scope.appendChild(card);
           const growth=card.nextElementSibling;
-          const week=growth?.nextElementSibling;
           if(growth)scope.appendChild(growth);
-          if(week)scope.appendChild(week);
           bindModel(scope,model,session.user.id);
         }
       });
