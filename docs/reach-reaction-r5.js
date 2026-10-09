@@ -308,6 +308,7 @@
       if(serial!==mountSerial||!document.body.contains(box))return true;
       box.innerHTML=cardHtml(result);
       window.CAReachReactionR5LastResult=result;
+      window.dispatchEvent(new CustomEvent("ca-clover:reach-timing",{detail:{communityId:id,result}}));
     }catch(err){
       console.warn("Community Reaction R5 failed",err);
       if(document.body.contains(box))box.innerHTML='<div class="reaction-r5-note">反応時刻の読み込みに失敗しました。Meetup個別データは引き続き確認できます。</div>';
