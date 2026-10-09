@@ -560,12 +560,9 @@ async function authGuard(){
  const s=await client.auth.getSession();const session=s.data.session;
  if(!session){location.href=ROOT;return false}
  currentUserId=session.user.id;
- const [p,u]=await Promise.all([
-  client.from("profiles").select("role").eq("id",session.user.id).maybeSingle(),
-  client.from("user_permissions").select("permission_code").eq("user_id",session.user.id).eq("permission_code","S")
- ]);
+ const p=await client.from("profiles").select("role").eq("id",session.user.id).maybeSingle();
  const isAdmin=p.data?.role==="admin";
- const hasStamp=(u.data||[]).some(x=>x.permission_code==="S");
+ const approved=["ca","admin"].includes(p.data?.role);
  if(isAdmin){
   stampBackLink.href="./admin.html";
   stampBackLink.textContent="管理メニュー";
@@ -573,9 +570,9 @@ async function authGuard(){
   stampBackLink.href="./";
   stampBackLink.textContent="CA Clover Home";
  }
- if(!isAdmin&&!hasStamp){
+ if(!approved){
   status.className="error";
-  status.textContent="メダルラリーの利用権限がありません。管理者にお問い合わせください。";
+  status.textContent="CA登録が完了するとメダルラリーを利用できます。";
   return false;
  }
  return true;
