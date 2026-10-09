@@ -204,7 +204,7 @@
       const snapshotsResult=await sb.from("meetup_metric_snapshots")
         .select("meetup_id,rsvp_count,observed_at")
         .eq("community_id",id)
-        .order("observed_at",{ascending:true})
+        .order("observed_at",{ascending:false})
         .limit(4000);
       if(snapshotsResult.error)throw snapshotsResult.error;
       if(token!==loadToken)return;
