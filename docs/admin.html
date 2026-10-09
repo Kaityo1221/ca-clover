@@ -123,7 +123,7 @@ async function dashboard(){
   ["sync-runs","🧾","同期履歴","最新100件の同期結果",0],
   ["coverage","📊","Data Coverage","全国取得状態・未解決CAを確認",0],
   ["windows","🕐","イベント時間マスター","公式イベント時間窓",0],
-  ["stamp-events","🎪","イベント管理","Stamp Rallyイベント・日替わりミッション",0],
+  ["stamp-events","🎪","イベント管理","メダルラリーイベント・日替わりミッション",0],
   ["general","🏠","ホームへ","カテゴリホームに戻る",0],
   ["stamp-rally","🍀","CA Medal Rally","全国メダルコレクションを確認",0],
  ];
@@ -236,7 +236,7 @@ async function icons(){
 }
 
 async function accounts(){
- app.innerHTML=title("home","ACCOUNTS","👥 CAアカウント","Googleログイン後のアカウント権限を管理します。SはStamp Rally LABの追加権限です。")+'<div id="list" class="section">'+msg("読み込み中...")+'</div>';
+ app.innerHTML=title("home","ACCOUNTS","👥 CAアカウント","Googleログイン後のアカウント権限を管理します。Sはメダルラリーの利用権限です。")+'<div id="list" class="section">'+msg("読み込み中...")+'</div>';
  const [pr,ur]=await Promise.all([
   client.from("profiles").select("id,email,niantic_id,role,created_at").order("created_at",{ascending:false}),
   client.from("user_permissions").select("user_id,permission_code").eq("permission_code","S")
