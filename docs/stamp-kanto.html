@@ -79,7 +79,7 @@ h1{margin:5px 0 0;font-size:28px;letter-spacing:-.03em;color:#394334}
 <header class="top"><div class="topin">
 <a class="back" href="./stamp-rally.html" aria-label="メダル一覧へ戻る">‹</a>
 <strong style="font-size:14px;color:#405b36">関東CA Network</strong>
-<div class="grow"></div><span class="pill">PHASE K3</span>
+<div class="grow"></div>
 </div></header>
 
 <main class="wrap">
@@ -88,7 +88,7 @@ h1{margin:5px 0 0;font-size:28px;letter-spacing:-.03em;color:#394334}
 <h1>関東CA Network 🍀</h1>
 <p>異なる都県のCA同士がメダル交換すると、その都県どうしを結ぶラインが開通する共通マップです。</p>
 <div class="stats">
-<div class="stat"><small>関東CA</small><strong>0 <span>/ 52</span></strong></div>
+<div class="stat"><small>対象地域</small><strong>7 <span>都県</span></strong></div>
 <div class="stat"><small>都県間接続</small><strong><span id="openScoreValue" style="font-size:24px;color:#3f4939">0</span> <span>/ 21 OPEN</span></strong></div>
 </div>
 </section>
@@ -124,10 +124,8 @@ h1{margin:5px 0 0;font-size:28px;letter-spacing:-.03em;color:#394334}
 </svg>
 </div>
 
-<div class="prefcounts">
-<span>茨城 2 CA</span><span>栃木 5 CA</span><span>群馬 4 CA</span><span>埼玉 6 CA</span><span>千葉 10 CA</span><span>東京 17 CA</span><span>神奈川 8 CA</span>
-</div>
-<div id="networkStatus" class="preview"><strong>Phase K3</strong>：接続状況を読み込み中です…</div>
+
+<div id="networkStatus" class="preview">接続状況を読み込み中です…</div>
 <div class="source">Map outline: PA4KEV/japan-vector-map (MIT)</div>
 </section>
 </main>
@@ -167,7 +165,7 @@ function canonicalPair(a,b){
  return nameOrder.get(aa)<nameOrder.get(bb)?aa+"-"+bb:bb+"-"+aa;
 }
 function setStatus(message,isError){
- networkStatus.innerHTML=(isError?"<strong>読み込みエラー</strong>：":"<strong>Phase K3</strong>：")+message;
+ networkStatus.textContent=(isError?"読み込みエラー：":"")+message;
  networkStatus.style.background=isError?"#fff1f2":"#fffaf4";
  networkStatus.style.borderColor=isError?"#fecdd3":"#d6cabd";
  networkStatus.style.color=isError?"#be123c":"#8a7d71";
@@ -201,6 +199,16 @@ async function loadConnections(){
  const session=sessionResult.data.session;
  if(!session){
   location.href=ROOT;
+  return;
+ }
+
+ const [profileResult,permissionResult]=await Promise.all([
+  client.from("profiles").select("role").eq("id",session.user.id).maybeSingle(),
+  client.from("user_permissions").select("permission_code").eq("user_id",session.user.id).eq("permission_code","S")
+ ]);
+ const allowed=profileResult.data?.role==="admin"||(permissionResult.data||[]).some(p=>p.permission_code==="S");
+ if(!allowed){
+  setStatus("メダルラリーの利用権限がありません。管理者にお問い合わせください。",true);
   return;
  }
 
