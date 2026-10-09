@@ -69,7 +69,7 @@ async function auth(){
   client.from("user_permissions").select("permission_code").eq("user_id",session.user.id).eq("permission_code","S")
  ]);
  const ok=p.data&&p.data.role==="admin"||(u.data||[]).some(x=>x.permission_code==="S");
- if(!ok){status.innerHTML='<div class="notice error">S権限が必要です。</div>';return false}
+ if(!ok){status.innerHTML='<div class="notice error">メダルラリーの利用権限がありません。管理者にお問い合わせください。</div>';return false}
  return true;
 }
 function render(data){
