@@ -202,13 +202,10 @@ async function loadConnections(){
   return;
  }
 
- const [profileResult,permissionResult]=await Promise.all([
-  client.from("profiles").select("role").eq("id",session.user.id).maybeSingle(),
-  client.from("user_permissions").select("permission_code").eq("user_id",session.user.id).eq("permission_code","S")
- ]);
- const allowed=profileResult.data?.role==="admin"||(permissionResult.data||[]).some(p=>p.permission_code==="S");
+ const profileResult=await client.from("profiles").select("role").eq("id",session.user.id).maybeSingle();
+ const allowed=["ca","admin"].includes(profileResult.data?.role);
  if(!allowed){
-  setStatus("メダルラリーの利用権限がありません。管理者にお問い合わせください。",true);
+  setStatus("CA登録が完了すると関東CA Networkを利用できます。",true);
   return;
  }
 
