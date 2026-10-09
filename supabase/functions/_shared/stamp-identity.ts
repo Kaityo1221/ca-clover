@@ -68,50 +68,10 @@ async function validateIdentity(admin:any,identity:IdentityRow){
   return {ca,community};
 }
 
-async function chooseExactMasterIdentity(admin:any,userId:string,nianticId:string|null){
-  const normalized=normalizeIdentity(nianticId);
-  if(!normalized) return null;
-
-  const {data:ca,error:caError}=await admin.from("ca_members")
-    .select("id,source_key,trainer_name,ca_level,status")
-    .eq("source_key",normalized)
-    .maybeSingle();
-  if(caError) throw caError;
-  if(!ca||ca.status!=="active"||!["1st","2nd"].includes(String(ca.ca_level??""))) return null;
-
-  const {data:links,error:linksError}=await admin.from("community_ca_members")
-    .select("community_id")
-    .eq("ca_member_id",ca.id);
-  if(linksError) throw linksError;
-  const communityIds=[...new Set((links??[]).map((row:any)=>String(row.community_id)).filter(Boolean))];
-  if(!communityIds.length) return null;
-
-  let chosenCommunityId:string|null=communityIds.length===1?communityIds[0]:null;
-
-  if(!chosenCommunityId){
-    const {data:memberships,error:membershipError}=await admin.from("community_memberships")
-      .select("community_id")
-      .eq("user_id",userId)
-      .in("community_id",communityIds);
-    if(membershipError) throw membershipError;
-    const matched=[...new Set((memberships??[]).map((row:any)=>String(row.community_id)).filter(Boolean))];
-    if(matched.length===1) chosenCommunityId=matched[0];
-  }
-
-  if(!chosenCommunityId){
-    const {data:claims,error:claimError}=await admin.from("community_access_requests")
-      .select("community_id")
-      .eq("user_id",userId)
-      .eq("status","approved")
-      .in("community_id",communityIds);
-    if(claimError) throw claimError;
-    const matched=[...new Set((claims??[]).map((row:any)=>String(row.community_id)).filter(Boolean))];
-    if(matched.length===1) chosenCommunityId=matched[0];
-  }
-
-  if(!chosenCommunityId) return null;
-  return {ca_member_id:String(ca.id),community_id:chosenCommunityId,is_primary:true};
-}
+// IMPORTANT: profiles.niantic_id is editable by its owner.
+// Never infer ownership of a CA master record from that string alone.
+// The legitimate paths below are explicit admin-linked user_ca_identities
+// or the pre-provisioned (RLS protected) tester identities.
 
 async function persistPrimaryIdentity(admin:any,userId:string,identity:IdentityRow,source:string){
   const {data:owner,error:ownerError}=await admin.from("user_ca_identities")
@@ -211,22 +171,6 @@ export async function resolveStampActor(
     const valid=await validateIdentity(admin,uniqueTesterCandidates[0]);
     if(valid){
       await persistPrimaryIdentity(admin,userId,uniqueTesterCandidates[0],"stamp_auto_tester_identity");
-      return {
-        user_id:userId,
-        niantic_id:access.nianticId,
-        ca_member_id:valid.ca.id,
-        trainer_name:valid.ca.trainer_name,
-        ca_level:valid.ca.ca_level,
-        community:valid.community,
-      };
-    }
-  }
-
-  const exact=await chooseExactMasterIdentity(admin,userId,access.nianticId);
-  if(exact){
-    const valid=await validateIdentity(admin,exact);
-    if(valid){
-      await persistPrimaryIdentity(admin,userId,exact,"stamp_auto_niantic_id");
       return {
         user_id:userId,
         niantic_id:access.nianticId,
