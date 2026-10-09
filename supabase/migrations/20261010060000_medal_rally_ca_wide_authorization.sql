@@ -81,7 +81,7 @@ begin
 
   return v_session.id;
 end;
-$function$
+$function$;
 
 
 -- stamp_exchange_pair_internal
@@ -321,7 +321,7 @@ begin
 
   return v_result;
 end;
-$function$
+$function$;
 
 
 -- stamp_kanto_open_connections
@@ -399,7 +399,7 @@ begin
   group by n.prefecture_a, n.prefecture_b, n.ord_a, n.ord_b
   order by n.ord_a, n.ord_b;
 end;
-$function$
+$function$;
 
 
 -- stamp_rally_catalog
@@ -436,7 +436,7 @@ begin
     on m.id = l.ca_member_id
   order by c.prefecture nulls last, c.name, m.ca_level nulls last, m.trainer_name nulls last;
 end;
-$function$
+$function$;
 
 
 -- Explicitly preserve Data API execution boundaries.
