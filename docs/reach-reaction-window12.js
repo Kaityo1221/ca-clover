@@ -8,6 +8,7 @@
   const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
   const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
   let client=null;
+  const pendingLoads=new Map();
 
   function getClient(){
     if(client)return client;
@@ -108,10 +109,22 @@
     return result;
   }
 
+  // Deduplicate simultaneous R2/R3/R4 reads on mobile without retaining user data.
+  function sharedLoadCommunity(communityId,options){
+    if(options&&Object.keys(options).length)return loadCommunity12Months(communityId,options);
+    const existing=pendingLoads.get(communityId);
+    if(existing)return existing;
+    const promise=loadCommunity12Months(communityId).finally(function(){
+      if(pendingLoads.get(communityId)===promise)pendingLoads.delete(communityId);
+    });
+    pendingLoads.set(communityId,promise);
+    return promise;
+  }
+
   function install(){
     const core=window.CAReachReactionR1;
     if(!core)return false;
-    core.loadCommunity=loadCommunity12Months;
+    core.loadCommunity=sharedLoadCommunity;
     core.ANALYSIS_WINDOW_MONTHS=WINDOW_MONTHS;
     core.ANALYSIS_WINDOW_LABEL="直近12か月";
     return true;
@@ -125,5 +138,5 @@
     },100);
   }
 
-  window.CAReachReactionWindow12={VERSION,WINDOW_MONTHS,cutoffFor,loadCommunity:loadCommunity12Months};
+  window.CAReachReactionWindow12={VERSION,WINDOW_MONTHS,cutoffFor,loadCommunity:sharedLoadCommunity};
 })();
