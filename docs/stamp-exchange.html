@@ -268,12 +268,9 @@ async function boot(){
  const s=await client.auth.getSession();const session=s.data.session;
  if(!session){location.href=ROOT;return}
  currentUser=session.user;
- const [p,u]=await Promise.all([
-  client.from("profiles").select("role").eq("id",session.user.id).maybeSingle(),
-  client.from("user_permissions").select("permission_code").eq("user_id",session.user.id).eq("permission_code","S")
- ]);
- const ok=p.data&&p.data.role==="admin"||(u.data||[]).some(x=>x.permission_code==="S");
- if(!ok){app.innerHTML='<div class="notice error center">S権限が必要です。</div>';return}
+ const p=await client.from("profiles").select("role").eq("id",session.user.id).maybeSingle();
+ const ok=["ca","admin"].includes(p.data?.role);
+ if(!ok){app.innerHTML='<div class="notice error center">CA登録が完了するとメダル交換を利用できます。</div>';return}
 
  const cached=readCachedExchange();
  const t=new URLSearchParams(location.search).get("t");

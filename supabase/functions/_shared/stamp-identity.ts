@@ -1,0 +1,187 @@
+export type StampAccess={
+  role:string;
+  nianticId:string|null;
+  isAdmin:boolean;
+  hasStamp:boolean;
+};
+
+type IdentityRow={
+  ca_member_id:string;
+  community_id:string;
+  is_primary:boolean;
+};
+
+function normalizeIdentity(value:unknown){
+  return String(value??"").normalize("NFKC").trim().replace(/^@+/,"").toLowerCase();
+}
+
+export async function getStampAccess(admin:any,userId:string):Promise<StampAccess>{
+  const {data:profile,error:profileError}=await admin.from("profiles")
+    .select("role,niantic_id").eq("id",userId).single();
+  if(profileError||!profile) throw new Error("profile not found");
+  const isAdmin=profile.role==="admin";
+  // Approved Community Ambassadors and ADMIN may enter. Identity verification
+  // remains mandatory in resolveStampActor for exchange/event/bulk operations.
+  const hasStamp=profile.role==="ca"||isAdmin;
+
+  return {
+    role:String(profile.role??""),
+    nianticId:profile.niantic_id??null,
+    isAdmin,
+    hasStamp,
+  };
+}
+
+async function validateIdentity(admin:any,identity:IdentityRow){
+  const [caResult,communityResult,linkResult]=await Promise.all([
+    admin.from("ca_members")
+      .select("id,trainer_name,ca_level,status")
+      .eq("id",identity.ca_member_id)
+      .maybeSingle(),
+    admin.from("communities")
+      .select("id,name,prefecture,avatar_url,avatar_thumbnail_path,avatar_last_changed_at")
+      .eq("id",identity.community_id)
+      .maybeSingle(),
+    admin.from("community_ca_members")
+      .select("id")
+      .eq("ca_member_id",identity.ca_member_id)
+      .eq("community_id",identity.community_id)
+      .maybeSingle(),
+  ]);
+
+  if(caResult.error) throw caResult.error;
+  if(communityResult.error) throw communityResult.error;
+  if(linkResult.error) throw linkResult.error;
+
+  const ca=caResult.data;
+  const community=communityResult.data;
+  if(
+    !ca||
+    !community||
+    !linkResult.data||
+    ca.status!=="active"||
+    !["1st","2nd"].includes(String(ca.ca_level??""))
+  ){
+    return null;
+  }
+
+  return {ca,community};
+}
+
+// IMPORTANT: profiles.niantic_id is editable by its owner.
+// Never infer ownership of a CA master record from that string alone.
+// The legitimate paths below are explicit admin-linked user_ca_identities
+// or the pre-provisioned (RLS protected) tester identities.
+
+async function persistPrimaryIdentity(admin:any,userId:string,identity:IdentityRow,source:string){
+  const {data:owner,error:ownerError}=await admin.from("user_ca_identities")
+    .select("user_id")
+    .eq("ca_member_id",identity.ca_member_id)
+    .eq("community_id",identity.community_id)
+    .maybeSingle();
+  if(ownerError) throw ownerError;
+  if(owner?.user_id&&owner.user_id!==userId){
+    throw new Error("CA本人情報が別アカウントに紐づいています。管理者へお問い合わせください。");
+  }
+
+  const {error:demoteError}=await admin.from("user_ca_identities")
+    .update({is_primary:false})
+    .eq("user_id",userId)
+    .eq("is_primary",true);
+  if(demoteError) throw demoteError;
+
+  const {error:upsertError}=await admin.from("user_ca_identities").upsert({
+    user_id:userId,
+    ca_member_id:identity.ca_member_id,
+    community_id:identity.community_id,
+    is_primary:true,
+    verification_source:source,
+    verified_at:new Date().toISOString(),
+    verified_by:null,
+  },{onConflict:"user_id,ca_member_id,community_id"});
+  if(upsertError) throw upsertError;
+}
+
+export async function resolveStampActor(
+  admin:any,
+  userId:string,
+  options:{allowMissing?:boolean}={},
+){
+  const access=await getStampAccess(admin,userId);
+  if(!access.hasStamp) throw new Error("Stamp Rallyの利用権限がありません");
+
+  const {data:identityRows,error:identityError}=await admin.from("user_ca_identities")
+    .select("ca_member_id,community_id,is_primary")
+    .eq("user_id",userId)
+    .order("is_primary",{ascending:false});
+  if(identityError) throw identityError;
+
+  const rows=(identityRows??[]) as IdentityRow[];
+
+  for(const identity of rows.filter(row=>row.is_primary)){
+    const valid=await validateIdentity(admin,identity);
+    if(valid){
+      return {
+        user_id:userId,
+        niantic_id:access.nianticId,
+        ca_member_id:valid.ca.id,
+        trainer_name:valid.ca.trainer_name,
+        ca_level:valid.ca.ca_level,
+        community:valid.community,
+      };
+    }
+  }
+
+  const validExisting:Array<{identity:IdentityRow;valid:any}>=[];
+  for(const identity of rows.filter(row=>!row.is_primary)){
+    const valid=await validateIdentity(admin,identity);
+    if(valid) validExisting.push({identity,valid});
+  }
+
+  if(validExisting.length===1){
+    await persistPrimaryIdentity(admin,userId,validExisting[0].identity,"stamp_auto_existing_identity");
+    return {
+      user_id:userId,
+      niantic_id:access.nianticId,
+      ca_member_id:validExisting[0].valid.ca.id,
+      trainer_name:validExisting[0].valid.ca.trainer_name,
+      ca_level:validExisting[0].valid.ca.ca_level,
+      community:validExisting[0].valid.community,
+    };
+  }
+
+  const {data:testerRows,error:testerError}=await admin.from("stamp_tester_identities")
+    .select("ca_member_id,community_id")
+    .eq("user_id",userId);
+  if(testerError) throw testerError;
+
+  const testerCandidates=(testerRows??[])
+    .map((row:any)=>({
+      ca_member_id:String(row.ca_member_id??""),
+      community_id:String(row.community_id??""),
+      is_primary:true,
+    }))
+    .filter((row:IdentityRow)=>row.ca_member_id&&row.community_id);
+
+  const uniqueTesterCandidates=[...new Map(
+    testerCandidates.map((row:IdentityRow)=>[row.ca_member_id+"|"+row.community_id,row])
+  ).values()];
+
+  if(uniqueTesterCandidates.length===1){
+    const valid=await validateIdentity(admin,uniqueTesterCandidates[0]);
+    if(valid){
+      await persistPrimaryIdentity(admin,userId,uniqueTesterCandidates[0],"stamp_auto_tester_identity");
+      return {
+        user_id:userId,
+        niantic_id:access.nianticId,
+        ca_member_id:valid.ca.id,
+        trainer_name:valid.ca.trainer_name,
+        ca_level:valid.ca.ca_level,
+        community:valid.community,
+      };
+    }
+  }
+
+  if(options.allowMissing) return null;
+  throw new Error("CA本人情報を自動確認できませんでした。管理者へお問い合わせください。");
+}

@@ -33,6 +33,24 @@ Deno.serve(async(req:Request)=>{
       return new Response(JSON.stringify({ok:true}),{headers:{...corsHeaders,"Content-Type":"application/json"}});
     }
 
+    if(body.action==="set_permission"){
+      return new Response(JSON.stringify({error:"S権限制度は廃止されました"}),{
+        status:410,headers:{...corsHeaders,"Content-Type":"application/json"}
+      });
+    }
+
+    if(body.action==="review_icon_change"){
+      const changeId=String(body.changeId??"");
+      if(!changeId) throw new Error("invalid icon review request");
+      const reviewedAt=new Date().toISOString();
+      const {error}=await admin.from("community_icon_changes").update({
+        reviewed_at:reviewedAt,
+        reviewed_by:userData.user.id,
+      }).eq("id",changeId).is("reviewed_at",null);
+      if(error) throw error;
+      return new Response(JSON.stringify({ok:true,reviewed_at:reviewedAt}),{headers:{...corsHeaders,"Content-Type":"application/json"}});
+    }
+
     if(body.action==="set_membership"){
       const userId=String(body.userId??"");
       const communityId=String(body.communityId??"");
@@ -40,8 +58,23 @@ Deno.serve(async(req:Request)=>{
       if(!userId||!communityId) throw new Error("invalid membership request");
 
       if(assigned){
+        const caMemberId=String(body.caMemberId??"");
+        if(caMemberId){
+          const {data:link,error:linkError}=await admin.from("community_ca_members").select("community_id,ca_member_id").eq("community_id",communityId).eq("ca_member_id",caMemberId).maybeSingle();
+          if(linkError) throw linkError;
+          if(!link) throw new Error("selected CA is not linked to this Community");
+        }
         const {error}=await admin.from("community_memberships").upsert({user_id:userId,community_id:communityId},{onConflict:"user_id,community_id"});
         if(error) throw error;
+        if(caMemberId){
+          const {error:clearError}=await admin.from("user_ca_identities").update({is_primary:false}).eq("user_id",userId).eq("is_primary",true);
+          if(clearError) throw clearError;
+          const {error:identityError}=await admin.from("user_ca_identities").upsert({
+            user_id:userId,ca_member_id:caMemberId,community_id:communityId,is_primary:true,
+            verification_source:"admin_verified",verified_at:new Date().toISOString(),verified_by:userData.user.id
+          },{onConflict:"user_id,ca_member_id,community_id"});
+          if(identityError) throw identityError;
+        }
       }else{
         const {error}=await admin.from("community_memberships").delete().eq("user_id",userId).eq("community_id",communityId);
         if(error) throw error;

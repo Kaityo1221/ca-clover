@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>CA Clover Medal Rally LAB</title>
+<title>CA Clover | Medal Rally</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>\n<script src="./community-icon.js"></script>\n<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 <style>
 :root{font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#403a35;background:#fff8ef}
@@ -67,7 +67,7 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
     <p>地方を開いて、都道府県ごとのCommunityメダルを眺めるメダルコレクション。</p>
     <div class="summary">
       <div><small>出会ったCA</small><div id="totalScore" class="score">— <span>/ —</span></div></div>
-      <div class="note">実際に交換して取得したメダルだけを表示しています</div>
+      <div class="note">取得済みのみカラー表示。QR交換・管理者付与を含みます。</div>
     </div>
   </section>
   <section class="japanmap" aria-labelledby="japanMapTitle">
@@ -560,12 +560,9 @@ async function authGuard(){
  const s=await client.auth.getSession();const session=s.data.session;
  if(!session){location.href=ROOT;return false}
  currentUserId=session.user.id;
- const [p,u]=await Promise.all([
-  client.from("profiles").select("role").eq("id",session.user.id).maybeSingle(),
-  client.from("user_permissions").select("permission_code").eq("user_id",session.user.id).eq("permission_code","S")
- ]);
+ const p=await client.from("profiles").select("role").eq("id",session.user.id).maybeSingle();
  const isAdmin=p.data?.role==="admin";
- const hasStamp=(u.data||[]).some(x=>x.permission_code==="S");
+ const approved=["ca","admin"].includes(p.data?.role);
  if(isAdmin){
   stampBackLink.href="./admin.html";
   stampBackLink.textContent="管理メニュー";
@@ -573,9 +570,9 @@ async function authGuard(){
   stampBackLink.href="./";
   stampBackLink.textContent="CA Clover Home";
  }
- if(!isAdmin&&!hasStamp){
+ if(!approved){
   status.className="error";
-  status.textContent="このページにはS権限が必要です。";
+  status.textContent="CA登録が完了するとメダルラリーを利用できます。";
   return false;
  }
  return true;

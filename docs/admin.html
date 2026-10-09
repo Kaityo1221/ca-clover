@@ -123,7 +123,7 @@ async function dashboard(){
   ["sync-runs","🧾","同期履歴","最新100件の同期結果",0],
   ["coverage","📊","Data Coverage","全国取得状態・未解決CAを確認",0],
   ["windows","🕐","イベント時間マスター","公式イベント時間窓",0],
-  ["stamp-events","🎪","イベント管理","Stamp Rallyイベント・日替わりミッション",0],
+  ["stamp-events","🎪","イベント管理","メダルラリーイベント・日替わりミッション",0],
   ["general","🏠","ホームへ","カテゴリホームに戻る",0],
   ["stamp-rally","🍀","CA Medal Rally","全国メダルコレクションを確認",0],
  ];
@@ -236,21 +236,21 @@ async function icons(){
 }
 
 async function accounts(){
- app.innerHTML=title("home","ACCOUNTS","👥 CAアカウント","Googleログイン後のアカウント権限を管理します。SはStamp Rally LABの追加権限です。")+'<div id="list" class="section">'+msg("読み込み中...")+'</div>';
- const [pr,ur]=await Promise.all([
-  client.from("profiles").select("id,email,niantic_id,role,created_at").order("created_at",{ascending:false}),
-  client.from("user_permissions").select("user_id,permission_code").eq("permission_code","S")
- ]);
- const sUsers=new Set((ur.data||[]).map(x=>x.user_id));
- document.getElementById("list").innerHTML=(pr.data||[]).map(x=>{
+ app.innerHTML=title("home","ACCOUNTS","👥 CAアカウント","Googleログイン後のアカウント権限を管理します。認証済みCAとADMINは全員メダルラリーを利用できます。")+'<div id="list" class="section">'+msg("読み込み中...")+'</div>';
+ const {data:profiles,error}=await client.from("profiles")
+  .select("id,email,niantic_id,role,created_at")
+  .order("created_at",{ascending:false});
+ if(error){document.getElementById("list").innerHTML=msg(error.message,"err");return}
+ document.getElementById("list").innerHTML=(profiles||[]).map(x=>{
   const roles=["pending","ca","admin"].map(role=>'<button class="btn '+(x.role===role?"":"line")+'" data-role="'+role+'" data-id="'+x.id+'" '+(x.role===role?"disabled":"")+'>'+role.toUpperCase()+'</button>').join("");
-  const stamp=x.role==="admin"
-    ?'<span class="pill violet">S相当 / ADMIN</span>'
-    :'<button class="btn '+(sUsers.has(x.id)?"":"line")+'" data-stamp-id="'+x.id+'" data-enabled="'+(sUsers.has(x.id)?"1":"0")+'" '+(x.role==="pending"?"disabled":"")+' style="'+(sUsers.has(x.id)?"background:#10b981;color:white":"border-color:#a7f3d0;color:#047857")+'">'+(sUsers.has(x.id)?"S ✓":"S")+'</button>';
-  return '<section class="claim"><div class="row between wraprow"><div><h3>'+e(x.email||"メール未取得")+'</h3><div class="small muted strong">SCOPELY EXPLORE ID: '+e(x.niantic_id||"未登録")+'</div><div class="tiny muted">登録 '+e(fmt(x.created_at))+'</div></div><div class="actions">'+roles+stamp+'</div></div></section>'
+  return '<section class="claim"><div class="row between wraprow"><div><h3>'+e(x.email||"メール未取得")+'</h3><div class="small muted strong">SCOPELY EXPLORE ID: '+e(x.niantic_id||"未登録")+'</div><div class="tiny muted">登録 '+e(fmt(x.created_at))+'</div></div><div class="actions">'+roles+'</div></div></section>'
  }).join("");
- app.querySelectorAll("[data-role]").forEach(b=>b.onclick=async()=>{b.disabled=true;const r=await client.functions.invoke("admin-manage",{body:{action:"set_role",userId:b.dataset.id,role:b.dataset.role}});if(r.error)alert(r.error.message);await accounts()});
- app.querySelectorAll("[data-stamp-id]").forEach(b=>b.onclick=async()=>{b.disabled=true;const r=await client.functions.invoke("admin-manage",{body:{action:"set_permission",userId:b.dataset.stampId,permissionCode:"S",enabled:b.dataset.enabled!=="1"}});if(r.error)alert(r.error.message);await accounts()});
+ app.querySelectorAll("[data-role]").forEach(b=>b.onclick=async()=>{
+  b.disabled=true;
+  const r=await client.functions.invoke("admin-manage",{body:{action:"set_role",userId:b.dataset.id,role:b.dataset.role}});
+  if(r.error)alert(r.error.message);
+  await accounts();
+ });
 }
 
 async function assignments(){

@@ -64,12 +64,9 @@ async function invoke(body){
 async function auth(){
  const s=await client.auth.getSession(),session=s.data.session;
  if(!session){location.href=ROOT;return false}
- const [p,u]=await Promise.all([
-  client.from("profiles").select("role").eq("id",session.user.id).maybeSingle(),
-  client.from("user_permissions").select("permission_code").eq("user_id",session.user.id).eq("permission_code","S")
- ]);
- const ok=p.data&&p.data.role==="admin"||(u.data||[]).some(x=>x.permission_code==="S");
- if(!ok){status.innerHTML='<div class="notice error">S権限が必要です。</div>';return false}
+ const p=await client.from("profiles").select("role").eq("id",session.user.id).maybeSingle();
+ const ok=["ca","admin"].includes(p.data?.role);
+ if(!ok){status.innerHTML='<div class="notice error">CA登録が完了するとメダル交換を利用できます。</div>';return false}
  return true;
 }
 function render(data){
