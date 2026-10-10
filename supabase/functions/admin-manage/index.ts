@@ -66,6 +66,13 @@ Deno.serve(async(req:Request)=>{
       if(!userId||!communityId) throw new Error("invalid membership request");
 
       if(assigned){
+        // Do not let an admin-side API call regrant memberships to pending users.
+        const {data:targetProfile,error:targetError}=await admin.from("profiles")
+          .select("role").eq("id",userId).maybeSingle();
+        if(targetError) throw targetError;
+        if(!targetProfile||!["ca","admin"].includes(targetProfile.role)){
+          throw new Error("Community assignment requires an approved CA or ADMIN account");
+        }
         const caMemberId=String(body.caMemberId??"");
         if(caMemberId){
           const {data:link,error:linkError}=await admin.from("community_ca_members").select("community_id,ca_member_id").eq("community_id",communityId).eq("ca_member_id",caMemberId).maybeSingle();
