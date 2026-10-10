@@ -28,7 +28,11 @@ Deno.serve(async(req:Request)=>{
       const role=String(body.role??"");
       const userId=String(body.userId??"");
       if(!["pending","ca","admin"].includes(role)||!userId) throw new Error("invalid role request");
-      const {error}=await admin.from("profiles").update({role}).eq("id",userId);
+      // IMPORTANT: The DB's revoke_community_memberships_on_pending trigger
+      // must be deployed before this Edge Function. It makes role revocation
+      // and membership deletion atomic; a separate delete here would not.
+      const {error}=await admin.from("profiles").update({role}).eq("id",userId)
+        .select("id").single();
       if(error) throw error;
       return new Response(JSON.stringify({ok:true}),{headers:{...corsHeaders,"Content-Type":"application/json"}});
     }
@@ -58,6 +62,13 @@ Deno.serve(async(req:Request)=>{
       if(!userId||!communityId) throw new Error("invalid membership request");
 
       if(assigned){
+        // Do not let an admin-side API call regrant memberships to pending users.
+        const {data:targetProfile,error:targetError}=await admin.from("profiles")
+          .select("role").eq("id",userId).maybeSingle();
+        if(targetError) throw targetError;
+        if(!targetProfile||!["ca","admin"].includes(targetProfile.role)){
+          throw new Error("Community assignment requires an approved CA or ADMIN account");
+        }
         const caMemberId=String(body.caMemberId??"");
         if(caMemberId){
           const {data:link,error:linkError}=await admin.from("community_ca_members").select("community_id,ca_member_id").eq("community_id",communityId).eq("ca_member_id",caMemberId).maybeSingle();
