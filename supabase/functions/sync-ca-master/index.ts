@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { partitionCaLinks } from "../_shared/ca-link-diff.mjs";
 
 const CRON_HEADER="x-ca-clover-cron-secret";
 const CA_MASTER_URL="https://docs.google.com/spreadsheets/d/1BtPjOxNX4JhttKKJa_-qrIXdVmK5UsbAX-RcLmLTuwk/export?format=csv&gid=633821294";
@@ -530,14 +531,6 @@ Deno.serve(async(req:Request)=>{
       .filter(row=>managedSourceKeys.has(row.source_key))
       .map(row=>row.id);
 
-    if(managedCaIds.length){
-      const {error:deleteLinkError}=await admin
-        .from("community_ca_members")
-        .delete()
-        .in("ca_member_id",managedCaIds);
-      if(deleteLinkError) throw deleteLinkError;
-    }
-
     const links=safeResolved.flatMap(record=>{
       if(blockedSourceKeys.has(record.sourceKey)) return [];
       const communityId=sourceCommunityMap.get(record.communityId);
@@ -545,6 +538,43 @@ Deno.serve(async(req:Request)=>{
       if(!communityId||!caMemberId) return [];
       return [{community_id:communityId,ca_member_id:caMemberId}];
     });
+
+    // Never delete and reinsert unchanged links. user_ca_identities has an
+    // ON DELETE CASCADE FK to community_ca_members; replacing a valid link
+    // silently deletes its verified CA identity (and breaks QR exchanges).
+    let protectedStaleLinks:Array<{community_id:string;ca_member_id:string}>=[];
+    let removedStaleLinkCount=0;
+    if(managedCaIds.length){
+      // Query in batches: hundreds of UUIDs may exceed REST URL limits.
+      const currentLinks:Array<{id:string;community_id:string;ca_member_id:string}>=[];
+      const verifiedIdentityLinks:Array<{community_id:string;ca_member_id:string}>=[];
+      for(let i=0;i<managedCaIds.length;i+=60){
+        const batch=managedCaIds.slice(i,i+60);
+        const [currentLinkResult,verifiedIdentityResult]=await Promise.all([
+          admin.from("community_ca_members")
+            .select("id,community_id,ca_member_id").in("ca_member_id",batch),
+          admin.from("user_ca_identities")
+            .select("community_id,ca_member_id").in("ca_member_id",batch),
+        ]);
+        if(currentLinkResult.error) throw currentLinkResult.error;
+        if(verifiedIdentityResult.error) throw verifiedIdentityResult.error;
+        currentLinks.push(...(currentLinkResult.data??[]));
+        verifiedIdentityLinks.push(...(verifiedIdentityResult.data??[]));
+      }
+      // Pure helper is regression-tested in CI. A stale verified link needs
+      // explicit admin review; master sync must not delete that identity.
+      const diff=partitionCaLinks(currentLinks,links,verifiedIdentityLinks);
+      protectedStaleLinks=diff.protectedStaleLinks;
+      for(let i=0;i<diff.removableIds.length;i+=60){
+        const batch=diff.removableIds.slice(i,i+60);
+        const {error:deleteLinkError}=await admin
+          .from("community_ca_members")
+          .delete()
+          .in("id",batch);
+        if(deleteLinkError) throw deleteLinkError;
+        removedStaleLinkCount+=batch.length;
+      }
+    }
 
     if(links.length){
       const {error:linkError}=await admin
@@ -564,7 +594,7 @@ Deno.serve(async(req:Request)=>{
     );
     if(coordinateError) throw coordinateError;
 
-    const isPartial=unresolved.length>0||conflicts.length>0;
+    const isPartial=unresolved.length>0||conflicts.length>0||protectedStaleLinks.length>0;
     const finishedAt=new Date().toISOString();
 
     const details={
@@ -579,6 +609,8 @@ Deno.serve(async(req:Request)=>{
       historical_ids_recorded:retiredHistoryRows.length,
       ca_members:caRows.length,
       links:links.length,
+      protected_stale_identity_links:protectedStaleLinks,
+      removed_stale_links:removedStaleLinkCount,
       coordinates:{
         ca_updated:Number(coordinateResult?.ca_updated??0)||0,
         community_updated:Number(coordinateResult?.community_updated??0)||0,
@@ -612,6 +644,8 @@ Deno.serve(async(req:Request)=>{
       historicalIdsRecorded:retiredHistoryRows.length,
       caMembers:caRows.length,
       links:links.length,
+      protectedStaleIdentityLinks:protectedStaleLinks.length,
+      removedStaleLinks:removedStaleLinkCount,
       coordinateResult,
     });
   }catch(error){

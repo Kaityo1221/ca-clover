@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test:share-url": "node scripts/test-campfire-share-url.mjs"
+    "test:share-url": "node scripts/test-campfire-share-url.mjs",
+    "test:ca-link-diff": "node scripts/test-ca-link-diff.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0",

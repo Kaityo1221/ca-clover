@@ -15,4 +15,5 @@ jobs:
           node-version: 22
       - run: npm install --no-audit --no-fund
       - run: npm run test:share-url
+      - run: npm run test:ca-link-diff
       - run: npm run build
