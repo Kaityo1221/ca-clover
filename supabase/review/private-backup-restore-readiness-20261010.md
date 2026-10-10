@@ -9,6 +9,9 @@
 フィンガープリントは、更新前後の違いを検知するためだけのもの。**復元はできない。**
 今回本番で読み取り専用確認ができたのは、accounts 6、memberships 6、identities 6、
 medals 13、designs 13、orphan 0。CAマスターは2099年仮停止を維持。
+追加のバックアップ対象調査（read-only、2026-10-10）：`auth.users` **6行**、
+`storage.objects` **418行**、`community_icon_versions` **150行**。
+**Storageの418行は画像本体ではなくメタデータ件数**。実オブジェクトとAuthの復元方法を別途検証する。
 
 ## 2. 本番バックアップの範囲
 最小でも以下を含む**復元可能な**DBスナップショット：
@@ -53,6 +56,7 @@ supabase db dump --db-url "$SUPABASE_DB_URL" -f data.sql --use-copy --data-only
 整合して復元できるか、管理者が検証するまで**GOは禁止**。
 
 ## 4. リハーサル・受入条件
+- [ ] Supabase開発ブランチは現時点で0件。新規の開発ブランチや有料構成は未作成で、費用確認とユーザー承認なしに作成しない
 - [ ] 利用プラン・復元手段を確認し、バックアップの費用が発生する操作は実行前に確認
 - [ ] 本番CAマスター専用停止を維持したまま、正式な読み取り可能バックアップを取得
 - [ ] 生成物の暗号化保管、アクセス制限、保存期限、秘匿性を確認
@@ -68,3 +72,10 @@ supabase db dump --db-url "$SUPABASE_DB_URL" -f data.sql --use-copy --data-only
 - 本番 `sync-ca-master` v4とIdentity複合FK `ON DELETE CASCADE` は未変更
 - CAマスター2099年緊急停止維持、通常Campfire Cronは稼働
 - **バックアップ未確保、復元テスト未実施。本番適用STOP。**
+
+## 6. 公開GitHubへの流出を防ぐ補助策
+`.gitignore` に `/private-backups/`, `/backups/`,
+`/roles.sql`, `/schema.sql`, `/data.sql`,
+`*.dump`, `*.backup`, `*.pgdump` を追加。
+これは誤追加を減らすだけで、暗号化・アクセス制御や `git add -f` からの保護ではない。
+実バックアップを **publicリポジトリ配下へ作成しない**方針は変えない。
