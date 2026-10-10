@@ -24,6 +24,8 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      - name: Confirm production-compatible Community claim GraphQL queries (mocked)
+        run: deno test scripts/test-claim-graphql-compat.ts
       - name: Check CA master and scheduler Edge Function types
         run: deno check --node-modules-dir=auto supabase/functions/sync-ca-master/index.ts supabase/functions/sync-ca-master-admin/index.ts supabase/functions/sync-campfire-auto/index.ts supabase/functions/community-claim/index.ts
       - run: npm run build
