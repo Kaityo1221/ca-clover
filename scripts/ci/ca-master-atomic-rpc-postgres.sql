@@ -49,19 +49,20 @@ insert into public.user_ca_identities(user_id,community_id,ca_member_id,is_prima
  ('tester','10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001',true);
 insert into public.stamp_collections(id,owner_user_id) values ('medal1','tester');
 
+\ir ../../supabase/review/ca-master-exclusive-lease.review.sql
 \ir ../../supabase/review/ca-master-atomic-link-reconcile.review.sql
 
 do $test$
 declare denied boolean := false;
 begin
   -- Service role only; PUBLIC must not be granted execute.
-  if has_function_privilege('anon','public.internal_reconcile_ca_master_links(jsonb,uuid[])','EXECUTE')
-  or has_function_privilege('authenticated','public.internal_reconcile_ca_master_links(jsonb,uuid[])','EXECUTE')
-  or not has_function_privilege('service_role','public.internal_reconcile_ca_master_links(jsonb,uuid[])','EXECUTE') then
+  if has_function_privilege('anon','public.internal_reconcile_ca_master_links(jsonb,uuid[],uuid)','EXECUTE')
+  or has_function_privilege('authenticated','public.internal_reconcile_ca_master_links(jsonb,uuid[],uuid)','EXECUTE')
+  or not has_function_privilege('service_role','public.internal_reconcile_ca_master_links(jsonb,uuid[],uuid)','EXECUTE') then
     raise exception 'FAIL: incorrect RPC privileges';
   end if;
   begin
-    perform public.internal_reconcile_ca_master_links('[]'::jsonb,'{}'::uuid[]);
+    perform public.internal_reconcile_ca_master_links('[]'::jsonb,'{}'::uuid[],'30000000-0000-4000-8000-000000000001'::uuid);
   exception when sqlstate '55000' then
     denied := true;
   end;
@@ -73,10 +74,24 @@ $test$;
 update public.sync_automation_state set ca_master_sync_enabled=true where id=1;
 
 do $test$
+declare v_owner uuid:='30000000-0000-4000-8000-000000000001';
+        v_other uuid:='30000000-0000-4000-8000-000000000002';
+begin
+  if public.internal_begin_ca_master_lease(v_owner) is distinct from true then
+    raise exception 'FAIL: enabled master did not acquire lease'; end if;
+  if public.internal_begin_ca_master_lease(v_other) is distinct from false then
+    raise exception 'FAIL: overlapping request acquired the lease'; end if;
+  if public.internal_check_ca_master_lease(v_owner) is distinct from true
+    or public.internal_check_ca_master_lease(v_other) is distinct from false then
+    raise exception 'FAIL: run-owner fencing failed'; end if;
+  raise notice 'PASS: only one master request owns a lease';
+end $test$;
+
+do $test$
 declare denied boolean := false;
 begin
   begin
-    perform public.internal_reconcile_ca_master_links('[]'::jsonb,'{}'::uuid[]);
+    perform public.internal_reconcile_ca_master_links('[]'::jsonb,'{}'::uuid[],'30000000-0000-4000-8000-000000000001'::uuid);
   exception when sqlstate '55000' then denied:=true;
   end;
   if not denied then raise exception 'FAIL: unsafe CASCADE FK was allowed'; end if;
@@ -98,7 +113,8 @@ declare v jsonb;
 begin
   select public.internal_reconcile_ca_master_links(
     '[{"community_id":"10000000-0000-4000-8000-000000000001","ca_member_id":"20000000-0000-4000-8000-000000000001"}]'::jsonb,
-    array['20000000-0000-4000-8000-000000000001'::uuid]
+    array['20000000-0000-4000-8000-000000000001'::uuid],
+    '30000000-0000-4000-8000-000000000001'::uuid
   ) into v;
   if (v->>'removed_stale_links')::int<>0 then
     raise exception 'FAIL: unchanged link was deleted';
@@ -117,7 +133,8 @@ declare v jsonb;
 begin
   select public.internal_reconcile_ca_master_links(
     ('[{"community_id":"10000000-0000-4000-8000-000000000003","ca_member_id":"20000000-0000-4000-8000-000000000001"},' || '{"community_id":"10000000-0000-4000-8000-000000000003","ca_member_id":"20000000-0000-4000-8000-000000000002"}]')::jsonb,
-    array['20000000-0000-4000-8000-000000000001'::uuid,'20000000-0000-4000-8000-000000000002'::uuid]
+    array['20000000-0000-4000-8000-000000000001'::uuid,'20000000-0000-4000-8000-000000000002'::uuid],
+    '30000000-0000-4000-8000-000000000001'::uuid
   ) into v;
   if (v->>'removed_stale_links')::int<>1
     or jsonb_array_length(v->'protected_stale_identity_links')<>1
@@ -139,7 +156,8 @@ begin
   begin
     perform public.internal_reconcile_ca_master_links(
       '[]'::jsonb,
-      array['20000000-0000-4000-8000-000000000001'::uuid]
+      array['20000000-0000-4000-8000-000000000001'::uuid],
+      '30000000-0000-4000-8000-000000000001'::uuid
     );
   exception when invalid_parameter_value then denied:=true;
   end;
@@ -162,7 +180,8 @@ begin
   begin
     perform public.internal_reconcile_ca_master_links(
       ('[{"community_id":"10000000-0000-4000-8000-000000000002","ca_member_id":"20000000-0000-4000-8000-000000000001"},' || '{"community_id":"99999999-0000-4000-8000-000000000099","ca_member_id":"20000000-0000-4000-8000-000000000002"}]')::jsonb,
-      array['20000000-0000-4000-8000-000000000001'::uuid,'20000000-0000-4000-8000-000000000002'::uuid]
+      array['20000000-0000-4000-8000-000000000001'::uuid,'20000000-0000-4000-8000-000000000002'::uuid],
+    '30000000-0000-4000-8000-000000000001'::uuid
     );
   exception when foreign_key_violation then denied:=true;
   end;
@@ -175,12 +194,42 @@ begin
 end
 $test$;
 
+-- After expiry a new run may take ownership; the old run cannot
+-- release or write through the new owner's lease.
+do $test$
+declare old_owner uuid:='30000000-0000-4000-8000-000000000001';
+        new_owner uuid:='30000000-0000-4000-8000-000000000002';
+        blocked boolean:=false;
+begin
+  update public.sync_automation_state
+  set ca_master_lease_expires_at=clock_timestamp()-interval '1 second'
+  where id=1;
+  if public.internal_begin_ca_master_lease(new_owner) is distinct from true then
+    raise exception 'FAIL: expired lease did not recover'; end if;
+  if public.internal_finish_ca_master_lease(old_owner) is distinct from false then
+    raise exception 'FAIL: old owner released newer owner'; end if;
+  if public.internal_check_ca_master_lease(new_owner) is distinct from true then
+    raise exception 'FAIL: stale owner invalidated new lease'; end if;
+  begin
+    perform public.internal_reconcile_ca_master_links(
+      '[]'::jsonb,'{}'::uuid[],old_owner
+    );
+  exception when sqlstate '55000' then blocked:=true;
+  end;
+  if not blocked then raise exception 'FAIL: stale lease could write links'; end if;
+  if public.internal_finish_ca_master_lease(new_owner) is distinct from true then
+    raise exception 'FAIL: current owner cannot release lease'; end if;
+  if public.internal_check_ca_master_lease(new_owner) is distinct from false then
+    raise exception 'FAIL: old lease was not cleared'; end if;
+  raise notice 'PASS: expired lease recovers, stale owner fenced and release protected';
+end $test$;
+
 update public.sync_automation_state set ca_master_sync_enabled=false where id=1;
 do $test$
 declare denied boolean := false;
 begin
   begin
-    perform public.internal_reconcile_ca_master_links('[]'::jsonb,'{}'::uuid[]);
+    perform public.internal_reconcile_ca_master_links('[]'::jsonb,'{}'::uuid[],'30000000-0000-4000-8000-000000000001'::uuid);
   exception when sqlstate '55000' then denied:=true;
   end;
   if not denied then raise exception 'FAIL: pause-after-run was bypassed'; end if;
