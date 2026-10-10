@@ -152,7 +152,8 @@ insert into public.profiles(id,role,niantic_id) values
  ('00000000-0000-4000-8000-000000000001','admin','admin-ca'),
  ('00000000-0000-4000-8000-000000000002','pending','@ca-new'),
  ('00000000-0000-4000-8000-000000000003','pending','ca-another'),
- ('00000000-0000-4000-8000-000000000004','pending','ca-new');
+ ('00000000-0000-4000-8000-000000000004','pending','ca-new'),
+ ('00000000-0000-4000-8000-000000000005','pending','@ca-design');
 insert into public.communities values ('11111111-1111-4111-8111-111111111111','香川県');
 insert into public.community_icon_versions(id,community_id,content_hash,is_current) values
  ('99999999-9999-4999-8999-999999999901',
@@ -164,7 +165,8 @@ creator_ca_badge_verified,creator_username_matches_profile,is_ca_meetup,
 campfire_meetup_id,niantic_id_snapshot,creator_username) values
  ('22222222-2222-4222-8222-222222222221','00000000-0000-4000-8000-000000000002','11111111-1111-4111-8111-111111111111','pending','meetup_share','not_listed',true,true,true,'fake-meetup-1','ca-new','ca-new'),
  ('22222222-2222-4222-8222-222222222222','00000000-0000-4000-8000-000000000003','11111111-1111-4111-8111-111111111111','pending','meetup_share','not_listed',true,true,true,'fake-meetup-2','ca-another','ca-another'),
- ('22222222-2222-4222-8222-222222222223','00000000-0000-4000-8000-000000000004','11111111-1111-4111-8111-111111111111','pending','meetup_share','not_listed',true,true,true,'fake-meetup-3','ca-new','ca-new');
+ ('22222222-2222-4222-8222-222222222223','00000000-0000-4000-8000-000000000004','11111111-1111-4111-8111-111111111111','pending','meetup_share','not_listed',true,true,true,'fake-meetup-3','ca-new','ca-new'),
+ ('22222222-2222-4222-8222-222222222224','00000000-0000-4000-8000-000000000005','11111111-1111-4111-8111-111111111111','pending','meetup_share','not_listed',true,true,true,'fake-meetup-4','ca-design','ca-design');
 
 \ir ../../supabase/review/unlisted_ca_self_medal_atomic_approval.review.sql
 
@@ -279,12 +281,47 @@ begin
  raise notice 'PASS: acquired medal design remains original after icon change';
 end $test$;
 
--- Medal transaction must roll back if the real design-grant trigger fails.
--- Simulate missing design table with a disposable per-session search_path
--- override: the real trigger uses qualified public.* names, so instead
--- temporarily revoke the table INSERT privilege from the definer role below.
--- The existing disabled identity-trigger case remains the stronger full
--- rollback test, and production design grant validation runs above.
+-- Inject a real downstream design-insert failure after the production
+-- stamp_prepare_collection_design and stamp_grant_acquisition_design run.
+-- PostgreSQL must roll back the CA approval RPC, membership, Identity, medal
+-- and design row together. All synthetic data lives only in this transaction.
+create function public.qa_reject_design_insert()
+returns trigger language plpgsql as $qa$
+begin
+  raise exception 'QA_DESIGN_WRITE_FAILURE' using errcode='23514';
+end;
+$qa$;
+create trigger qa_reject_design_insert
+before insert on public.stamp_collection_designs
+for each row execute function public.qa_reject_design_insert();
+
+do $test$
+declare denied boolean:=false;
+begin
+  begin
+    perform public.internal_approve_unlisted_ca_claim(
+      '22222222-2222-4222-8222-222222222224',
+      '00000000-0000-4000-8000-000000000001','2nd');
+  exception when check_violation then denied:=true;
+  end;
+  if not denied
+     or (select count(*) from public.ca_members)<>1
+     or (select count(*) from public.community_ca_members)<>1
+     or (select count(*) from public.community_memberships)<>1
+     or (select count(*) from public.user_ca_identities)<>1
+     or (select count(*) from public.stamp_collections)<>1
+     or (select count(*) from public.stamp_collection_designs)<>1
+     or (select role from public.profiles
+         where id='00000000-0000-4000-8000-000000000005')<>'pending'
+     or (select status from public.community_access_requests
+         where id='22222222-2222-4222-8222-222222222224')<>'pending' then
+    raise exception 'FAIL: medal design trigger failure did not roll back full approval';
+  end if;
+  raise notice 'PASS: real design insert failure rolls back all approval changes';
+end $test$;
+
+drop trigger qa_reject_design_insert on public.stamp_collection_designs;
+drop function public.qa_reject_design_insert();
 
 -- Disable the QA medal trigger and force the real RPC's medal assertion to
 -- fail. All earlier inserts/role updates in that call must be rolled back.
