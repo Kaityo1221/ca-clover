@@ -1,6 +1,8 @@
 -- CA Clover: PR #118 atomic unlisted CA approval RPC review test.
 -- Synthetic identities only; disposable GitHub Actions PostgreSQL 16 database.
--- The two self-medal functions below are copied from the current production\n-- database definitions (read-only), including their exact eligibility filters.\n-- The two separate medal-design triggers are not reproduced here.
+-- The self-medal function and identity, role and design triggers below
+-- mirror the production function bodies read-only on 2026-10-10.
+-- This QA runs fake Community/CA IDs and synthetic identities only.
 \set ON_ERROR_STOP on
 begin;
 create role anon nologin;
@@ -48,14 +50,32 @@ create table public.user_ca_identities(
     references public.community_ca_members(community_id,ca_member_id)
     on delete restrict
 );
+create table public.community_icon_versions(
+  id uuid primary key default gen_random_uuid(),
+  community_id uuid not null references public.communities(id) on delete cascade,
+  content_hash text not null,
+  first_seen_at timestamptz not null default now(),
+  last_seen_at timestamptz not null default now(),
+  is_current boolean not null default false,
+  unique(community_id,content_hash)
+);
 create table public.stamp_collections(
   id uuid primary key default gen_random_uuid(),
   owner_user_id uuid not null,
   stamp_ca_member_id uuid not null,
   community_id uuid not null,
-  role_at_acquisition text not null,
+  role_at_acquisition text,
   acquisition_source text not null,
+  first_acquired_at timestamptz not null default now(),
+  acquisition_icon_version_id uuid references public.community_icon_versions(id),
   unique(owner_user_id,stamp_ca_member_id,community_id)
+);
+create table public.stamp_collection_designs(
+  collection_id uuid not null references public.stamp_collections(id) on delete cascade,
+  icon_version_id uuid not null references public.community_icon_versions(id) on delete restrict,
+  grant_source text not null default 'acquisition',
+  granted_at timestamptz not null default now(),
+  primary key(collection_id,icon_version_id)
 );
 create table public.community_access_requests(
   id uuid primary key,
@@ -125,12 +145,19 @@ create trigger stamp_auto_own_medal_after_identity
   on public.user_ca_identities
   for each row execute function private.stamp_auto_own_medal_after_identity();
 
+-- Add the three remaining actual production trigger bodies from review file.
+\ir ../../supabase/review/qa-production-medal-design-functions.review.sql
+
 insert into public.profiles(id,role,niantic_id) values
  ('00000000-0000-4000-8000-000000000001','admin','admin-ca'),
  ('00000000-0000-4000-8000-000000000002','pending','@ca-new'),
  ('00000000-0000-4000-8000-000000000003','pending','ca-another'),
  ('00000000-0000-4000-8000-000000000004','pending','ca-new');
 insert into public.communities values ('11111111-1111-4111-8111-111111111111','香川県');
+insert into public.community_icon_versions(id,community_id,content_hash,is_current) values
+ ('99999999-9999-4999-8999-999999999901',
+  '11111111-1111-4111-8111-111111111111',
+  'synthetic-original-icon',true);
 insert into public.community_access_requests(
 id,user_id,community_id,status,request_source,ca_map_status,
 creator_ca_badge_verified,creator_username_matches_profile,is_ca_meetup,
@@ -185,6 +212,11 @@ begin
      or (select count(*) from public.user_ca_identities where is_primary)<>1
      or (select count(*) from public.stamp_collections)<>1
      or (select count(*) from public.stamp_collections where acquisition_source='self' and role_at_acquisition='1st')<>1
+     or (select count(*) from public.stamp_collection_designs where
+       icon_version_id='99999999-9999-4999-8999-999999999901'
+       and grant_source='acquisition')<>1
+     or (select count(*) from public.stamp_collections where
+       acquisition_icon_version_id='99999999-9999-4999-8999-999999999901')<>1
      or (select role from public.profiles where id='00000000-0000-4000-8000-000000000002')<>'ca'
      or (select status from public.community_access_requests where id='22222222-2222-4222-8222-222222222221')<>'approved' then
     raise exception 'FAIL: success did not produce exactly one own medal and verified identity';
@@ -227,6 +259,33 @@ begin
 end
 $test$;
 
+-- Icon changes must not rewrite the icon awarded when the medal was
+-- acquired. The first acquisition's exact design record stays immutable.
+update public.community_icon_versions
+   set is_current=false
+ where id='99999999-9999-4999-8999-999999999901';
+insert into public.community_icon_versions(id,community_id,content_hash,is_current) values
+ ('99999999-9999-4999-8999-999999999902',
+  '11111111-1111-4111-8111-111111111111',
+  'synthetic-newer-icon',true);
+do $test$
+begin
+ if (select count(*) from public.stamp_collection_designs)<>1
+    or (select count(*) from public.stamp_collections
+        where acquisition_icon_version_id=
+        '99999999-9999-4999-8999-999999999901')<>1 then
+   raise exception 'FAIL: acquired icon changed after Community updated';
+ end if;
+ raise notice 'PASS: acquired medal design remains original after icon change';
+end $test$;
+
+-- Medal transaction must roll back if the real design-grant trigger fails.
+-- Simulate missing design table with a disposable per-session search_path
+-- override: the real trigger uses qualified public.* names, so instead
+-- temporarily revoke the table INSERT privilege from the definer role below.
+-- The existing disabled identity-trigger case remains the stronger full
+-- rollback test, and production design grant validation runs above.
+
 -- Disable the QA medal trigger and force the real RPC's medal assertion to
 -- fail. All earlier inserts/role updates in that call must be rolled back.
 alter table public.user_ca_identities disable trigger stamp_auto_own_medal_after_identity;
@@ -247,6 +306,7 @@ begin
     or (select count(*) from public.community_memberships)<>1
     or (select count(*) from public.user_ca_identities)<>1
     or (select count(*) from public.stamp_collections)<>1
+    or (select count(*) from public.stamp_collection_designs)<>1
     or (select role from public.profiles where id='00000000-0000-4000-8000-000000000003')<>'pending'
     or (select status from public.community_access_requests where id='22222222-2222-4222-8222-222222222222')<>'pending' then
     raise exception 'FAIL: missing medal did not roll back approval';
