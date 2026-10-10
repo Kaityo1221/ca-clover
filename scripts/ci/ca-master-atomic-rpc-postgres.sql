@@ -194,34 +194,74 @@ begin
 end
 $test$;
 
--- After expiry a new run may take ownership; the old run cannot
--- release or write through the new owner's lease.
+-- A stale lease means the prior worker may have crashed mid-write.
+-- The following begin request MUST pause CA-master, not auto-retry.
 do $test$
 declare old_owner uuid:='30000000-0000-4000-8000-000000000001';
-        new_owner uuid:='30000000-0000-4000-8000-000000000002';
+        next_owner uuid:='30000000-0000-4000-8000-000000000002';
         blocked boolean:=false;
 begin
   update public.sync_automation_state
-  set ca_master_lease_expires_at=clock_timestamp()-interval '1 second'
-  where id=1;
-  if public.internal_begin_ca_master_lease(new_owner) is distinct from true then
-    raise exception 'FAIL: expired lease did not recover'; end if;
-  if public.internal_finish_ca_master_lease(old_owner) is distinct from false then
-    raise exception 'FAIL: old owner released newer owner'; end if;
-  if public.internal_check_ca_master_lease(new_owner) is distinct from true then
-    raise exception 'FAIL: stale owner invalidated new lease'; end if;
+     set ca_master_lease_expires_at=clock_timestamp()-interval '1 second'
+   where id=1;
+  if public.internal_begin_ca_master_lease(next_owner) is distinct from false then
+    raise exception 'FAIL: stale lease was automatically taken over'; end if;
+  if (select ca_master_sync_enabled from public.sync_automation_state where id=1)
+    is distinct from false then
+    raise exception 'FAIL: stale lease did not pause CA master'; end if;
+  if (select enabled from public.sync_automation_state where id=1)
+    is distinct from true then
+    raise exception 'FAIL: stale lease disabled unrelated Campfire Cron'; end if;
+  if public.internal_check_ca_master_lease(old_owner) is distinct from false then
+    raise exception 'FAIL: expired worker retained write authority'; end if;
   begin
     perform public.internal_reconcile_ca_master_links(
       '[]'::jsonb,'{}'::uuid[],old_owner
     );
   exception when sqlstate '55000' then blocked:=true;
   end;
-  if not blocked then raise exception 'FAIL: stale lease could write links'; end if;
+  if not blocked then raise exception 'FAIL: expired worker changed links'; end if;
+  if (select count(*) from public.user_ca_identities)<>1
+     or (select count(*) from public.stamp_collections)<>1 then
+    raise exception 'FAIL: recovery changed existing identities/medals'; end if;
+  raise notice 'PASS: stale lease blocks auto-retry and pauses only CA-master';
+end $test$;
+
+-- An operator must review the partial state. Only after explicit action
+-- can the pause be lifted and an execution lease reissued.
+do $test$
+declare old_owner uuid:='30000000-0000-4000-8000-000000000001';
+        new_owner uuid:='30000000-0000-4000-8000-000000000002';
+begin
+  -- Isolated synthetic test only; NEVER do this without approval in prod.
+  update public.sync_automation_state
+     set ca_master_sync_enabled=true,
+         ca_master_lease_owner=null,
+         ca_master_lease_expires_at=null where id=1;
+  if public.internal_begin_ca_master_lease(new_owner) is distinct from true then
+    raise exception 'FAIL: reviewed run could not acquire lease'; end if;
+  if public.internal_finish_ca_master_lease(old_owner) is distinct from false then
+    raise exception 'FAIL: old worker released new lease'; end if;
+  if public.internal_check_ca_master_lease(new_owner) is distinct from true then
+    raise exception 'FAIL: old worker invalidated reviewed lease'; end if;
   if public.internal_finish_ca_master_lease(new_owner) is distinct from true then
-    raise exception 'FAIL: current owner cannot release lease'; end if;
-  if public.internal_check_ca_master_lease(new_owner) is distinct from false then
-    raise exception 'FAIL: old lease was not cleared'; end if;
-  raise notice 'PASS: expired lease recovers, stale owner fenced and release protected';
+    raise exception 'FAIL: current owner could not release'; end if;
+  raise notice 'PASS: manual review/reset allows safe restart; stale owner fenced';
+end $test$;
+
+-- An inconsistent lease (expiry exists without owner) is treated as unsafe.
+do $test$
+begin
+  update public.sync_automation_state
+     set ca_master_lease_expires_at=clock_timestamp()+interval '10 minutes'
+   where id=1;
+  if public.internal_begin_ca_master_lease(
+      '30000000-0000-4000-8000-000000000003'::uuid
+     ) is distinct from false
+     or (select ca_master_sync_enabled from public.sync_automation_state where id=1)
+        is distinct from false then
+    raise exception 'FAIL: corrupt lease did not fail closed'; end if;
+  raise notice 'PASS: inconsistent execution lease fails closed';
 end $test$;
 
 update public.sync_automation_state set ca_master_sync_enabled=false where id=1;
