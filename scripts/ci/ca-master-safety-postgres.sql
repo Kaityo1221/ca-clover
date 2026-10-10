@@ -118,4 +118,46 @@ begin
 end
 $test$;
 
+-- Simulate the safe DB writes resulting from a no-change master refresh.
+-- An UPSERT on the same composite key must not cascade-delete Identity.
+insert into ca_master_ci.community_ca_members (id,community_id,ca_member_id)
+values ('not-used','home','ca1')
+on conflict (community_id,ca_member_id) do update
+  set community_id=excluded.community_id;
+
+do $test$
+begin
+  if (select id from ca_master_ci.community_ca_members
+      where community_id='home' and ca_member_id='ca1') <> 'protected' then
+    raise exception 'FAIL: UPSERT replaced protected link instead of preserving it';
+  end if;
+  if not exists (select 1 from ca_master_ci.user_ca_identities
+                 where user_id='dummy-user' and community_id='home' and is_primary=true) then
+    raise exception 'FAIL: no-change UPSERT removed the Identity';
+  end if;
+  raise notice 'PASS: same-link master UPSERT keeps Identity';
+end
+$test$;
+
+-- A reassignment should retain the old verified Identity for human review
+-- while the new, as-yet-unverified link becomes available.
+insert into ca_master_ci.community_ca_members (id,community_id,ca_member_id)
+  values ('new-location','other','ca1');
+do $test$
+begin
+  if not exists (select 1 from ca_master_ci.community_ca_members
+                 where id='new-location') then
+    raise exception 'FAIL: reassignment missing new link';
+  end if;
+  if not exists (select 1 from ca_master_ci.user_ca_identities
+                 where user_id='dummy-user' and community_id='home' and is_primary=true) then
+    raise exception 'FAIL: reassignment lost existing verified Identity';
+  end if;
+  if (select count(*) from ca_master_ci.stamp_collections) <> 1 then
+    raise exception 'FAIL: reassignment changed historical medals';
+  end if;
+  raise notice 'PASS: reassignment preserves historical Identity and medal';
+end
+$test$;
+
 rollback;
