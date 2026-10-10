@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { partitionCaLinks } from "../_shared/ca-link-diff.mjs";
 
 const CRON_HEADER="x-ca-clover-cron-secret";
 const CA_MASTER_URL="https://docs.google.com/spreadsheets/d/1BtPjOxNX4JhttKKJa_-qrIXdVmK5UsbAX-RcLmLTuwk/export?format=csv&gid=633821294";
@@ -541,8 +542,6 @@ Deno.serve(async(req:Request)=>{
     // Never delete and reinsert unchanged links. user_ca_identities has an
     // ON DELETE CASCADE FK to community_ca_members; replacing a valid link
     // silently deletes its verified CA identity (and breaks QR exchanges).
-    const linkKey=(communityId:string,caMemberId:string)=>communityId+"|"+caMemberId;
-    const desiredLinkKeys=new Set(links.map(row=>linkKey(row.community_id,row.ca_member_id)));
     let protectedStaleLinks:Array<{community_id:string;ca_member_id:string}>=[];
     let removedStaleLinkCount=0;
     if(managedCaIds.length){
@@ -562,21 +561,12 @@ Deno.serve(async(req:Request)=>{
         currentLinks.push(...(currentLinkResult.data??[]));
         verifiedIdentityLinks.push(...(verifiedIdentityResult.data??[]));
       }
-      const verifiedLinkKeys=new Set(verifiedIdentityLinks
-        .map(row=>linkKey(row.community_id,row.ca_member_id)));
-      const stale=currentLinks.filter(row=>
-        !desiredLinkKeys.has(linkKey(row.community_id,row.ca_member_id)));
-      protectedStaleLinks=stale.filter(row=>
-        verifiedLinkKeys.has(linkKey(row.community_id,row.ca_member_id)))
-        .map(row=>({community_id:row.community_id,ca_member_id:row.ca_member_id}));
-      // A stale link with a verified identity needs explicit admin review.
-      // Keep it and mark sync "partial" rather than silently deleting the
-      // owner's identity. Master sync must not adjudicate ownership.
-      const safelyRemovableIds=stale.filter(row=>
-        !verifiedLinkKeys.has(linkKey(row.community_id,row.ca_member_id)))
-        .map(row=>row.id);
-      for(let i=0;i<safelyRemovableIds.length;i+=60){
-        const batch=safelyRemovableIds.slice(i,i+60);
+      // Pure helper is regression-tested in CI. A stale verified link needs
+      // explicit admin review; master sync must not delete that identity.
+      const diff=partitionCaLinks(currentLinks,links,verifiedIdentityLinks);
+      protectedStaleLinks=diff.protectedStaleLinks;
+      for(let i=0;i<diff.removableIds.length;i+=60){
+        const batch=diff.removableIds.slice(i,i+60);
         const {error:deleteLinkError}=await admin
           .from("community_ca_members")
           .delete()
