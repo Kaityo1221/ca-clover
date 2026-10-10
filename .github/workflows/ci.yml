@@ -20,5 +20,5 @@ jobs:
         with:
           deno-version: v2.x
       - name: Check community claim Edge types
-        run: deno check supabase/functions/community-claim/index.ts
+        run: deno check --node-modules-dir=auto supabase/functions/community-claim/index.ts
       - run: npm run build
