@@ -37,6 +37,17 @@ Deno.serve(async(req:Request)=>{
       .maybeSingle();
     if(profileError||profile?.role!=="admin") return json({error:"forbidden"},403);
 
+    // Manual ADMIN requests must not bypass the dedicated master pause.
+    const {data:masterGate,error:masterGateError}=await admin
+      .from("sync_automation_state")
+      .select("ca_master_sync_enabled")
+      .eq("id",1)
+      .maybeSingle();
+    if(masterGateError) return json({error:"CA master safety gate unavailable"},503);
+    if(masterGate?.ca_master_sync_enabled!==true){
+      return json({ok:false,status:"paused",error:"CA master sync is paused"},423);
+    }
+
     const {data:secret,error:secretError}=await admin.rpc("internal_get_sync_cron_secret");
     if(secretError||typeof secret!=="string"||!secret) return json({error:"sync authorization is unavailable"},500);
 
