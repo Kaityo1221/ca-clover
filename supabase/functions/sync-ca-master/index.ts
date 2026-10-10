@@ -193,6 +193,9 @@ function displayCommunityIdentity(identity:string){
 
 Deno.serve(async(req:Request)=>{
   let releaseLease:(()=>Promise<void>)|null=null;
+  let recordWriteFailure:(()=>Promise<void>)|null=null;
+  let writeStarted=false;
+  let writeStage="preflight";
   try{
     const supabaseUrl=Deno.env.get("SUPABASE_URL");
     const serviceRoleKey=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -337,6 +340,10 @@ Deno.serve(async(req:Request)=>{
       return json({error:"CA master lease lost or paused"},423);
     }
 
+    // Metadata writes follow separate REST calls; record a failure and
+    // disable only CA-master sync if any of these calls fails.
+    writeStarted=true;
+    writeStage="ca-members";
     const caRows=records.map(record=>({
       source_key:record.sourceKey,
       trainer_name:record.trainerName,
@@ -449,6 +456,7 @@ Deno.serve(async(req:Request)=>{
       });
     }
 
+    writeStage="communities";
     if(createRows.length){
       const {data:created,error:createError}=await admin
         .from("communities")
@@ -543,6 +551,7 @@ Deno.serve(async(req:Request)=>{
       }
     }
 
+    writeStage="community-metadata";
     for(const [communityId,update] of metadataUpdates){
       const {error:updateError}=await admin
         .from("communities")
@@ -597,6 +606,7 @@ Deno.serve(async(req:Request)=>{
     // in one database transaction. It rechecks the dedicated master gate and
     // ON DELETE RESTRICT FK, and serializes concurrent link reconciliations.
     // DO NOT DEPLOY before the reviewed RPC and safe FK are installed.
+    writeStage="atomic-ca-links";
     const {data:reconciled,error:reconcileError}=await admin.rpc(
       "internal_reconcile_ca_master_links",
       {p_desired_links:links,p_managed_ca_ids:managedCaIds,p_owner:owner},
@@ -618,6 +628,7 @@ Deno.serve(async(req:Request)=>{
         ?[{source_key:record.sourceKey,latitude:record.latitude,longitude:record.longitude}]
         :[],
     );
+    writeStage="coordinates";
     const {data:coordinateResult,error:coordinateError}=await admin.rpc(
       "internal_update_ca_master_coordinates",
       {p_rows:coordinatePayload},
@@ -647,6 +658,7 @@ Deno.serve(async(req:Request)=>{
       },
     };
 
+    writeStage="completion-audit";
     await admin.from("sync_runs").insert({
       source:"ca_members_map",
       status:isPartial?"partial":"success",
