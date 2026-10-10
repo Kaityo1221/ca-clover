@@ -6,6 +6,8 @@ import {readFileSync} from "node:fs";
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 const auto=read("supabase/functions/sync-campfire-auto/index.ts");
 const master=read("supabase/functions/sync-ca-master/index.ts");
+const recovery=read("supabase/functions/_shared/ca-master-recovery.mjs");
+const medalDesign=read("supabase/review/qa-production-medal-design-functions.review.sql");
 const admin=read("supabase/functions/sync-ca-master-admin/index.ts");
 const claim=read("supabase/functions/community-claim/index.ts");
 const adminUI=read("docs/admin.html");
@@ -21,7 +23,9 @@ assert.ok(admin.includes("ca_master_sync_enabled"),"ADMIN manual sync must use m
 assert.ok(master.includes("ca_master_sync_enabled"),"Master API must also use master gate");
 assert.ok(master.includes("internal_begin_ca_master_lease"),"Master API must claim run lease");
 assert.ok(master.includes("internal_reconcile_ca_master_links"),"CA links must use atomic RPC");
-assert.ok(master.includes("CA_MASTER_WRITE_INTERRUPTED"),"Failed writes must be audited");
+assert.ok(recovery.includes("CA_MASTER_WRITE_INTERRUPTED"),"Failed writes must be audited");
+assert.ok(master.includes("pauseAndAuditCaMasterFailure"),"Must call actual failure handler");
+assert.ok(medalDesign.includes("stamp_grant_acquisition_design"),"Preserve production medal acquisition design");
 assert.ok(master.includes("shouldReleaseCaMasterLease"),"Failures must keep lease if pause not confirmed");
 assert.ok(lease.includes("ca_master_sync_enabled=false"),"Lease must fail closed");
 assert.ok(lease.includes("v_expires<=clock_timestamp()"),"Stale run detection required");
@@ -38,4 +42,4 @@ assert.ok(!/^\s*(?:insert\s+into|delete\s+from|update\s+public\.|alter\s+table|c
  preflight.replace(/^\s*--[^\n]*$/gm,"")
 ),"Production schema preflight must remain read-only");
 
-console.log("Unified master sync / actual deployed scheduler / medal approval contracts PASS (21 checks)");
+console.log("Unified master sync / actual deployed scheduler / medal approval contracts PASS (23 checks)");
