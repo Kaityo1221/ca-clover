@@ -51,7 +51,7 @@ function ensureStyle(){
 .ca-minigames-item-desc{margin-top:4px;color:#64748b;font-size:11px;font-weight:800;line-height:1.5}
 .ca-minigames-soon{display:inline-flex;margin-top:7px;border-radius:999px;background:#f1f5f9;color:#64748b;padding:4px 8px;font-size:9px;font-weight:950}
 @media(max-width:760px){.ca-minigames-entry-grid,.ca-minigames-list{grid-template-columns:1fr}.ca-minigames-entry{padding:18px}}
-@media(max-width:480px){.community-hub-layout>.community-minigames-btn{top:-12px;min-width:124px;height:42px;padding:0 10px}.community-hub-layout>.community-minigames-btn+div .community-hero-row>div:last-child{min-width:0}.community-hub-layout>.community-minigames-btn+div .community-hero-row h1{font-size:clamp(14px,4.4vw,20px);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ca-minigames-head{display:block}.ca-minigames-back{margin-bottom:14px}}
+@media(max-width:480px){.community-hub-layout>.community-minigames-btn{top:-12px;min-width:124px;height:42px;padding:0 10px}.community-hub-layout>.community-minigames-btn+div .community-hero-row>div:last-child{min-width:0}.community-hub-layout>.community-minigames-btn+div .community-hero-row h1{font-size:26px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ca-minigames-head{display:block}.ca-minigames-back{margin-bottom:14px}}
 `;
  document.head.appendChild(style);
 }
