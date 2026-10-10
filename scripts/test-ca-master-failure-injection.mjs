@@ -82,6 +82,28 @@ try{
 }
 
 const edge=readFileSync(new URL("../supabase/functions/sync-ca-master/index.ts",import.meta.url),"utf8");
+// Preflight failures occur before metadata writes but must still pause
+// dedicated CA-master (or keep a lease until it expires when pause fails).
+{
+  const {admin,calls}=client({pause:"ok",audit:"ok"});
+  const stopped=await pauseAndAuditCaMasterFailure({
+    admin,owner:"30000000-0000-4000-8000-000000000001",
+    stage:"source-preflight",code:"CA_MASTER_SOURCE_INVALID",
+    finishedAt:"2026-10-10T11:00:00.000Z",
+  });
+  assert.equal(stopped,true);
+  assert.equal(calls[1].body.details.code,"CA_MASTER_SOURCE_INVALID");
+  assert.equal(calls[1].body.details.stage,"source-preflight");
+}
+assert.ok(edge.includes('code:"CA_MASTER_SOURCE_INVALID"'),
+  "Incomplete CA source must cause an operator-reviewed dedicated stop");
+assert.ok(edge.includes('code:"CA_MASTER_MAPPING_AMBIGUOUS"'),
+  "Ambiguous DB mapping must cause an operator-reviewed dedicated stop");
+assert.ok(edge.includes("retainLeaseForReview=!stopped"),
+  "Failed preflight stop must retain the active lease");
+assert.ok(edge.includes("!retainLeaseForReview&&shouldReleaseCaMasterLease"),
+  "Cannot release preflight lease if dedicated stop was not confirmed");
+
 assert.ok(edge.includes("pauseAndAuditCaMasterFailure({"),
   "The Edge function must use the tested failure handler, not a duplicate");
 assert.ok(edge.includes("if(!writeStarted)return false"),
@@ -89,4 +111,4 @@ assert.ok(edge.includes("if(!writeStarted)return false"),
 assert.ok(edge.includes("shouldReleaseCaMasterLease({writeStarted,writeFailed,pauseConfirmed})"),
   "Release decision must depend on confirmed pause");
 
-console.log("CA master Edge REST failure injection: 6 pause/audit scenarios PASS");
+console.log("CA master Edge REST failure injection: 7 pause/audit scenarios and fail-closed source contracts PASS");
