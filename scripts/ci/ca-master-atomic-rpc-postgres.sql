@@ -251,15 +251,20 @@ end $test$;
 
 -- An inconsistent lease (expiry exists without owner) is treated as unsafe.
 do $test$
+declare v_allowed boolean;
+        v_enabled boolean;
 begin
   update public.sync_automation_state
      set ca_master_lease_expires_at=clock_timestamp()+interval '10 minutes'
    where id=1;
-  if public.internal_begin_ca_master_lease(
+  -- Do NOT put a side-effecting function and a state check in one OR
+  -- condition; SQL is allowed to reorder Boolean evaluation.
+  v_allowed:=public.internal_begin_ca_master_lease(
       '30000000-0000-4000-8000-000000000003'::uuid
-     ) is distinct from false
-     or (select ca_master_sync_enabled from public.sync_automation_state where id=1)
-        is distinct from false then
+    );
+  select ca_master_sync_enabled into v_enabled
+    from public.sync_automation_state where id=1;
+  if v_allowed is distinct from false or v_enabled is distinct from false then
     raise exception 'FAIL: corrupt lease did not fail closed'; end if;
   raise notice 'PASS: inconsistent execution lease fails closed';
 end $test$;
