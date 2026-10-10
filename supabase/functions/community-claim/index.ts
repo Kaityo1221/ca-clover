@@ -397,6 +397,9 @@ Deno.serve(async(req:Request)=>{
       }
 
       const meetupId=target.id;
+      if(!meetupId){
+        return json({error:"Campfire Meetup IDを確認できません",code:"INVALID_CAMPFIRE_SHARE_URL"},400);
+      }
       let event:CampfireEvent;
       let source="campfire-share";
       try{
@@ -624,6 +627,9 @@ Deno.serve(async(req:Request)=>{
     if(target.kind==="meetup"){
       requestSource="meetup_share";
       const meetupId=target.id;
+      if(!meetupId){
+        return json({error:"Campfire Meetup IDを確認できません",code:"INVALID_CAMPFIRE_SHARE_URL"},400);
+      }
 
       try{
         event=await campfire.getAnonymousEvent(meetupId);
@@ -675,6 +681,9 @@ Deno.serve(async(req:Request)=>{
       liveCommunityName=String(event.club?.name??"").trim();
     }else{
       requestSource="community_invite";
+      if(!target.id){
+        return json({error:"Campfire Community IDを確認できません",code:"INVALID_CAMPFIRE_SHARE_URL"},400);
+      }
       campfireCommunityId=target.id;
     }
 
