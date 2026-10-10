@@ -195,7 +195,7 @@ Deno.serve(async(req:Request)=>{
         const verifyClient=new CampfireClient({maxRetries:2,retryDelayMs:800,minRequestIntervalMs:500});
         let verifyEvent:CampfireEvent|null=null;
         try{
-          verifyEvent=await verifyClient.getAnonymousEvent(String(request.campfire_meetup_id));
+          verifyEvent=await verifyClient.getAnonymousClaimEvent(String(request.campfire_meetup_id));
         }catch{
           verifyEvent=null;
         }
@@ -403,7 +403,7 @@ Deno.serve(async(req:Request)=>{
       let event:CampfireEvent;
       let source="campfire-share";
       try{
-        event=await new CampfireClient({maxRetries:2,retryDelayMs:800,minRequestIntervalMs:500}).getAnonymousEvent(meetupId);
+        event=await new CampfireClient({maxRetries:2,retryDelayMs:800,minRequestIntervalMs:500}).getAnonymousClaimEvent(meetupId);
         source="campfire-anonymous";
       }catch{
         const publicEvents=await new CampfireClient({maxRetries:2,retryDelayMs:800,minRequestIntervalMs:500}).getPublicEvents([meetupId]);
@@ -632,7 +632,7 @@ Deno.serve(async(req:Request)=>{
       }
 
       try{
-        event=await campfire.getAnonymousEvent(meetupId);
+        event=await campfire.getAnonymousClaimEvent(meetupId);
         source="campfire-anonymous";
       }catch{
         const publicEvents=await campfire.getPublicEvents([meetupId]);
