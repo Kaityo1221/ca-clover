@@ -16,4 +16,9 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run test:share-url
       - run: npm run test:medal-contract
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Check community claim Edge types
+        run: deno check supabase/functions/community-claim/index.ts
       - run: npm run build
