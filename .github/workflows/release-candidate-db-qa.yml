@@ -50,3 +50,5 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f scripts/ci/ca-master-atomic-rpc-postgres.sql
       - name: Test unlisted CA approval RPC with real self-medal function
         run: psql -v ON_ERROR_STOP=1 -f scripts/ci/unlisted-ca-medal-rpc-postgres.sql
+      - name: Verify production RLS policy predicates for CA and ADMIN
+        run: psql -v ON_ERROR_STOP=1 -f scripts/ci/release-candidate-rls-postgres.sql
