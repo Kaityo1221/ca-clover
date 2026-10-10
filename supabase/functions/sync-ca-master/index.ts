@@ -530,14 +530,6 @@ Deno.serve(async(req:Request)=>{
       .filter(row=>managedSourceKeys.has(row.source_key))
       .map(row=>row.id);
 
-    if(managedCaIds.length){
-      const {error:deleteLinkError}=await admin
-        .from("community_ca_members")
-        .delete()
-        .in("ca_member_id",managedCaIds);
-      if(deleteLinkError) throw deleteLinkError;
-    }
-
     const links=safeResolved.flatMap(record=>{
       if(blockedSourceKeys.has(record.sourceKey)) return [];
       const communityId=sourceCommunityMap.get(record.communityId);
@@ -545,6 +537,47 @@ Deno.serve(async(req:Request)=>{
       if(!communityId||!caMemberId) return [];
       return [{community_id:communityId,ca_member_id:caMemberId}];
     });
+
+    // Never delete and reinsert unchanged links. user_ca_identities has an
+    // ON DELETE CASCADE FK to community_ca_members; replacing a valid link
+    // silently deletes its verified CA identity (and breaks QR exchanges).
+    const linkKey=(communityId:string,caMemberId:string)=>communityId+"|"+caMemberId;
+    const desiredLinkKeys=new Set(links.map(row=>linkKey(row.community_id,row.ca_member_id)));
+    let protectedStaleLinks:Array<{community_id:string;ca_member_id:string}>=[];
+    let removedStaleLinkCount=0;
+    if(managedCaIds.length){
+      const [currentLinkResult,verifiedIdentityResult]=await Promise.all([
+        admin.from("community_ca_members")
+          .select("id,community_id,ca_member_id")
+          .in("ca_member_id",managedCaIds),
+        admin.from("user_ca_identities")
+          .select("community_id,ca_member_id")
+          .in("ca_member_id",managedCaIds),
+      ]);
+      if(currentLinkResult.error) throw currentLinkResult.error;
+      if(verifiedIdentityResult.error) throw verifiedIdentityResult.error;
+      const verifiedLinkKeys=new Set((verifiedIdentityResult.data??[])
+        .map(row=>linkKey(row.community_id,row.ca_member_id)));
+      const stale=(currentLinkResult.data??[]).filter(row=>
+        !desiredLinkKeys.has(linkKey(row.community_id,row.ca_member_id)));
+      protectedStaleLinks=stale.filter(row=>
+        verifiedLinkKeys.has(linkKey(row.community_id,row.ca_member_id)))
+        .map(row=>({community_id:row.community_id,ca_member_id:row.ca_member_id}));
+      // A stale link with a verified identity needs explicit admin review.
+      // Keep it and mark sync "partial" rather than silently deleting the
+      // owner's identity. Master sync must not adjudicate ownership.
+      const safelyRemovableIds=stale.filter(row=>
+        !verifiedLinkKeys.has(linkKey(row.community_id,row.ca_member_id)))
+        .map(row=>row.id);
+      if(safelyRemovableIds.length){
+        const {error:deleteLinkError}=await admin
+          .from("community_ca_members")
+          .delete()
+          .in("id",safelyRemovableIds);
+        if(deleteLinkError) throw deleteLinkError;
+        removedStaleLinkCount=safelyRemovableIds.length;
+      }
+    }
 
     if(links.length){
       const {error:linkError}=await admin
@@ -564,7 +597,7 @@ Deno.serve(async(req:Request)=>{
     );
     if(coordinateError) throw coordinateError;
 
-    const isPartial=unresolved.length>0||conflicts.length>0;
+    const isPartial=unresolved.length>0||conflicts.length>0||protectedStaleLinks.length>0;
     const finishedAt=new Date().toISOString();
 
     const details={
@@ -579,6 +612,8 @@ Deno.serve(async(req:Request)=>{
       historical_ids_recorded:retiredHistoryRows.length,
       ca_members:caRows.length,
       links:links.length,
+      protected_stale_identity_links:protectedStaleLinks,
+      removed_stale_links:removedStaleLinkCount,
       coordinates:{
         ca_updated:Number(coordinateResult?.ca_updated??0)||0,
         community_updated:Number(coordinateResult?.community_updated??0)||0,
@@ -612,6 +647,8 @@ Deno.serve(async(req:Request)=>{
       historicalIdsRecorded:retiredHistoryRows.length,
       caMembers:caRows.length,
       links:links.length,
+      protectedStaleIdentityLinks:protectedStaleLinks.length,
+      removedStaleLinks:removedStaleLinkCount,
       coordinateResult,
     });
   }catch(error){
