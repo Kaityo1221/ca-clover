@@ -8,7 +8,8 @@
 
 create or replace function public.internal_reconcile_ca_master_links(
   p_desired_links jsonb,
-  p_managed_ca_ids uuid[]
+  p_managed_ca_ids uuid[],
+  p_owner uuid
 )
 returns jsonb
 language plpgsql
@@ -33,8 +34,14 @@ begin
   select ca_master_sync_enabled into v_enabled
     from public.sync_automation_state
     where id=1 for update;
-  if v_enabled is distinct from true then
-    raise exception 'CA_MASTER_PAUSED' using errcode = '55000';
+  if v_enabled is distinct from true
+     or p_owner is null
+     or not exists (
+       select 1 from public.sync_automation_state
+       where id=1 and ca_master_lease_owner=p_owner
+         and ca_master_lease_expires_at>clock_timestamp()
+     ) then
+    raise exception 'CA_MASTER_PAUSED_OR_LEASE_LOST' using errcode='55000';
   end if;
 
   -- Guard against deploying this function before the cascade FK is made safe.
@@ -127,7 +134,7 @@ end;
 $fn$;
 
 -- public schema is API-exposed: the function is strictly service-role-only.
-revoke all on function public.internal_reconcile_ca_master_links(jsonb, uuid[]) from public;
-revoke all on function public.internal_reconcile_ca_master_links(jsonb, uuid[]) from anon;
-revoke all on function public.internal_reconcile_ca_master_links(jsonb, uuid[]) from authenticated;
-grant execute on function public.internal_reconcile_ca_master_links(jsonb, uuid[]) to service_role;
+revoke all on function public.internal_reconcile_ca_master_links(jsonb, uuid[], uuid) from public;
+revoke all on function public.internal_reconcile_ca_master_links(jsonb, uuid[], uuid) from anon;
+revoke all on function public.internal_reconcile_ca_master_links(jsonb, uuid[], uuid) from authenticated;
+grant execute on function public.internal_reconcile_ca_master_links(jsonb, uuid[], uuid) to service_role;
