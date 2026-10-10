@@ -214,6 +214,18 @@ Deno.serve(async(req:Request)=>{
       return json({error:"unauthorized"},401);
     }
 
+    // Independent fail-closed guard. Applies to Cron AND manual ADMIN calls.
+    // The master gate must be explicitly enabled by an operator.
+    const {data:masterGate,error:masterGateError}=await admin
+      .from("sync_automation_state")
+      .select("ca_master_sync_enabled")
+      .eq("id",1)
+      .maybeSingle();
+    if(masterGateError) return json({error:"CA master safety gate unavailable"},503);
+    if(masterGate?.ca_master_sync_enabled!==true){
+      return json({ok:false,status:"paused",error:"CA master sync is paused"},423);
+    }
+
     const response=await fetch(CA_MASTER_URL,{
       headers:{"User-Agent":"CA-Clover/1.0"},
     });
