@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { shouldReleaseCaMasterLease } from "../_shared/ca-master-recovery.mjs";
 
 const CRON_HEADER="x-ca-clover-cron-secret";
 const CA_MASTER_URL="https://docs.google.com/spreadsheets/d/1BtPjOxNX4JhttKKJa_-qrIXdVmK5UsbAX-RcLmLTuwk/export?format=csv&gid=633821294";
@@ -731,7 +732,7 @@ Deno.serve(async(req:Request)=>{
     // An unconfirmed pause after a partial write MUST leave the lease in DB.
     // The next invocation is blocked; on expiry the begin RPC permanently
     // pauses CA-master until explicit human review instead of retrying.
-    if(releaseLease&&(!writeFailed||!writeStarted||pauseConfirmed)){
+    if(releaseLease&&shouldReleaseCaMasterLease({writeStarted,writeFailed,pauseConfirmed})){
       try{
         await releaseLease();
       }catch{
