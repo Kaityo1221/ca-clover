@@ -193,8 +193,10 @@ function displayCommunityIdentity(identity:string){
 
 Deno.serve(async(req:Request)=>{
   let releaseLease:(()=>Promise<void>)|null=null;
-  let recordWriteFailure:(()=>Promise<void>)|null=null;
+  let recordWriteFailure:(()=>Promise<boolean>)|null=null;
   let writeStarted=false;
+  let writeFailed=false;
+  let pauseConfirmed=false;
   let writeStage="preflight";
   try{
     const supabaseUrl=Deno.env.get("SUPABASE_URL");
@@ -249,13 +251,17 @@ Deno.serve(async(req:Request)=>{
     };
 
     recordWriteFailure=async()=>{
-      if(!writeStarted) return;
+      if(!writeStarted) return false;
       // A failed REST write can leave an incomplete master snapshot.
       // Pause ONLY CA-master; the public Meetup/icon Cron remains running.
-      const {error:pauseError}=await admin.from("sync_automation_state")
+      const {data:paused,error:pauseError}=await admin.from("sync_automation_state")
         .update({ca_master_sync_enabled:false})
-        .eq("id",1);
-      if(pauseError) console.error("CA master emergency pause failed",pauseError.code);
+        .eq("id",1)
+        .eq("ca_master_lease_owner",owner)
+        .select("id")
+        .maybeSingle();
+      const pausedByOwner=!pauseError&&paused?.id===1;
+      if(!pausedByOwner) console.error("CA master pause not confirmed for lease owner");
       const {error:auditError}=await admin.from("sync_runs").insert({
         source:"ca_members_map",
         status:"partial",
@@ -267,6 +273,7 @@ Deno.serve(async(req:Request)=>{
         },
       });
       if(auditError) console.error("CA master failure audit unavailable",auditError.code);
+      return pausedByOwner;
     };
 
     const response=await fetch(CA_MASTER_URL,{
@@ -714,18 +721,24 @@ Deno.serve(async(req:Request)=>{
       coordinateResult,
     });
   }catch(error){
+    writeFailed=true;
     if(recordWriteFailure){
-      try{await recordWriteFailure();}
+      try{pauseConfirmed=await recordWriteFailure();}
       catch{console.error("CA master failure audit could not be recorded");}
     }
     return json({error:error instanceof Error?error.message:String(error)},500);
   }finally{
-    if(releaseLease){
+    // An unconfirmed pause after a partial write MUST leave the lease in DB.
+    // The next invocation is blocked; on expiry the begin RPC permanently
+    // pauses CA-master until explicit human review instead of retrying.
+    if(releaseLease&&(!writeFailed||!writeStarted||pauseConfirmed)){
       try{
         await releaseLease();
       }catch{
         console.error("CA master lease release unavailable");
       }
+    }else if(releaseLease){
+      console.error("CA master lease retained after an unconfirmed write failure");
     }
   }
 });
