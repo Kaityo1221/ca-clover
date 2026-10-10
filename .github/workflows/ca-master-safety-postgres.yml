@@ -7,6 +7,7 @@ on:
     branches:
       - safety/ca-master-dedicated-pause-gates-20261010
       - safety/ca-master-integrated-free-qa-20261010
+      - safety/ca-master-exclusive-lease-20261010
   pull_request:
     branches:
       - safety/preserve-live-sync-campfire-auto-v10-20261010
