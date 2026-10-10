@@ -236,7 +236,7 @@ async function icons(){
 }
 
 async function accounts(){
- app.innerHTML=title("home","ACCOUNTS","👥 CAアカウント","Googleログイン後のアカウント権限を管理します。認証済みCAとADMINは全員メダルラリーを利用できます。")+'<div id="list" class="section">'+msg("読み込み中...")+'</div>';
+ app.innerHTML=title("home","ACCOUNTS","👥 CAアカウント","Googleログイン後のアカウント権限を管理します。PENDINGへ戻すとCommunity割当を全件解除します。認証済みCAとADMINは全員メダルラリーを利用できます。")+'<div id="list" class="section">'+msg("読み込み中...")+'</div>';
  const {data:profiles,error}=await client.from("profiles")
   .select("id,email,niantic_id,role,created_at")
   .order("created_at",{ascending:false});
@@ -246,6 +246,10 @@ async function accounts(){
   return '<section class="claim"><div class="row between wraprow"><div><h3>'+e(x.email||"メール未取得")+'</h3><div class="small muted strong">SCOPELY EXPLORE ID: '+e(x.niantic_id||"未登録")+'</div><div class="tiny muted">登録 '+e(fmt(x.created_at))+'</div></div><div class="actions">'+roles+'</div></div></section>'
  }).join("");
  app.querySelectorAll("[data-role]").forEach(b=>b.onclick=async()=>{
+  if(b.dataset.role==="pending"){
+   const approved=window.confirm("このアカウントをPENDINGへ戻し、Community割当をすべて解除します。\n復帰時は管理者による再割当が必要です。続行しますか？");
+   if(!approved)return;
+  }
   b.disabled=true;
   const r=await client.functions.invoke("admin-manage",{body:{action:"set_role",userId:b.dataset.id,role:b.dataset.role}});
   if(r.error)alert(r.error.message);
