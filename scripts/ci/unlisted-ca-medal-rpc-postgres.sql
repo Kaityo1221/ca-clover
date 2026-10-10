@@ -1,7 +1,6 @@
 -- CA Clover: PR #118 atomic unlisted CA approval RPC review test.
 -- Synthetic identities only; disposable GitHub Actions PostgreSQL 16 database.
--- IMPORTANT: the medal trigger below is a STUB, not the live production trigger.
--- This tests RPC transaction/rollback, not end-to-end production medal visuals.
+-- The two self-medal functions below are copied from the current production\n-- database definitions (read-only), including their exact eligibility filters.\n-- The two separate medal-design triggers are not reproduced here.
 \set ON_ERROR_STOP on
 begin;
 create role anon nologin;
@@ -54,6 +53,8 @@ create table public.stamp_collections(
   owner_user_id uuid not null,
   stamp_ca_member_id uuid not null,
   community_id uuid not null,
+  role_at_acquisition text not null,
+  acquisition_source text not null,
   unique(owner_user_id,stamp_ca_member_id,community_id)
 );
 create table public.community_access_requests(
@@ -73,22 +74,56 @@ create table public.community_access_requests(
   reviewed_by uuid
 );
 
--- Mimics the intended side effect of the real identity trigger, not its full code.
-create function public.qa_stub_grant_self_medal()
-returns trigger language plpgsql as $$
-begin
-  if new.is_primary then
-    insert into public.stamp_collections(owner_user_id,stamp_ca_member_id,community_id)
-    values(new.user_id,new.ca_member_id,new.community_id)
-    on conflict(owner_user_id,stamp_ca_member_id,community_id) do nothing;
-  end if;
-  return new;
-end;
-$$;
-create trigger qa_grant_self_medal
-after insert or update of is_primary,ca_member_id,community_id
-on public.user_ca_identities
-for each row execute function public.qa_stub_grant_self_medal();
+-- Exact production definitions (2026-10-10 read-only inspection).
+create schema private;
+create or replace function private.stamp_ensure_own_medal(p_user_id uuid)
+ returns void
+ language plpgsql
+ security definer
+ set search_path to 'public', 'private', 'pg_temp'
+as $function$
+BEGIN
+  IF p_user_id IS NULL THEN
+    RETURN;
+  END IF;
+
+  INSERT INTO public.stamp_collections (
+    owner_user_id, stamp_ca_member_id, community_id,
+    role_at_acquisition, acquisition_source
+  )
+  SELECT i.user_id, i.ca_member_id, i.community_id, m.ca_level, 'self'
+  FROM public.user_ca_identities i
+  JOIN public.profiles p ON p.id=i.user_id
+  JOIN public.ca_members m ON m.id=i.ca_member_id
+  JOIN public.community_ca_members l
+    ON l.ca_member_id=i.ca_member_id AND l.community_id=i.community_id
+  WHERE i.user_id=p_user_id
+    AND i.is_primary IS TRUE
+    AND p.role IN ('ca','admin')
+    AND m.status='active'
+    AND m.ca_level IN ('1st','2nd')
+  ON CONFLICT (owner_user_id,stamp_ca_member_id,community_id) DO NOTHING;
+END;
+$function$;
+
+create or replace function private.stamp_auto_own_medal_after_identity()
+ returns trigger
+ language plpgsql
+ security definer
+ set search_path to 'public', 'private', 'pg_temp'
+as $function$
+BEGIN
+  IF NEW.is_primary IS TRUE THEN
+    PERFORM private.stamp_ensure_own_medal(NEW.user_id);
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+create trigger stamp_auto_own_medal_after_identity
+  after insert or update of is_primary,ca_member_id,community_id
+  on public.user_ca_identities
+  for each row execute function private.stamp_auto_own_medal_after_identity();
 
 insert into public.profiles(id,role,niantic_id) values
  ('00000000-0000-4000-8000-000000000001','admin','admin-ca'),
@@ -149,6 +184,7 @@ begin
      or (select count(*) from public.community_memberships)<>1
      or (select count(*) from public.user_ca_identities where is_primary)<>1
      or (select count(*) from public.stamp_collections)<>1
+     or (select count(*) from public.stamp_collections where acquisition_source='self' and role_at_acquisition='1st')<>1
      or (select role from public.profiles where id='00000000-0000-4000-8000-000000000002')<>'ca'
      or (select status from public.community_access_requests where id='22222222-2222-4222-8222-222222222221')<>'approved' then
     raise exception 'FAIL: success did not produce exactly one own medal and verified identity';
@@ -193,7 +229,7 @@ $test$;
 
 -- Disable the QA medal trigger and force the real RPC's medal assertion to
 -- fail. All earlier inserts/role updates in that call must be rolled back.
-alter table public.user_ca_identities disable trigger qa_grant_self_medal;
+alter table public.user_ca_identities disable trigger stamp_auto_own_medal_after_identity;
 do $test$
 declare denied boolean := false;
 declare old_ca integer;
@@ -218,6 +254,6 @@ begin
   raise notice 'PASS: medal trigger failure rolls back full approval';
 end
 $test$;
-alter table public.user_ca_identities enable trigger qa_grant_self_medal;
+alter table public.user_ca_identities enable trigger stamp_auto_own_medal_after_identity;
 
 rollback;
