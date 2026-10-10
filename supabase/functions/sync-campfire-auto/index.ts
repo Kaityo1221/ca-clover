@@ -87,7 +87,9 @@ Deno.serve(async(req:Request)=>{
 
     const lastCaMasterAt=state.last_ca_master_at?new Date(state.last_ca_master_at).getTime():0;
     const coordinateRefreshDue=!lastCaMasterAt||now-lastCaMasterAt>=24*60*60*1000;
-    if(coordinateRefreshDue){
+    // Do not disable the 15-minute Cron or public Meetup sync.
+    // A missing flag / schema error is treated as OFF.
+    if(state.ca_master_sync_enabled===true&&coordinateRefreshDue){
       try{
         masterResult=await invokeInternal(supabaseUrl,anonKey,suppliedSecret,"sync-ca-master",{});
         const communitiesCreated=Math.max(0,Number(masterResult.communitiesCreated??0)||0);
