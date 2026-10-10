@@ -192,6 +192,8 @@ function displayCommunityIdentity(identity:string){
 }
 
 Deno.serve(async(req:Request)=>{
+  let leaseAdmin:ReturnType<typeof createClient>|null=null;
+  let leaseOwner:string|null=null;
   try{
     const supabaseUrl=Deno.env.get("SUPABASE_URL");
     const serviceRoleKey=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -225,6 +227,20 @@ Deno.serve(async(req:Request)=>{
     if(masterGate?.ca_master_sync_enabled!==true){
       return json({ok:false,status:"paused",error:"CA master sync is paused"},423);
     }
+
+    // Claim an exclusive run before fetching the source or writing any row.
+    // Second requests fail closed. A ten-minute lease exceeds the Edge
+    // worker wall-clock lifetime and recovers after abrupt termination.
+    const owner=crypto.randomUUID();
+    const {data:claimed,error:leaseError}=await admin.rpc(
+      "internal_begin_ca_master_lease",{p_owner:owner},
+    );
+    if(leaseError) return json({error:"CA master execution lease unavailable"},503);
+    if(claimed!==true) return json({
+      ok:false,status:"busy",error:"CA master is paused or a sync is already running",
+    },409);
+    leaseAdmin=admin;
+    leaseOwner=owner;
 
     const response=await fetch(CA_MASTER_URL,{
       headers:{"User-Agent":"CA-Clover/1.0"},
@@ -308,6 +324,14 @@ Deno.serve(async(req:Request)=>{
     if(writeGateError) return json({error:"CA master safety gate unavailable"},503);
     if(writeGate?.ca_master_sync_enabled!==true){
       return json({ok:false,status:"paused",error:"CA master sync is paused"},423);
+    }
+
+    // Stop stale/paused requests after network and CSV parsing delay.
+    const {data:liveLease,error:liveLeaseError}=await admin.rpc(
+      "internal_check_ca_master_lease",{p_owner:owner},
+    );
+    if(liveLeaseError||liveLease!==true){
+      return json({error:"CA master lease lost or paused"},423);
     }
 
     const caRows=records.map(record=>({
@@ -572,7 +596,7 @@ Deno.serve(async(req:Request)=>{
     // DO NOT DEPLOY before the reviewed RPC and safe FK are installed.
     const {data:reconciled,error:reconcileError}=await admin.rpc(
       "internal_reconcile_ca_master_links",
-      {p_desired_links:links,p_managed_ca_ids:managedCaIds},
+      {p_desired_links:links,p_managed_ca_ids:managedCaIds,p_owner:owner},
     );
     if(reconcileError) throw reconcileError;
     if(!reconciled || typeof reconciled!=="object"){
@@ -653,5 +677,16 @@ Deno.serve(async(req:Request)=>{
     });
   }catch(error){
     return json({error:error instanceof Error?error.message:String(error)},500);
+  }finally{
+    if(leaseAdmin&&leaseOwner){
+      try{
+        const {error:releaseError}=await leaseAdmin.rpc(
+          "internal_finish_ca_master_lease",{p_owner:leaseOwner},
+        );
+        if(releaseError) console.error("CA master lease release failed",releaseError.code);
+      }catch{
+        console.error("CA master lease release unavailable");
+      }
+    }
   }
 });
