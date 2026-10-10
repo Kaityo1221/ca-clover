@@ -1,5 +1,4 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { partitionCaLinks } from "../_shared/ca-link-diff.mjs";
 
 const CRON_HEADER="x-ca-clover-cron-secret";
 const CA_MASTER_URL="https://docs.google.com/spreadsheets/d/1BtPjOxNX4JhttKKJa_-qrIXdVmK5UsbAX-RcLmLTuwk/export?format=csv&gid=633821294";
@@ -295,6 +294,22 @@ Deno.serve(async(req:Request)=>{
       })),
     ];
 
+    // Fail closed on an empty master response and on an operator pause
+    // changed while we fetched/parsed the source. The RPC checks again
+    // during its transaction, preventing link changes after a pause.
+    if(records.length===0){
+      return json({error:"CA master response contains no CA records"},422);
+    }
+    const {data:writeGate,error:writeGateError}=await admin
+      .from("sync_automation_state")
+      .select("ca_master_sync_enabled")
+      .eq("id",1)
+      .maybeSingle();
+    if(writeGateError) return json({error:"CA master safety gate unavailable"},503);
+    if(writeGate?.ca_master_sync_enabled!==true){
+      return json({ok:false,status:"paused",error:"CA master sync is paused"},423);
+    }
+
     const caRows=records.map(record=>({
       source_key:record.sourceKey,
       trainer_name:record.trainerName,
@@ -551,48 +566,24 @@ Deno.serve(async(req:Request)=>{
       return [{community_id:communityId,ca_member_id:caMemberId}];
     });
 
-    // Never delete and reinsert unchanged links. user_ca_identities has an
-    // ON DELETE CASCADE FK to community_ca_members; replacing a valid link
-    // silently deletes its verified CA identity (and breaks QR exchanges).
-    let protectedStaleLinks:Array<{community_id:string;ca_member_id:string}>=[];
-    let removedStaleLinkCount=0;
-    if(managedCaIds.length){
-      // Query in batches: hundreds of UUIDs may exceed REST URL limits.
-      const currentLinks:Array<{id:string;community_id:string;ca_member_id:string}>=[];
-      const verifiedIdentityLinks:Array<{community_id:string;ca_member_id:string}>=[];
-      for(let i=0;i<managedCaIds.length;i+=60){
-        const batch=managedCaIds.slice(i,i+60);
-        const [currentLinkResult,verifiedIdentityResult]=await Promise.all([
-          admin.from("community_ca_members")
-            .select("id,community_id,ca_member_id").in("ca_member_id",batch),
-          admin.from("user_ca_identities")
-            .select("community_id,ca_member_id").in("ca_member_id",batch),
-        ]);
-        if(currentLinkResult.error) throw currentLinkResult.error;
-        if(verifiedIdentityResult.error) throw verifiedIdentityResult.error;
-        currentLinks.push(...(currentLinkResult.data??[]));
-        verifiedIdentityLinks.push(...(verifiedIdentityResult.data??[]));
-      }
-      // Pure helper is regression-tested in CI. A stale verified link needs
-      // explicit admin review; master sync must not delete that identity.
-      const diff=partitionCaLinks(currentLinks,links,verifiedIdentityLinks);
-      protectedStaleLinks=diff.protectedStaleLinks;
-      for(let i=0;i<diff.removableIds.length;i+=60){
-        const batch=diff.removableIds.slice(i,i+60);
-        const {error:deleteLinkError}=await admin
-          .from("community_ca_members")
-          .delete()
-          .in("id",batch);
-        if(deleteLinkError) throw deleteLinkError;
-        removedStaleLinkCount+=batch.length;
-      }
+    // One service-role-only RPC applies expected link UPSERT + safe pruning
+    // in one database transaction. It rechecks the dedicated master gate and
+    // ON DELETE RESTRICT FK, and serializes concurrent link reconciliations.
+    // DO NOT DEPLOY before the reviewed RPC and safe FK are installed.
+    const {data:reconciled,error:reconcileError}=await admin.rpc(
+      "internal_reconcile_ca_master_links",
+      {p_desired_links:links,p_managed_ca_ids:managedCaIds},
+    );
+    if(reconcileError) throw reconcileError;
+    if(!reconciled || typeof reconciled!=="object"){
+      throw new Error("CA master reconciliation response is missing");
     }
-
-    if(links.length){
-      const {error:linkError}=await admin
-        .from("community_ca_members")
-        .upsert(links,{onConflict:"community_id,ca_member_id"});
-      if(linkError) throw linkError;
+    const protectedStaleLinks:Array<{community_id:string;ca_member_id:string}>=
+      Array.isArray(reconciled.protected_stale_identity_links)
+        ?reconciled.protected_stale_identity_links:[];
+    const removedStaleLinkCount=Number(reconciled.removed_stale_links);
+    if(!Number.isSafeInteger(removedStaleLinkCount) || removedStaleLinkCount<0){
+      throw new Error("CA master reconciliation returned invalid delete count");
     }
 
     const coordinatePayload=records.flatMap(record=>
