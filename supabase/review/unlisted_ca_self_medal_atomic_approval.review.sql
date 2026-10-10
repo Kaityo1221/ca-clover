@@ -145,6 +145,19 @@ begin
          verified_at=excluded.verified_at,
          verified_by=excluded.verified_by;
 
+  -- Do not report success if the expected own medal is missing.
+  -- stamp_auto_own_medal_after_identity should have inserted this row in
+  -- the same transaction. A misconfigured trigger must roll everything back.
+  if not exists (
+    select 1 from public.stamp_collections sc
+     where sc.owner_user_id=v_request.user_id
+       and sc.stamp_ca_member_id=v_ca.id
+       and sc.community_id=v_request.community_id
+  ) then
+    raise exception 'own medal was not granted; approval rolled back'
+      using errcode='P0001';
+  end if;
+
   update public.community_access_requests
      set status='approved',reviewed_at=now(),reviewed_by=p_admin_user_id
    where id=v_request.id;
@@ -154,7 +167,7 @@ begin
     'accountRole','ca',
     'communityId',v_request.community_id,
     'caMemberId',v_ca.id,
-    'ownMedalStatus','triggered'
+    'ownMedalStatus','verified'
   );
 end;
 $$;
