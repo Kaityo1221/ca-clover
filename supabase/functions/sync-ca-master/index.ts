@@ -546,19 +546,25 @@ Deno.serve(async(req:Request)=>{
     let protectedStaleLinks:Array<{community_id:string;ca_member_id:string}>=[];
     let removedStaleLinkCount=0;
     if(managedCaIds.length){
-      const [currentLinkResult,verifiedIdentityResult]=await Promise.all([
-        admin.from("community_ca_members")
-          .select("id,community_id,ca_member_id")
-          .in("ca_member_id",managedCaIds),
-        admin.from("user_ca_identities")
-          .select("community_id,ca_member_id")
-          .in("ca_member_id",managedCaIds),
-      ]);
-      if(currentLinkResult.error) throw currentLinkResult.error;
-      if(verifiedIdentityResult.error) throw verifiedIdentityResult.error;
-      const verifiedLinkKeys=new Set((verifiedIdentityResult.data??[])
+      // Query in batches: hundreds of UUIDs may exceed REST URL limits.
+      const currentLinks:Array<{id:string;community_id:string;ca_member_id:string}>=[];
+      const verifiedIdentityLinks:Array<{community_id:string;ca_member_id:string}>=[];
+      for(let i=0;i<managedCaIds.length;i+=60){
+        const batch=managedCaIds.slice(i,i+60);
+        const [currentLinkResult,verifiedIdentityResult]=await Promise.all([
+          admin.from("community_ca_members")
+            .select("id,community_id,ca_member_id").in("ca_member_id",batch),
+          admin.from("user_ca_identities")
+            .select("community_id,ca_member_id").in("ca_member_id",batch),
+        ]);
+        if(currentLinkResult.error) throw currentLinkResult.error;
+        if(verifiedIdentityResult.error) throw verifiedIdentityResult.error;
+        currentLinks.push(...(currentLinkResult.data??[]));
+        verifiedIdentityLinks.push(...(verifiedIdentityResult.data??[]));
+      }
+      const verifiedLinkKeys=new Set(verifiedIdentityLinks
         .map(row=>linkKey(row.community_id,row.ca_member_id)));
-      const stale=(currentLinkResult.data??[]).filter(row=>
+      const stale=currentLinks.filter(row=>
         !desiredLinkKeys.has(linkKey(row.community_id,row.ca_member_id)));
       protectedStaleLinks=stale.filter(row=>
         verifiedLinkKeys.has(linkKey(row.community_id,row.ca_member_id)))
