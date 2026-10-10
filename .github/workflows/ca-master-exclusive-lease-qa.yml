@@ -1,0 +1,48 @@
+# Disposable PostgreSQL checks for stacked Draft PR #127.
+# All records are fake; there are no Supabase secrets or production connections.
+name: CA master exclusive lease QA
+
+on:
+  pull_request:
+    branches:
+      - safety/ca-master-integrated-free-qa-20261010
+
+permissions:
+  contents: read
+
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-only
+          POSTGRES_DB: ca_master_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ca_master_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: test-only
+      PGDATABASE: ca_master_qa
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure PostgreSQL client
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client
+          fi
+      - name: Check identity FK, unchanged links, atomic RPC and exclusive lease
+        run: |
+          psql -v ON_ERROR_STOP=1 -f scripts/ci/ca-master-safety-postgres.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/ci/ca-master-atomic-rpc-postgres.sql
