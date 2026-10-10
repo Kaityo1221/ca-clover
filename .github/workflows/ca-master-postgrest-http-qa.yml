@@ -1,0 +1,69 @@
+# Standalone synthetic HTTP QA. Does not use real Supabase credentials.
+name: CA master / Isolated PostgREST HTTP QA
+
+on:
+  push:
+    branches:
+      - safety/release-candidate-master-and-medal-20261010
+  pull_request:
+    branches:
+      - safety/ca-master-exclusive-lease-20261010
+
+permissions:
+  contents: read
+
+jobs:
+  http-boundaries:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-only
+          POSTGRES_DB: ca_clover_http_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ca_clover_http_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: test-only
+      PGDATABASE: ca_clover_http_qa
+      QA_POSTGREST_URL: http://127.0.0.1:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Ensure PostgreSQL client
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client
+          fi
+      - name: Seed disposable fake CA accounts and medals
+        run: psql -v ON_ERROR_STOP=1 -f scripts/ci/ca-master-http-fixture.sql
+      - name: Start isolated PostgREST for real HTTP transaction boundaries
+        run: |
+          docker run -d --rm --name ca-clover-pgrst-test \
+            --network host \
+            -e PGRST_DB_URI="postgres://postgres:test-only@127.0.0.1:5432/ca_clover_http_qa" \
+            -e PGRST_DB_SCHEMAS=public \
+            -e PGRST_DB_ANON_ROLE=anon \
+            -e PGRST_SERVER_PORT=3000 \
+            postgrest/postgrest:v12.2.8
+      - name: Test partial REST commit, failed follow-up, owner-fenced pause
+        run: node scripts/ci/test-ca-master-http.mjs
+      - name: Print isolated server diagnostics on failure
+        if: failure()
+        run: docker logs ca-clover-pgrst-test --tail 80 || true
+      - name: Stop disposable HTTP service
+        if: always()
+        run: docker rm -f ca-clover-pgrst-test || true
