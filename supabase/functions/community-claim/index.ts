@@ -255,6 +255,28 @@ Deno.serve(async(req:Request)=>{
         }
       }
 
+      // Opt-in rollout ONLY after the reviewed RPC exists and PR #117's
+      // CA master sync preserves identity links. Fallback verification above
+      // rechecks the Campfire creator, purple badge and Community ID.
+      if(mapFallback && Deno.env.get("CA_CLOVER_UNLISTED_OWN_MEDAL")==="enabled"){
+        const caLevel=String(body.confirmedCaLevel??"");
+        if(!["1st","2nd"].includes(caLevel)||body.confirmedCaLevelEvidence!==true){
+          return json({
+            error:"ADMINがCAの1st/2nd資格を確認・選択してください",
+            code:"MANUAL_CA_LEVEL_REQUIRED",
+          },422);
+        }
+        const {data:approved,error:atomicApprovalError}=await admin.rpc(
+          "internal_approve_unlisted_ca_claim",{
+            p_request_id:requestId,
+            p_admin_user_id:userData.user.id,
+            p_confirmed_ca_level:caLevel,
+          },
+        );
+        if(atomicApprovalError) throw atomicApprovalError;
+        return json(approved);
+      }
+
       if(requesterProfile.role==="pending"){
         const {error:roleError}=await admin.from("profiles")
           .update({role:"ca"})
