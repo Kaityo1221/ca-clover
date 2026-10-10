@@ -14,8 +14,8 @@ create table ca_master_ci.ca_members (
 );
 create table ca_master_ci.community_ca_members (
   id text primary key,
-  community_id text not null references ca_master_ci.communities(id),
-  ca_member_id text not null references ca_master_ci.ca_members(id),
+  community_id text not null references ca_master_ci.communities(id) on delete cascade,
+  ca_member_id text not null references ca_master_ci.ca_members(id) on delete cascade,
   unique (community_id, ca_member_id)
 );
 create table ca_master_ci.user_ca_identities (
@@ -115,6 +115,74 @@ begin
     raise exception 'FAIL: identity or medal counts changed'; end if;
 
   raise notice 'PASS: guarded FK prevents identity cascade; medals and unrelated Cron survive';
+end
+$test$;
+
+-- Parent deletion cascade must ALSO be blocked by the verified Identity.
+-- Real production community_ca_members has cascaded parent FKs.
+do $test$
+declare blocked_ca boolean := false;
+        blocked_community boolean := false;
+begin
+  begin
+    delete from ca_master_ci.ca_members where id='ca1';
+  exception when foreign_key_violation then
+    blocked_ca := true;
+  end;
+  begin
+    delete from ca_master_ci.communities where id='home';
+  exception when foreign_key_violation then
+    blocked_community := true;
+  end;
+  if not blocked_ca or not blocked_community then
+    raise exception 'FAIL: deleting a CA or Community removed a verified Identity by cascade';
+  end if;
+  if (select count(*) from ca_master_ci.user_ca_identities) <> 1 then
+    raise exception 'FAIL: cascade attempt changed the verified Identity';
+  end if;
+  raise notice 'PASS: identity protected from CA and Community parent cascades';
+end
+$test$;
+
+-- Simulate the safe DB writes resulting from a no-change master refresh.
+-- An UPSERT on the same composite key must not cascade-delete Identity.
+insert into ca_master_ci.community_ca_members (id,community_id,ca_member_id)
+values ('not-used','home','ca1')
+on conflict (community_id,ca_member_id) do update
+  set community_id=excluded.community_id;
+
+do $test$
+begin
+  if (select id from ca_master_ci.community_ca_members
+      where community_id='home' and ca_member_id='ca1') <> 'protected' then
+    raise exception 'FAIL: UPSERT replaced protected link instead of preserving it';
+  end if;
+  if not exists (select 1 from ca_master_ci.user_ca_identities
+                 where user_id='dummy-user' and community_id='home' and is_primary=true) then
+    raise exception 'FAIL: no-change UPSERT removed the Identity';
+  end if;
+  raise notice 'PASS: same-link master UPSERT keeps Identity';
+end
+$test$;
+
+-- A reassignment should retain the old verified Identity for human review
+-- while the new, as-yet-unverified link becomes available.
+insert into ca_master_ci.community_ca_members (id,community_id,ca_member_id)
+  values ('new-location','other','ca1');
+do $test$
+begin
+  if not exists (select 1 from ca_master_ci.community_ca_members
+                 where id='new-location') then
+    raise exception 'FAIL: reassignment missing new link';
+  end if;
+  if not exists (select 1 from ca_master_ci.user_ca_identities
+                 where user_id='dummy-user' and community_id='home' and is_primary=true) then
+    raise exception 'FAIL: reassignment lost existing verified Identity';
+  end if;
+  if (select count(*) from ca_master_ci.stamp_collections) <> 1 then
+    raise exception 'FAIL: reassignment changed historical medals';
+  end if;
+  raise notice 'PASS: reassignment preserves historical Identity and medal';
 end
 $test$;
 

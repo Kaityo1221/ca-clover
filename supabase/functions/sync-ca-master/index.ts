@@ -294,6 +294,22 @@ Deno.serve(async(req:Request)=>{
       })),
     ];
 
+    // Fail closed on an empty master response and on an operator pause
+    // changed while we fetched/parsed the source. The RPC checks again
+    // during its transaction, preventing link changes after a pause.
+    if(records.length===0){
+      return json({error:"CA master response contains no CA records"},422);
+    }
+    const {data:writeGate,error:writeGateError}=await admin
+      .from("sync_automation_state")
+      .select("ca_master_sync_enabled")
+      .eq("id",1)
+      .maybeSingle();
+    if(writeGateError) return json({error:"CA master safety gate unavailable"},503);
+    if(writeGate?.ca_master_sync_enabled!==true){
+      return json({ok:false,status:"paused",error:"CA master sync is paused"},423);
+    }
+
     const caRows=records.map(record=>({
       source_key:record.sourceKey,
       trainer_name:record.trainerName,
@@ -542,14 +558,6 @@ Deno.serve(async(req:Request)=>{
       .filter(row=>managedSourceKeys.has(row.source_key))
       .map(row=>row.id);
 
-    if(managedCaIds.length){
-      const {error:deleteLinkError}=await admin
-        .from("community_ca_members")
-        .delete()
-        .in("ca_member_id",managedCaIds);
-      if(deleteLinkError) throw deleteLinkError;
-    }
-
     const links=safeResolved.flatMap(record=>{
       if(blockedSourceKeys.has(record.sourceKey)) return [];
       const communityId=sourceCommunityMap.get(record.communityId);
@@ -558,11 +566,24 @@ Deno.serve(async(req:Request)=>{
       return [{community_id:communityId,ca_member_id:caMemberId}];
     });
 
-    if(links.length){
-      const {error:linkError}=await admin
-        .from("community_ca_members")
-        .upsert(links,{onConflict:"community_id,ca_member_id"});
-      if(linkError) throw linkError;
+    // One service-role-only RPC applies expected link UPSERT + safe pruning
+    // in one database transaction. It rechecks the dedicated master gate and
+    // ON DELETE RESTRICT FK, and serializes concurrent link reconciliations.
+    // DO NOT DEPLOY before the reviewed RPC and safe FK are installed.
+    const {data:reconciled,error:reconcileError}=await admin.rpc(
+      "internal_reconcile_ca_master_links",
+      {p_desired_links:links,p_managed_ca_ids:managedCaIds},
+    );
+    if(reconcileError) throw reconcileError;
+    if(!reconciled || typeof reconciled!=="object"){
+      throw new Error("CA master reconciliation response is missing");
+    }
+    const protectedStaleLinks:Array<{community_id:string;ca_member_id:string}>=
+      Array.isArray(reconciled.protected_stale_identity_links)
+        ?reconciled.protected_stale_identity_links:[];
+    const removedStaleLinkCount=Number(reconciled.removed_stale_links);
+    if(!Number.isSafeInteger(removedStaleLinkCount) || removedStaleLinkCount<0){
+      throw new Error("CA master reconciliation returned invalid delete count");
     }
 
     const coordinatePayload=records.flatMap(record=>
@@ -576,7 +597,7 @@ Deno.serve(async(req:Request)=>{
     );
     if(coordinateError) throw coordinateError;
 
-    const isPartial=unresolved.length>0||conflicts.length>0;
+    const isPartial=unresolved.length>0||conflicts.length>0||protectedStaleLinks.length>0;
     const finishedAt=new Date().toISOString();
 
     const details={
@@ -591,6 +612,8 @@ Deno.serve(async(req:Request)=>{
       historical_ids_recorded:retiredHistoryRows.length,
       ca_members:caRows.length,
       links:links.length,
+      protected_stale_identity_links:protectedStaleLinks,
+      removed_stale_links:removedStaleLinkCount,
       coordinates:{
         ca_updated:Number(coordinateResult?.ca_updated??0)||0,
         community_updated:Number(coordinateResult?.community_updated??0)||0,
@@ -624,6 +647,8 @@ Deno.serve(async(req:Request)=>{
       historicalIdsRecorded:retiredHistoryRows.length,
       caMembers:caRows.length,
       links:links.length,
+      protectedStaleIdentityLinks:protectedStaleLinks.length,
+      removedStaleLinks:removedStaleLinkCount,
       coordinateResult,
     });
   }catch(error){
