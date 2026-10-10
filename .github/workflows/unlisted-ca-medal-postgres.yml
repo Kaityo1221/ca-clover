@@ -1,0 +1,48 @@
+# Draft PR #118 ONLY: disposable DB with synthetic users and medal trigger STUB.
+# Includes the actual production self-medal functions; design triggers omitted.
+name: Unlisted CA Medal / Disposable PostgreSQL
+
+on:
+  push:
+    branches:
+      - feat/unlisted-ca-own-medal-20261010
+  pull_request:
+    branches:
+      - chore/sync-deployed-community-claim-v14-20261010
+
+permissions:
+  contents: read
+
+jobs:
+  atomic-medal-approval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-only
+          POSTGRES_DB: medal_safety
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d medal_safety"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: test-only
+      PGDATABASE: medal_safety
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure PostgreSQL client
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client
+          fi
+      - name: Exercise approval RPC with real self-medal trigger definitions
+        run: psql -v ON_ERROR_STOP=1 -f scripts/ci/unlisted-ca-medal-rpc-postgres.sql

@@ -144,9 +144,41 @@ async function claims(){
   const p=profiles[c.user_id]||{},invite=c.request_source==="community_invite";
   const mapFallback=!invite&&c.ca_map_status==="not_listed"&&c.creator_ca_badge_verified===true&&c.creator_username_matches_profile===true&&c.is_ca_meetup===true;
   const can=c.status==="pending"&&(invite||c.creator_ca_badge_verified===true)&&c.creator_username_matches_profile===true&&(mapFallback||(c.ca_role_verified===true&&c.ca_map_status==="matched"));
-  return '<section class="claim"><div class="row between wraprow"><div><div class="tiny strong" style="color:#65a30d">'+e(c.community_prefecture_snapshot||"—")+'</div><h2 style="margin-top:4px">'+e(c.community_name_snapshot)+'</h2><div class="small muted strong">'+e(p.email||"—")+' / '+e(p.niantic_id||"未登録")+'</div></div>'+statusPill(c.status)+'</div><div class="tags"><span class="pill '+(invite?"":"violet")+'">'+(invite?"コミュニティ招待URL":"ミートアップ共有URL")+'</span><span class="pill '+(c.creator_username_matches_profile===true?"blue":"rose")+'">SCOPELY EXPLORE ID '+(c.creator_username_matches_profile===true?"一致":"不一致")+'</span><span class="pill '+(c.ca_map_status==="matched"?"":"rose")+'">CA地図 '+e(c.ca_map_status||"未確認")+'</span>'+(invite?"":'<span class="pill '+(c.creator_ca_badge_verified===true?"":"rose")+'">紫CA '+(c.creator_ca_badge_verified===true?"確認済み":"未確認")+'</span>')+'</div>'+(c.input_url?'<p class="small"><a target="_blank" rel="noreferrer" href="'+e(c.input_url)+'" style="color:#65a30d;font-weight:900">Campfireを確認 ↗</a></p>':'')+(c.status==="pending"?'<div class="actions"><button class="btn rose" data-review="reject" data-id="'+c.id+'">却下</button><button class="btn" data-review="approve" data-id="'+c.id+'" '+(can?"":"disabled")+'>承認</button></div>':'')+(c.ca_map_status==="not_listed"?'<div class="notice section">'+(mapFallback?'日本CA地図は未掲載ですが、本人主催Meetup・SCOPELY EXPLORE ID一致・紫CAバッジをCampfireで確認済みです。ADMIN手動審査で承認できます。':'日本CA地図に未掲載です。本人主催Meetupで追加確認してください。')+'</div>':'')+'<div class="tiny muted section">申請 '+e(fmt(c.requested_at))+'</div></section>';
+  const manualLevelField=mapFallback&&c.status==="pending"
+    ?'<div class="notice section" style="border-color:#fbbf24"><label class="small strong" for="caLevel_'+e(c.id)+'">地図未掲載CAの資格を手動確認</label><p class="small muted">紫色バッジだけでは1st / 2ndを識別できません。本人のCA資格を別途確認して選択してください。</p><select id="caLevel_'+e(c.id)+'" data-ca-level="'+e(c.id)+'" class="input section"><option value="">1st / 2nd を選択</option><option value="1st">1st CA</option><option value="2nd">2nd CA</option></select><label class="small strong" style="display:flex;align-items:center;gap:8px;margin-top:12px"><input type="checkbox" data-ca-level-confirm="'+e(c.id)+'">1st / 2ndの資格を確認しました</label><p class="tiny muted">本人の拠点メダルは発行機能の有効化後に承認すると取得できます。確認できない場合は承認しないでください。</p></div>'
+    :'';
+  return '<section class="claim"><div class="row between wraprow"><div><div class="tiny strong" style="color:#65a30d">'+e(c.community_prefecture_snapshot||"—")+'</div><h2 style="margin-top:4px">'+e(c.community_name_snapshot)+'</h2><div class="small muted strong">'+e(p.email||"—")+' / '+e(p.niantic_id||"未登録")+'</div></div>'+statusPill(c.status)+'</div><div class="tags"><span class="pill '+(invite?"":"violet")+'">'+(invite?"コミュニティ招待URL":"ミートアップ共有URL")+'</span><span class="pill '+(c.creator_username_matches_profile===true?"blue":"rose")+'">SCOPELY EXPLORE ID '+(c.creator_username_matches_profile===true?"一致":"不一致")+'</span><span class="pill '+(c.ca_map_status==="matched"?"":"rose")+'">CA地図 '+e(c.ca_map_status||"未確認")+'</span>'+(invite?"":'<span class="pill '+(c.creator_ca_badge_verified===true?"":"rose")+'">紫CA '+(c.creator_ca_badge_verified===true?"確認済み":"未確認")+'</span>')+'</div>'+(c.input_url?'<p class="small"><a target="_blank" rel="noreferrer" href="'+e(c.input_url)+'" style="color:#65a30d;font-weight:900">Campfireを確認 ↗</a></p>':'')+manualLevelField+(c.status==="pending"?'<div class="actions"><button class="btn rose" data-review="reject" data-id="'+c.id+'">却下</button><button class="btn" data-review="approve" data-id="'+c.id+'" data-manual-fallback="'+(mapFallback?'1':'0')+'" '+(can&&!mapFallback?"":"disabled")+'>承認</button></div>':'')+(c.ca_map_status==="not_listed"?'<div class="notice section">'+(mapFallback?'日本CA地図は未掲載ですが、本人主催Meetup・SCOPELY EXPLORE ID一致・紫CAバッジをCampfireで確認済みです。ADMIN手動審査で承認できます。':'日本CA地図に未掲載です。本人主催Meetupで追加確認してください。')+'</div>':'')+'<div class="tiny muted section">申請 '+e(fmt(c.requested_at))+'</div></section>';
  }).join(""):'<section class="card center">申請はありません 🍀</section>';
- app.querySelectorAll("[data-review]").forEach(b=>b.onclick=async()=>{b.disabled=true;const r=await client.functions.invoke("community-claim",{body:{action:b.dataset.review,requestId:b.dataset.id}});if(r.error)alert(r.error.message);await claims()});
+ app.querySelectorAll("[data-ca-level],[data-ca-level-confirm]").forEach(el=>{
+   el.addEventListener("change",()=>{
+     const id=el.getAttribute("data-ca-level")||el.getAttribute("data-ca-level-confirm");
+     const level=app.querySelector('[data-ca-level="'+id+'"]');
+     const confirmed=app.querySelector('[data-ca-level-confirm="'+id+'"]');
+     const approve=app.querySelector('[data-review="approve"][data-id="'+id+'"]');
+     if(approve)approve.disabled=!(level&&["1st","2nd"].includes(level.value)&&confirmed&&confirmed.checked);
+   });
+ });
+ app.querySelectorAll("[data-review]").forEach(b=>b.onclick=async()=>{
+   const requestId=b.dataset.id;
+   const body={action:b.dataset.review,requestId};
+   if(b.dataset.review==="approve"&&b.dataset.manualFallback==="1"){
+     const level=app.querySelector('[data-ca-level="'+requestId+'"]');
+     const confirmed=app.querySelector('[data-ca-level-confirm="'+requestId+'"]');
+     if(!level||!["1st","2nd"].includes(level.value)||!confirmed?.checked){
+       alert("1st / 2ndの資格を確認して選択してください");return;
+     }
+     body.confirmedCaLevel=level.value;
+     body.confirmedCaLevelEvidence=true;
+   }
+   b.disabled=true;
+   const r=await client.functions.invoke("community-claim",{body});
+   if(r.error){
+     let reason=r.error.message;
+     try{const ctx=r.error.context;if(ctx&&typeof ctx.clone==="function"){const json=await ctx.clone().json();if(json?.error)reason=json.error}}catch(_){}
+     alert(reason);
+   }
+   await claims();
+ });
 }
 
 async function caList(){

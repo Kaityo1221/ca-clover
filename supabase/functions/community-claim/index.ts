@@ -255,6 +255,36 @@ Deno.serve(async(req:Request)=>{
         }
       }
 
+      // Opt-in rollout ONLY after the reviewed RPC exists and PR #117's
+      // CA master sync preserves identity links. Fallback verification above
+      // rechecks the Campfire creator, purple badge and Community ID.
+      if(mapFallback){
+        if(Deno.env.get("CA_CLOVER_UNLISTED_OWN_MEDAL")!=="enabled"){
+          // Do not silently approve an unlisted CA without issuing their own
+          // medal. Until the DB RPC and sync protections are active, fail safe.
+          return json({
+            error:"地図未掲載CAの拠点メダル発行は準備中です。管理者へお問い合わせください",
+            code:"UNLISTED_MEDAL_APPROVAL_NOT_READY",
+          },503);
+        }
+        const caLevel=String(body.confirmedCaLevel??"");
+        if(!["1st","2nd"].includes(caLevel)||body.confirmedCaLevelEvidence!==true){
+          return json({
+            error:"ADMINがCAの1st/2nd資格を確認・選択してください",
+            code:"MANUAL_CA_LEVEL_REQUIRED",
+          },422);
+        }
+        const {data:approved,error:atomicApprovalError}=await admin.rpc(
+          "internal_approve_unlisted_ca_claim",{
+            p_request_id:requestId,
+            p_admin_user_id:userData.user.id,
+            p_confirmed_ca_level:caLevel,
+          },
+        );
+        if(atomicApprovalError) throw atomicApprovalError;
+        return json(approved);
+      }
+
       if(requesterProfile.role==="pending"){
         const {error:roleError}=await admin.from("profiles")
           .update({role:"ca"})
@@ -367,6 +397,9 @@ Deno.serve(async(req:Request)=>{
       }
 
       const meetupId=target.id;
+      if(!meetupId){
+        return json({error:"Campfire Meetup IDを確認できません",code:"INVALID_CAMPFIRE_SHARE_URL"},400);
+      }
       let event:CampfireEvent;
       let source="campfire-share";
       try{
@@ -594,6 +627,9 @@ Deno.serve(async(req:Request)=>{
     if(target.kind==="meetup"){
       requestSource="meetup_share";
       const meetupId=target.id;
+      if(!meetupId){
+        return json({error:"Campfire Meetup IDを確認できません",code:"INVALID_CAMPFIRE_SHARE_URL"},400);
+      }
 
       try{
         event=await campfire.getAnonymousEvent(meetupId);
@@ -645,6 +681,9 @@ Deno.serve(async(req:Request)=>{
       liveCommunityName=String(event.club?.name??"").trim();
     }else{
       requestSource="community_invite";
+      if(!target.id){
+        return json({error:"Campfire Community IDを確認できません",code:"INVALID_CAMPFIRE_SHARE_URL"},400);
+      }
       campfireCommunityId=target.id;
     }
 
