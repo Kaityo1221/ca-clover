@@ -116,8 +116,7 @@ do $test$
 declare v jsonb;
 begin
   select public.internal_reconcile_ca_master_links(
-    '[{"community_id":"10000000-0000-4000-8000-000000000003","ca_member_id":"20000000-0000-4000-8000-000000000001"},'
-    ||'{"community_id":"10000000-0000-4000-8000-000000000003","ca_member_id":"20000000-0000-4000-8000-000000000002"}]'::text::jsonb,
+    ('[{"community_id":"10000000-0000-4000-8000-000000000003","ca_member_id":"20000000-0000-4000-8000-000000000001"},' || '{"community_id":"10000000-0000-4000-8000-000000000003","ca_member_id":"20000000-0000-4000-8000-000000000002"}]')::jsonb,
     array['20000000-0000-4000-8000-000000000001'::uuid,'20000000-0000-4000-8000-000000000002'::uuid]
   ) into v;
   if (v->>'removed_stale_links')::int<>1
@@ -162,8 +161,7 @@ begin
   select count(*) into old_identities from public.user_ca_identities;
   begin
     perform public.internal_reconcile_ca_master_links(
-      '[{"community_id":"10000000-0000-4000-8000-000000000002","ca_member_id":"20000000-0000-4000-8000-000000000001"},'
-      ||'{"community_id":"99999999-0000-4000-8000-000000000099","ca_member_id":"20000000-0000-4000-8000-000000000002"}]'::text::jsonb,
+      ('[{"community_id":"10000000-0000-4000-8000-000000000002","ca_member_id":"20000000-0000-4000-8000-000000000001"},' || '{"community_id":"99999999-0000-4000-8000-000000000099","ca_member_id":"20000000-0000-4000-8000-000000000002"}]')::jsonb,
       array['20000000-0000-4000-8000-000000000001'::uuid,'20000000-0000-4000-8000-000000000002'::uuid]
     );
   exception when foreign_key_violation then denied:=true;
