@@ -25,9 +25,10 @@ export function shouldReleaseCaMasterLease({writeStarted,writeFailed,pauseConfir
  * @param {string} params.owner current lease owner UUID
  * @param {string} params.stage failed write stage (no PII)
  * @param {string} params.finishedAt ISO timestamp
+ * @param {string} [params.code] fixed internal audit reason (never pass user input)
  * @returns {Promise<boolean>} true only if the owner-specific stop was confirmed
  */
-export async function pauseAndAuditCaMasterFailure({admin,owner,stage,finishedAt}){
+export async function pauseAndAuditCaMasterFailure({admin,owner,stage,finishedAt,code="CA_MASTER_WRITE_INTERRUPTED"}){
   let pausedByOwner=false;
   try{
     const {data:paused,error:pauseError}=await admin.from("sync_automation_state")
@@ -47,7 +48,7 @@ export async function pauseAndAuditCaMasterFailure({admin,owner,stage,finishedAt
       status:"partial",
       finished_at:finishedAt,
       details:{
-        code:"CA_MASTER_WRITE_INTERRUPTED",
+        code,
         stage,
         requires_admin_review:true,
       },
