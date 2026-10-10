@@ -1,5 +1,5 @@
 # Draft PR #118 ONLY: disposable DB with synthetic users and medal trigger STUB.
-# This validates atomic approval and rollback, NOT full production trigger logic.
+# Includes the actual production self-medal functions; design triggers omitted.
 name: Unlisted CA Medal / Disposable PostgreSQL
 
 on:
@@ -44,5 +44,5 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y postgresql-client
           fi
-      - name: Exercise actual reviewed approval RPC with simulated medal trigger
+      - name: Exercise approval RPC with real self-medal trigger definitions
         run: psql -v ON_ERROR_STOP=1 -f scripts/ci/unlisted-ca-medal-rpc-postgres.sql
