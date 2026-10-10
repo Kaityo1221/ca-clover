@@ -34,7 +34,7 @@ assert.ok(atomic.includes("p_owner uuid"),"Link RPC must fence stale workers");
 assert.ok(atomic.includes("from public.user_ca_identities"),"Link RPC must preserve verified links");
 assert.ok(claim.includes("CA_CLOVER_UNLISTED_OWN_MEDAL"),"New medal workflow remains opt-in");
 assert.ok(claim.includes("internal_approve_unlisted_ca_claim"),"Use transactional medal approval");
-assert.equal((claim.match(/\\.getAnonymousClaimEvent\\(/g)||[]).length,3,
+assert.equal((claim.match(/\.getAnonymousClaimEvent\(/g)||[]).length,3,
   "All 3 Community claim Event reads use deployed v14 fields");
 assert.ok(!claim.includes(".getAnonymousEvent("),
   "No Community claim read should use newer Meetup query");
