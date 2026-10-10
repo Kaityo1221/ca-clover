@@ -1,3 +1,4 @@
+/// <reference lib="deno.ns" />
 // Regression: the deployed community-claim v14 used the Event query without
 // isPasscodeRewardEligible. Never query real Campfire: mocked fetch only.
 import {CampfireClient} from "../supabase/functions/_shared/campfire/client.ts";
