@@ -1,0 +1,52 @@
+# Integrated Draft release candidate. Synthetic PostgreSQL only.
+# No SUPABASE_* credentials and no production connections.
+name: Release candidate / Master + Medal PostgreSQL QA
+
+on:
+  push:
+    branches:
+      - safety/release-candidate-master-and-medal-20261010
+  pull_request:
+    branches:
+      - safety/ca-master-exclusive-lease-20261010
+
+permissions:
+  contents: read
+
+jobs:
+  atomic-master-and-medal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-only
+          POSTGRES_DB: ca_clover_release_qa
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ca_clover_release_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: test-only
+      PGDATABASE: ca_clover_release_qa
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure PostgreSQL client
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client
+          fi
+      - name: Test safe FK and CA master link changes
+        run: psql -v ON_ERROR_STOP=1 -f scripts/ci/ca-master-safety-postgres.sql
+      - name: Test actual link RPC, crash recovery and exclusive lease
+        run: psql -v ON_ERROR_STOP=1 -f scripts/ci/ca-master-atomic-rpc-postgres.sql
+      - name: Test unlisted CA approval RPC with real self-medal function
+        run: psql -v ON_ERROR_STOP=1 -f scripts/ci/unlisted-ca-medal-rpc-postgres.sql
