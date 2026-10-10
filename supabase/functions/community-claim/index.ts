@@ -258,7 +258,15 @@ Deno.serve(async(req:Request)=>{
       // Opt-in rollout ONLY after the reviewed RPC exists and PR #117's
       // CA master sync preserves identity links. Fallback verification above
       // rechecks the Campfire creator, purple badge and Community ID.
-      if(mapFallback && Deno.env.get("CA_CLOVER_UNLISTED_OWN_MEDAL")==="enabled"){
+      if(mapFallback){
+        if(Deno.env.get("CA_CLOVER_UNLISTED_OWN_MEDAL")!=="enabled"){
+          // Do not silently approve an unlisted CA without issuing their own
+          // medal. Until the DB RPC and sync protections are active, fail safe.
+          return json({
+            error:"地図未掲載CAの拠点メダル発行は準備中です。管理者へお問い合わせください",
+            code:"UNLISTED_MEDAL_APPROVAL_NOT_READY",
+          },503);
+        }
         const caLevel=String(body.confirmedCaLevel??"");
         if(!["1st","2nd"].includes(caLevel)||body.confirmedCaLevelEvidence!==true){
           return json({
