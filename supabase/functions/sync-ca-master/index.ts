@@ -575,13 +575,14 @@ Deno.serve(async(req:Request)=>{
       const safelyRemovableIds=stale.filter(row=>
         !verifiedLinkKeys.has(linkKey(row.community_id,row.ca_member_id)))
         .map(row=>row.id);
-      if(safelyRemovableIds.length){
+      for(let i=0;i<safelyRemovableIds.length;i+=60){
+        const batch=safelyRemovableIds.slice(i,i+60);
         const {error:deleteLinkError}=await admin
           .from("community_ca_members")
           .delete()
-          .in("id",safelyRemovableIds);
+          .in("id",batch);
         if(deleteLinkError) throw deleteLinkError;
-        removedStaleLinkCount=safelyRemovableIds.length;
+        removedStaleLinkCount+=batch.length;
       }
     }
 
