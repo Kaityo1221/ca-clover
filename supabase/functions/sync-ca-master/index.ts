@@ -248,6 +248,27 @@ Deno.serve(async(req:Request)=>{
       if(error) console.error("CA master lease release failed",error.code);
     };
 
+    recordWriteFailure=async()=>{
+      if(!writeStarted) return;
+      // A failed REST write can leave an incomplete master snapshot.
+      // Pause ONLY CA-master; the public Meetup/icon Cron remains running.
+      const {error:pauseError}=await admin.from("sync_automation_state")
+        .update({ca_master_sync_enabled:false})
+        .eq("id",1);
+      if(pauseError) console.error("CA master emergency pause failed",pauseError.code);
+      const {error:auditError}=await admin.from("sync_runs").insert({
+        source:"ca_members_map",
+        status:"partial",
+        finished_at:new Date().toISOString(),
+        details:{
+          code:"CA_MASTER_WRITE_INTERRUPTED",
+          stage:writeStage,
+          requires_admin_review:true,
+        },
+      });
+      if(auditError) console.error("CA master failure audit unavailable",auditError.code);
+    };
+
     const response=await fetch(CA_MASTER_URL,{
       headers:{"User-Agent":"CA-Clover/1.0"},
     });
@@ -659,18 +680,20 @@ Deno.serve(async(req:Request)=>{
     };
 
     writeStage="completion-audit";
-    await admin.from("sync_runs").insert({
+    const {error:runAuditError}=await admin.from("sync_runs").insert({
       source:"ca_members_map",
       status:isPartial?"partial":"success",
       finished_at:finishedAt,
       details,
     });
+    if(runAuditError) throw runAuditError;
 
-    await admin.from("sync_automation_state").update({
+    const {error:finishError}=await admin.from("sync_automation_state").update({
       last_ca_master_at:finishedAt,
       last_ca_master_updated:createRows.length,
       updated_at:finishedAt,
     }).eq("id",1);
+    if(finishError) throw finishError;
 
     return json({
       ok:true,
@@ -691,6 +714,10 @@ Deno.serve(async(req:Request)=>{
       coordinateResult,
     });
   }catch(error){
+    if(recordWriteFailure){
+      try{await recordWriteFailure();}
+      catch{console.error("CA master failure audit could not be recorded");}
+    }
     return json({error:error instanceof Error?error.message:String(error)},500);
   }finally{
     if(releaseLease){
