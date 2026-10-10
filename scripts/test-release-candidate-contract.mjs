@@ -24,7 +24,7 @@ assert.ok(master.includes("internal_reconcile_ca_master_links"),"CA links must u
 assert.ok(master.includes("CA_MASTER_WRITE_INTERRUPTED"),"Failed writes must be audited");
 assert.ok(master.includes("shouldReleaseCaMasterLease"),"Failures must keep lease if pause not confirmed");
 assert.ok(lease.includes("ca_master_sync_enabled=false"),"Lease must fail closed");
-assert.ok(lease.includes("ca_master_lease_expires_at<=clock_timestamp()"),"Stale run detection required");
+assert.ok(lease.includes("v_expires<=clock_timestamp()"),"Stale run detection required");
 assert.ok(atomic.includes("confdeltype='r'"),"Link RPC must require RESTRICT foreign key");
 assert.ok(atomic.includes("p_owner uuid"),"Link RPC must fence stale workers");
 assert.ok(atomic.includes("from public.user_ca_identities"),"Link RPC must preserve verified links");
