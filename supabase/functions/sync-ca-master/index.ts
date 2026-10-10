@@ -199,6 +199,7 @@ Deno.serve(async(req:Request)=>{
   let writeStarted=false;
   let writeFailed=false;
   let pauseConfirmed=false;
+  let retainLeaseForReview=false;
   let writeStage="preflight";
   try{
     const supabaseUrl=Deno.env.get("SUPABASE_URL");
@@ -330,15 +331,18 @@ Deno.serve(async(req:Request)=>{
     // Fail closed on an empty master response and on an operator pause
     // changed while we fetched/parsed the source. The RPC checks again
     // during its transaction, preventing link changes after a pause.
-    if(records.length===0){
-      return json({error:"CA master response contains no CA records"},422);
-    }
+    // Empty sources are rejected and paused by the common preflight below.
     // No writes if the source omitted a Campfire ID, contradicted itself,
     // or contains duplicate CA rows with different master metadata.
     const sourcePreflight=assessCaMasterSource(records,{
       unresolvedCount:unresolved.length,conflictCount:conflicts.length,
     });
     if(!sourcePreflight.ok){
+      const stopped=await pauseAndAuditCaMasterFailure({
+        admin,owner,stage:"source-preflight",
+        code:"CA_MASTER_SOURCE_INVALID",finishedAt:new Date().toISOString(),
+      });
+      retainLeaseForReview=!stopped;
       return json({
         ok:false,status:"rejected",
         code:"CA_MASTER_SOURCE_PREFLIGHT_FAILED",
@@ -464,6 +468,11 @@ Deno.serve(async(req:Request)=>{
     // Community matching and duplicate detection above are read-only.
     // No CA/Community metadata writes occur until every mapping has passed.
     if(conflicts.length){
+      const stopped=await pauseAndAuditCaMasterFailure({
+        admin,owner,stage:"community-mapping-preflight",
+        code:"CA_MASTER_MAPPING_AMBIGUOUS",finishedAt:new Date().toISOString(),
+      });
+      retainLeaseForReview=!stopped;
       return json({
         ok:false,status:"rejected",
         code:"CA_MASTER_DB_MAPPING_AMBIGUOUS",
@@ -473,6 +482,11 @@ Deno.serve(async(req:Request)=>{
 
     const caRows=sourcePreflight.caRows;
     if(!caRows?.length){
+      const stopped=await pauseAndAuditCaMasterFailure({
+        admin,owner,stage:"empty-write-plan",
+        code:"CA_MASTER_SOURCE_INVALID",finishedAt:new Date().toISOString(),
+      });
+      retainLeaseForReview=!stopped;
       return json({ok:false,code:"CA_MASTER_EMPTY_WRITE_PLAN"},422);
     }
     // Metadata updates are separate REST calls. Any failure afterward
@@ -737,7 +751,7 @@ Deno.serve(async(req:Request)=>{
     // An unconfirmed pause after a partial write MUST leave the lease in DB.
     // The next invocation is blocked; on expiry the begin RPC permanently
     // pauses CA-master until explicit human review instead of retrying.
-    if(releaseLease&&shouldReleaseCaMasterLease({writeStarted,writeFailed,pauseConfirmed})){
+    if(releaseLease&&!retainLeaseForReview&&shouldReleaseCaMasterLease({writeStarted,writeFailed,pauseConfirmed})){
       try{
         await releaseLease();
       }catch{
