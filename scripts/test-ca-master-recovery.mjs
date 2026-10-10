@@ -14,13 +14,14 @@ for(const [label,writeStarted,writeFailed,pauseConfirmed,expected] of cases){
     expected,label);
 }
 const code=readFileSync(new URL("../supabase/functions/sync-ca-master/index.ts",import.meta.url),"utf8");
+const recovery=readFileSync(new URL("../supabase/functions/_shared/ca-master-recovery.mjs",import.meta.url),"utf8");
 assert.ok(code.includes("shouldReleaseCaMasterLease({writeStarted,writeFailed,pauseConfirmed})"),
   "Edge function must actually use the tested fail-closed lease-release policy");
-assert.ok(code.includes('.eq("ca_master_lease_owner",owner)'),
+assert.ok(recovery.includes('.eq("ca_master_lease_owner",owner)'),
   "Only the active lease owner may pause a failing CA-master run");
 assert.ok(code.includes("recordWriteFailure=async()=>"),
   "Partial failures must attempt a dedicated safety pause");
-assert.ok(code.includes("CA_MASTER_WRITE_INTERRUPTED"),
+assert.ok(recovery.includes("CA_MASTER_WRITE_INTERRUPTED"),
   "Partial failures must be audit-recorded");
 assert.ok(code.includes("internal_finish_ca_master_lease"),
   "Successful requests must release the execution lease");
