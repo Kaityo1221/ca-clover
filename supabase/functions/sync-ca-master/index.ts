@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { shouldReleaseCaMasterLease } from "../_shared/ca-master-recovery.mjs";
+import { shouldReleaseCaMasterLease, pauseAndAuditCaMasterFailure } from "../_shared/ca-master-recovery.mjs";
 
 const CRON_HEADER="x-ca-clover-cron-secret";
 const CA_MASTER_URL="https://docs.google.com/spreadsheets/d/1BtPjOxNX4JhttKKJa_-qrIXdVmK5UsbAX-RcLmLTuwk/export?format=csv&gid=633821294";
@@ -252,29 +252,10 @@ Deno.serve(async(req:Request)=>{
     };
 
     recordWriteFailure=async()=>{
-      if(!writeStarted) return false;
-      // A failed REST write can leave an incomplete master snapshot.
-      // Pause ONLY CA-master; the public Meetup/icon Cron remains running.
-      const {data:paused,error:pauseError}=await admin.from("sync_automation_state")
-        .update({ca_master_sync_enabled:false})
-        .eq("id",1)
-        .eq("ca_master_lease_owner",owner)
-        .select("id")
-        .maybeSingle();
-      const pausedByOwner=!pauseError&&paused?.id===1;
-      if(!pausedByOwner) console.error("CA master pause not confirmed for lease owner");
-      const {error:auditError}=await admin.from("sync_runs").insert({
-        source:"ca_members_map",
-        status:"partial",
-        finished_at:new Date().toISOString(),
-        details:{
-          code:"CA_MASTER_WRITE_INTERRUPTED",
-          stage:writeStage,
-          requires_admin_review:true,
-        },
+      if(!writeStarted)return false;
+      return await pauseAndAuditCaMasterFailure({
+        admin,owner,stage:writeStage,finishedAt:new Date().toISOString(),
       });
-      if(auditError) console.error("CA master failure audit unavailable",auditError.code);
-      return pausedByOwner;
     };
 
     const response=await fetch(CA_MASTER_URL,{
