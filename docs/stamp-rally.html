@@ -66,7 +66,7 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
     <h1>全国メダル一覧</h1>
     <p>地方を開いて、都道府県ごとのCommunityメダルを眺めるメダルコレクション。</p>
     <div class="summary">
-      <div><small>出会ったCA</small><div id="totalScore" class="score">— <span>/ —</span></div></div>
+      <div><small>所持メダル</small><div id="totalScore" class="score">— <span>/ —</span></div></div>
       <div class="note">取得済みのみカラー表示。QR交換・管理者付与を含みます。</div>
     </div>
   </section>
@@ -825,6 +825,7 @@ async function load(){
     historyHtml='<div class="section" style="border:1px solid #eadfce;border-radius:18px;background:#fffaf2;padding:12px;text-align:left">'
      +'<div class="tiny strong" style="color:#745c3f">🍀 初回取得</div>'
      +'<div class="strong" style="font-size:11px;margin-top:5px;color:#514941">'+esc(firstDate)+'</div>'
+     +(selectedCa.collection.acquisition_source==="self"?'<div class="tiny strong" style="margin-top:5px;color:#4d7c0f">🍀 自分のメダル（CA認証時に付与）</div>':'')
      +(selectedCa.collection.first_event_name?'<div class="tiny muted strong" style="margin-top:5px">🎪 '+esc(selectedCa.collection.first_event_name)+'</div>':'')
      +(selectedCa.collection.first_location?'<div class="tiny muted strong" style="margin-top:5px">📍 '+esc(selectedCa.collection.first_location)+'</div>':'')
      +'</div>'
