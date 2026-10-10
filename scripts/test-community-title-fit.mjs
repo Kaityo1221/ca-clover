@@ -5,7 +5,7 @@ import {runInNewContext} from "node:vm";
 
 const code=readFileSync(new URL("../docs/community-title-fit.js",import.meta.url),"utf8");
 const html=readFileSync(new URL("../docs/index.html",import.meta.url),"utf8");
-assert.ok(html.includes("community-title-fit.js?v=20261010-autofit1"),"Page must load the fitting code");
+assert.ok(html.includes("community-title-fit.js?v=20261010-bracket2"),"Page must load the fitting code");
 assert.ok(code.includes(".community-hub-layout .community-hero-row h1"),"Must target only Community heading");
 assert.ok(!code.includes(".feature-app") && !code.includes("stamp_collections"),
   "Must not manipulate the four feature buttons or medals");
