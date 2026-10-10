@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { shouldReleaseCaMasterLease, pauseAndAuditCaMasterFailure } from "../_shared/ca-master-recovery.mjs";
+import { assessCaMasterSource } from "../_shared/ca-master-source-preflight.mjs";
 
 const CRON_HEADER="x-ca-clover-cron-secret";
 const CA_MASTER_URL="https://docs.google.com/spreadsheets/d/1BtPjOxNX4JhttKKJa_-qrIXdVmK5UsbAX-RcLmLTuwk/export?format=csv&gid=633821294";
@@ -332,6 +333,22 @@ Deno.serve(async(req:Request)=>{
     if(records.length===0){
       return json({error:"CA master response contains no CA records"},422);
     }
+    // No writes if the source omitted a Campfire ID, contradicted itself,
+    // or contains duplicate CA rows with different master metadata.
+    const sourcePreflight=assessCaMasterSource(records,{
+      unresolvedCount:unresolved.length,conflictCount:conflicts.length,
+    });
+    if(!sourcePreflight.ok){
+      return json({
+        ok:false,status:"rejected",
+        code:"CA_MASTER_SOURCE_PREFLIGHT_FAILED",
+        reason:sourcePreflight.reason,
+        sourceRows:sourcePreflight.records,
+        unresolvedRows:unresolved.length,
+        conflictingCommunityMappings:conflicts.length,
+      },422);
+    }
+
     const {data:writeGate,error:writeGateError}=await admin
       .from("sync_automation_state")
       .select("ca_master_sync_enabled")
@@ -348,28 +365,6 @@ Deno.serve(async(req:Request)=>{
     );
     if(liveLeaseError||liveLease!==true){
       return json({error:"CA master lease lost or paused"},423);
-    }
-
-    // Metadata writes follow separate REST calls; record a failure and
-    // disable only CA-master sync if any of these calls fails.
-    writeStarted=true;
-    writeStage="ca-members";
-    const caRows=records.map(record=>({
-      source_key:record.sourceKey,
-      trainer_name:record.trainerName,
-      ca_level:record.caLevel,
-      prefecture:record.prefecture,
-      join_date:record.joinDate,
-      status:record.status,
-      latitude:record.latitude,
-      longitude:record.longitude,
-    }));
-
-    if(caRows.length){
-      const {error:caError}=await admin
-        .from("ca_members")
-        .upsert(caRows,{onConflict:"source_key"});
-      if(caError) throw caError;
     }
 
     const [
@@ -465,6 +460,29 @@ Deno.serve(async(req:Request)=>{
         fetched_at:new Date().toISOString(),
       });
     }
+
+    // Community matching and duplicate detection above are read-only.
+    // No CA/Community metadata writes occur until every mapping has passed.
+    if(conflicts.length){
+      return json({
+        ok:false,status:"rejected",
+        code:"CA_MASTER_DB_MAPPING_AMBIGUOUS",
+        conflictingMappings:conflicts.length,
+      },422);
+    }
+
+    const caRows=sourcePreflight.caRows;
+    if(!caRows?.length){
+      return json({ok:false,code:"CA_MASTER_EMPTY_WRITE_PLAN"},422);
+    }
+    // Metadata updates are separate REST calls. Any failure afterward
+    // pauses CA-master and retains the lease unless the pause is confirmed.
+    writeStarted=true;
+    writeStage="ca-members";
+    const {error:caError}=await admin
+      .from("ca_members")
+      .upsert(caRows,{onConflict:"source_key"});
+    if(caError) throw caError;
 
     writeStage="communities";
     if(createRows.length){
@@ -628,6 +646,12 @@ Deno.serve(async(req:Request)=>{
     const protectedStaleLinks:Array<{community_id:string;ca_member_id:string}>=
       Array.isArray(reconciled.protected_stale_identity_links)
         ?reconciled.protected_stale_identity_links:[];
+    // A stale assignment backed by a verified Identity is not an ordinary
+    // successful sync. Leave the person and medal intact and pause the master
+    // for explicit operator review before doing any further updates.
+    if(protectedStaleLinks.length>0){
+      throw new Error("CA_MASTER_VERIFIED_IDENTITY_ASSIGNMENT_REVIEW_REQUIRED");
+    }
     const removedStaleLinkCount=Number(reconciled.removed_stale_links);
     if(!Number.isSafeInteger(removedStaleLinkCount) || removedStaleLinkCount<0){
       throw new Error("CA master reconciliation returned invalid delete count");
