@@ -29,7 +29,7 @@ PostgRESTへHTTPリクエストを送るフルE2E試験ではない。
 - 統合版ではv10にCAマスター専用ゲートの条件を加えたのみ（比較上3行追加、旧条件1行置換）。アイコン更新と申請通知は残っている。
 - 実稼働 `community-claim` v14 は保存用PR #116のmain fileと**完全一致**。
 - 統合版では元のv14から**39行追加のみ**。未掲載CAの新しい本人確認後メダル付与処理を feature flag で分離。
-- **確認必須:** 共有 `_shared/campfire/queries.ts` の統合リポジトリ版には、本番v14にない `isPasscodeRewardEligible` が2か所追加されている（主要関数ではないが、デプロイ時に一緒に読み込まれる）。このGraphQLフィールドのサーバー対応・回帰影響を本番に触れず検証し、必要ならcommunity-claim専用の安全なクエリへ分離する。現時点でGraphQL経路の完全一致とは評価しない。
+- **対策追加:** 本番v14との差分だった `isPasscodeRewardEligible` 2行は、Community申請専用 `getAnonymousClaimEvent()` でのみ除外。申請の3つの匿名Meetup確認経路を切り替え、一般Meetupと公開Activityクエリは維持。`scripts/test-claim-graphql-compat.ts` の**本番v14フィールド集合との一致テスト（外部通信なし）**で確認する。クエリ形式の比較はローカルで完結し、Campfire実ネットワーク応答の動作確認は別途残る。
 - 同関数の `_shared/campfire/types.ts` は稼働中バンドル取得結果が空ファイルなのに対しGitHub側は型定義あり。TypeScript型は通常実行時に消去されるが、ソース差分として再確認が必要。
 
 ## 4. バックアップと照合
