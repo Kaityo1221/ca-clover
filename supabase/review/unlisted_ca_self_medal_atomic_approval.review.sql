@@ -13,8 +13,8 @@
 --
 -- Temporary CA rows are LOCAL to CA Clover. NEVER write Google Sheets.
 -- On the next master sync the same normalized source_key can be taken over
--- by the official master row. PR #117 must be deployed before enabling this
--- workflow to preserve identity links during the sync.
+-- by the official master row. The integrated CA-master protections
+-- in PR #121/#127 must be deployed before this workflow is enabled.
 
 create or replace function public.internal_approve_unlisted_ca_claim(
   p_request_id uuid,
@@ -196,7 +196,8 @@ grant execute on function public.internal_approve_unlisted_ca_claim(uuid,uuid,te
 -- 6. Later master import of same source_key keeps CA id, identity,
 --    owned medals and QR exchange valid (requires PR #117).
 -- 7. Rejected claims and non-CAs cannot call the RPC.
--- 8. Existing 5 CA accounts + 12 medals are unchanged.
+-- 8. Confirm ALL pre-release identities and medals are unchanged by ID,
+--    not just row counts (read-only baseline currently 6 identities / 13 medals).
 --
 -- Rollback must be planned before production. Do not drop local CA rows
 -- or owned stamp records when disabling the feature.
