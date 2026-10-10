@@ -34,6 +34,15 @@ assert.ok(atomic.includes("p_owner uuid"),"Link RPC must fence stale workers");
 assert.ok(atomic.includes("from public.user_ca_identities"),"Link RPC must preserve verified links");
 assert.ok(claim.includes("CA_CLOVER_UNLISTED_OWN_MEDAL"),"New medal workflow remains opt-in");
 assert.ok(claim.includes("internal_approve_unlisted_ca_claim"),"Use transactional medal approval");
+assert.equal((claim.match(/\\.getAnonymousClaimEvent\\(/g)||[]).length,3,
+  "All 3 Community claim Event reads use deployed v14 fields");
+assert.ok(!claim.includes(".getAnonymousEvent("),
+  "No Community claim read should use newer Meetup query");
+const campfireClient=read("supabase/functions/_shared/campfire/client.ts");
+assert.ok(campfireClient.includes("CLAIM_LEGACY_EVENT_QUERY"),
+  "Claim-specific v14 query is separate from regular Event queries");
+assert.ok(campfireClient.includes("EVENT_QUERY.replace("),
+  "Only the later GraphQL field is excluded from claim path");
 assert.ok(adminUI.includes("data-ca-level-confirm="),"Require human level confirmation in ADMIN");
 assert.ok(medal.includes("internal_approve_unlisted_ca_claim"),"Reviewed approval function exists");
 assert.ok(medal.includes("stamp_collections"),"Awarded medal must be verified");
@@ -42,4 +51,4 @@ assert.ok(!/^\s*(?:insert\s+into|delete\s+from|update\s+public\.|alter\s+table|c
  preflight.replace(/^\s*--[^\n]*$/gm,"")
 ),"Production schema preflight must remain read-only");
 
-console.log("Unified master sync / actual deployed scheduler / medal approval contracts PASS (23 checks)");
+console.log("Unified master sync / actual deployed scheduler / medal approval contracts PASS (27 checks)");
