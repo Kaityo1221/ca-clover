@@ -18,6 +18,7 @@ jobs:
       - run: npm run test:ca-link-diff
       - run: npm run test:medal-contract
       - run: node scripts/test-ca-master-recovery.mjs
+      - run: node scripts/test-ca-master-failure-injection.mjs
       - run: node scripts/test-release-candidate-contract.mjs
       - uses: denoland/setup-deno@v2
         with:
