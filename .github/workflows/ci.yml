@@ -16,10 +16,16 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run test:share-url
       - run: npm run test:ca-link-diff
+      - run: npm run test:medal-contract
       - run: node scripts/test-ca-master-recovery.mjs
+      - run: node scripts/test-ca-master-source-preflight.mjs
+      - run: node scripts/test-ca-master-failure-injection.mjs
+      - run: node scripts/test-release-candidate-contract.mjs
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      - name: Confirm production-compatible Community claim GraphQL queries (mocked)
+        run: deno test scripts/test-claim-graphql-compat.ts
       - name: Check CA master and scheduler Edge Function types
-        run: deno check supabase/functions/sync-ca-master/index.ts supabase/functions/sync-ca-master-admin/index.ts supabase/functions/sync-campfire-auto/index.ts
+        run: deno check --node-modules-dir=auto supabase/functions/sync-ca-master/index.ts supabase/functions/sync-ca-master-admin/index.ts supabase/functions/sync-campfire-auto/index.ts supabase/functions/community-claim/index.ts
       - run: npm run build

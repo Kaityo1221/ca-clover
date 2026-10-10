@@ -24,6 +24,13 @@ import type {TokenProvider} from "./token-provider.ts";
 export const CAMPFIRE_GRAPHQL_ENDPOINT="https://niantic-social-api.nianticlabs.com/graphql";
 export const CAMPFIRE_PUBLIC_GRAPHQL_ENDPOINT="https://niantic-social-api.nianticlabs.com/public/graphql";
 
+// The deployed community-claim v14 fetched the legacy Event shape.
+ // Keep the CA-master/other callers' newer passcode field untouched.
+ // GraphQL whitespace does not change the selected field set.
+const CLAIM_LEGACY_EVENT_QUERY=EVENT_QUERY.replace(
+  /^\s*isPasscodeRewardEligible\s*$/gm,"",
+);
+
 const DEFAULT_PAGE_SIZE=100;
 const DEFAULT_MAX_PAGES=100;
 const DEFAULT_MAX_RETRIES=3;
@@ -144,6 +151,16 @@ export class CampfireClient{
 
   async getAnonymousEvent(eventId:string):Promise<CampfireEvent>{
     const data=await this.anonymousRequest<{event?:CampfireEvent|null}>(EVENT_QUERY,{id:eventId});
+    if(!data.event) throw new CampfireApiError("公開Meetupを取得できません","EVENT_NOT_FOUND");
+    return data.event;
+  }
+
+  // Only the Community claim verification path uses the deployed v14 fields.
+  // Do not alter the normal Event query used by public Meetup collection.
+  async getAnonymousClaimEvent(eventId:string):Promise<CampfireEvent>{
+    const data=await this.anonymousRequest<{event?:CampfireEvent|null}>(
+      CLAIM_LEGACY_EVENT_QUERY,{id:eventId},
+    );
     if(!data.event) throw new CampfireApiError("公開Meetupを取得できません","EVENT_NOT_FOUND");
     return data.event;
   }

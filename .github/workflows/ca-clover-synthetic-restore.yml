@@ -1,0 +1,50 @@
+# Disposable fake-data backup verification, not a production backup.
+name: Synthetic DB restore rehearsal
+
+on:
+  push:
+    branches:
+      - safety/release-candidate-master-and-medal-20261010
+  pull_request:
+    branches:
+      - safety/ca-master-exclusive-lease-20261010
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-only
+          POSTGRES_DB: ca_clover_http_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ca_clover_http_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: test-only
+      PGDATABASE: ca_clover_http_qa
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare local Postgres clients
+        run: |
+          if ! command -v pg_dump >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client
+          fi
+      - name: Seed disposable fake records
+        run: psql -v ON_ERROR_STOP=1 -f scripts/ci/ca-master-http-fixture.sql
+      - name: Verify synthetic export, restore and row parity
+        run: bash scripts/ci/test-synthetic-db-restore.sh

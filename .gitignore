@@ -6,3 +6,14 @@ out/
 .env.*.local
 *.log
 .DS_Store
+
+# Keep database exports / restore artifacts out of this public repository.
+# This is defense in depth only; never create or store secrets in this repo.
+/backups/
+/private-backups/
+/roles.sql
+/schema.sql
+/data.sql
+*.pgdump
+*.dump
+*.backup
