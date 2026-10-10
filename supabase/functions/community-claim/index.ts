@@ -137,6 +137,34 @@ Deno.serve(async(req:Request)=>{
         return json({error:"日本CA地図で現在このCommunityの担当CAとして確認できないため承認できません",code:"CA_COMMUNITY_CHANGED"},409);
       }
 
+      // A newly approved CA needs a verified primary identity so the
+      // existing DB trigger can grant their own Community medal.
+      // Never take over an identity already owned by another user.
+      const [primaryIdentityResult,caIdentityOwnerResult]=await Promise.all([
+        admin.from("user_ca_identities")
+          .select("ca_member_id,community_id")
+          .eq("user_id",request.user_id)
+          .eq("is_primary",true)
+          .maybeSingle(),
+        admin.from("user_ca_identities")
+          .select("user_id")
+          .eq("ca_member_id",currentCa.id)
+          .eq("community_id",request.community_id)
+          .maybeSingle(),
+      ]);
+      if(primaryIdentityResult.error) throw primaryIdentityResult.error;
+      if(caIdentityOwnerResult.error) throw caIdentityOwnerResult.error;
+      const previousPrimary=primaryIdentityResult.data;
+      if(previousPrimary &&
+         (previousPrimary.ca_member_id!==currentCa.id ||
+          previousPrimary.community_id!==request.community_id)){
+        return json({error:"別のCA本人との紐付けが登録済みです。ADMINの割当画面で確認してください",code:"PRIMARY_CA_IDENTITY_CONFLICT"},409);
+      }
+      if(caIdentityOwnerResult.data &&
+         caIdentityOwnerResult.data.user_id!==request.user_id){
+        return json({error:"このCA本人は別のアカウントに紐付いています",code:"CA_IDENTITY_ALREADY_ASSIGNED"},409);
+      }
+
       const campfireCommunityIdSnapshot=String(request.campfire_community_id_snapshot??"").trim();
       if(campfireCommunityIdSnapshot){
         const [historyResult,currentCommunityResult]=await Promise.all([
@@ -171,6 +199,19 @@ Deno.serve(async(req:Request)=>{
         community_id:request.community_id,
       },{onConflict:"user_id,community_id"});
       if(membershipError) throw membershipError;
+
+      // Triggers stamp_auto_own_medal_after_identity after upsert. This
+      // preserves existing medals and does not grant the president medal.
+      const {error:identityError}=await admin.from("user_ca_identities").upsert({
+        user_id:request.user_id,
+        ca_member_id:currentCa.id,
+        community_id:request.community_id,
+        is_primary:true,
+        verification_source:"admin_verified",
+        verified_at:reviewedAt,
+        verified_by:userData.user.id,
+      },{onConflict:"user_id,ca_member_id,community_id"});
+      if(identityError) throw identityError;
 
       if(requestSource==="meetup_share" && request.campfire_meetup_id && request.meetup_title){
         const {error:meetupError}=await admin.from("meetups").upsert({
