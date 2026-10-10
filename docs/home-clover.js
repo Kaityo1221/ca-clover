@@ -21,50 +21,9 @@
   activityTheme.async=false;
   document.head.appendChild(activityTheme);
 
-  const reaction=document.createElement("script");
-  reaction.src="./reach-reaction-r1.js?v=20261002-r1-reliable1";
-  reaction.async=false;
-  document.head.appendChild(reaction);
-
-  const reactionWindow=document.createElement("script");
-  reactionWindow.src="./reach-reaction-window12.js?v=20260928-window12-2";
-  reactionWindow.async=false;
-  document.head.appendChild(reactionWindow);
-
-  const reactionCard=document.createElement("script");
-  reactionCard.src="./reach-reaction-r2.js?v=20260928-r2-card1";
-  reactionCard.async=false;
-  document.head.appendChild(reactionCard);
-
-  const reactionRecommendation=document.createElement("script");
-  reactionRecommendation.src="./reach-reaction-r3.js?v=20260928-r3-recommendation2";
-  reactionRecommendation.async=false;
-  document.head.appendChild(reactionRecommendation);
-
-  const reactionHeatmap=document.createElement("script");
-  reactionHeatmap.src="./reach-reaction-r4.js?v=20260928-r4-heatmap1";
-  reactionHeatmap.async=false;
-  document.head.appendChild(reactionHeatmap);
-
-  const reactionTiming=document.createElement("script");
-  reactionTiming.src="./reach-reaction-r5.js?v=20261002-r5-timing1";
-  reactionTiming.async=false;
-  document.head.appendChild(reactionTiming);
-
-  const reach=document.createElement("script");
-  reach.src="./reach-phase7.js?v=20260928-reach-v1-polish1";
-  reach.async=false;
-  document.head.appendChild(reach);
-
-  const reachCompare=document.createElement("script");
-  reachCompare.src="./reach-phase7c.js?v=20260928-reach7c-polish1";
-  reachCompare.async=false;
-  document.head.appendChild(reachCompare);
-
-  const reachOps=document.createElement("script");
-  reachOps.src="./reach-phase7d.js?v=20260928-reach7d-polish1";
-  reachOps.async=false;
-  document.head.appendChild(reachOps);
+  // Reach modules are loaded once by docs/index.html as ordered defer scripts.
+  // Do not inject them again here: the duplicate loads create extra observers,
+  // timers and potentially overwrite the active Reach mission state.
 
   const minigames=document.createElement("script");
   minigames.src="./community-minigames-placeholder.js?v=20261004-2";
