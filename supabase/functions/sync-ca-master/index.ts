@@ -192,8 +192,7 @@ function displayCommunityIdentity(identity:string){
 }
 
 Deno.serve(async(req:Request)=>{
-  let leaseAdmin:ReturnType<typeof createClient>|null=null;
-  let leaseOwner:string|null=null;
+  let releaseLease:(()=>Promise<void>)|null=null;
   try{
     const supabaseUrl=Deno.env.get("SUPABASE_URL");
     const serviceRoleKey=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -239,8 +238,12 @@ Deno.serve(async(req:Request)=>{
     if(claimed!==true) return json({
       ok:false,status:"busy",error:"CA master is paused or a sync is already running",
     },409);
-    leaseAdmin=admin;
-    leaseOwner=owner;
+    releaseLease=async()=>{
+      const {error}=await admin.rpc(
+        "internal_finish_ca_master_lease",{p_owner:owner},
+      );
+      if(error) console.error("CA master lease release failed",error.code);
+    };
 
     const response=await fetch(CA_MASTER_URL,{
       headers:{"User-Agent":"CA-Clover/1.0"},
@@ -678,12 +681,9 @@ Deno.serve(async(req:Request)=>{
   }catch(error){
     return json({error:error instanceof Error?error.message:String(error)},500);
   }finally{
-    if(leaseAdmin&&leaseOwner){
+    if(releaseLease){
       try{
-        const {error:releaseError}=await leaseAdmin.rpc(
-          "internal_finish_ca_master_lease",{p_owner:leaseOwner},
-        );
-        if(releaseError) console.error("CA master lease release failed",releaseError.code);
+        await releaseLease();
       }catch{
         console.error("CA master lease release unavailable");
       }
