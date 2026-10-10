@@ -28,6 +28,14 @@ Deno.serve(async(req:Request)=>{
       const role=String(body.role??"");
       const userId=String(body.userId??"");
       if(!["pending","ca","admin"].includes(role)||!userId) throw new Error("invalid role request");
+      // A membership alone grants access to community data under current RLS.
+      // Remove memberships before demoting, so failed cleanup cannot leave a
+      // pending account with community access. Preserve CA identity and medals.
+      if(role==="pending"){
+        const {error:membershipError}=await admin.from("community_memberships")
+          .delete().eq("user_id",userId);
+        if(membershipError) throw membershipError;
+      }
       const {error}=await admin.from("profiles").update({role}).eq("id",userId);
       if(error) throw error;
       return new Response(JSON.stringify({ok:true}),{headers:{...corsHeaders,"Content-Type":"application/json"}});
