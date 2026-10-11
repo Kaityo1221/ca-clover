@@ -28,15 +28,20 @@ const cases=[
   {label:"invalid level",records:[ca({caLevel:"3rd"})],unresolvedCount:0,conflictCount:0,ok:false,reason:"INVALID_CA_RECORD"},
   {label:"invalid source ID",records:[ca({sourceKey:""})],unresolvedCount:0,conflictCount:0,ok:false,reason:"INVALID_CA_RECORD"},
   {label:"invalid counts",records:[ca()],unresolvedCount:-1,conflictCount:0,ok:false,reason:"INVALID_PREFLIGHT_COUNTS"},
+  {label:"missing status must not activate",records:[ca({status:"unknown"})],unresolvedCount:0,conflictCount:0,ok:false,reason:"INVALID_CA_RECORD"},
+  {label:"dropped input CSV row rejected",records:[ca()],unresolvedCount:0,conflictCount:0,inputRowCount:2,ok:false,reason:"SKIPPED_OR_MALFORMED_SOURCE_ROWS"},
 ];
 for(const c of cases){
   const result=assessCaMasterSource(c.records,{
     unresolvedCount:c.unresolvedCount,conflictCount:c.conflictCount,
+    inputRowCount:c.inputRowCount??c.records.length,
   });
   assert.equal(result.ok,c.ok,c.label);
   if(c.reason)assert.equal(result.reason,c.reason,c.label);
   if(c.ok){
     assert.equal(result.caRows.length,c.rows,c.label);
+    assert.ok(result.caRows.every(r=>!("latitude" in r)&&!("longitude" in r)),
+      "CA metadata upsert may not erase coordinates from an incomplete CSV");
     assert.equal(new Set(result.caRows.map(r=>r.source_key)).size,c.rows,
       "PostgREST onConflict upsert must never contain duplicate source_key");
   }else assert.ok(!("caRows" in result),"Rejected sources must not return a write plan");
@@ -55,4 +60,4 @@ assert.ok(p1<caRead && caRead<p2 && p2<beforeWrite && beforeWrite<caWrite,
 assert.ok(code.includes("CA_MASTER_VERIFIED_IDENTITY_ASSIGNMENT_REVIEW_REQUIRED"),
  "Verified Identity collision must trigger operator review");
 
-console.log("CA master source preflight: 12 source cases and Edge write-order checks PASS");
+console.log("CA master source preflight: 14 source cases and Edge write-order checks PASS");
