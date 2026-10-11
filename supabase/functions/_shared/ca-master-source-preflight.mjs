@@ -53,3 +53,27 @@ export function assessCaMasterSource(records,{unresolvedCount,conflictCount,inpu
   return {ok:true,reason:null,records:records.length,
     uniqueCaRecords:unique.size,caRows:Array.from(unique.values())};
 }
+
+/**
+ * The baseline must be separately verified by an operator. Never derive it
+ * from a preceding sync's success status or an approximate user count.
+ */
+export function assessCaMasterBaseline(baseline,sourceRows,uniqueCaRows){
+  const baselineRows=baseline?.source_rows;
+  const baselineCa=baseline?.unique_ca_members;
+  if(baseline?.manually_verified!==true ||
+     !Number.isSafeInteger(baselineRows)||baselineRows<=0 ||
+     !Number.isSafeInteger(baselineCa)||baselineCa<=0){
+    return {ok:false,reason:"MISSING_VERIFIED_BASELINE"};
+  }
+  if(!Number.isSafeInteger(sourceRows)||!Number.isSafeInteger(uniqueCaRows) ||
+     sourceRows<=0||uniqueCaRows<=0 ||
+     sourceRows<Math.ceil(baselineRows*0.9) ||
+     uniqueCaRows<Math.ceil(baselineCa*0.9)){
+    return {ok:false,reason:"SOURCE_COUNT_DROPPED"};
+  }
+  if(sourceRows>baselineRows*2){
+    return {ok:false,reason:"SOURCE_COUNT_SPIKED"};
+  }
+  return {ok:true,reason:null};
+}
