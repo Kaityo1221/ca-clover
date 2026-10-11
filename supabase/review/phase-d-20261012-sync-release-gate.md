@@ -96,3 +96,45 @@ PRODUCTION_APPLY=STOP
 - Resolution worksheet should record: Sheet row ID, discrepancy category, authoritative evidence/date, existing vs proposed mapping (in private storage only), human approver and decision. Never put CA names, UUIDs, private URLs or raw backup content in the public PR.
 
 **Updated status:** independent local fault-lab **PASS** (limited scope); FK protection effectiveness **PASS in disposable lab only**; dedicated sync-gate **CODE REVIEW / synthetic tests only**; source discrepancies **REVIEW**; production apply and master sync **STOP**.
+
+## Phase D final release decision matrix — 2026-10-12 (STEP 5)
+
+**Decision: NO-GO for CA-master sync, production schema/Edge release, and full disaster-recovery certification.** The operator's isolated fault lab is PASS only within its recorded scope. This is a documentation gate, not deployment authorization.
+
+| Gate | Evidence/status | Required to promote | Decision |
+| --- | --- | --- | --- |
+| Original backup and encrypted archive custody | PASS (prior operator audit; private retained) | Preserve checksum manifest and access control | PASS / retain |
+| Restored local DB/Auth/Storage metadata and FK integrity | PASS (scope-specific; 98 FKs in main restored DB; 24 FKs in 15-table disposable lab) | Maintain reports and distinguish these separate counts | PASS / limited |
+| Content fidelity | REVIEW (14/15 table comparisons exact; two coordinate records with 3 floating differences, max 3.41060513164848e-13 degrees) | Approve tolerance and document non-byte-identical exception | REVIEW |
+| Isolated CASCADE hazard and FK protection negative test | PASS in disposable lab (Identity 6→5 with CASCADE; deletion blocked under NO ACTION; both ROLLBACK) | Choose exact NO ACTION vs RESTRICT migration; prove on production-like disposable clone and test concurrent/rollback paths | PASS / local only |
+| Dedicated CA-master pause/lease and source preflight | Synthetic/code review PASS, restored-data E2E NOT TESTED | Prove direct/admin/auto endpoints fail closed, emergency sentinel and dedicated gate independent, other tasks unaffected | BLOCKED |
+| Master source cross-check | REVIEW_REQUIRED_SYNC_STOP (200 CA keys match; mappings do not) | Human adjudication of row 7,13,17,34,60,94,100,116 and all grouped conflicts; signed baseline and source snapshot | BLOCKED |
+| Identity/medal/exchange full-content invariants after real workflow failure | Limited local FK test PASS; master sync failure E2E NOT TESTED | Isolated end-to-end injection with private canonical hashes, no data exported | BLOCKED |
+| OAuth, secrets restoration, active Edge/Cron/notifications, image decode 3 unresolved | NOT TESTED / REVIEW | Secure isolated E2E and investigation; do not use production credentials in public CI | BLOCKED |
+| Combined release build and branch review | Draft PR #130/#131, no merge | Review branch divergence, merge conflicts and production source parity; fresh CI after review updates | BLOCKED |
+| Production FK and gate apply | NOT APPLIED | Explicit separate approval, versioned migration, preflight snapshots, rollback rehearsal | STOP |
+| First limited master sync | NOT PERFORMED | Separate explicit approval **after** all prerequisites and source reconciliation | STOP |
+| 2099 emergency pause removal / automatic sync resume | NOT AUTHORIZED | Separate explicit approval only after controlled sync and invariants pass | STOP |
+
+### Mandatory release order and rollback/stop criteria
+
+1. Keep the 2099 sentinel and dedicated gate OFF. Do not run legacy or manual CA-master sync, edit production SQL/Edge/Cron, or merge PRs.
+2. Resolve source discrepancies privately and record each human decision with dated evidence. Re-run deterministic per-pair comparisons; require zero unexplained reassignment/deletion and explicitly attested baseline. No auto-fix.
+3. In *disposable*, production-like environment, verify exact FK migration semantics and every direct/admin/auto master entry point. Exercise missing gate, false gate, future sentinel, invalid source, concurrent requests, failure after intermediate REST writes, idempotent retry and unrelated automation continuity. Retain redacted logs and content fingerprints.
+4. Verify application recovery beyond DB: OAuth, secrets provisioning process, Edge invocations, RLS, Cron, Storage objects, image decoding, notifications and related UI. Verify source parity with deployed version separately.
+5. Obtain human review of full release artifacts, rollback procedures, CI and branch divergence; **do not merge just because CI is green**.
+6. Seek separate approvals for (A) production schema/Edge protection, (B) controlled first CA-master sync, (C) 2099 stop release and automation resume. Approval for one does not imply the others.
+7. At any error, missing expected FK/gate, unexpected Identity/primary/medal/exchange changes, source inconsistency or degraded unrelated automation: **STOP, preserve forensic evidence, keep master paused**. Transaction failures use rollback; post-commit issues require a separately approved recovery procedure, not an automatic reversion to CASCADE.
+
+**Release verdict variables**
+
+```text
+STEP_5_DOCUMENTATION_GATE=COMPLETE
+LOCAL_ISOLATED_FAULT_LAB=PASS_LIMITED
+CA_MASTER_SOURCE=REVIEW_REQUIRED_SYNC_STOP
+PROTECTED_SYNC_REAL_DATA_E2E=NOT_TESTED
+FULL_APPLICATION_RECOVERY=NOT_TESTED
+PRODUCTION_FK_PROTECTION=NOT_APPLIED
+PRODUCTION_SYNC=STOP
+PHASE_D_RELEASE=NO_GO
+```
