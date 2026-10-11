@@ -100,3 +100,12 @@ Disposition is **not permission to run SQL**; no auto-merge, rename, retire, del
 5. Do not run live CA Master sync, create `ca-master-verified-baseline`, touch the 2099 sentinel, merge PRs or perform production SQL/Edge/Cron changes.
 
 **2026-10-12 outcome:** `HISTORICAL_TRIANGULATION=COMPLETE`; `ROW_17=VERIFY_POSSIBLE_SHARED_1ST_2ND_GROUP`; `ROW_34=CONFIRMED_MISSING_DEEPLINK_ID`; `HUMAN_COMMUNITY_ID_ATTESTATION=PENDING`; `SOURCE_RECONCILIATION=NO_GO`.
+
+## 2026-10-12: operator-supplied Campfire share-link inspection, row 17
+
+- The operator provided a **current Campfire group share link in direct response to the request for source row 17**. Link encoding decoded successfully into a syntactically valid UUID.
+- **Verified against the current read-only Sheet**: decoded UUID and full share link match exactly the Community link already recorded for row **128** (listed 1st CA); row **17** is listed 2nd CA under the same Community display name and prefecture but its source `H17` link is blank. Historical July list independently confirms the 2nd CA is present with an empty link and the 1st CA uses the same link.
+- **Decision:** `ROW_17_SHARE_URL_MATCH_CONFIRMED_BY_OPERATOR`. `H17` is a **specific source-only fill candidate**, *not* an approved sheet write, proof of current 2nd CA accreditation, confirmation of coordinate values or authorization for DB re-assignment. Do not automatically fill `J17/K17`; those need separate factual geographic evidence.
+- Raw share URL, UUID, personal CA names and credentials are intentionally omitted from the public repository. Re-check the canonical source via private evidence before any authorized patch.
+- Row 17's URL ambiguity has a **candidate resolution** but **source correction not yet applied**. Row 34 and remaining independent P0/P1 conflicts still block the global CA-master preflight; 2099 emergency STOP unchanged.
+
