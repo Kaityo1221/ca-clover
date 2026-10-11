@@ -4,9 +4,12 @@
  * until every linked Community can be resolved without ambiguity.
  * Pure function usable in Deno and Node. No credentials or user data kept.
  */
-export function assessCaMasterSource(records,{unresolvedCount,conflictCount}){
+export function assessCaMasterSource(records,{unresolvedCount,conflictCount,inputRowCount=records?.length}){
   if(!Array.isArray(records)||records.length===0){
     return {ok:false,reason:"EMPTY_MASTER",records:0,uniqueCaRecords:0};
+  }
+  if(!Number.isSafeInteger(inputRowCount) || inputRowCount!==records.length){
+    return {ok:false,reason:"SKIPPED_OR_MALFORMED_SOURCE_ROWS",records:records.length,uniqueCaRecords:0};
   }
   if(!Number.isSafeInteger(unresolvedCount)||!Number.isSafeInteger(conflictCount)||
      unresolvedCount<0||conflictCount<0){
@@ -25,6 +28,8 @@ export function assessCaMasterSource(records,{unresolvedCount,conflictCount}){
        !["active","inactive"].includes(record.status)){
       return {ok:false,reason:"INVALID_CA_RECORD",records:records.length,uniqueCaRecords:0};
     }
+    // Only the validated coordinate RPC may write coordinates. Metadata
+    // UPSERT must not null-out coordinates when source values are missing.
     // A CA may appear in multiple Communities, but every repeated row must
     // describe an identical CA master record (except Community fields).
     // Never send duplicate onConflict source_key values to PostgREST.
@@ -35,8 +40,6 @@ export function assessCaMasterSource(records,{unresolvedCount,conflictCount}){
       prefecture:record.prefecture,
       join_date:record.joinDate,
       status:record.status,
-      latitude:record.latitude,
-      longitude:record.longitude,
     };
     const previous=unique.get(row.source_key);
     if(previous){
