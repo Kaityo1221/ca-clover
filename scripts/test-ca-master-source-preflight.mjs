@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {assessCaMasterSource} from "../supabase/functions/_shared/ca-master-source-preflight.mjs";
+import {assessCaMasterSource,assessCaMasterBaseline} from "../supabase/functions/_shared/ca-master-source-preflight.mjs";
 
 const ca=(changes={})=>({
   sourceKey:"ca-one",
@@ -60,4 +60,14 @@ assert.ok(p1<caRead && caRead<p2 && p2<beforeWrite && beforeWrite<caWrite,
 assert.ok(code.includes("CA_MASTER_VERIFIED_IDENTITY_ASSIGNMENT_REVIEW_REQUIRED"),
  "Verified Identity collision must trigger operator review");
 
-console.log("CA master source preflight: 14 source cases and Edge write-order checks PASS");
+
+const baseline={manually_verified:true,source_rows:100,unique_ca_members:80};
+assert.equal(assessCaMasterBaseline(null,100,80).reason,"MISSING_VERIFIED_BASELINE");
+assert.equal(assessCaMasterBaseline({...baseline,manually_verified:false},100,80).ok,false);
+assert.equal(assessCaMasterBaseline(baseline,89,80).reason,"SOURCE_COUNT_DROPPED");
+assert.equal(assessCaMasterBaseline(baseline,100,71).reason,"SOURCE_COUNT_DROPPED");
+assert.equal(assessCaMasterBaseline(baseline,201,80).reason,"SOURCE_COUNT_SPIKED");
+assert.equal(assessCaMasterBaseline(baseline,90,72).ok,true);
+assert.equal(assessCaMasterBaseline(baseline,100,80).ok,true);
+
+console.log("CA master source preflight: 14 source cases, 7 baseline cases and Edge write-order checks PASS");
