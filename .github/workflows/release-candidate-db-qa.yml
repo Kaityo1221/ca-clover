@@ -73,3 +73,9 @@ jobs:
           grep -F 'schema/identity_fk_delete_action|CASCADE_OLD_BASELINE|NOT_PROTECTED_DO_NOT_SYNC' "$RUNNER_TEMP/ca-phase-d-audit.txt"
           echo "PASS: local unix-socket, read-only restored-db audit checks, and unsafe baseline flagged"
 
+      - name: Phase D Step 2 / exact RESTRICT FK review SQL plus actual reconcile RPC
+        run: |
+          set -euo pipefail
+          createdb ca_clover_identity_fk_qa
+          PGDATABASE=ca_clover_identity_fk_qa psql -X -v ON_ERROR_STOP=1 -f scripts/ci/phase-d-identity-fk-rpc-integration.sql
+          dropdb ca_clover_identity_fk_qa
