@@ -60,3 +60,39 @@ RESTORE_DB_AUTH_STORAGE_INTEGRITY=PASS
 FULL_APPLICATION_RECOVERY=NOT_TESTED
 MASTER_SYNC_PREFLIGHT=REVIEW_REQUIRED_SYNC_STOP
 PRODUCTION_APPLY=STOP
+
+## 2026-10-12 independent real-backup fault-lab addendum (operator-reported evidence)
+
+**Scope:** isolated offline Docker `ca-clover-fault-lab`, database `ca_clover_fault_lab_v2`, PostgreSQL 17.11, network=none, Unix socket only. This is evidence reported from the operator's completed local run, **not an execution by CI or GitHub**. Original restore database, original backup and encrypted v4 archive were left untouched.
+
+- Fifteen restored tables: auth users=6, profiles=6, CA=200, communities=155, CA links=196, memberships=6, icon versions=150, CA identities=6, medals=13, medal designs=13, exchange sessions=19, exchange transactions=0, reunions=0.
+- 24 relevant FKs in the isolated subset; 0 unvalidated; 0 orphan CA identities; 0 orphan medals.
+- Content comparison: 14 of 15 tables exact. In `public.communities`, 2 records showed 3 latitude/longitude floating-point differences; maximum absolute difference `3.41060513164848e-13` degrees, below tolerance `1e-9` degrees. **Not byte-identical**; this is a bounded semantic comparison only.
+- Existing composite FK `user_ca_identities_community_id_ca_member_id_fkey` used `ON DELETE CASCADE`. Deleting an identity-linked CA association in the disposable lab resulted in **CA Identity count 6 → 5**. Transaction **ROLLBACK** followed.
+- In a separate lab transaction, switching the composite FK to **ON DELETE NO ACTION** blocked the same deletion: `PROTECTION_PASS: Identity-linked deletion blocked`. **ROLLBACK** restored the original schema.
+- Final verification: Identity=6, CA links=196, medals=13, designs=13, exchange sessions=19. Operator output `STEP_22_23_LOCAL_PASS`. No production protection was installed.
+
+### Proposed production-protection change: review plan, NOT authorized
+
+1. Freeze only CA-master writes using both the dedicated fail-closed gate (initial `false`) and the existing 2099 emergency sentinel. Do **not** disable general Campfire automation.
+2. In a disposable preproduction schema matching production, inventory FK columns, dependent constraints, grants, concurrent operations and existing orphan counts; rehearse a versioned transaction that replaces only the identity-linked composite FK's `ON DELETE CASCADE` with `ON DELETE NO ACTION` (or `RESTRICT` after documented semantics review). The local successful test specifically used `NO ACTION`; the earlier draft proposal uses `RESTRICT`, so do not call these an identical tested migration.
+3. Test existing Identity, medals and exchanges; deletion of an identity-linked association must error, unrelated approved operations must succeed, and all relevant data fingerprints remain unchanged after rejected operations.
+4. Establish bounded lock/maintenance controls, pre-change private snapshots and transaction-level verification. On migration failure, **ROLLBACK** and leave both CA-master stops active. Do not automatically restore `CASCADE` merely to permit deletion. Document a separate, approved recovery plan for a failed *post-commit* deployment.
+5. Production migration, Edge rollout, first limited CA-master sync and 2099 release each require **separate explicit approvals**. No authorization is inferred from this local PASS.
+
+### Dedicated stop gate: review of repository implementation, not deployed verification
+
+- Draft `sync-ca-master/index.ts` checks `ca_master_sync_enabled`, the 2099 sentinel and an exclusive lease before its metadata writes; source, link-change and approved-baseline preflights can reject writes. The master path rechecks the gate after CSV retrieval. The code notes that some metadata operations use separate REST transactions and failure recovery is therefore safety-critical.
+- Draft dedicated-gate design covers the direct master endpoint, admin wrapper and `sync-campfire-auto` so only the CA-master path is paused. A missing flag/query failure must fail closed.
+- Synthetic GitHub CI covers portions of the preflight, lease, rejected link deletion and pause behavior. **Restored-real-data sync invocation, current production deployment equivalence, in-flight disable semantics and full end-to-end preservation of unrelated Campfire/icon/notification flows remain unverified.** Do not mark sync gate PASS in production.
+
+### CA-master review queue (anonymous Sheet row numbers only)
+
+- **High priority link mismatch:** rows **7, 13, 60, 94, 100, 116**. Sheet-only pairs: **7,13,60,94,116**; DB-only current pairs mapped to **94,100,60,116**. For each, a reviewer must decide whether the association is active, an approved alias/rename, retired, or erroneous, and record evidence and a proposed non-destructive disposition. Rows 60/116 share one unresolved mapping in DB; rows 13/100 have history marked retired, which alone is not proof of current Campfire status.
+- **Missing / unparseable Campfire ID:** rows **17,34**. Resolve through authoritative source or leave blocked; never fabricate an ID.
+- **Same URL, conflicting source community identity:** **7/115, 60/116, 94/177, 144/159/199, 175/198** (the last pair also differs in region). Review names, prefectures and historical aliases without automated rewriting.
+- **Same prefecture/name across IDs:** **13/175, 17/128, 29/94**. Establish whether rename, duplicate or migration using human review.
+- All 200 normalized CA keys agree; that does **not** attest 198 Sheet associations against 196 DB associations. Approved baseline still 0; classification remains `REVIEW_REQUIRED_SYNC_STOP`.
+- Resolution worksheet should record: Sheet row ID, discrepancy category, authoritative evidence/date, existing vs proposed mapping (in private storage only), human approver and decision. Never put CA names, UUIDs, private URLs or raw backup content in the public PR.
+
+**Updated status:** independent local fault-lab **PASS** (limited scope); FK protection effectiveness **PASS in disposable lab only**; dedicated sync-gate **CODE REVIEW / synthetic tests only**; source discrepancies **REVIEW**; production apply and master sync **STOP**.
