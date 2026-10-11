@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { shouldReleaseCaMasterLease, pauseAndAuditCaMasterFailure } from "../_shared/ca-master-recovery.mjs";
-import { assessCaMasterSource } from "../_shared/ca-master-source-preflight.mjs";
+import { assessCaMasterSource, assessCaMasterBaseline } from "../_shared/ca-master-source-preflight.mjs";
 
 const CRON_HEADER="x-ca-clover-cron-secret";
 const CA_MASTER_URL="https://docs.google.com/spreadsheets/d/1BtPjOxNX4JhttKKJa_-qrIXdVmK5UsbAX-RcLmLTuwk/export?format=csv&gid=633821294";
@@ -564,16 +564,12 @@ Deno.serve(async(req:Request)=>{
       .eq("status","success")
       .order("started_at",{ascending:false})
       .limit(1).maybeSingle();
-    const base=baseline?.details as Record<string,unknown>|undefined;
-    const baseRows=Number(base?.source_rows);
-    const baseCa=Number(base?.unique_ca_members);
-    const validBaseline=!baselineError&&base?.manually_verified===true&&
-      Number.isSafeInteger(baseRows)&&baseRows>0&&
-      Number.isSafeInteger(baseCa)&&baseCa>0;
-    if(!validBaseline ||
-       records.length<Math.ceil(baseRows*0.9) ||
-       sourcePreflight.uniqueCaRecords<Math.ceil(baseCa*0.9) ||
-       records.length>baseRows*2){
+    const baselineCheck=baselineError
+      ?{ok:false,reason:"BASELINE_QUERY_FAILED"}
+      :assessCaMasterBaseline(
+        baseline?.details,records.length,sourcePreflight.uniqueCaRecords,
+      );
+    if(!baselineCheck.ok){
       const stopped=await pauseAndAuditCaMasterFailure({
         admin,owner,stage:"verified-baseline-preflight",
         code:"CA_MASTER_BASELINE_REVIEW_REQUIRED",finishedAt:new Date().toISOString(),
