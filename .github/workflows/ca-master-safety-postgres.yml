@@ -8,6 +8,7 @@ on:
       - safety/ca-master-dedicated-pause-gates-20261010
       - safety/ca-master-integrated-free-qa-20261010
       - safety/ca-master-exclusive-lease-20261010
+      - safety/ca-master-phase-d-isolated-qa-20261012
   pull_request:
     branches:
       - safety/preserve-live-sync-campfire-auto-v10-20261010
@@ -50,5 +51,7 @@ jobs:
           fi
       - name: Test dedicated OFF flag and FK RESTRICT
         run: psql -v ON_ERROR_STOP=1 -f scripts/ci/ca-master-safety-postgres.sql
+      - name: Compare NO ACTION and RESTRICT against CASCADE in disposable fixture
+        run: psql -v ON_ERROR_STOP=1 -f scripts/ci/phase-d-fk-no-action-vs-restrict-postgres.sql
       - name: Test actual atomic link reconciliation RPC, fail-closed and rollback
         run: psql -v ON_ERROR_STOP=1 -f scripts/ci/ca-master-atomic-rpc-postgres.sql
