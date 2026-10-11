@@ -19,6 +19,8 @@ jobs:
       - run: npm run test:medal-contract
       - run: node scripts/test-ca-master-recovery.mjs
       - run: node scripts/test-ca-master-source-preflight.mjs
+      - name: Check local-only CA master CSV compare parser with fake rows
+        run: node scripts/ci/test-phase-d-ca-master-local-compare.mjs
       - run: node scripts/test-ca-master-failure-injection.mjs
       - run: node scripts/test-release-candidate-contract.mjs
       - uses: denoland/setup-deno@v2
