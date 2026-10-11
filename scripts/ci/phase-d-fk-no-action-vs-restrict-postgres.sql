@@ -4,9 +4,9 @@
 begin;
 do $guard$
 begin
-  if current_database() <> 'ca_master_safety'
+  if current_database() not in ('ca_master_safety', 'ca_clover_release_qa')
      or inet_server_addr() is null then
-    raise exception 'STOP: expected dedicated ci database over TCP';
+    raise exception 'STOP: expected disposable CI-only database over TCP';
   end if;
 end
 $guard$;
