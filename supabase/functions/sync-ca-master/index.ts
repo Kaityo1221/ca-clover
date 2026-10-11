@@ -365,10 +365,14 @@ Deno.serve(async(req:Request)=>{
 
     const {data:writeGate,error:writeGateError}=await admin
       .from("sync_automation_state")
-      .select("ca_master_sync_enabled")
+      .select("ca_master_sync_enabled,last_ca_master_at")
       .eq("id",1)
       .maybeSingle();
     if(writeGateError) return json({error:"CA master safety gate unavailable"},503);
+    const writeSentinelTime=Date.parse(String(writeGate?.last_ca_master_at??""));
+    if(Number.isFinite(writeSentinelTime)&&writeSentinelTime>Date.now()+365*86400000){
+      return json({ok:false,status:"paused",error:"CA master emergency sentinel is active"},423);
+    }
     if(writeGate?.ca_master_sync_enabled!==true){
       return json({ok:false,status:"paused",error:"CA master sync is paused"},423);
     }
@@ -499,6 +503,43 @@ Deno.serve(async(req:Request)=>{
       retainLeaseForReview=!stopped;
       return json({ok:false,code:"CA_MASTER_EMPTY_WRITE_PLAN"},422);
     }
+    // Detect any removal/reassignment BEFORE the first metadata write.
+    // Identity-free links are still valuable and are NOT silently discarded.
+    const [{data:existingCaRows,error:existingCaError},
+           {data:existingLinkRows,error:existingLinksError}]=await Promise.all([
+      admin.from("ca_members").select("id,source_key"),
+      admin.from("community_ca_members").select("community_id,ca_member_id"),
+    ]);
+    if(existingCaError||existingLinksError){
+      return json({error:"CA master link preflight unavailable"},503);
+    }
+    const existingCaBySource=new Map(
+      (existingCaRows??[]).map(row=>[String(row.source_key),String(row.id)]),
+    );
+    const managedExistingIds=new Set(
+      sourcePreflight.caRows.map(row=>existingCaBySource.get(row.source_key)).filter(Boolean),
+    );
+    const desiredKnownLinks=new Set(safeResolved.flatMap(record=>{
+      const caId=existingCaBySource.get(record.sourceKey);
+      const communityId=sourceCommunityMap.get(record.communityId);
+      return caId&&communityId?[communityId+"|"+caId]:[];
+    }));
+    const staleKnownLinks=(existingLinkRows??[]).filter(link=>
+      managedExistingIds.has(String(link.ca_member_id)) &&
+      !desiredKnownLinks.has(String(link.community_id)+"|"+String(link.ca_member_id))
+    );
+    if(staleKnownLinks.length>0){
+      const stopped=await pauseAndAuditCaMasterFailure({
+        admin,owner,stage:"existing-link-preflight",
+        code:"CA_MASTER_LINK_CHANGE_REVIEW_REQUIRED",finishedAt:new Date().toISOString(),
+      });
+      retainLeaseForReview=!stopped;
+      return json({
+        ok:false,status:"rejected",code:"CA_MASTER_LINK_CHANGE_REVIEW_REQUIRED",
+        affectedLinks:staleKnownLinks.length,
+      },422);
+    }
+
     // The latest explicitly attested baseline is required for a write.
     // Ordinary successful sync_runs are NOT trusted as an attestation.
     const {data:baseline,error:baselineError}=await admin.from("sync_runs")
