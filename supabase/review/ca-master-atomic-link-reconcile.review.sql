@@ -44,13 +44,32 @@ begin
     raise exception 'CA_MASTER_PAUSED_OR_LEASE_LOST' using errcode='55000';
   end if;
 
-  -- Guard against deploying this function before the cascade FK is made safe.
+  -- Fail closed unless the EXACT validated, non-deferrable composite RESTRICT FK is installed.
   select exists (
     select 1 from pg_catalog.pg_constraint
     where conrelid='public.user_ca_identities'::regclass
       and confrelid='public.community_ca_members'::regclass
       and conname='user_ca_identities_community_id_ca_member_id_fkey'
-      and contype='f' and confdeltype='r'
+      and contype='f'
+      and confdeltype='r'
+      and convalidated
+      and not condeferrable
+      and conkey = array[
+        (select attnum from pg_attribute
+          where attrelid='public.user_ca_identities'::regclass
+            and attname='community_id' and not attisdropped),
+        (select attnum from pg_attribute
+          where attrelid='public.user_ca_identities'::regclass
+            and attname='ca_member_id' and not attisdropped)
+      ]::smallint[]
+      and confkey = array[
+        (select attnum from pg_attribute
+          where attrelid='public.community_ca_members'::regclass
+            and attname='community_id' and not attisdropped),
+        (select attnum from pg_attribute
+          where attrelid='public.community_ca_members'::regclass
+            and attname='ca_member_id' and not attisdropped)
+      ]::smallint[]
   ) into v_safe_fk;
   if not v_safe_fk then
     raise exception 'CA_MASTER_UNSAFE_FK' using errcode='55000';
