@@ -97,7 +97,7 @@ async function startEdge(entry,port){
     SUPABASE_SERVICE_ROLE_KEY:"synthetic-service-key",
   };
   const child=spawn("deno",[
-    "run","--cached-only","--allow-net=127.0.0.1",
+    "run","--cached-only","--allow-net=127.0.0.1,0.0.0.0:8000",
     "--allow-env=SUPABASE_URL,SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY",
     entry
   ],{env,stdio:["ignore","pipe","pipe"]});
