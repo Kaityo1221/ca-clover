@@ -23,7 +23,15 @@
 - Do not create/delete/merge CA or Community rows, rename IDs, or automatically repair links from these findings.
 - All 6 identified problem rows require manual disposition, plus unresolved-ID rows 17 and 34 and remaining URL/name conflicts.
 
-## Mandatory isolated failure-injection test matrix (NOT EXECUTED)
+## Failure-injection coverage: verified synthetic GitHub QA vs remaining isolated E2E
+
+GitHub Actions on commit `34cf949bc0adebba338166c49d2608fb4ea6f664` completed successfully: CI run `38178471050`, PostgreSQL QA run `38178471073`. Confirmed passing steps include `test-ca-master-failure-injection.mjs`, `ca-master-atomic-rpc-postgres.sql`, `ca-master-multi-transaction-recovery-postgres.sql`, `ca-master-safety-postgres.sql`, RLS regression fixture, retired-HTTP-410 smoke, and synthetic restore-audit fixture. These use synthetic data, *not* the restored Windows backup.
+
+**Verified in synthetic tests:** lease exclusivity, lease owner fencing, stale-lease stop, rejected unsafe CASCADE in actual review RPC, verified Identity and medal surviving link-reconcile failures, all-or-nothing RPC insertion on injected FK failure, preflight/failure pause logic, split REST transaction partial failure with master-only pause, and general Cron toggle independence. No production endpoints or credentials were used.
+
+**Not established:** full restored-schema failure-injection in a disposable clone, content-fingerprint equality for all medals/exchanges/memberships, direct main/admin/Cron gate integration, Google OAuth + actual secrets, scheduled job/notification flow, and full app recovery. Existing fixture `ca-master-safety-postgres.sql` does delete an unverified link as a deliberately isolated FK demonstration; do not misconstrue this as permission for the sync: the Phase C actual reconcile RPC refuses automatic deletion of *any* stale link.
+
+## Remaining isolated failure-injection test matrix (NOT YET FULLY EXECUTED)
 1. Abort after reading CSV and before writes: no table changes or side effects.
 2. Abort after CA upsert but before Community mapping: transaction rollback or safe resumability, no loss of existing CA links.
 3. Abort between Community staging and link resolution: preserve previous current and historical IDs.
