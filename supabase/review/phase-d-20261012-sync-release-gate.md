@@ -148,3 +148,12 @@ PHASE_D_RELEASE=NO_GO
 - GitHub commit combined-status observations on follow-up commits included a `Vercel` failure pointing to a build-rate-limit/upgrade URL. This is **not** a PostgreSQL test failure and **not** proof the new QA passed. No deployment was attempted by these review actions.
 
 **Phase D remains NO-GO. Production writes/deploys, first CA-master sync, 2099 pause removal, and PR merge remain prohibited.**
+
+## Phase D continued CI: 2026-10-12 synthetic FK and fail-closed wiring evidence
+
+- Linked `scripts/ci/phase-d-fk-no-action-vs-restrict-postgres.sql` into the **active** `release-candidate-db-qa.yml` synthetic PostgreSQL job. CI step **"Phase D / Reproduce CASCADE and verify NO ACTION vs RESTRICT (synthetic only)" PASS** on run **38184165738**, and integrated workflow run **38184165738** finished **success** (commit `4c4d144098dc9bac90b0595b19662ef9ac61ec84`). A later release-candidate workflow run **38184289659** also finished **success**.
+- Added `scripts/test-phase-d-master-gate-contract.mjs` and wired it into regular CI. On run **38184289665**, the dedicated **"Phase D direct/admin/scheduler master-pause static contract"** step is **PASS**. This covers source-code ordering and gate isolation only; it is *not* an HTTP/Edge E2E test. Do not upgrade the overall synchronization release decision based on a static test.
+- 2026-10-12 read-only reinspection of the exact 20260828 Sheet tab confirmed the five same-URL/conflicting-name groups, missing URL and coordinates on row 17, and an additional source prefecture/geography inconsistency for row 34. Details without private identity data are in `phase-d-ca-master-human-review-20261012.md`.
+- **RESTRICT remains the candidate for alignment with existing reviewed reconciliation RPC** (`confdeltype='r'`); both RESTRICT and non-deferrable NO ACTION reject deleting verified links in isolated synthetic tests. A migration using either is not approved until preproduction integration and rollback review.
+
+**Gate outcome unchanged: LOCAL_SYNTHETIC_QA=PASS (specified tests); MANUAL_SOURCE_RECONCILIATION=PENDING; RESTORED-DATA_SYNC_E2E=NOT_TESTED; PRODUCTION_SYNC=STOP; PHASE_D_RELEASE=NO_GO.**
