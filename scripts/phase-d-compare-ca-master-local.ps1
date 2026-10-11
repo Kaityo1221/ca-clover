@@ -86,8 +86,10 @@ try {
     if (-not $identityIds.ContainsKey($r.Identity)) { $identityIds[$r.Identity]=NewSet }
     [void]$identityIds[$r.Identity].Add($r.ClubId)
   }
-  $idConflict = @($idIdentity.Values | Where-Object {$_.Count -gt 1}).Count
-  $nameConflict = @($identityIds.Values | Where-Object {$_.Count -gt 1}).Count
+  $idConflict = 0
+  foreach ($group in $idIdentity.Values) { if ($group.Count -gt 1) { $idConflict++ } }
+  $nameConflict = 0
+  foreach ($group in $identityIds.Values) { if ($group.Count -gt 1) { $nameConflict++ } }
   $blankStatus = @($rows | Where-Object {$_.Status -eq ''}).Count
   $inactiveStatus = @($rows | Where-Object {$_.Status -match '(?i)inactive|retired|suspended|休止|停止|卒業|退任|終了'}).Count
   PrintStat 'sheet_rows' $rows.Count
