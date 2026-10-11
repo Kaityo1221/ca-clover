@@ -86,44 +86,27 @@ begin
     raise exception 'CA_MASTER_INCOMPLETE_LINK_PLAN' using errcode='22023';
   end if;
 
-  -- Add desired links before pruning, preserving existing link IDs.
+  -- Phase C safety rule: NEVER delete or reassign any old link automatically.
+  -- This includes unverified/non-Identity links. Abort atomically before
+  -- inserting new links if any previously stored link would be dropped.
+  if exists(
+    select 1 from public.community_ca_members l
+     where l.ca_member_id=any(p_managed_ca_ids)
+       and not exists (
+         select 1 from jsonb_to_recordset(p_desired_links)
+           as d(community_id uuid,ca_member_id uuid)
+          where d.community_id=l.community_id and d.ca_member_id=l.ca_member_id
+       )
+  ) then
+    raise exception 'CA_MASTER_LINK_CHANGE_REVIEW_REQUIRED' using errcode='55000';
+  end if;
+
+  -- Safe addition only. Identical links keep the original ID and created_at.
   insert into public.community_ca_members(community_id,ca_member_id)
   select distinct d.community_id,d.ca_member_id
     from jsonb_to_recordset(p_desired_links)
       as d(community_id uuid,ca_member_id uuid)
   on conflict (community_id,ca_member_id) do nothing;
-
-  -- A verified old assignment is retained and reported for admin review.
-  select coalesce(jsonb_agg(jsonb_build_object(
-       'community_id', l.community_id,
-       'ca_member_id', l.ca_member_id
-     )), '[]'::jsonb) into v_protected
-    from public.community_ca_members l
-   where l.ca_member_id=any(p_managed_ca_ids)
-     and not exists (
-       select 1 from jsonb_to_recordset(p_desired_links)
-         as d(community_id uuid,ca_member_id uuid)
-        where d.community_id=l.community_id and d.ca_member_id=l.ca_member_id
-     )
-     and exists (
-       select 1 from public.user_ca_identities i
-       where i.community_id=l.community_id and i.ca_member_id=l.ca_member_id
-     );
-
-  -- If an Identity appears concurrently, ON DELETE RESTRICT raises 23503
-  -- and Postgres rolls back *all* changes made by this RPC.
-  delete from public.community_ca_members l
-   where l.ca_member_id=any(p_managed_ca_ids)
-     and not exists (
-       select 1 from jsonb_to_recordset(p_desired_links)
-         as d(community_id uuid,ca_member_id uuid)
-        where d.community_id=l.community_id and d.ca_member_id=l.ca_member_id
-     )
-     and not exists (
-       select 1 from public.user_ca_identities i
-        where i.community_id=l.community_id and i.ca_member_id=l.ca_member_id
-     );
-  get diagnostics v_deleted = row_count;
 
   return jsonb_build_object(
     'desired_links', v_expected_count,
