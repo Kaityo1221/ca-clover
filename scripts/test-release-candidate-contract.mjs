@@ -34,7 +34,9 @@ assert.ok(lease.includes("ca_master_sync_enabled=false"),"Lease must fail closed
 assert.ok(lease.includes("v_expires<=clock_timestamp()"),"Stale run detection required");
 assert.ok(atomic.includes("confdeltype='r'"),"Link RPC must require RESTRICT foreign key");
 assert.ok(atomic.includes("p_owner uuid"),"Link RPC must fence stale workers");
-assert.ok(atomic.includes("from public.user_ca_identities"),"Link RPC must preserve verified links");
+assert.ok(atomic.includes("CA_MASTER_LINK_CHANGE_REVIEW_REQUIRED") &&
+  !atomic.includes("delete from public.community_ca_members"),
+  "Link RPC must preserve ALL links including verified identities");
 assert.ok(claim.includes("CA_CLOVER_UNLISTED_OWN_MEDAL"),"New medal workflow remains opt-in");
 assert.ok(claim.includes("internal_approve_unlisted_ca_claim"),"Use transactional medal approval");
 assert.equal((claim.match(/\.getAnonymousClaimEvent\(/g)||[]).length,3,
