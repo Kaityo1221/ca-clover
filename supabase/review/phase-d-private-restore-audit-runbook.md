@@ -60,10 +60,45 @@ SQLは `BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY;`
 
 ## Phase Dの未完了部分
 
-- 復元DBへのこの読み取り専用検査の実行
+- 復元DBへのこの読み取り専用検査の実行：**2026-10-12 JSTにPASS（下記記録参照）**
 - 現在の本番デプロイに対応するEdge/Cron/Secrets/RLS/Authの隔離E2E
 - 失敗時の部分コミット、本人Identity、交換メダル履歴の実DB差分検証
 - 同期前に人間が確認したCAマスターCSV基準件数の作成と監査方法
 - 画像デコードが未解決の3ファイルの原因分類
 
 **本番SQL・Cron・Edge・2099停止解除・PRマージは一切承認されていない。**
+
+
+## Phase D 実データ検査結果（2026-10-12 JST / 管理者実行）
+
+**環境:** Windows上の復元テスト用Docker PostgreSQL。Production接続なし。  
+**方法:** `phase-d-restored-local-readonly.sql` を `psql -X -v ON_ERROR_STOP=1` でUnixソケットから実行。書込なし・read-only transaction COMMIT。  
+**判定:** 12検査項目PASS。**復元DBのデータ整合性検査に限ったPASS**であり、完全なアプリ復旧のGOでも、本番同期復帰の許可でもない。
+
+| 項目 | 実測 | 判定 |
+| --- | ---: | --- |
+| Auth users | 6 | PASS |
+| Google identities | 6 | PASS |
+| profiles | 6 | PASS |
+| user_ca_identities | 6 | PASS |
+| medal collections | 13 | PASS |
+| medal designs | 13 | PASS |
+| Storage metadata | 418 | PASS |
+| foreign keys | 98 | PASS |
+| 未検証FK | 0 | PASS |
+| 参照先不明のCA Identity | 0 | PASS |
+| Primary重複ユーザー | 0 | PASS |
+| 資格のあるPrimary Identityの自拠点メダル欠落 | 0 | PASS |
+
+補助実測（復元時点）: CA 200件、Communities 155件、CA-Communityリンク 196件、Primary Identity 6件、Community memberships 6件。
+
+- 復元DBの `sync_automation_state.enabled=true`：**PASS（設定値確認のみ。Cron実稼働の確認ではない）**。
+- `last_ca_master_at` は未来の2099停止値として検出：**PASS（復元DB内のみ。実本番の状態を再検証したわけではない）**。
+- Identity複合FK `ON DELETE CASCADE`：**既存の未保護状態、同期復帰STOP**。
+- 専用 `ca_master_sync_enabled` カラム：**NOT_APPLIED（復元時点では想定内）**。
+- `ca-master-verified-baseline`：**0件、未承認**。CA 200件というDB総数をCSVの確認済み基準行数と誤認しないこと。
+
+**次の未完了項目:** OAuth / Secrets / Edge Functions / Cron・通知・RLSの隔離フルE2E、
+部分書込時の実データ差分試験、確認済みCSV基準件数の独立承認、画像デコード未解決3件。
+
+**本番変更ゼロ。2099停止解除ゼロ。Draft PR未マージ。**
