@@ -1,45 +1,48 @@
--- Phase D / privacy-preserving content fingerprints.
--- READ ONLY, LOCAL RESTORE ONLY. NO IDs, names, row content or hash salts printed.
--- Do not execute against production or shared staging.
+-- Phase D: local restore only, read-only content fingerprint check.
+-- Prints aggregated hashes and counts ONLY, no UUIDs, names or personal rows.
+-- Re-run to compare same isolated database before/after a controlled test.
 \set ON_ERROR_STOP on
 \pset pager off
-\echo 'PHASE D | LOCAL CONTENT FINGERPRINTS | NO WRITES'
+\echo 'PHASE D LOCAL CONTENT FINGERPRINT | NO WRITES'
 BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY;
 SELECT 1/CASE WHEN inet_server_addr() IS NULL THEN 1 ELSE 0 END AS local_unix_socket_required;
+SELECT 'public.user_ca_identities'::text AS table_name, count(*) AS row_count,
+       md5(coalesce(string_agg(md5(to_jsonb(t)::text), ',' ORDER BY md5(to_jsonb(t)::text)),'')) AS content_digest
+FROM public.user_ca_identities t
+UNION ALL
+SELECT 'public.community_ca_members'::text AS table_name, count(*) AS row_count,
+       md5(coalesce(string_agg(md5(to_jsonb(t)::text), ',' ORDER BY md5(to_jsonb(t)::text)),'')) AS content_digest
+FROM public.community_ca_members t
+UNION ALL
+SELECT 'public.stamp_collections'::text AS table_name, count(*) AS row_count,
+       md5(coalesce(string_agg(md5(to_jsonb(t)::text), ',' ORDER BY md5(to_jsonb(t)::text)),'')) AS content_digest
+FROM public.stamp_collections t
+UNION ALL
+SELECT 'public.stamp_collection_designs'::text AS table_name, count(*) AS row_count,
+       md5(coalesce(string_agg(md5(to_jsonb(t)::text), ',' ORDER BY md5(to_jsonb(t)::text)),'')) AS content_digest
+FROM public.stamp_collection_designs t
+UNION ALL
+SELECT 'public.community_memberships'::text AS table_name, count(*) AS row_count,
+       md5(coalesce(string_agg(md5(to_jsonb(t)::text), ',' ORDER BY md5(to_jsonb(t)::text)),'')) AS content_digest
+FROM public.community_memberships t
+UNION ALL
+SELECT 'public.profiles'::text AS table_name, count(*) AS row_count,
+       md5(coalesce(string_agg(md5(to_jsonb(t)::text), ',' ORDER BY md5(to_jsonb(t)::text)),'')) AS content_digest
+FROM public.profiles t
+UNION ALL
+SELECT 'public.ca_members'::text AS table_name, count(*) AS row_count,
+       md5(coalesce(string_agg(md5(to_jsonb(t)::text), ',' ORDER BY md5(to_jsonb(t)::text)),'')) AS content_digest
+FROM public.ca_members t
+UNION ALL
+SELECT 'public.communities'::text AS table_name, count(*) AS row_count,
+       md5(coalesce(string_agg(md5(to_jsonb(t)::text), ',' ORDER BY md5(to_jsonb(t)::text)),'')) AS content_digest
+FROM public.communities t
+ORDER BY table_name;
 
--- Count + order-independent SHA-256 of the canonical row-level MD5 values.
--- This supports before/after comparisons on the SAME isolated DB.
--- It does not independently attest that data is correct or immutable.
-CREATE TEMP TABLE phase_d_fingerprints(table_name text, row_count bigint, digest text) ON COMMIT DROP;
-DO $audit$
-DECLARE item text; cnt bigint; fp text;
-BEGIN
-  FOREACH item IN ARRAY ARRAY[
-    'public.user_ca_identities',
-    'public.community_ca_members',
-    'public.stamp_collections',
-    'public.stamp_collection_designs',
-    'public.community_memberships',
-    'public.profiles',
-    'public.ca_members',
-    'public.communities'
-  ] LOOP
-    EXECUTE format(
-      'SELECT count(*), md5(coalesce(string_agg(rowhash, '','' ORDER BY rowhash), '''')) FROM (SELECT md5(to_jsonb(t)::text) AS rowhash FROM %s t) x',
-      item
-    ) INTO cnt, fp;
-    INSERT INTO phase_d_fingerprints VALUES (item,cnt,fp);
-  END LOOP;
-END $audit$;
-SELECT table_name,row_count,digest FROM phase_d_fingerprints ORDER BY table_name;
-
--- Discover exchange/reunion tables by catalog metadata only. The operator must
--- review exact names before expanding fingerprint coverage.
-SELECT table_name
-FROM information_schema.tables
-WHERE table_schema='public'
-  AND table_type='BASE TABLE'
+-- Metadata discovery only: identify exchange/reunion tables for future audit.
+SELECT table_name FROM information_schema.tables
+WHERE table_schema='public' AND table_type='BASE TABLE'
   AND (table_name ILIKE '%exchange%' OR table_name ILIKE '%reunion%')
 ORDER BY table_name;
 COMMIT;
-\echo 'END LOCAL FINGERPRINT AUDIT'
+\echo 'END LOCAL CONTENT FINGERPRINT'
