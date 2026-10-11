@@ -173,3 +173,19 @@ Negative HTTP cases exercised:
 **Limitation:** The fake PostgREST/Auth handlers return controlled data and synthetic responses. This is a **mock-backed HTTP entrypoint E2E PASS**, not a restored-real-data master sync E2E, full production-schema E2E, deployed-Edge compatibility verification, or approval to write in production. Real OAuth, Cron scheduling, historical Community reconciliation and partially committed write recovery remain separately gated.
 
 **Gate outcome:** `ISOLATED_EDGE_HTTP_NEGATIVE_QA=PASS_MOCK_BACKEND`; `RESTORED_REAL_DATA_MASTER_SYNC_E2E=NOT_TESTED`; `CA_MASTER_SOURCE=REVIEW_REQUIRED_SYNC_STOP`; `PRODUCTION_SYNC=STOP`; `PHASE_D_RELEASE=NO_GO`.
+
+## Step ② complete: Identity composite FK release-candidate decision (2026-10-12)
+
+**STEP_2_DESIGN_AND_SYNTHETIC_INTEGRATION=PASS.  PRODUCTION_FK_CHANGE=NOT_APPLIED.**
+
+**Selected contract:** `public.user_ca_identities(community_id, ca_member_id)` → `public.community_ca_members(community_id, ca_member_id)` must be a **validated, NOT DEFERRABLE, ON DELETE RESTRICT** foreign key named `user_ca_identities_community_id_ca_member_id_fkey`. PostgreSQL catalog `confdeltype='r'`. This intentionally differs from the operator's prior disposable real-backup `NO ACTION` success; `NO ACTION` protects deletion in that local trial but does **not** satisfy this reviewed reconcile RPC contract.
+
+**Integrated and tested artifacts:**
+- `supabase/review/phase-d-identity-fk-restrict.review.sql`: review-only, version-controlled candidate SQL. Requires the exact original validated composite CASCADE constraint, an intact source-key signature, no Identity orphans and the exact 2099 emergency stop; bounds DDL waits; replaces constraint and verifies action, validation, deferrability and Identity count within a transaction. This is **not** an approved Supabase migration.
+- `supabase/review/ca-master-atomic-link-reconcile.review.sql`: fail-closed catalog guard strengthened to demand validated, nondeferrable, exact-key-pair RESTRICT FK, beyond merely checking its name and action.
+- `scripts/ci/phase-d-identity-fk-rpc-integration.sql`: actual reviewed SQL files executed against a **new, disposable synthetic database** `ca_clover_identity_fk_qa`. Exercises direct association DELETE and parent CA/Community cascading DELETE rejection, NO ACTION and NOT VALID RESTRICT mismatch rejection, unchanged-link idempotence, stale unverified-link replacement refusal, safe-additive link reconciliation, original protected association ID preservation and canonical content fingerprints for Identity, medal and exchange-session fixtures.
+- `.github/workflows/release-candidate-db-qa.yml`: new isolated Step ② PostgreSQL QA step creates and then drops that disposable synthetic database.
+
+**Verified evidence:** GitHub Actions **Release candidate / Master + Medal PostgreSQL QA run #38185724996 SUCCESS**, including `Phase D Step 2 / exact RESTRICT FK review SQL plus actual reconcile RPC` PASS (commit `37d86cd765a0e9ae128d383f981d4318cfbce721`). This is **synthetic PostgreSQL 16 CI**. The operator's **real-backup PostgreSQL 17.11 lab** previously validated NO ACTION protection; it has not run this exact RESTRICT SQL/RPC combination.
+
+**Boundary:** Step ② is complete **as a reviewed design and disposable integrated regression test**, not as a production migration, full real-data restore E2E or permission to resume CA Master. First separately approved production migration and Edge/schema deploy belong to **step ⑤** after source review and end-to-end restored-data checks. Preserve 2099 sentinel; master source remains `REVIEW_REQUIRED_SYNC_STOP`; Phase D remains **NO-GO**.
