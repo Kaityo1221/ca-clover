@@ -37,6 +37,18 @@ UNION ALL
 SELECT 'public.communities'::text AS table_name, count(*) AS row_count,
        md5(coalesce(string_agg(md5(to_jsonb(t)::text), ',' ORDER BY md5(to_jsonb(t)::text)),'')) AS content_digest
 FROM public.communities t
+UNION ALL
+SELECT 'public.stamp_exchange_sessions'::text AS table_name, count(*) AS row_count,
+       md5(coalesce(string_agg(md5(to_jsonb(t)::text), ',' ORDER BY md5(to_jsonb(t)::text)),'')) AS content_digest
+FROM public.stamp_exchange_sessions t
+UNION ALL
+SELECT 'public.stamp_exchange_transactions'::text AS table_name, count(*) AS row_count,
+       md5(coalesce(string_agg(md5(to_jsonb(t)::text), ',' ORDER BY md5(to_jsonb(t)::text)),'')) AS content_digest
+FROM public.stamp_exchange_transactions t
+UNION ALL
+SELECT 'public.stamp_reunions'::text AS table_name, count(*) AS row_count,
+       md5(coalesce(string_agg(md5(to_jsonb(t)::text), ',' ORDER BY md5(to_jsonb(t)::text)),'')) AS content_digest
+FROM public.stamp_reunions t
 ORDER BY table_name;
 
 -- Metadata discovery only: identify exchange/reunion tables for future audit.
