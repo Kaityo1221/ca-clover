@@ -8,6 +8,7 @@ on:
   pull_request:
     branches:
       - safety/ca-master-exclusive-lease-20261010
+      - safety/release-candidate-master-and-medal-20261010
 
 permissions:
   contents: read

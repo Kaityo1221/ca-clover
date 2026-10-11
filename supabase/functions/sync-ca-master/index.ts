@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { shouldReleaseCaMasterLease, pauseAndAuditCaMasterFailure } from "../_shared/ca-master-recovery.mjs";
-import { assessCaMasterSource } from "../_shared/ca-master-source-preflight.mjs";
+import { assessCaMasterSource, assessCaMasterBaseline } from "../_shared/ca-master-source-preflight.mjs";
 
 const CRON_HEADER="x-ca-clover-cron-secret";
 const CA_MASTER_URL="https://docs.google.com/spreadsheets/d/1BtPjOxNX4JhttKKJa_-qrIXdVmK5UsbAX-RcLmLTuwk/export?format=csv&gid=633821294";
@@ -113,7 +113,9 @@ function normalizeDate(value:string){
 function normalizeStatus(value:string){
   const raw=value.normalize("NFKC").trim().toLowerCase();
   if(/inactive|retired|suspended|休止|停止|卒業|退任|終了/.test(raw)) return "inactive";
-  return "active";
+  if(/^(active|有効|活動中|現役|在籍)$/.test(raw)) return "active";
+  // Missing/unknown source status must never activate a CA.
+  return "unknown";
 }
 
 function extractCommunityId(campfireUrl:string){
@@ -227,12 +229,17 @@ Deno.serve(async(req:Request)=>{
     // The master gate must be explicitly enabled by an operator.
     const {data:masterGate,error:masterGateError}=await admin
       .from("sync_automation_state")
-      .select("ca_master_sync_enabled")
+      .select("ca_master_sync_enabled,last_ca_master_at")
       .eq("id",1)
       .maybeSingle();
     if(masterGateError) return json({error:"CA master safety gate unavailable"},503);
     if(masterGate?.ca_master_sync_enabled!==true){
       return json({ok:false,status:"paused",error:"CA master sync is paused"},423);
+    }
+    // Keep the original emergency 2099 sentinel as an independent backstop.
+    const lastMasterTime=Date.parse(String(masterGate.last_ca_master_at??""));
+    if(Number.isFinite(lastMasterTime)&&lastMasterTime>Date.now()+365*86400000){
+      return json({ok:false,status:"paused",error:"CA master emergency sentinel is active"},423);
     }
 
     // Claim an exclusive run before fetching the source or writing any row.
@@ -267,7 +274,25 @@ Deno.serve(async(req:Request)=>{
       return json({error:`CA master fetch failed: HTTP ${response.status}`},502);
     }
 
-    const records=parseMaster(await response.text());
+    const sourceCsv=await response.text();
+    const inputRowCount=Math.max(0,parseCsv(sourceCsv).length-1);
+    // Unknown/missing sheet status does not promote anyone to active.
+    // Keep a previously known active/inactive status unchanged; new CAs
+    // require explicit activation and are imported as inactive.
+    const {data:statusRows,error:statusReadError}=await admin.from("ca_members")
+      .select("source_key,status");
+    if(statusReadError) return json({error:"Existing CA statuses unavailable"},503);
+    const previousStatuses=new Map(
+      (statusRows??[]).map(row=>[String(row.source_key),String(row.status)]),
+    );
+    const records=parseMaster(sourceCsv).map(record=>({
+      ...record,
+      status:record.status!=="unknown"
+        ?record.status
+        :(["active","inactive"].includes(previousStatuses.get(record.sourceKey)??"")
+          ?previousStatuses.get(record.sourceKey)!
+          :"inactive"),
+    }));
     const resolved=records.filter(
       (record):record is MasterRecord&{communityId:string}=>Boolean(record.communityId),
     );
@@ -336,6 +361,7 @@ Deno.serve(async(req:Request)=>{
     // or contains duplicate CA rows with different master metadata.
     const sourcePreflight=assessCaMasterSource(records,{
       unresolvedCount:unresolved.length,conflictCount:conflicts.length,
+      inputRowCount,
     });
     if(!sourcePreflight.ok){
       const stopped=await pauseAndAuditCaMasterFailure({
@@ -355,10 +381,14 @@ Deno.serve(async(req:Request)=>{
 
     const {data:writeGate,error:writeGateError}=await admin
       .from("sync_automation_state")
-      .select("ca_master_sync_enabled")
+      .select("ca_master_sync_enabled,last_ca_master_at")
       .eq("id",1)
       .maybeSingle();
     if(writeGateError) return json({error:"CA master safety gate unavailable"},503);
+    const writeSentinelTime=Date.parse(String(writeGate?.last_ca_master_at??""));
+    if(Number.isFinite(writeSentinelTime)&&writeSentinelTime>Date.now()+365*86400000){
+      return json({ok:false,status:"paused",error:"CA master emergency sentinel is active"},423);
+    }
     if(writeGate?.ca_master_sync_enabled!==true){
       return json({ok:false,status:"paused",error:"CA master sync is paused"},423);
     }
@@ -489,6 +519,65 @@ Deno.serve(async(req:Request)=>{
       retainLeaseForReview=!stopped;
       return json({ok:false,code:"CA_MASTER_EMPTY_WRITE_PLAN"},422);
     }
+    // Detect any removal/reassignment BEFORE the first metadata write.
+    // Identity-free links are still valuable and are NOT silently discarded.
+    const [{data:existingCaRows,error:existingCaError},
+           {data:existingLinkRows,error:existingLinksError}]=await Promise.all([
+      admin.from("ca_members").select("id,source_key"),
+      admin.from("community_ca_members").select("community_id,ca_member_id"),
+    ]);
+    if(existingCaError||existingLinksError){
+      return json({error:"CA master link preflight unavailable"},503);
+    }
+    const existingCaBySource=new Map(
+      (existingCaRows??[]).map(row=>[String(row.source_key),String(row.id)]),
+    );
+    const managedExistingIds=new Set(
+      sourcePreflight.caRows.map(row=>existingCaBySource.get(row.source_key)).filter(Boolean),
+    );
+    const desiredKnownLinks=new Set(safeResolved.flatMap(record=>{
+      const caId=existingCaBySource.get(record.sourceKey);
+      const communityId=sourceCommunityMap.get(record.communityId);
+      return caId&&communityId?[communityId+"|"+caId]:[];
+    }));
+    const staleKnownLinks=(existingLinkRows??[]).filter(link=>
+      managedExistingIds.has(String(link.ca_member_id)) &&
+      !desiredKnownLinks.has(String(link.community_id)+"|"+String(link.ca_member_id))
+    );
+    if(staleKnownLinks.length>0){
+      const stopped=await pauseAndAuditCaMasterFailure({
+        admin,owner,stage:"existing-link-preflight",
+        code:"CA_MASTER_LINK_CHANGE_REVIEW_REQUIRED",finishedAt:new Date().toISOString(),
+      });
+      retainLeaseForReview=!stopped;
+      return json({
+        ok:false,status:"rejected",code:"CA_MASTER_LINK_CHANGE_REVIEW_REQUIRED",
+        affectedLinks:staleKnownLinks.length,
+      },422);
+    }
+
+    // The latest explicitly attested baseline is required for a write.
+    // Ordinary successful sync_runs are NOT trusted as an attestation.
+    const {data:baseline,error:baselineError}=await admin.from("sync_runs")
+      .select("details,started_at")
+      .eq("source","ca-master-verified-baseline")
+      .eq("status","success")
+      .order("started_at",{ascending:false})
+      .limit(1).maybeSingle();
+    const baselineCheck=baselineError
+      ?{ok:false,reason:"BASELINE_QUERY_FAILED"}
+      :assessCaMasterBaseline(
+        baseline?.details,records.length,sourcePreflight.uniqueCaRecords,
+      );
+    if(!baselineCheck.ok){
+      const stopped=await pauseAndAuditCaMasterFailure({
+        admin,owner,stage:"verified-baseline-preflight",
+        code:"CA_MASTER_BASELINE_REVIEW_REQUIRED",finishedAt:new Date().toISOString(),
+      });
+      retainLeaseForReview=!stopped;
+      return json({ok:false,status:"rejected",code:"CA_MASTER_BASELINE_REVIEW_REQUIRED"},422);
+    }
+
     // Metadata updates are separate REST calls. Any failure afterward
     // pauses CA-master and retains the lease unless the pause is confirmed.
     writeStarted=true;
@@ -535,10 +624,10 @@ Deno.serve(async(req:Request)=>{
     const metadataUpdates=new Map<string,{
       name:string;
       prefecture:string;
-      latitude:number|null;
-      longitude:number|null;
+      latitude?:number;
+      longitude?:number;
       fetched_at:string;
-      campfire_url?:string|null;
+      campfire_url?:string;
     }>();
 
     const retiredHistoryRows:Array<{
@@ -559,20 +648,24 @@ Deno.serve(async(req:Request)=>{
       const update:{
         name:string;
         prefecture:string;
-        latitude:number|null;
-        longitude:number|null;
+        latitude?:number;
+        longitude?:number;
         fetched_at:string;
-        campfire_url?:string|null;
+        campfire_url?:string;
       }={
         name:record.communityName,
         prefecture:record.prefecture,
-        latitude:record.latitude,
-        longitude:record.longitude,
         fetched_at:new Date().toISOString(),
       };
-
-      if(target?.campfire_community_id===record.communityId){
-        update.campfire_url=record.campfireUrl||null;
+      // Null/invalid source coordinates and empty URLs never erase stored values.
+      if(record.latitude!==null && record.longitude!==null &&
+         record.latitude>=-90 && record.latitude<=90 &&
+         record.longitude>=-180 && record.longitude<=180){
+        update.latitude=record.latitude;
+        update.longitude=record.longitude;
+      }
+      if(target?.campfire_community_id===record.communityId && record.campfireUrl){
+        update.campfire_url=record.campfireUrl;
       }
       metadataUpdates.set(targetId,update);
 
@@ -672,7 +765,9 @@ Deno.serve(async(req:Request)=>{
     }
 
     const coordinatePayload=records.flatMap(record=>
-      record.latitude!==null&&record.longitude!==null
+      record.latitude!==null&&record.longitude!==null &&
+      record.latitude>=-90&&record.latitude<=90 &&
+      record.longitude>=-180&&record.longitude<=180
         ?[{source_key:record.sourceKey,latitude:record.latitude,longitude:record.longitude}]
         :[],
     );

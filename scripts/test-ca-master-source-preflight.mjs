@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {assessCaMasterSource} from "../supabase/functions/_shared/ca-master-source-preflight.mjs";
+import {assessCaMasterSource,assessCaMasterBaseline} from "../supabase/functions/_shared/ca-master-source-preflight.mjs";
 
 const ca=(changes={})=>({
   sourceKey:"ca-one",
@@ -28,15 +28,20 @@ const cases=[
   {label:"invalid level",records:[ca({caLevel:"3rd"})],unresolvedCount:0,conflictCount:0,ok:false,reason:"INVALID_CA_RECORD"},
   {label:"invalid source ID",records:[ca({sourceKey:""})],unresolvedCount:0,conflictCount:0,ok:false,reason:"INVALID_CA_RECORD"},
   {label:"invalid counts",records:[ca()],unresolvedCount:-1,conflictCount:0,ok:false,reason:"INVALID_PREFLIGHT_COUNTS"},
+  {label:"missing status must not activate",records:[ca({status:"unknown"})],unresolvedCount:0,conflictCount:0,ok:false,reason:"INVALID_CA_RECORD"},
+  {label:"dropped input CSV row rejected",records:[ca()],unresolvedCount:0,conflictCount:0,inputRowCount:2,ok:false,reason:"SKIPPED_OR_MALFORMED_SOURCE_ROWS"},
 ];
 for(const c of cases){
   const result=assessCaMasterSource(c.records,{
     unresolvedCount:c.unresolvedCount,conflictCount:c.conflictCount,
+    inputRowCount:c.inputRowCount??c.records.length,
   });
   assert.equal(result.ok,c.ok,c.label);
   if(c.reason)assert.equal(result.reason,c.reason,c.label);
   if(c.ok){
     assert.equal(result.caRows.length,c.rows,c.label);
+    assert.ok(result.caRows.every(r=>!("latitude" in r)&&!("longitude" in r)),
+      "CA metadata upsert may not erase coordinates from an incomplete CSV");
     assert.equal(new Set(result.caRows.map(r=>r.source_key)).size,c.rows,
       "PostgREST onConflict upsert must never contain duplicate source_key");
   }else assert.ok(!("caRows" in result),"Rejected sources must not return a write plan");
@@ -55,4 +60,14 @@ assert.ok(p1<caRead && caRead<p2 && p2<beforeWrite && beforeWrite<caWrite,
 assert.ok(code.includes("CA_MASTER_VERIFIED_IDENTITY_ASSIGNMENT_REVIEW_REQUIRED"),
  "Verified Identity collision must trigger operator review");
 
-console.log("CA master source preflight: 12 source cases and Edge write-order checks PASS");
+
+const baseline={manually_verified:true,source_rows:100,unique_ca_members:80};
+assert.equal(assessCaMasterBaseline(null,100,80).reason,"MISSING_VERIFIED_BASELINE");
+assert.equal(assessCaMasterBaseline({...baseline,manually_verified:false},100,80).ok,false);
+assert.equal(assessCaMasterBaseline(baseline,89,80).reason,"SOURCE_COUNT_DROPPED");
+assert.equal(assessCaMasterBaseline(baseline,100,71).reason,"SOURCE_COUNT_DROPPED");
+assert.equal(assessCaMasterBaseline(baseline,201,80).reason,"SOURCE_COUNT_SPIKED");
+assert.equal(assessCaMasterBaseline(baseline,90,72).ok,true);
+assert.equal(assessCaMasterBaseline(baseline,100,80).ok,true);
+
+console.log("CA master source preflight: 14 source cases, 7 baseline cases and Edge write-order checks PASS");

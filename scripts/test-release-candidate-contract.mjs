@@ -6,6 +6,9 @@ import {readFileSync} from "node:fs";
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 const auto=read("supabase/functions/sync-campfire-auto/index.ts");
 const master=read("supabase/functions/sync-ca-master/index.ts");
+const coordinates=read("supabase/functions/sync-ca-master-coordinates/index.ts");
+const legacyMaster=read("src/app/api/sync/ca-master/route.ts");
+const sourcePreflight=read("supabase/functions/_shared/ca-master-source-preflight.mjs");
 const recovery=read("supabase/functions/_shared/ca-master-recovery.mjs");
 const medalDesign=read("supabase/review/qa-production-medal-design-functions.review.sql");
 const admin=read("supabase/functions/sync-ca-master-admin/index.ts");
@@ -31,7 +34,9 @@ assert.ok(lease.includes("ca_master_sync_enabled=false"),"Lease must fail closed
 assert.ok(lease.includes("v_expires<=clock_timestamp()"),"Stale run detection required");
 assert.ok(atomic.includes("confdeltype='r'"),"Link RPC must require RESTRICT foreign key");
 assert.ok(atomic.includes("p_owner uuid"),"Link RPC must fence stale workers");
-assert.ok(atomic.includes("from public.user_ca_identities"),"Link RPC must preserve verified links");
+assert.ok(atomic.includes("CA_MASTER_LINK_CHANGE_REVIEW_REQUIRED") &&
+  !atomic.includes("delete from public.community_ca_members"),
+  "Link RPC must preserve ALL links including verified identities");
 assert.ok(claim.includes("CA_CLOVER_UNLISTED_OWN_MEDAL"),"New medal workflow remains opt-in");
 assert.ok(claim.includes("internal_approve_unlisted_ca_claim"),"Use transactional medal approval");
 assert.equal((claim.match(/\.getAnonymousClaimEvent\(/g)||[]).length,3,
@@ -51,4 +56,14 @@ assert.ok(!/^\s*(?:insert\s+into|delete\s+from|update\s+public\.|alter\s+table|c
  preflight.replace(/^\s*--[^\n]*$/gm,"")
 ),"Production schema preflight must remain read-only");
 
-console.log("Unified master sync / actual deployed scheduler / medal approval contracts PASS (27 checks)");
+assert.ok(master.includes("CA_MASTER_BASELINE_REVIEW_REQUIRED"),"Unknown baseline or unusual source size must stop master");
+assert.ok(master.includes("CA_MASTER_LINK_CHANGE_REVIEW_REQUIRED"),"Existing CA-link changes must stop before metadata writes");
+assert.ok(master.includes("CA master emergency sentinel is active"),"2099 emergency sentinel must be independent of dedicated flag");
+assert.ok(sourcePreflight.includes("SKIPPED_OR_MALFORMED_SOURCE_ROWS"),"Rows dropped by parser must be rejected");
+assert.ok(!sourcePreflight.includes("latitude:record.latitude"),"Metadata upsert must not overwrite valid coordinates with null");
+assert.ok(coordinates.includes("CA_MASTER_COORDINATES_RETIRED") && !coordinates.includes(".rpc("),"Old coordinate writer must be disabled");
+assert.ok(legacyMaster.includes("CA_MASTER_LEGACY_SYNC_DISABLED") && !legacyMaster.includes(".delete("),"Old Next.js destructive writer must be disabled");
+assert.ok(atomic.includes("CA_MASTER_LINK_CHANGE_REVIEW_REQUIRED"),"All stale links must be rejected in atomic RPC");
+assert.ok(!atomic.includes("delete from public.community_ca_members"),"Atomic link reconcile must never delete old links");
+
+console.log("Unified master sync / actual deployed scheduler / medal approval contracts PASS (36 checks)");

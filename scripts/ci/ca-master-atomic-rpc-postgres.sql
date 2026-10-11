@@ -126,24 +126,48 @@ begin
 end
 $test$;
 
--- Move CA1, move CA2. CA1 verified old link must remain,
--- CA2 unverified old link is deleted. Both new links created.
+-- An attempted reassignment must abort BEFORE any write, even if an
+-- unverified link is the only one that would be removed.
+do $test$
+declare rejected boolean := false;
+begin
+  begin
+    perform public.internal_reconcile_ca_master_links(
+      ('[{"community_id":"10000000-0000-4000-8000-000000000003","ca_member_id":"20000000-0000-4000-8000-000000000001"},' ||
+       '{"community_id":"10000000-0000-4000-8000-000000000003","ca_member_id":"20000000-0000-4000-8000-000000000002"}]')::jsonb,
+      array['20000000-0000-4000-8000-000000000001'::uuid,'20000000-0000-4000-8000-000000000002'::uuid],
+      '30000000-0000-4000-8000-000000000001'::uuid
+    );
+  exception when sqlstate '55000' then rejected:=true;
+  end;
+  if not rejected
+     or (select count(*) from public.community_ca_members)<>2
+     or (select count(*) from public.user_ca_identities)<>1
+     or (select count(*) from public.stamp_collections)<>1 then
+    raise exception 'FAIL: reassignment was not safely rejected';
+  end if;
+  raise notice 'PASS: all stale links require manual review, no writes';
+end
+$test$;
+
+-- Purely additive association is allowed; existing IDs stay unchanged.
 do $test$
 declare v jsonb;
 begin
   select public.internal_reconcile_ca_master_links(
-    ('[{"community_id":"10000000-0000-4000-8000-000000000003","ca_member_id":"20000000-0000-4000-8000-000000000001"},' || '{"community_id":"10000000-0000-4000-8000-000000000003","ca_member_id":"20000000-0000-4000-8000-000000000002"}]')::jsonb,
+    ('[{"community_id":"10000000-0000-4000-8000-000000000001","ca_member_id":"20000000-0000-4000-8000-000000000001"},' ||
+     '{"community_id":"10000000-0000-4000-8000-000000000002","ca_member_id":"20000000-0000-4000-8000-000000000002"},' ||
+     '{"community_id":"10000000-0000-4000-8000-000000000003","ca_member_id":"20000000-0000-4000-8000-000000000001"}]')::jsonb,
     array['20000000-0000-4000-8000-000000000001'::uuid,'20000000-0000-4000-8000-000000000002'::uuid],
     '30000000-0000-4000-8000-000000000001'::uuid
   ) into v;
-  if (v->>'removed_stale_links')::int<>1
-    or jsonb_array_length(v->'protected_stale_identity_links')<>1
+  if (v->>'removed_stale_links')::int<>0
     or (select count(*) from public.community_ca_members)<>3
     or (select count(*) from public.user_ca_identities)<>1
     or (select count(*) from public.stamp_collections)<>1 then
-    raise exception 'FAIL: desired/old links or medal changed unexpectedly: %',v;
+    raise exception 'FAIL: additive reconciliation changed preserved data';
   end if;
-  raise notice 'PASS: atomic reassignment retains verified old Identity and medal';
+  raise notice 'PASS: purely additive CA links preserve Identity and medal';
 end
 $test$;
 
@@ -179,7 +203,7 @@ begin
   select count(*) into old_identities from public.user_ca_identities;
   begin
     perform public.internal_reconcile_ca_master_links(
-      ('[{"community_id":"10000000-0000-4000-8000-000000000002","ca_member_id":"20000000-0000-4000-8000-000000000001"},' || '{"community_id":"99999999-0000-4000-8000-000000000099","ca_member_id":"20000000-0000-4000-8000-000000000002"}]')::jsonb,
+      ('[{"community_id":"10000000-0000-4000-8000-000000000001","ca_member_id":"20000000-0000-4000-8000-000000000001"},' || '{"community_id":"10000000-0000-4000-8000-000000000003","ca_member_id":"20000000-0000-4000-8000-000000000001"},' || '{"community_id":"10000000-0000-4000-8000-000000000002","ca_member_id":"20000000-0000-4000-8000-000000000002"},' || '{"community_id":"99999999-0000-4000-8000-000000000099","ca_member_id":"20000000-0000-4000-8000-000000000002"}]')::jsonb,
       array['20000000-0000-4000-8000-000000000001'::uuid,'20000000-0000-4000-8000-000000000002'::uuid],
     '30000000-0000-4000-8000-000000000001'::uuid
     );
