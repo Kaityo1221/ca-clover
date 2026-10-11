@@ -276,7 +276,23 @@ Deno.serve(async(req:Request)=>{
 
     const sourceCsv=await response.text();
     const inputRowCount=Math.max(0,parseCsv(sourceCsv).length-1);
-    const records=parseMaster(sourceCsv);
+    // Unknown/missing sheet status does not promote anyone to active.
+    // Keep a previously known active/inactive status unchanged; new CAs
+    // require explicit activation and are imported as inactive.
+    const {data:statusRows,error:statusReadError}=await admin.from("ca_members")
+      .select("source_key,status");
+    if(statusReadError) return json({error:"Existing CA statuses unavailable"},503);
+    const previousStatuses=new Map(
+      (statusRows??[]).map(row=>[String(row.source_key),String(row.status)]),
+    );
+    const records=parseMaster(sourceCsv).map(record=>({
+      ...record,
+      status:record.status!=="unknown"
+        ?record.status
+        :(["active","inactive"].includes(previousStatuses.get(record.sourceKey)??"")
+          ?previousStatuses.get(record.sourceKey)!
+          :"inactive"),
+    }));
     const resolved=records.filter(
       (record):record is MasterRecord&{communityId:string}=>Boolean(record.communityId),
     );
