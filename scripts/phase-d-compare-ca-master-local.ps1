@@ -24,7 +24,7 @@ function CommunityId([string]$url) {
   } catch { return $null }
   return $null
 }
-function NewSet { return [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase) }
+function NewSet { return ,([Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)) }
 function DifferenceCount($a,$b) {
   $count = 0
   foreach ($v in $a) { if (-not $b.Contains($v)) { $count++ } }
