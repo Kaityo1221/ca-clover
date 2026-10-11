@@ -28,4 +28,6 @@ jobs:
         run: deno test scripts/test-claim-graphql-compat.ts
       - name: Check CA master and scheduler Edge Function types
         run: deno check --node-modules-dir=auto supabase/functions/sync-ca-master/index.ts supabase/functions/sync-ca-master-admin/index.ts supabase/functions/sync-campfire-auto/index.ts supabase/functions/community-claim/index.ts
+      - name: Verify retired coordinate handler really responds HTTP 410
+        run: node scripts/test-ca-master-retired-http.mjs
       - run: npm run build
