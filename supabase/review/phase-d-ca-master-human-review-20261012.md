@@ -28,7 +28,7 @@
 | P0 | 94 | Sheet pair absent from DB current link; DB has different current link; ID active with `manual-hokkaido-repair` history; overlaps with row 177 URL group | Independently verify prior manual repair and current source mapping before any proposed change |
 | P0 | 100 | DB-only current pairing; history also contains a retired ID, and Sheet ID maps as an alias for this CA | Classify whether the current association and alias both remain valid |
 | P0 | 17 | Sheet Campfire URL and ID missing; coordinate also missing; matches Community prefecture/name identity of row 128 | Ask for authoritative published Community ID/URL or retain explicit unresolved state; do not fabricate coordinates |
-| P0 | 34 | URL exists but ID unparseable/unresolved | Confirm input format and actual current Campfire ID with an authorized owner |
+| P0 | 34 | URL exists but ID unparseable/unresolved; **2026-10-12 read-only Sheet spot check** found a source prefecture vs coordinate/self-description geography mismatch | Confirm intended prefecture/coordinates and actual current Campfire ID with an authorized owner; leave source unchanged pending review |
 | P1 | 7 / 115 | Same URL, different normalized name | Confirm rename vs separate per-CA text vs incorrect data |
 | P1 | 60 / 116 | Same URL, different normalized name | Examine with above P0 pair discrepancy; avoid duplicate uncoordinated edits |
 | P1 | 94 / 177 | Same URL, different normalized name | Examine with above P0 prior repair |
@@ -59,3 +59,12 @@ Disposition is **not permission to run SQL**; no auto-merge, rename, retire, del
 5. Only after source review AND isolated technical E2E pass may a separately authorized controlled sync be considered. Maintain 2099 pause and dedicated gate OFF meanwhile.
 
 **Current review disposition: ALL ROWS PENDING. No production or source Sheet mutations performed.**
+
+## Supplemental live Sheet read-only spot check (2026-10-12 JST)
+
+- Confirmed the same listed five same-URL/name-disagreement groups persist in the exact visible source tab `[new]CA List 20260828`, gid `633821294`. Equal URLs are evidence of a shared link, **not** proof of canonical Community identity or CA affiliation.
+- Row **17** still lacks source URL and coordinates. Row **34** still has an unresolved/unparseable URL-to-ID representation, and its listed prefecture conflicts with the geographic region indicated by its coordinate/self-description. This needs **human source-owner review**; no automatic correction is justified.
+- Row **34** shares a Community display name with row **198**, but their URL values are **not equal**, and listed prefectures differ. Do not merge them using the display name alone.
+- Sheets were read-only; no account/member identifiers, raw URLs, map coordinates or private identities have been committed here.
+
+**Source reconciliation remains REVIEW_REQUIRED_SYNC_STOP.**
