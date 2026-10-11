@@ -189,3 +189,15 @@ Negative HTTP cases exercised:
 **Verified evidence:** GitHub Actions **Release candidate / Master + Medal PostgreSQL QA run #38185724996 SUCCESS**, including `Phase D Step 2 / exact RESTRICT FK review SQL plus actual reconcile RPC` PASS (commit `37d86cd765a0e9ae128d383f981d4318cfbce721`). This is **synthetic PostgreSQL 16 CI**. The operator's **real-backup PostgreSQL 17.11 lab** previously validated NO ACTION protection; it has not run this exact RESTRICT SQL/RPC combination.
 
 **Boundary:** Step ② is complete **as a reviewed design and disposable integrated regression test**, not as a production migration, full real-data restore E2E or permission to resume CA Master. First separately approved production migration and Edge/schema deploy belong to **step ⑤** after source review and end-to-end restored-data checks. Preserve 2099 sentinel; master source remains `REVIEW_REQUIRED_SYNC_STOP`; Phase D remains **NO-GO**.
+
+## Step ① source review progress: historical evidence collected (2026-10-12)
+
+**Read-only historical triangulation completed**, recorded anonymously in `supabase/review/phase-d-ca-master-human-review-20261012.md`, commit `dc31b730195894efc60b01a0e8c51cd75cf05d42`.
+
+- Current eight P0 rows were cross-checked against June/July 2026 CA lists and April/June/August 2026 Community maps. Row 17 is a 2nd CA missing a URL and coordinates, with same prefecture/name as a pre-existing 1st CA group; row 34 has a short link **without the encoded Community ID**, and this issue has persisted across multiple historical source tabs.
+- Other current P0 rows include newly added 2nd CA links whose group names match older map entries but URLs conflict, and source-vs-restored-DB aliases/overlapping URLs among distinct groups. Multiple confusing same-URL/name combinations pre-date the latest sheet and cannot be safely "fixed" merely from proximity or total counts.
+- Separate P1 groups `144/159/199` and `175/198` must also be adjudicated before source preflight can PASS; resolving only eight P0 rows is insufficient.
+- **No authoritative live Campfire Community-ID confirmation was obtained from group owners**. Therefore no row is recorded as approved for edit, no baseline was created, no mapping was changed, and the `REVIEW_REQUIRED_SYNC_STOP` gate remains active.
+- Next safe action: individual owners confirm live Campfire share URL + Community name/prefecture and 1st/2nd assignment; adjudicate privately, then rerun read-only source-to-restored-DB pair comparison and obtain explicit operator sign-off.
+
+**Decision:** `HISTORICAL_SOURCE_TRIAGE=PASS`; `OWNER_CONFIRMATION=PENDING`; `SOURCE_RECONCILIATION=REVIEW_REQUIRED_SYNC_STOP`; `PRODUCTION_MASTER_SYNC=STOP`; `PHASE_D=NO_GO`.
