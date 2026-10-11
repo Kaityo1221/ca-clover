@@ -48,6 +48,8 @@ jobs:
           fi
       - name: Test safe FK and CA master link changes
         run: psql -v ON_ERROR_STOP=1 -f scripts/ci/ca-master-safety-postgres.sql
+      - name: Phase D / Reproduce CASCADE and verify NO ACTION vs RESTRICT (synthetic only)
+        run: psql -v ON_ERROR_STOP=1 -f scripts/ci/phase-d-fk-no-action-vs-restrict-postgres.sql
       - name: Test actual link RPC, crash recovery and exclusive lease
         run: psql -v ON_ERROR_STOP=1 -f scripts/ci/ca-master-atomic-rpc-postgres.sql
       - name: Test unlisted CA approval RPC with real self-medal function
