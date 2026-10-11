@@ -138,3 +138,13 @@ PRODUCTION_FK_PROTECTION=NOT_APPLIED
 PRODUCTION_SYNC=STOP
 PHASE_D_RELEASE=NO_GO
 ```
+
+## 2026-10-12 follow-up: draft-branch-only QA assets and review queue
+
+- Added `scripts/ci/phase-d-fk-no-action-vs-restrict-postgres.sql`: synthetic-only PostgreSQL transaction, guarded to run only against the disposable `ca_master_safety` DB over TCP, reproducing the CASCADE loss and testing both **NO ACTION NOT DEFERRABLE** and **RESTRICT** deletion blocks, followed by transaction rollback. This has **NOT** been run against the operator's restored private backup.
+- Updated `.github/workflows/ca-master-safety-postgres.yml` to exercise this synthetic scenario for the Phase D branch. **The new workflow execution result is not yet independently verified; do not mark this addition PASS based solely on the file commit.**
+- Added `supabase/review/phase-d-ca-master-human-review-20261012.md` with P0/P1 row-level anonymous discrepancy triage and evidence/approval requirements. All human dispositions remain pending. No CA source Sheet or DB data has been modified.
+- The existing reconciliation RPC checks PostgreSQL `confdeltype='r'` (RESTRICT only). A local `NO ACTION` constraint has `confdeltype='a'` and therefore will **not** satisfy the existing RPC's guard. **Select a single consistent implementation and demonstrate it in a disposable production-like clone before production approval**; do not silently treat the two FK definitions as interchangeable.
+- GitHub commit combined-status observations on follow-up commits included a `Vercel` failure pointing to a build-rate-limit/upgrade URL. This is **not** a PostgreSQL test failure and **not** proof the new QA passed. No deployment was attempted by these review actions.
+
+**Phase D remains NO-GO. Production writes/deploys, first CA-master sync, 2099 pause removal, and PR merge remain prohibited.**
