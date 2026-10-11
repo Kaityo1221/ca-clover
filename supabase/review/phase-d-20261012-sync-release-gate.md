@@ -157,3 +157,19 @@ PHASE_D_RELEASE=NO_GO
 - **RESTRICT remains the candidate for alignment with existing reviewed reconciliation RPC** (`confdeltype='r'`); both RESTRICT and non-deferrable NO ACTION reject deleting verified links in isolated synthetic tests. A migration using either is not approved until preproduction integration and rollback review.
 
 **Gate outcome unchanged: LOCAL_SYNTHETIC_QA=PASS (specified tests); MANUAL_SOURCE_RECONCILIATION=PENDING; RESTORED-DATA_SYNC_E2E=NOT_TESTED; PRODUCTION_SYNC=STOP; PHASE_D_RELEASE=NO_GO.**
+
+## 2026-10-12: isolated Edge HTTP fail-closed test (mock-backed) 
+
+Added `scripts/test-phase-d-master-edge-http-isolated.mjs` and wired it into `.github/workflows/ci.yml` on the existing Draft PR #131 branch.
+
+**Verified PASS:** The CI step **"Phase D / isolated Edge HTTP stop gate and unrelated scheduler flow"** in GitHub Actions run **38185258444** completed successfully, using real Deno Edge entrypoints and local fake Supabase REST/Auth/Functions endpoints. The first attempt failed only because a strict network permission prevented Deno from listening on its standard `0.0.0.0:8000` port. The permission was corrected to allow the local listener while the Edge subprocess remained restricted to local mock access. No production secret or service endpoint was configured.
+
+Negative HTTP cases exercised:
+- Direct master: invalid secret 401, dedicated gate OFF 423, missing gate schema 503, 2099 future sentinel 423, refusal of writer lease 409. No CA metadata mutation.
+- Admin wrapper: absent bearer 401, non-admin 403, dedicated gate OFF 423, missing gate schema 503, enabled wrapper forwarding to **local refusal stub** only. No CA metadata mutation.
+- Automatic scheduler: dedicated gate OFF, flag absent, and 2099 sentinel with flag ON all skip CA master, while mock public Meetup sync, icon updates, Meetup notifications, claim notifications, and normal run accounting continue.
+- **Isolation:** Deno Edge subprocess is net-restricted to loopback backend and test listener; test data, credentials and IDs are synthetic; no real Google Sheet CSV download, production Supabase URL, Docker restore DB, or real Campfire API calls.
+
+**Limitation:** The fake PostgREST/Auth handlers return controlled data and synthetic responses. This is a **mock-backed HTTP entrypoint E2E PASS**, not a restored-real-data master sync E2E, full production-schema E2E, deployed-Edge compatibility verification, or approval to write in production. Real OAuth, Cron scheduling, historical Community reconciliation and partially committed write recovery remain separately gated.
+
+**Gate outcome:** `ISOLATED_EDGE_HTTP_NEGATIVE_QA=PASS_MOCK_BACKEND`; `RESTORED_REAL_DATA_MASTER_SYNC_E2E=NOT_TESTED`; `CA_MASTER_SOURCE=REVIEW_REQUIRED_SYNC_STOP`; `PRODUCTION_SYNC=STOP`; `PHASE_D_RELEASE=NO_GO`.
