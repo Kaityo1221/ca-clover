@@ -102,3 +102,40 @@ SQLは `BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY;`
 部分書込時の実データ差分試験、確認済みCSV基準件数の独立承認、画像デコード未解決3件。
 
 **本番変更ゼロ。2099停止解除ゼロ。Draft PR未マージ。**
+
+
+## CAマスターCSVとの個別照合（次の読み取り専用検査）
+
+実シートの200件と復元DBの200件は合計が一致しても、個々のCA/Communityの
+対応が同じとは限らない。Sheet現物の匿名集計と行番号は
+`phase-d-live-ca-master-source-snapshot-20261012.md` に記録済み。
+
+`scripts/phase-d-compare-ca-master-local.ps1` は、実CSVを一時ファイルに
+ダウンロードして復元済みローカルDocker PostgreSQLを **READ ONLY** で
+読み取り、照合結果の件数のみを表示する。CA名、ユーザーID、Community
+UUID、認証情報は標準出力に出さない。一時CSV以外の既存ファイルを変更・削除しない。
+
+PowerShellから実行する場合（**本番SQLもサービスへの同期も実行しない**）：
+
+```powershell
+cd C:\CA-Clover-Restore-Test
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Kaityo1221/ca-clover/safety/ca-master-phase-d-isolated-qa-20261012/scripts/phase-d-compare-ca-master-local.ps1' -OutFile '.\phase-d-compare-ca-master-local.ps1'
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File '.\phase-d-compare-ca-master-local.ps1'
+```
+
+Google側CSVの直接ダウンロードにアクセス制限があるときは、
+ブラウザで対象の `gid=633821294` タブのみをCSVとしてローカル保存し、
+`-CsvPath 'C:\...\file.csv'` を指定する（古いタブを使わない）。
+取得に失敗した場合は安全に中断。URLや秘密を変更して迂回しない。
+
+検査の評価：
+- `sheet_ca_missing_in_db` / `db_ca_missing_in_sheet`：CAキーの差
+- `sheet_ids_not_mapped_in_db`：現行+履歴IDの対応が見つからない数
+- `sheet_pairs_not_mapped_to_db_links`：シートのCA-ID組が既存DBリンクにない数
+- `db_current_pairs_not_in_sheet`：DBリンクが現行シートにない数
+- `result=REVIEW_REQUIRED_SYNC_STOP`：欠損・名称矛盾・割当不一致等があり要確認
+- `result=KEYS_MATCH_BUT_PREFLIGHT_STILL_REQUIRED`：全安全条件の合格を意味しない
+
+本スクリプトは`community_campfire_ids`の履歴別名を参照するが、
+同一CAの安全な拠点異動として認められるか否かの自動判断はしない。
+匿名集計後の個別修正・同期ゲートの解放には別の明示承認が必要。
