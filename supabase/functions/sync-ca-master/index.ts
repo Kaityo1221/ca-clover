@@ -214,6 +214,28 @@ Deno.serve(async(req:Request)=>{
       return json({error:"unauthorized"},401);
     }
 
+    // First-stage production barrier: fail closed until the dedicated gate exists.
+    // Do NOT invoke the legacy writer even if the gate is accidentally toggled ON.
+    const {data:masterGate,error:masterGateError}=await admin
+      .from("sync_automation_state")
+      .select("ca_master_sync_enabled,last_ca_master_at")
+      .eq("id",1)
+      .maybeSingle();
+    if(masterGateError||!masterGate) {
+      return json({ok:false,status:"paused",error:"CA master safety gate unavailable"},503);
+    }
+    const masterPauseUntil=Date.parse(String(masterGate.last_ca_master_at??""));
+    if(masterGate.ca_master_sync_enabled!==true ||
+       !Number.isFinite(masterPauseUntil) ||
+       masterPauseUntil>Date.now()+365*24*60*60*1000) {
+      return json({ok:false,status:"paused",error:"CA master sync is paused"},423);
+    }
+    return json({
+      ok:false,status:"retired",
+      error:"Legacy CA master writer is permanently disabled; protected replacement not deployed",
+    },410);
+
+    // Legacy implementation below is intentionally unreachable pending removal.
     const response=await fetch(CA_MASTER_URL,{
       headers:{"User-Agent":"CA-Clover/1.0"},
     });
