@@ -129,3 +129,38 @@ Fresh source-only comparison of the visible CA master (gid `633821294`):
 5. `ROW_34_2ND_RELATION=PENDING_CONFIRMATION`: no automated personnel change or link migration.
 
 This supersedes any premature inference that cross-prefecture Night Activity rows are automatically duplicate or corrupt. Only the source's *specific* Aichi/Osaka mismatch and unresolved encoded link remain evident. Google Sheets, production Supabase and CA identities remain untouched; release STOP.
+
+## 2026-10-12: Night Activity three-group screenshot cross-check and long-term link audit
+
+**Campfire display evidence, supplied directly by the operator (screenshots retained in the conversation, not uploaded to public GitHub):**
+- Osaka City `夜活 Pokémon GO`: 25,517 displayed members.
+- Kobe Nada-area `夜活Pokémon GO WEST`: 883 displayed members.
+- Kobe central `夜活Pokémon GO KOBE`: 1,529 displayed members.
+These are **three visibly distinct Campfire map entries**. Their screenshot cards do **not** contain the group UUID or evidence of the actual 1st/2nd CA assignments. Therefore an ID-to-group mapping is a hypothesis until verified using each group's live **Share** link.
+
+**Read-only source matrix, exact sheet `[new]CA List 20260828`:**
+
+| Current sheet row | Source group | Prefecture in source | CA role in source | URL classification |
+| --- | --- | --- | --- | --- |
+| 11 | `夜活Pokémon GO WEST` | Hyogo | 1st | `WEST_SOURCE_ID` (valid and distinct) |
+| 13 | `夜活Pokémon GO KOBE` | Hyogo | 2nd | `KOBE_2ND_SOURCE_ID` (valid and distinct) |
+| 34 | `夜活 Pokémon GO` | **Aichi** (while coordinates/self-description indicate Osaka) | 2nd | `NO_DECODED_COMMUNITY_ID`: URL is short/incomplete |
+| 175 | `夜活Pokémon GO KOBE` | Hyogo | 1st | `OSAKA_SOURCE_ID` (**matches row 198 exactly**) |
+| 198 | `夜活 Pokémon GO` | Osaka | 1st | `OSAKA_SOURCE_ID` (valid) |
+
+There are five source records and exactly three **distinct decoded IDs** among the four parseable source links, plus one unresolved short link. This count matching three screenshot groups is **not sufficient to prove their assignment**.
+
+**Historical pattern checked read-only:**
+- KOBE **1st CA**'s ID being identical to the Osaka **1st CA** source ID is not a newly introduced typo: it appears in the **2026-04-20, 2026-06-22, 2026-06-25, 2026-07-18** CA lists and **2026-03, 2026-04, 2026-06, 2026-08** CA maps.
+- KOBE **2nd CA**'s distinct UUID and WEST source row are **newer than the July CA list**; the candidate mapping to the screenshot KOBE/WEST groups is plausible but NOT yet confirmed by an independent share-link source.
+- Row 34's bare/no-ID URL and source Aichi-vs-Osaka mismatch were likewise carried in prior 2026 lists; do not assume correcting the label solves all ID conflicts.
+- The distinct older `西三河 夜活部` (Aichi) entry is a **different group-name and decoded ID** in earlier source records; do not map it to row 34 merely from the word `夜活`.
+
+**Provisional per-row actions (none authorized yet):**
+1. Obtain direct live share links for **all three screenshot groups**, in this order: KOBE, WEST, Osaka. Decode and match each independently to `KOBE_2ND_SOURCE_ID`, `WEST_SOURCE_ID`, `OSAKA_SOURCE_ID` without exposing the raw IDs in this public file.
+2. **Row 175**: only if KOBE live share ID matches row 13 and differs from row 198, propose correcting KOBE 1st link to KOBE's validated ID; verify actual 1st/2nd CA status separately.
+3. **Row 34**: only if Osaka live share ID matches row 198, propose adding its full link, and investigate whether its Aichi prefecture is a source entry mistake; confirm current 2nd CA membership independently.
+4. Confirm row 11 WEST assignment and whether its linked id matches the WEST share. Do not discard distinct WEST entry.
+5. After explicit source-owner approval, re-run frozen source-to-restored-db association diff **read-only**. Do not automatically delete/merge old CA-Community links, identities, medals or exchanges.
+
+**Status:** `NIGHT_ACTIVITY_THREE_DISPLAYED_GROUPS=VISUALLY_CONFIRMED`; `NIGHT_ACTIVITY_DECODED_SOURCE_IDS=THREE`; `NIGHT_ACTIVITY_GROUP_ID_OWNER_ATTESTATION=PENDING`; `NIGHT_ACTIVITY_SOURCE_CORRECTION=NOT_AUTHORIZED`; `MASTER_SYNC=STOP`. No live Sheet or Supabase writes. No PR merge.
