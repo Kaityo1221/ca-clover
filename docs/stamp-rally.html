@@ -38,6 +38,8 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
 .stamps{display:none;border-top:1px solid #f3e8dd;background:#fffdf9;padding:13px 10px 16px;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px 7px}
 .pref.open>.stamps{display:grid}
 .stamp{text-align:center;min-width:0}.medal{position:relative;width:78px;height:78px;margin:auto;border-radius:999px;padding:5px;background:linear-gradient(135deg,#f8e3bf,#fff,#edc993);box-shadow:0 7px 17px rgba(112,73,35,.18)}
+.admin-catalog .hero .summary,.admin-catalog .exchange-card,.admin-catalog .japanmap{display:none!important}
+.admin-catalog .hero{border-color:#c7b7eb;background:linear-gradient(125deg,#f5f0ff,#fff8ef)}
 .medal.unowned{padding:4px;border:2px dashed #cbc5bf;background:#f1efec;box-shadow:none}.medalinner{position:relative;width:100%;height:100%;overflow:hidden;border-radius:999px;background:#eef2e9;display:grid;place-items:center}.medalinner .fallback{font-size:30px;color:#91a889}.medalinner img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.unowned .medalinner{filter:grayscale(1);opacity:.34}
 .check{position:absolute;right:-2px;top:-2px;width:23px;height:23px;border:2px solid #fff;border-radius:999px;background:#6d9758;color:#fff;display:grid;place-items:center;font-size:10px;font-weight:950}
 .cname{margin-top:8px;min-height:31px;font-size:10px;line-height:1.42;font-weight:950;color:#4b433c;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -128,6 +130,8 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
 const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
 const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
 const ROOT="https://kaityo1221.github.io/ca-clover/";
+// ADMIN showcase is a strictly read-only view.
+const isAdminCatalogMode=new URLSearchParams(location.search).get("admin_catalog")==="1";
 const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
 const status=document.getElementById("status");
 const stampBackLink=document.getElementById("stampBackLink");
@@ -598,6 +602,7 @@ async function authGuard(){
  const p=await client.from("profiles").select("role").eq("id",session.user.id).maybeSingle();
  const isAdmin=p.data?.role==="admin";
  const approved=["ca","admin"].includes(p.data?.role);
+ if(isAdminCatalogMode&&!isAdmin){status.className="error";status.textContent="管理者専用の見本帳です。";return false}
  if(isAdmin){
   stampBackLink.href="./admin.html";
   stampBackLink.textContent="管理メニュー";
@@ -614,26 +619,36 @@ async function authGuard(){
 }
 async function load(){
  if(!await authGuard())return;
+ if(isAdminCatalogMode){
+  document.body.classList.add("admin-catalog");
+  document.querySelector(".hero h1").textContent="🪙 全国メダル見本帳";
+  document.querySelector(".hero p").textContent="ADMIN専用。全国のCAメダルを未取得でも3Dで確認できます。";
+  document.querySelector(".hero .note").textContent="閲覧専用サンプルです。メダルの付与や獲得履歴の変更は行いません。";
+  document.querySelector(".footer").textContent="🪙 通常のメダルラリーでは、実際に獲得したメダルだけが表示されます。";
+ }
 
- const [catalog,collectionsResult,identityResult]=await Promise.all([
+ const [catalog,collectionsResult,identityResult,adminDesignResult]=await Promise.all([
   client.rpc("stamp_rally_catalog"),
-  client.from("stamp_collections")
+  isAdminCatalogMode?Promise.resolve({data:[],error:null}):client.from("stamp_collections")
     .select("id,stamp_ca_member_id,community_id,role_at_acquisition,first_acquired_at,first_location,first_event_name,acquisition_source,acquisition_icon_version_id,acquisition_message,acquisition_message_seen_at")
     .eq("owner_user_id",currentUserId),
-  client.from("user_ca_identities")
+  isAdminCatalogMode?Promise.resolve({data:null,error:null}):client.from("user_ca_identities")
     .select("ca_member_id,community_id")
     .eq("user_id",currentUserId)
     .eq("is_primary",true)
-    .maybeSingle()
+    .maybeSingle(),
+  isAdminCatalogMode?client.from("community_icon_versions")
+    .select("id,community_id,content_hash,source_avatar_url,archive_path,thumbnail_path,first_seen_at,last_seen_at,is_current")
+    .order("first_seen_at",{ascending:true}):Promise.resolve({data:[],error:null})
  ]);
- const firstError=catalog.error||collectionsResult.error;
+ const firstError=catalog.error||collectionsResult.error||(isAdminCatalogMode&&adminDesignResult.error);
  if(firstError){status.className="error";status.textContent=firstError.message;return}
 
  const collectionRows=collectionsResult.data||[];
  const collectionMap=new Map(collectionRows.map(x=>[x.stamp_ca_member_id+":"+x.community_id,x]));
  const collectionIds=collectionRows.map(x=>x.id);
 
- let reunionRows=[],designRows=[],preferenceRows=[],versionRows=[];
+ let reunionRows=[],designRows=[],preferenceRows=[],versionRows=isAdminCatalogMode?(adminDesignResult.data||[]):[];
  if(collectionIds.length){
   const [rr,dr,pr]=await Promise.all([
    client.from("stamp_reunions")
@@ -664,6 +679,13 @@ async function load(){
  }
 
  const versionById=new Map(versionRows.map(x=>[x.id,x]));
+ const adminVersionsByCommunity=new Map();
+ if(isAdminCatalogMode){
+  versionRows.forEach(v=>{
+   const designs=adminVersionsByCommunity.get(v.community_id)||[];
+   designs.push(v);adminVersionsByCommunity.set(v.community_id,designs);
+  });
+ }
  const designIdsByCollection=new Map();
  designRows.forEach(x=>{
   const list=designIdsByCollection.get(x.collection_id)||[];
@@ -701,7 +723,9 @@ async function load(){
   return ca.designs.find(x=>x.is_current)||ca.designs[ca.designs.length-1]||null;
  };
  const displayDesign=ca=>{
-  if(!ca||!ca.collection)return null;
+  if(!ca)return null;
+  if(isAdminCatalogMode)return newestDesign(ca);
+  if(!ca.collection)return null;
   const preferred=preferenceMap.get(ca.collection.id);
   return ca.designs.find(x=>x.id===preferred)||newestDesign(ca);
  };
@@ -723,7 +747,7 @@ async function load(){
   }
   if(row.ca_member_id&&row.trainer_name){
    const collection=collectionMap.get(row.ca_member_id+":"+row.community_id)||null;
-   const designs=collection
+   const designs=isAdminCatalogMode?(adminVersionsByCommunity.get(row.community_id)||[]):collection
     ?(designIdsByCollection.get(collection.id)||[])
       .map(id=>versionById.get(id))
       .filter(Boolean)
