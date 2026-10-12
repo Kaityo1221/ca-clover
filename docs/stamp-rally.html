@@ -829,15 +829,18 @@ async function load(){
     const rows=byPref.get(p)||[],cas=rows.flatMap(c=>c.cas),acquired=cas.filter(c=>c.acquired).length;
     const stamps=rows.length?rows.map(c=>{
       const gotCount=c.cas.filter(x=>x.acquired).length,any=gotCount>0,allGot=c.cas.length>0&&gotCount===c.cas.length;
-      const coverCa=c.cas.find(x=>x.acquired)||null,coverDesign=coverCa?displayDesign(coverCa):null,coverSrc=designUrl(coverDesign);
-      const picture=coverSrc
+      const coverCa=isAdminCatalogMode?c.cas[0]||null:c.cas.find(x=>x.acquired)||null;
+      const coverDesign=coverCa?displayDesign(coverCa):null,coverSrc=designUrl(coverDesign);
+      const showIcon=isAdminCatalogMode||any;
+      const picture=!showIcon?"":coverSrc
        ?'<img data-ca-community-icon="1" data-original="'+esc(c.avatar_url||"")+'" src="'+esc(coverSrc)+'" alt="" loading="lazy">'
        :window.CACommunityIcon.img(client,c,'alt="" loading="lazy"');
-      return '<button type="button" class="stamp" data-community="'+esc(c.id)+'"><div class="medal '+(any?'':'unowned')+'"><div class="medalinner"><span class="fallback">🍀</span>'+picture+'</div>'+(allGot?'<span class="check">✓</span>':'')+'</div><div class="cname">'+esc(c.name)+'</div><div class="canames">'+(c.cas.length?c.cas.slice(0,2).map(x=>'<div class="caname '+(x.acquired?'on':'off')+'">'+(x.acquired?'● ':'○ ')+esc(x.trainer_name)+'</div>').join(""):'<div class="caname off">CA未設定</div>')+(c.cas.length>2?'<div class="caname off">+'+(c.cas.length-2)+'</div>':'')+'</div></button>';
+      const caLabels=c.cas.length?c.cas.slice(0,2).map(x=>'<div class="caname '+(isAdminCatalogMode||x.acquired?'on':'off')+'">'+(isAdminCatalogMode?'◇ ':x.acquired?'● ':'○ ')+esc(x.trainer_name)+'</div>').join(""):'<div class="caname off">CA未設定</div>';
+      return '<button type="button" class="stamp" data-community="'+esc(c.id)+'"><div class="medal '+(showIcon?'':'unowned')+'"><div class="medalinner"><span class="fallback">'+(showIcon?'🍀':'？')+'</span>'+picture+'</div>'+(!isAdminCatalogMode&&allGot?'<span class="check">✓</span>':'')+'</div><div class="cname">'+esc(c.name)+'</div><div class="canames">'+caLabels+(c.cas.length>2?'<div class="caname off">+'+(c.cas.length-2)+'</div>':'')+'</div></button>';
     }).join(""):'<div class="empty">Communityはありません</div>';
-    return '<div class="pref"><button class="prefbtn"><div><div class="prefname">'+esc(p)+'</div><div class="sub">'+rows.length+' Community</div></div><span class="progress">取得 '+acquired+' / '+cas.length+'</span><span class="chev">⌄</span></button><div class="stamps">'+stamps+'</div></div>';
+    return '<div class="pref"><button class="prefbtn"><div><div class="prefname">'+esc(p)+'</div><div class="sub">'+rows.length+' Community</div></div><span class="progress">'+(isAdminCatalogMode?'展示 '+cas.length+'種類':'取得 '+acquired+' / '+cas.length)+'</span><span class="chev">⌄</span></button><div class="stamps">'+stamps+'</div></div>';
   }).join("");
-  return '<div class="region'+(regionAcquired>0?' has-medals':'')+(regionComplete?' complete':'')+'"><button class="regionbtn"><span class="leaf" aria-hidden="true">🍀</span><div class="regioninfo"><div class="regiontitle">'+esc(region)+'</div><div class="regionmeta"><span class="sub">'+rc+'コミュニティ</span><span class="regionprogress">メダル '+regionAcquired+' / '+regionCas.length+'</span>'+(regionComplete?'<span class="complete-label" aria-label="全CAメダル取得済み">COMPLETE</span>':'')+'</div></div><span class="chev" aria-hidden="true">⌄</span></button><div class="prefwrap">'+prefHtml+'</div></div>';
+  return '<div class="region'+(!isAdminCatalogMode&&regionAcquired>0?' has-medals':'')+(!isAdminCatalogMode&&regionComplete?' complete':'')+'"><button class="regionbtn"><span class="leaf" aria-hidden="true">🍀</span><div class="regioninfo"><div class="regiontitle">'+esc(region)+'</div><div class="regionmeta"><span class="sub">'+rc+'コミュニティ</span><span class="regionprogress">'+(isAdminCatalogMode?'見本 '+regionCas.length+'種類':'メダル '+regionAcquired+' / '+regionCas.length)+'</span>'+(!isAdminCatalogMode&&regionComplete?'<span class="complete-label" aria-label="全CAメダル取得済み">COMPLETE</span>':'')+'</div></div><span class="chev" aria-hidden="true">⌄</span></button><div class="prefwrap">'+prefHtml+'</div></div>';
  }).join("");
 
  status.hidden=true;
