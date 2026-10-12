@@ -79,3 +79,32 @@ supabase db dump --db-url "$SUPABASE_DB_URL" -f data.sql --use-copy --data-only
 `*.dump`, `*.backup`, `*.pgdump` を追加。
 これは誤追加を減らすだけで、暗号化・アクセス制御や `git add -f` からの保護ではない。
 実バックアップを **publicリポジトリ配下へ作成しない**方針は変えない。
+
+## 7. 追補：2026-10-11 の独立バックアップ復元テスト報告
+
+**本節は上記2026-10-10時点の「未実施」を更新するもの。**
+バックアップ本体や秘密情報をこのPublicリポジトリに保存したものではなく、
+管理者が非公開Windows/Docker環境で実行した検証結果に基づく記録である。
+GitHub Actions側でこの私的バックアップを直接検証したと主張するものではない。
+
+| 項目 | 管理者報告 |
+| --- | --- |
+| DB public/Auth復元 | PASS |
+| 外部キー検査 | 98件、違反0 |
+| シーケンス検査 | 3件、次ID衝突なし |
+| Authユーザー / Google Identity | 6件 / 6件 |
+| Storage画像オブジェクト | 418件 API取得 PASS |
+| Storage実体 SHA-256 | 418件一致 |
+| 元バックアップ SHA-256 | 484ファイル一致 |
+| 画像デコード | 415件可 / 3件未解決 |
+| Edge Function ソース | 32 entrypoint + _shared を確認、実行は未テスト |
+
+**現時点の正確な結論:** 独立バックアップのDB・Auth・Storage復元および
+上記整合検査はPASS。**アプリ全体の復旧判定は未PASS**。
+Google OAuthログイン、Secrets注入、Edge Functionsの実行、
+本番に近いCron/通知/RLS/既存メダル操作のフルE2Eは未検証。
+管理者の保存場所と復旧鍵は非公開のまま維持する。
+
+追加のPhase D GitHub専用試験は、合成データのみで行う。
+復元した実データはGitHub Actions、PR、Public Repoに持ち込まない。
+この追補は本番同期の解除、レビューSQL実行、PRマージを許可しない。

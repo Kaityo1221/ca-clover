@@ -10,6 +10,7 @@ on:
     branches:
       - safety/ca-master-exclusive-lease-20261010
       - safety/release-candidate-master-and-medal-20261010
+      - safety/ca-master-phase-c-guards-20261012
 
 permissions:
   contents: read
@@ -47,6 +48,8 @@ jobs:
           fi
       - name: Test safe FK and CA master link changes
         run: psql -v ON_ERROR_STOP=1 -f scripts/ci/ca-master-safety-postgres.sql
+      - name: Phase D / Reproduce CASCADE and verify NO ACTION vs RESTRICT (synthetic only)
+        run: psql -v ON_ERROR_STOP=1 -f scripts/ci/phase-d-fk-no-action-vs-restrict-postgres.sql
       - name: Test actual link RPC, crash recovery and exclusive lease
         run: psql -v ON_ERROR_STOP=1 -f scripts/ci/ca-master-atomic-rpc-postgres.sql
       - name: Test unlisted CA approval RPC with real self-medal function
@@ -55,3 +58,24 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f scripts/ci/release-candidate-rls-postgres.sql
       - name: Rehearse separate committed metadata write and failed next REST stage
         run: psql -v ON_ERROR_STOP=1 -f scripts/ci/ca-master-multi-transaction-recovery-postgres.sql
+      - name: Phase D / Restore-schema read-only audit on fake local-only database
+        run: |
+          set -euo pipefail
+          PG_CONTAINER="$(docker ps -q --filter ancestor=postgres:16 | head -n 1)"
+          test -n "$PG_CONTAINER"
+          docker exec "$PG_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "create database ca_clover_phase_d;"
+          docker exec -i "$PG_CONTAINER" psql -X -U postgres -d ca_clover_phase_d -v ON_ERROR_STOP=1 < scripts/ci/phase-d-restored-local-fixture.sql
+          docker exec -i "$PG_CONTAINER" psql -X -U postgres -d ca_clover_phase_d -v ON_ERROR_STOP=1 -t -A < supabase/review/phase-d-restored-local-readonly.sql > "$RUNNER_TEMP/ca-phase-d-audit.txt"
+          grep -F 'integrity/orphan_ca_identities|0|0|PASS' "$RUNNER_TEMP/ca-phase-d-audit.txt"
+          grep -F 'integrity/duplicate_primary_users|0|0|PASS' "$RUNNER_TEMP/ca-phase-d-audit.txt"
+          grep -F 'integrity/verified_own_medal_missing|0|0|PASS' "$RUNNER_TEMP/ca-phase-d-audit.txt"
+          grep -F 'state/2099_master_pause|FUTURE_SENTINEL|PASS' "$RUNNER_TEMP/ca-phase-d-audit.txt"
+          grep -F 'schema/identity_fk_delete_action|CASCADE_OLD_BASELINE|NOT_PROTECTED_DO_NOT_SYNC' "$RUNNER_TEMP/ca-phase-d-audit.txt"
+          echo "PASS: local unix-socket, read-only restored-db audit checks, and unsafe baseline flagged"
+
+      - name: Phase D Step 2 / exact RESTRICT FK review SQL plus actual reconcile RPC
+        run: |
+          set -euo pipefail
+          createdb ca_clover_identity_fk_qa
+          PGDATABASE=ca_clover_identity_fk_qa psql -X -v ON_ERROR_STOP=1 -f scripts/ci/phase-d-identity-fk-rpc-integration.sql
+          dropdb ca_clover_identity_fk_qa
