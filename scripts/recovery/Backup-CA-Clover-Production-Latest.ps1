@@ -20,8 +20,11 @@ if (-not $sevenZip -and (Test-Path "C:\Program Files\7-Zip\7z.exe")) {
  $sevenZip=Get-Item "C:\Program Files\7-Zip\7z.exe"
 }
 if (-not $sevenZip) { throw "STOP: 7-Zip executable required for encrypted backups." }
-$sevenZipExe=$sevenZip.Source
-if (-not $sevenZipExe) { $sevenZipExe=$sevenZip.FullName }
+if ($sevenZip -is [System.Management.Automation.ApplicationInfo]) {
+ $sevenZipExe=$sevenZip.Source
+} else {
+ $sevenZipExe=$sevenZip.FullName
+}
 if (-not (Test-Path -LiteralPath $BackupRoot)) { New-Item -ItemType Directory -Path $BackupRoot | Out-Null }
 $stamp=(Get-Date).ToUniversalTime().ToString("yyyyMMdd-HHmmss")
 $dir=Join-Path $BackupRoot ("production-"+$stamp)
