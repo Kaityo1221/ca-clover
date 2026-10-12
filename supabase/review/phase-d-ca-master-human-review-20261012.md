@@ -501,3 +501,21 @@ The operator supplied three unlabelled, fully formed Campfire group invite URLs 
 **Next specific request:** a current group share URL from `Pokémon GO Hokkaido (旭川)` **associated with source row 177**, not the similar-but-distinct `Pokémon GO 旭川` row 176. Ideally independently confirm the **row-94 Higashikagura 1st CA's active Club** also uses URL #2. A group share URL proves an ID, not the current official 1st/2nd role, and none of the three was labelled by the operator in this turn.
 
 **Source and production status:** no source Sheet write, database write, CA promotion/demotion/retirement, Identity or medal migration, Edge/Cron change, emergency 2099 pause change, PR merge or approved baseline. Global CA-master sync remains STOP.
+
+
+## 2026-10-12: operator-confirmed Hokkaido (Asahikawa) group link row 177 (READ ONLY)
+
+Operator supplied a **fourth distinct link** explicitly in response to the request for the `Pokémon GO Hokkaido (旭川)` group run by the CA listed on **source row 177**. Its decoded Campfire Club ID and complete `onelink.me` URL were cross-checked with current CA source tab `[new]CA List 20260828` read-only.
+
+| CA source row | Group | Result against the newly supplied row-177 group URL |
+| --- | --- | --- |
+| **177** | `Pokémon GO Hokkaido (旭川)` 1st CA | **Exact full URL and Club UUID match. No H177 edit.** |
+| **94** | `Pokémon GO Hokkaido (東神楽)` 1st CA | **Exact same full URL and UUID as row 177**, despite the distinct group name/geographic locality. Current **H94** is a **likely copied/stale link**; group affiliation requires verification before source update. |
+| **29** | `Pokémon GO Hokkaido (東神楽)` 2nd CA | **Different URL and UUID**, previously matched by the operator's second Nara/Hokkaido batch link and historically stable in the source. Candidate current Higashikagura URL if its 1st CA is still jointly attached. |
+| **176** | `Pokémon GO 旭川` 1st CA | **Different live URL and Club ID**, previously supplied and matched to row 176; **keep this distinct group independent**. |
+
+This **resolves URL #3 ambiguity** from the earlier three-link batch: it referred to row **176**, not row **177**. Both Asahikawa named 1st-CA groups have separate IDs and must not be merged as aliases.
+
+**Conservative source-only candidate** `H94 <- H29`, contingent on explicit operator/CA confirmation that the listed **Higashikagura 1st** currently belongs to the *same* group as its **2nd**. This is **not an approved edit**. No source role/CA deletion, no automatic DB reassignment (a prior manual Hokkaido DB repair exists), no changes to verified Identity or medal assets.
+
+**Evidence status:** `ASAHIKAWA_ROW_177_LIVE_URL=EXACT_PASS`; `ASAHIKAWA_ROW_176_INDEPENDENT_LIVE_URL=EXACT_PASS`; `HIGASHIKAGURA_ROW_29_2ND_URL=SOURCE_EXACT_OPERATOR_LINK`; `HIGASHIKAGURA_ROW_94_URL_COLLISION_WITH_177=EXACT`; `H94_CORRECTION=AWAITING_FIRST_CA_AFFILIATION`; `SOURCE_SHEET_WRITES=NONE`; `PRODUCTION_WRITES=NONE`; `GLOBAL_CA_MASTER_SYNC=STOP`.
