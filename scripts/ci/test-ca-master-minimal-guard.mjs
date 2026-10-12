@@ -9,6 +9,10 @@ const coord=read("supabase/functions/sync-ca-master-coordinates/index.ts");
 const admin=read("supabase/functions/sync-ca-master-admin/index.ts");
 const auto=read("supabase/functions/sync-campfire-auto/index.ts");
 const migration=read("supabase/migrations/20261013_ca_master_minimal_barrier.sql");
+const nextRoute=read("src/app/api/sync/ca-master/route.ts");
+assert.match(nextRoute,/CA_MASTER_LEGACY_SYNC_DISABLED/,"Next.js legacy route must remain retired");
+assert.match(nextRoute,/status:\s*410/,"Next.js legacy route must return HTTP 410");
+assert.doesNotMatch(nextRoute,/\.from\(|\.delete\(|createSupabaseAdminClient|CA_MASTER_SOURCE_URL/,"No Next.js CA master DB or source access");
 
 for (const [name, source] of [["master",main],["coordinates",coord]]) {
   assert.match(source, /function isLegacyMasterWriterRetired\(\):boolean \{ return true; \}/, name+": permanent retirement flag");
