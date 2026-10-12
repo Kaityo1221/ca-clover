@@ -80,7 +80,7 @@ jobs:
         with:
           deno-version: "v2.x"
       - name: Install project npm dependencies required by Deno 2
-        run: npm ci --ignore-scripts
+        run: npm install --no-package-lock --ignore-scripts --no-audit --no-fund
       - name: Cache Deno dependencies only (offline during Edge HTTP QA)
         run: |
           deno cache supabase/functions/sync-ca-master/index.ts
