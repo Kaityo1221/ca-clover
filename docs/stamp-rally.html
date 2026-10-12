@@ -471,6 +471,28 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
   activeFaceMaterial.roughness=.18;
   activeFaceMaterial.clearcoat=.25;
   activeFaceMaterial.clearcoatRoughness=.2;
+  // The 2D medal preview uses object-fit: cover. Apply the same centered
+  // square crop before mapping a non-square icon onto the circular 3D face.
+  // Otherwise portrait sources are squeezed into wide oval logos.
+  function fitMedalFaceTexture(texture){
+   const image=texture.image;
+   const width=Number(image?.naturalWidth||image?.width||0);
+   const height=Number(image?.naturalHeight||image?.height||0);
+   if(!(width>0&&height>0)||Math.abs(width-height)<1)return texture;
+   const canvas=document.createElement("canvas");
+   const crop=Math.min(width,height);
+   const resolution=Math.min(1024,Math.floor(crop));
+   canvas.width=canvas.height=resolution;
+   const ctx=canvas.getContext("2d");
+   if(!ctx)return texture;
+   ctx.drawImage(image,(width-crop)/2,(height-crop)/2,crop,crop,0,0,resolution,resolution);
+   const fitted=new THREE.CanvasTexture(canvas);
+   fitted.colorSpace=texture.colorSpace;
+   fitted.flipY=texture.flipY;
+   fitted.anisotropy=texture.anisotropy;
+   texture.dispose();
+   return fitted;
+  }
   const textureLoader=new THREE.TextureLoader();
   const tryTexture=async textureUrl=>{
    if(!textureUrl||!(front instanceof THREE.Mesh))return false;
@@ -480,8 +502,8 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
     texture.colorSpace=THREE.SRGBColorSpace;
     texture.flipY=false;
     texture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
-    faceTexture=texture;
-    activeFaceMaterial.map=texture;
+    faceTexture=fitMedalFaceTexture(texture);
+    activeFaceMaterial.map=faceTexture;
     activeFaceMaterial.needsUpdate=true;
     front.material=activeFaceMaterial;
     return true;
