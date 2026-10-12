@@ -46,7 +46,16 @@ ORDER BY 1;
 SELECT 'orphan_ca_identities',count(*) FROM public.user_ca_identities i
 LEFT JOIN public.community_ca_members m ON i.community_id=m.community_id AND i.ca_member_id=m.ca_member_id
 WHERE m.id IS NULL;
-SELECT 'unvalidated_fk',count(*) FROM pg_constraint WHERE contype='f'
+SELECT 'orphan_medal_refs',count(*) FROM public.stamp_collections s
+LEFT JOIN auth.users u ON u.id=s.owner_user_id
+LEFT JOIN public.ca_members m ON m.id=s.stamp_ca_member_id
+LEFT JOIN public.communities c ON c.id=s.community_id
+WHERE u.id IS NULL OR m.id IS NULL OR c.id IS NULL
+UNION ALL SELECT 'orphan_designs',count(*) FROM public.stamp_collection_designs d
+LEFT JOIN public.stamp_collections s ON s.id=d.collection_id WHERE s.id IS NULL
+UNION ALL SELECT 'duplicate_primary',count(*) FROM
+(SELECT user_id FROM public.user_ca_identities WHERE is_primary IS TRUE GROUP BY user_id HAVING count(*)>1) x
+UNION ALL SELECT 'unvalidated_fk',count(*) FROM pg_constraint WHERE contype='f'
 AND connamespace IN ('auth'::regnamespace,'storage'::regnamespace,'public'::regnamespace)
 AND convalidated IS NOT TRUE;
 COMMIT;
@@ -56,7 +65,7 @@ COMMIT;
     $exchange = @($names | Where-Object { $_ -like '*exchange*' })
     if ($exchange -notcontains 'stamp_exchange_sessions') { throw "Exchange table name needs review: $($exchange -join ',')" }
     $out = LocalSql $sql
-    $expect = @('auth_users|7','auth_identities|7','ca_identities|7','medals|14','medal_designs|14','exchange_sessions|20','storage_metadata|418','orphan_ca_identities|0','unvalidated_fk|0')
+    $expect = @('auth_users|7','auth_identities|7','ca_identities|7','medals|14','medal_designs|14','exchange_sessions|20','storage_metadata|418','orphan_ca_identities|0','orphan_medal_refs|0','orphan_designs|0','duplicate_primary|0','unvalidated_fk|0')
     foreach ($line in $out) { Report "DATA $line" }
     if (@($expect | Where-Object { $out -notcontains $_ }).Count -gt 0) { throw 'Expected counts/integrity mismatch' }
     Report 'STEP_1_INTEGRITY=PASS'
