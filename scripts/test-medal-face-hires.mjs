@@ -49,6 +49,16 @@ assert.match(html,/if\(objectUrl\)URL\.revokeObjectURL\(objectUrl\)/,
  "Failed blob URLs must be revoked");
 assert.doesNotMatch(html,/if\(design\?\.thumbnail_path\)\s*\{/,
  "Old eager thumbnail-first path must not return");
+assert.ok(html.includes("const imageScale=.97;"),
+ "3D medal icon should be rendered at 97% scale");
+assert.ok(html.includes("const inset=resolution*(1-imageScale)/2;"),
+ "3D inset should be symmetric, leaving the gold rim unchanged");
+assert.ok(html.includes('ctx.filter="saturate(1.12) contrast(1.06)";'),
+ "3D medal should gently restore washed-out source colors");
+assert.ok(html.includes("transform:scale(.97);filter:saturate(1.12) contrast(1.06)"),
+ "2D medal should use the same conservative tuning");
+assert.ok(!html.includes("Math.abs(width-height)<1)return texture"),
+ "Square images must also receive the 3% inset");
 const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
  .map(match=>match[1].trim()).filter(script=>script&&!script.startsWith('{"imports"'));
 for(const script of scripts)new Function(script);

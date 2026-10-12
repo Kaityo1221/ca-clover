@@ -40,7 +40,7 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
 .stamp{text-align:center;min-width:0}.medal{position:relative;width:78px;height:78px;margin:auto;border-radius:999px;padding:5px;background:linear-gradient(135deg,#f8e3bf,#fff,#edc993);box-shadow:0 7px 17px rgba(112,73,35,.18)}
 .admin-catalog .hero .summary,.admin-catalog .exchange-card,.admin-catalog .japanmap{display:none!important}
 .admin-catalog .hero{border-color:#c7b7eb;background:linear-gradient(125deg,#f5f0ff,#fff8ef)}
-.medal.unowned{padding:4px;border:2px dashed #cbc5bf;background:#f1efec;box-shadow:none}.medalinner{position:relative;width:100%;height:100%;overflow:hidden;border-radius:999px;background:#eef2e9;display:grid;place-items:center}.medalinner .fallback{font-size:30px;color:#91a889}.medalinner img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.unowned .medalinner{filter:grayscale(1);opacity:.34}
+.medal.unowned{padding:4px;border:2px dashed #cbc5bf;background:#f1efec;box-shadow:none}.medalinner{position:relative;width:100%;height:100%;overflow:hidden;border-radius:999px;background:#eef2e9;display:grid;place-items:center}.medalinner .fallback{font-size:30px;color:#91a889}.medalinner img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scale(.97);filter:saturate(1.12) contrast(1.06)}.unowned .medalinner{filter:grayscale(1);opacity:.34}
 .check{position:absolute;right:-2px;top:-2px;width:23px;height:23px;border:2px solid #fff;border-radius:999px;background:#6d9758;color:#fff;display:grid;place-items:center;font-size:10px;font-weight:950}
 .cname{margin-top:8px;min-height:31px;font-size:10px;line-height:1.42;font-weight:950;color:#4b433c;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .canames{margin-top:5px;display:grid;gap:4px}.caname{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:999px;padding:3px 4px;font-size:8px;font-weight:950}
@@ -496,14 +496,14 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
   activeFaceMaterial.roughness=.18;
   activeFaceMaterial.clearcoat=.25;
   activeFaceMaterial.clearcoatRoughness=.2;
-  // The 2D medal preview uses object-fit: cover. Apply the same centered
-  // square crop before mapping a non-square icon onto the circular 3D face.
-  // Otherwise portrait sources are squeezed into wide oval logos.
+  // Preserve the original centered square crop for portrait/landscape
+  // sources, then shrink the icon 3% *inside* the unchanged medal rim.
+  // Apply modest colour correction to counter the washed-out 3D preview.
   function fitMedalFaceTexture(texture){
    const image=texture.image;
    const width=Number(image?.naturalWidth||image?.width||0);
    const height=Number(image?.naturalHeight||image?.height||0);
-   if(!(width>0&&height>0)||Math.abs(width-height)<1)return texture;
+   if(!(width>0&&height>0))return texture;
    const canvas=document.createElement("canvas");
    const crop=Math.min(width,height);
    const resolution=Math.min(1024,Math.floor(crop));
@@ -512,7 +512,13 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
    if(!ctx)return texture;
    ctx.imageSmoothingEnabled=true;
    ctx.imageSmoothingQuality="high";
-   ctx.drawImage(image,(width-crop)/2,(height-crop)/2,crop,crop,0,0,resolution,resolution);
+   const imageScale=.97;
+   const inset=resolution*(1-imageScale)/2;
+   ctx.fillStyle="#fff";
+   ctx.fillRect(0,0,resolution,resolution);
+   ctx.filter="saturate(1.12) contrast(1.06)";
+   ctx.drawImage(image,(width-crop)/2,(height-crop)/2,crop,crop,inset,inset,resolution*imageScale,resolution*imageScale);
+   ctx.filter="none";
    const fitted=new THREE.CanvasTexture(canvas);
    fitted.colorSpace=texture.colorSpace;
    fitted.flipY=texture.flipY;
