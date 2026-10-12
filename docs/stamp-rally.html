@@ -855,49 +855,54 @@ async function load(){
 
   let selectedCa=c.cas.find(x=>x.acquired)||c.cas[0]||null;
   let selectedDesign=selectedCa?displayDesign(selectedCa):null;
-  startSuzukiIntro(selectedCa);
+  if(!isAdminCatalogMode)startSuzukiIntro(selectedCa);
 
   const renderModal=()=>{
    stampZoomTitle.textContent=c.name||"";
-   void showStampMessage(selectedCa&&selectedCa.collection?selectedCa.collection:null);
+   if(!isAdminCatalogMode)void showStampMessage(selectedCa&&selectedCa.collection?selectedCa.collection:null);
 
    const lines=[c.prefecture||""];
    if(selectedCa){
     lines.push((selectedCa.ca_level||"CA")+" ・ "+selectedCa.trainer_name);
-    if(selectedCa.collection){
+    if(isAdminCatalogMode)lines.push("🪙 管理者展示見本 ・ メダル未付与");
+    else if(selectedCa.collection){
      const count=(reunionsByCollection.get(selectedCa.collection.id)||[]).length;
      lines.push("取得済み ・ 再会 ×"+count);
-    }else{
-     lines.push("未取得");
-    }
+    }else lines.push("未取得");
    }
    stampZoomArea.textContent=lines.filter(Boolean).join("\n");
    stampZoomArea.style.whiteSpace="pre-line";
 
-   const src=selectedDesign?designUrl(selectedDesign):thumb(c);
-   stampZoom2D.classList.toggle("unowned",!(selectedCa&&selectedCa.collection));
+   const showMedalFace=isAdminCatalogMode||!!(selectedCa&&selectedCa.collection);
+   const src=showMedalFace?(selectedDesign?designUrl(selectedDesign):thumb(c)):"";
+   stampZoom2D.classList.toggle("unowned",!showMedalFace);
+   stampZoom2D.querySelector(".fallback").textContent=showMedalFace?"🍀":"？";
    stampZoomImg.style.display=src?"block":"none";
    stampZoomImg.dataset.original=c.avatar_url||"";
    stampZoomImg.dataset.caCommunityIcon="1";
    stampZoomImg.dataset.caBound="";
    if(src)stampZoomImg.src=src;
    window.CACommunityIcon.bind(stampModalBack);
-   if(selectedCa&&selectedCa.collection){
-    const engravingLines=[
-     selectedCa.trainer_name,
-     selectedCa.ca_level||selectedCa.collection.role_at_acquisition||"CA",
-     prefectureEnglishLabel(c.prefecture),
-     engravingDate(selectedCa.collection.first_acquired_at)
-    ];
-    const suzukiBurned=isSuzukiSpecial(selectedCa)&&window.CASuzukiMedalState?.phase!=="clean_complete";
+   if(selectedCa&&(selectedCa.collection||isAdminCatalogMode)){
+    const engravingLines=isAdminCatalogMode
+     ?[selectedCa.trainer_name,selectedCa.ca_level||"CA",prefectureEnglishLabel(c.prefecture),"SAMPLE"]
+     :[
+      selectedCa.trainer_name,
+      selectedCa.ca_level||selectedCa.collection.role_at_acquisition||"CA",
+      prefectureEnglishLabel(c.prefecture),
+      engravingDate(selectedCa.collection.first_acquired_at)
+     ];
+    const suzukiBurned=!isAdminCatalogMode&&isSuzukiSpecial(selectedCa)&&window.CASuzukiMedalState?.phase!=="clean_complete";
     void mountStampMedal3D(selectedDesign,src,c.avatar_url||"",engravingLines,{suzukiBurned});
    }else unmountStampMedal3D();
 
-   const caButtons=c.cas.map(x=>'<button type="button" class="btn '+(selectedCa&&selectedCa.id===x.id?"":"line")+'" data-modal-ca="'+esc(x.id)+'" style="font-size:10px;padding:8px 10px">'+esc(x.ca_level||"CA")+' ・ '+esc(x.trainer_name)+'</button>').join("");
+  const caButtons=c.cas.map(x=>'<button type="button" class="btn '+(selectedCa&&selectedCa.id===x.id?"":"line")+'" data-modal-ca="'+esc(x.id)+'" style="font-size:10px;padding:8px 10px">'+esc(x.ca_level||"CA")+' ・ '+esc(x.trainer_name)+'</button>').join("");
    let historyHtml="";
    let designHtml="";
 
-   if(selectedCa&&selectedCa.collection){
+   if(isAdminCatalogMode){
+    designHtml='<div class="notice section">🪙 ADMIN専用の展示モード。表面・裏面を回して確認できます。取得・交換・デザイン固定は行いません。</div>';
+   }else if(selectedCa&&selectedCa.collection){
     const reunionList=reunionsByCollection.get(selectedCa.collection.id)||[];
     const firstDate=new Date(selectedCa.collection.first_acquired_at).toLocaleDateString("ja-JP");
     historyHtml='<div class="section" style="border:1px solid #eadfce;border-radius:18px;background:#fffaf2;padding:12px;text-align:left">'
@@ -941,7 +946,7 @@ async function load(){
     selectedCa=c.cas.find(x=>x.id===button.dataset.modalCa)||null;
     selectedDesign=selectedCa?displayDesign(selectedCa):null;
     renderModal();
-    startSuzukiIntro(selectedCa);
+    if(!isAdminCatalogMode)startSuzukiIntro(selectedCa);
    });
 
    stampDesignControls.querySelectorAll("[data-design-dir]").forEach(button=>button.onclick=()=>{
