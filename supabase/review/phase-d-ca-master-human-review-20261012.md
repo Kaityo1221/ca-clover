@@ -109,3 +109,23 @@ Disposition is **not permission to run SQL**; no auto-merge, rename, retire, del
 - Raw share URL, UUID, personal CA names and credentials are intentionally omitted from the public repository. Re-check the canonical source via private evidence before any authorized patch.
 - Row 17's URL ambiguity has a **candidate resolution** but **source correction not yet applied**. Row 34 and remaining independent P0/P1 conflicts still block the global CA-master preflight; 2099 emergency STOP unchanged.
 
+
+## 2026-10-12: operator clarification on the multi-prefecture "夜活" network (READ ONLY)
+
+The project operator explained that the Night Activity (夜活) organization is **special: there is one CA in Hyogo and one in Osaka**. These multi-prefecture community operations are therefore potentially intentional and MUST NOT be treated as duplicate CAs, illegitimate memberships or a reason to merge/rename/delete groups.
+
+Fresh source-only comparison of the visible CA master (gid `633821294`):
+- **Row 175:** 1st CA; Night Activity group labelled **KOBE**; prefecture **Hyogo**.
+- **Row 198:** 1st CA; Osaka Night Activity group; prefecture **Osaka**.
+- **Row 34:** 2nd CA; **same Osaka Night Activity display name and coordinates as row 198**. Its `Primary City` field nevertheless says **Aichi**, while its self-description explicitly says **Osaka** and its short group URL lacks the encoded Community ID.
+- **Rows 175 and 198 share the same Community-ID-bearing source URL** in the currently visible Sheet. This is *not* proof they are the same current Campfire group, since cross-prefecture shared operational branding is distinct from in-app group identity; the operator needs to confirm whether Kobe and Osaka share one Campfire club or represent two independent clubs.
+- **Row 34 is an additional 2nd CA record** and should not be silently discarded simply because the operator described one CA in each prefecture. Whether this is a current 1st/2nd assignment or an out-of-date row is still unverified.
+
+**Revised issue split:**
+1. `NIGHT_ACTIVITY_GEOGRAPHY=EXPLAINED_OPERATOR_CONTEXT`: Hyogo/Osaka dual-region branding is expected; do not consider different prefectures alone an error.
+2. `ROW_34_SOURCE_AICHI_VS_OSAKA=PENDING_CONFIRMATION`: specific source-field mismatch remains; do not change automatically.
+3. `ROW_34_SHORT_URL=PENDING_FULL_LINK`: must obtain the current correct Osaka group share link; no URL or Community ID inference from row 198 yet.
+4. `ROW_175_198_SAME_URL=PENDING_GROUP_ID_ATTESTATION`: whether the two regional Night Activity groups share one physical Campfire group needs one explicit operator answer.
+5. `ROW_34_2ND_RELATION=PENDING_CONFIRMATION`: no automated personnel change or link migration.
+
+This supersedes any premature inference that cross-prefecture Night Activity rows are automatically duplicate or corrupt. Only the source's *specific* Aichi/Osaka mismatch and unresolved encoded link remain evident. Google Sheets, production Supabase and CA identities remain untouched; release STOP.
