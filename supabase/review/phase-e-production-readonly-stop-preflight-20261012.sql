@@ -57,6 +57,51 @@ WITH checks AS (
  SELECT 'data/exchange_sessions','SNAPSHOT', count(*) FROM public.stamp_exchange_sessions
  UNION ALL
  SELECT 'data/reunions','SNAPSHOT', count(*) FROM public.stamp_reunions
+ UNION ALL
+ SELECT 'data/storage_metadata_objects','SNAPSHOT', count(*) FROM storage.objects
+ UNION ALL
+ SELECT 'data/auth_users','SNAPSHOT', count(*) FROM auth.users
+ UNION ALL
+ SELECT 'integrity/orphan_ca_links',
+        CASE WHEN count(*)=0 THEN 'PASS:ZERO' ELSE 'STOP:ORPHAN_CA_LINKS' END,
+        count(*)
+ FROM public.community_ca_members l
+ LEFT JOIN public.ca_members m ON m.id=l.ca_member_id
+ LEFT JOIN public.communities c ON c.id=l.community_id
+ WHERE m.id IS NULL OR c.id IS NULL
+ UNION ALL
+ SELECT 'integrity/orphan_medal_owners_or_groups',
+        CASE WHEN count(*)=0 THEN 'PASS:ZERO' ELSE 'STOP:ORPHAN_MEDAL_REFERENCES' END,
+        count(*)
+ FROM public.stamp_collections s
+ LEFT JOIN auth.users u ON u.id=s.owner_user_id
+ LEFT JOIN public.ca_members m ON m.id=s.stamp_ca_member_id
+ LEFT JOIN public.communities c ON c.id=s.community_id
+ WHERE u.id IS NULL OR m.id IS NULL OR c.id IS NULL
+ UNION ALL
+ SELECT 'integrity/orphan_medal_designs',
+        CASE WHEN count(*)=0 THEN 'PASS:ZERO' ELSE 'STOP:ORPHAN_DESIGN' END,
+        count(*)
+ FROM public.stamp_collection_designs d
+ LEFT JOIN public.stamp_collections s ON s.id=d.collection_id
+ WHERE s.id IS NULL
+ UNION ALL
+ SELECT 'integrity/duplicate_primary_ca_identity',
+        CASE WHEN count(*)=0 THEN 'PASS:ZERO' ELSE 'STOP:DUPLICATE_PRIMARY_IDENTITY' END,
+        count(*)
+ FROM (
+  SELECT user_id FROM public.user_ca_identities
+  WHERE is_primary IS TRUE
+  GROUP BY user_id HAVING count(*)>1
+ ) duplicates
+ UNION ALL
+ SELECT 'integrity/unvalidated_public_auth_storage_fk',
+        CASE WHEN count(*)=0 THEN 'PASS:ZERO' ELSE 'REVIEW:UNVALIDATED_FK' END,
+        count(*)
+ FROM pg_catalog.pg_constraint
+ WHERE contype='f'
+   AND connamespace IN ('public'::regnamespace,'auth'::regnamespace,'storage'::regnamespace)
+   AND convalidated IS NOT TRUE
 )
 SELECT check_name, result, observed_count FROM checks ORDER BY check_name;
 
