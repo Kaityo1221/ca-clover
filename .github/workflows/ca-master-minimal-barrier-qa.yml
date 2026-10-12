@@ -79,6 +79,8 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: "v2.x"
+      - name: Install project npm dependencies required by Deno 2
+        run: npm ci --ignore-scripts
       - name: Cache Deno dependencies only (offline during Edge HTTP QA)
         run: |
           deno cache supabase/functions/sync-ca-master/index.ts
