@@ -430,3 +430,19 @@ In response to the consolidated **six-group request** (Tokushima two, Hokkaido t
 **Disposition:** `TWO_NEW_DISTINCT_VALID_GROUP_UUIDS=CONFIRMED`; `CURRENT_SOURCE_MATCH=NONE`; `GROUP_ASSIGNMENT=AWAITING_OPERATOR_LABEL`; `SHEET_EDIT=NONE`; `PROD_EDIT=NONE`; `SYNC_STOP=MAINTAINED`.
 
 **Minimal next step:** ask whether URL **①** corresponds to the **Tokushima Anan** group and URL **②** to the **Tokushima city** group (the first two in the six-group list). If confirmed, make narrowly scoped **source-only H60/H116 URL proposals**, not automatic edits; continue to obtain the remaining four groups and perform restored-DB no-loss impact analysis before future authorization.
+
+
+## 2026-10-12: operator confirms Tokushima Anan and city group link attribution (READ ONLY)
+
+Following the two valid but previously unlabeled Campfire group URLs, the operator was asked explicitly whether **URL #1 is `新ポケモン GO 阿南` (source row 60)** and **URL #2 is `ポケモン GO Tokushima` (source row 116)**. The operator answered **YES**.
+
+- Each URL contains a **valid, distinct** Club UUID that was absent from the current master and inspected historical source lists/maps.
+- Each is **explicitly attributed by the operator to a different currently identified group**. Treat this as **operator-supplied current Club evidence**, not API-confirmed current 1st CA membership or a verified host-linked event. Source rows 60 and 116 do list their respective 1st CAs; current role/membership is a separate gate.
+- **H60**: candidate source-only value = operator-supplied **URL #1** (Anan). **H116**: candidate source-only value = operator-supplied **URL #2** (Tokushima city). The two must remain **separate distinct Communities**, never merged or recorded as interchangeable aliases.
+- The old identical source URL on both H60/H116 is an **historical source observation**, and whether it was ever valid for either group is still undetermined. Retain prior link history in protected audit records, not public GitHub.
+- Restored local DB already contains separately reported different associations for these two CA keys, and **new live IDs absent from current/historical restored records**. A safe mapping migration would therefore require explicit per-CA link/identity/medal/exchange impact analysis and local-only E2E proof, not just changing Google Sheets.
+- **Approval boundary:** user's YES authorizes linking the two supplied evidence URLs to the two named groups **for review only**. It does **not** authorize writes to Sheets, production database, Edge/Cron or merge of Draft PR #131. Do not remove or overwrite existing identities or memberships.
+
+**Disposition:** `TOKUSHIMA_ROW_60_CURRENT_GROUP_LINK=OPERATOR_ATTESTED`; `TOKUSHIMA_ROW_116_CURRENT_GROUP_LINK=OPERATOR_ATTESTED`; `H60_H116_SOURCE_REPLACEMENT_CANDIDATES=PREPARED`; `ACTUAL_1ST_CA_ROLE_AND_DB_MAPPING=REVIEW_REQUIRED`; `SHEET_WRITES=NONE`; `PRODUCTION_WRITES=NONE`; `MASTER_SYNC=STOP`.
+
+**Remaining requested operator links** in the six-group batch: Hokkaido **東神楽** and **旭川**, Nara **まほろば** and **やまと**. Kagoshima row 17 membership/coordinates and Chiba row 100 historic DB association remain separate, protected review items.
