@@ -210,3 +210,23 @@ The operator supplied a `cmpf.re` **Meetup short URL**, followed by a screenshot
 **Next best evidence:** operator supplies the **Osaka group's** Campfire share URL from the **same Meetup's group card**, or an authorized private live-event read returning Meetup `clubId` plus `creator.username`; compare decoded/returned `clubId` to row 198 and 34 privately. Avoid putting screenshots, names, public handles, personally identifying evidence or raw URLs in public GitHub.
 
 **Production and source status unchanged:** CA Master dedicated stop and emergency 2099 pause remain; no source-sheet, production DB, Identity, medal, Cron, or Edge modifications; no PR merge.
+
+## 2026-10-12: Osaka meetup host source-trainer match, profile evidence
+
+**This section supersedes the prior `OSAKA_HOST_SOURCE_HANDLE=SIMILAR_NOT_VERIFIED` assessment.** The operator supplied a **second screenshot**, opening the host's own Campfire profile from the Osaka Meetup. The profile shows:
+- The same Campfire host account handle as the Meetup host card.
+- Within its linked-game section, an **explicit Pokémon GO trainer name equal, character for character, to the exact trainer name on current CA master row 198**.
+- A visible Community Ambassador badge beside that Pokémon GO account.
+
+Together with the previously provided Meetup screenshot naming the **Osaka 夜活** group, this directly links the Meetup organizer's displayed Campfire profile to the **row 198 trainer key**. Crucially, the inference no longer relies on similar Discord usernames; it relies on a directly visible linked Pokémon GO account name and badge.
+
+**Accurate extent of confirmation:**
+- `OSAKA_MEETUP_HOST_PGO_TRAINER_MATCH_ROW_198=SCREENSHOT_EXACT_PASS`.
+- `OSAKA_MEETUP_HOST_CA_BADGE=VISUALLY_CONFIRMED`.
+- `OSAKA_SOURCE_1ST_ROLE=ROW_198_RECORDED`, **not independently proven by the badge**; the same CA badge may be presented for 2nd CA.
+- `OSAKA_LIVE_GROUP_UUID=STILL_UNVERIFIED`: the screenshots do not expose the Meetup's immutable `clubId` or a group share URL, and the `cmpf.re` short link was not resolved here.
+- `OSAKA_SECOND_CA_ROW_34=UNRESOLVED`: no membership proof, stable URL or prefecture correction obtained for row 34.
+
+**Next independent evidence**: the *Osaka 夜活* group share link from Campfire (preferably opened from the same Meetup's group card), then confirm its decoded UUID against the row 198 URL and inspect whether row 34 should inherit that link through separately verified 2nd CA membership. Check row 175 KOBE mismatch independently and never remove existing identities/medals based on names alone.
+
+No personal names/handles/screenshots or raw profile identifiers reproduced in this public PR. **No Sheet/DB/Edge/Cron/Identity/medal changes; 2099 STOP intact.**
