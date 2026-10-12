@@ -414,3 +414,19 @@ The operator provided a **current Campfire group share link identified as belong
 **Request sequence:** six targeted current Campfire group links: Tokushima 2, Hokkaido 2, Nara 2. Only after matching decoded IDs request a screenshot or club-host identity detail for unresolved affiliation. Do not ask user to reproduce already established Osaka, AMaGO, Kagoshima 1st or Takatsuki links.
 
 **Guardrails:** source CA row count 200, unique keys 200; no Google Sheet writes, no production SQL/Edge/Cron/sync, no merges, no baseline registration, no emergency 2099 pause changes. Preserve all current associations, user identities, medal collections and exchanges. For local DB discrepancies, require guarded local rehearsal and final no-loss checks before any approval.
+
+
+## 2026-10-12: two fresh unlabeled Campfire group URLs from batch (READ ONLY)
+
+In response to the consolidated **six-group request** (Tokushima two, Hokkaido two, Nara two), the operator supplied **two separate full Campfire `onelink.me` group invite URLs without labels or captions**.
+
+- Each decoded successfully to an immutable Campfire Club UUID.
+- The two decoded UUIDs are **distinct from each other**.
+- Neither UUID appears in the current **200-CA master source** (`[new]CA List 20260828`), in the July source CA List, nor in the August CA MAP source after a bounded full-table ID comparison.
+- In particular, neither is the *historically duplicated source UUID* on Tokushima rows **60/116**; nor any current row-29/94/177 Hokkaido or row-144/159/199 Nara ID.
+
+**Crucial provenance caveat:** the operator gave no Community names for either URL, and their order relative to the requested six groups is **not authenticated evidence of group assignment**. Do not publish the raw URLs/UUIDs. Do not classify either as a specific CA's Club, treat them as URL correction authority, or write a new Community ID to production without the operator's explicit link-to-group attestation.
+
+**Disposition:** `TWO_NEW_DISTINCT_VALID_GROUP_UUIDS=CONFIRMED`; `CURRENT_SOURCE_MATCH=NONE`; `GROUP_ASSIGNMENT=AWAITING_OPERATOR_LABEL`; `SHEET_EDIT=NONE`; `PROD_EDIT=NONE`; `SYNC_STOP=MAINTAINED`.
+
+**Minimal next step:** ask whether URL **①** corresponds to the **Tokushima Anan** group and URL **②** to the **Tokushima city** group (the first two in the six-group list). If confirmed, make narrowly scoped **source-only H60/H116 URL proposals**, not automatic edits; continue to obtain the remaining four groups and perform restored-DB no-loss impact analysis before future authorization.
