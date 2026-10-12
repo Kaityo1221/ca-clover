@@ -242,3 +242,19 @@ Read-only evidence supplied by the project operator, supplementing the earlier s
 - An earlier Osaka Meetup plus its host's linked Pokémon GO profile **did** show an exact trainer-name match to row 198 and a CA badge.
 
 **Evidence status:** `NIGHT_ACTIVITY_THREE_GROUP_SOURCE_UUID_MATCH=PASS_FOR_ROWS_11_13_198`; `ROW_175_URL_MISMATCH=CONFIRMED`; `ROW_34_HOST_AND_GROUP_SCREENSHOT=CORROBORATED`; `ROW_34_SOURCE_FIELDS=REVIEW_REQUIRED`. These are review dispositions only. No source Sheet or production DB edits, membership reassignments, Identity/medal changes, Cron/Edge changes, 2099 stop removal, baseline authorization or PR merge. Other source conflicts remain unresolved, so global CA master synchronization stays STOP.
+
+
+## 2026-10-12: operator historical clarification: one original Night Activity community split geographically
+
+**User-supplied historical evidence:** the operator states that `夜活 Pokémon GO` originally operated as a **single group**, then found members in different regions and **split into local groups**. This materially changes how a current UUID mismatch should be interpreted.
+
+- Current Campfire live link evidence remains strong: the screenshot-labelled **Osaka**, **KOBE**, and **WEST** now have three distinct share UUIDs, matching source rows **198**, **13**, and **11**, respectively.
+- The **source row 175 (KOBE 1st)** has the same URL as current Osaka row 198; earlier lists/maps show this for months. **This is a historical lineage/possible stale-current-link case, not proof the original row was entered incorrectly.** Its historical association may have been correct before regional group separation. The exact dates, parent/child succession, and CA member transfer history have **not** yet been established.
+- **Amend previous recommendation:** `H175 <- H13` is now only a *proposed current-source link update* after the operator independently verifies **when KOBE split**, **whether row 175 1st CA moved to the new KOBE UUID**, and **whether this source tab is intended to store the current group rather than the original group**. Preserve the original ID as a *documented historical association* in an appropriate non-destructive private audit record; do NOT silently rewrite/deprecate the old UUID across unrelated Osaka records.
+- Never use `community_campfire_ids` history/aliasing to equate **separate, simultaneously operating Campfire groups**. The alias model might suit an actual rename or one-to-one ID replacement, but separate Osaka/KOBE/WEST groups with independently active IDs require independent logical community identities. Verify before any proposed DB changes.
+- **Row 34** still has an unparseable link and Aichi-prefecture field despite Osaka Meetup and geographical evidence; provenance alone does not resolve whether the correct *current* Osaka group and CA membership are confirmed.
+- Distinguish **`HISTORICALLY_VALID_AT_TIME`**, **`CURRENT_SOURCE_STALE`**, **`LEGITIMATE_MULTIGROUP_HISTORY`**, and **`DATA_ENTRY_ERROR`**. Do not automatically classify row 175 in the last category.
+
+**Next question for operator (not a database change):** after the geographical split, did the KOBE 1st CA officially move to the separate KOBE Campfire group? If known, obtain the approximate split date and any historical meetup link showing its host and club ID. This supports a time-bounded audit rather than deleting associations.
+
+**Status:** `NIGHT_ACTIVITY_GROUP_SPLIT_HISTORY=OPERATOR_CONFIRMED`; `KOBE_ROW_175_REASON=HISTORICAL_LINEAGE_POSSIBLE`; `CURRENT_ASSIGNMENT=REQUIRES_CONFIRMATION`; `GOOGLE_SHEET_WRITES=NONE`; `PRODUCTION_WRITES=NONE`; `CA_MASTER_SYNC=STOP`.
