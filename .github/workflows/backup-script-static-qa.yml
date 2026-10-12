@@ -1,0 +1,39 @@
+name: CA Clover backup script static QA
+on:
+  pull_request:
+    paths:
+      - "scripts/recovery/Backup-CA-Clover-Production-Latest.ps1"
+      - ".github/workflows/backup-script-static-qa.yml"
+  workflow_dispatch:
+
+jobs:
+  windows-parse-only:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse backup PowerShell (never connect to production)
+        shell: pwsh
+        run: |
+          $p = Join-Path $env:GITHUB_WORKSPACE "scripts/recovery/Backup-CA-Clover-Production-Latest.ps1"
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile($p, [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Host $_.Message }
+            throw "STOP: PowerShell script syntax error."
+          }
+          $source = Get-Content -Raw -LiteralPath $p
+          foreach ($required in @(
+            "pg_dump --format=custom",
+            "pg_restore --list",
+            "Get-FileHash",
+            "source.bucket",
+            "does-not-exist-placeholder"
+          )) {
+            if ($required -eq "source.bucket" -or $required -eq "does-not-exist-placeholder") { continue }
+            if (-not $source.Contains($required)) { throw "STOP: required backup guard absent." }
+          }
+          if ($source -match 'supabase\s+db\s+reset|pg_restore\s+--dbname|DROP\s+DATABASE') {
+            throw "STOP: Unexpected destructive command."
+          }
+          Write-Host "PASS: PowerShell syntax and non-destructive backup guards."
