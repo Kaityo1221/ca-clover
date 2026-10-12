@@ -193,3 +193,20 @@ The operator supplied a fresh share link for the screenshot-labelled `夜活Pok�
 **Next:** obtain operator's *Osaka* `夜活 Pokémon GO` link from the distinct 25,517-member map entry to confirm row 198 and evaluate source row 34's missing ID; consider source row 175 only after KOBE membership and a privately approved edit proposal. Raw operator URL and Community UUID are deliberately omitted from the public repository.
 
 **No source Sheet edits, database writes, deployments, Cron changes, 2099 sentinel changes, merges, or approved baseline**. Global CA Master remains `REVIEW_REQUIRED_SYNC_STOP`.
+
+## 2026-10-12: Osaka Night Activity public Meetup screenshot (READ ONLY)
+
+The operator supplied a `cmpf.re` **Meetup short URL**, followed by a screenshot of the opened Campfire Meetup page. An external independent redirect fetch could **not** resolve the short URL in this review environment. Accordingly neither Meetup UUID nor actual `clubId` was programmatically recovered; **do not claim automatic verified event-to-Community ID matching**.
+
+**Direct screenshot evidence:**
+- Public Meetup on **2026-10-10**, Osaka **Diamor Osaka** area, **Zorua Community Day**.
+- Group card explicitly reads `夜活 Pokémon GO` and displays the same group picture as the Osaka group screenshot provided by the operator.
+- Host card displays a purple CA badge and a public display handle **visually similar to** (but not character-for-character identical with) the current master row **198** 1st CA's Discord account handle. Source row 198 trainer name itself does **not** appear in the screenshot. Therefore current 1st CA's precise account identity is still a **strong candidate**, **not independently authenticated**.
+- The host is the organizer of **this Meetup**, which does **not** alone prove they are the 1st CA; 2nd CAs can also host.
+- The displayed meetup page does not show immutable `clubId` or machine-readable `creator.username`, so **row 198's encoded source ID remains unverified against the live Osaka Club**, and row 34's short link remains unresolved.
+
+**Read-only triage update:** `OSAKA_MEETUP_GROUP_NAME_AND_CA_BADGE=SCREENSHOT_CONFIRMED`; `OSAKA_HOST_SOURCE_HANDLE=SIMILAR_NOT_VERIFIED`; `OSAKA_LIVE_GROUP_UUID=AWAITING_SHARE_LINK_OR_VERIFIED_EVENT_API`; `OSAKA_1ST_PRIMARY_STATUS=SOURCE_ONLY`.
+
+**Next best evidence:** operator supplies the **Osaka group's** Campfire share URL from the **same Meetup's group card**, or an authorized private live-event read returning Meetup `clubId` plus `creator.username`; compare decoded/returned `clubId` to row 198 and 34 privately. Avoid putting screenshots, names, public handles, personally identifying evidence or raw URLs in public GitHub.
+
+**Production and source status unchanged:** CA Master dedicated stop and emergency 2099 pause remain; no source-sheet, production DB, Identity, medal, Cron, or Edge modifications; no PR merge.
