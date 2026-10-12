@@ -27,11 +27,11 @@ jobs:
             "pg_dump --format=custom",
             "pg_restore --list",
             "Get-FileHash",
-            "source.bucket",
-            "does-not-exist-placeholder"
+            "PtrToStringBSTR",
+            "Remove-Item",
+            "7z"
           )) {
-            if ($required -eq "source.bucket" -or $required -eq "does-not-exist-placeholder") { continue }
-            if (-not $source.Contains($required)) { throw "STOP: required backup guard absent." }
+            if (-not $source.Contains($required)) { throw "STOP: required backup guard absent: $required" }
           }
           if ($source -match 'supabase\s+db\s+reset|pg_restore\s+--dbname|DROP\s+DATABASE') {
             throw "STOP: Unexpected destructive command."
