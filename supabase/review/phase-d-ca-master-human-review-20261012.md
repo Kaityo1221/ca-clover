@@ -463,3 +463,19 @@ Read-only link and source-history verification:
 **Next minimum operator clarification:** Does the planned successor take over **the existing Yamato community** (current source row 159) or lead a **separate Sakura Walk community** (row 58)? Is Sakura Walk a rename/replacement of Yamato, or a separate group? Request the current **Yamato group invite link** if available, plus Mahoroba to disambiguate the remaining collision. One brief question at a time is sufficient. The account should always be matched to its **exact current trainer key** (avoid inventing a near-spelling variant and duplicating accounts).
 
 **No updates:** no source Sheet edit, current 1st/2nd promotion, deletion, alias merger, restored/prod DB mapping, Identity, medals, Cron/Edge, master sync restart, 2099 sentinel change or PR merge. Status `NARA_ROW_58_SAKURA_WALK_LIVE_UUID_MATCH=PASS`; `YAMATO_SUCCESSION=PLANNED_NOT_EXECUTED`; `NARA_GROUP_RELATIONSHIP=REQUIRES_OPERATOR_CONFIRMATION`; `MASTER_SYNC=STOP`.
+
+
+## 2026-10-12: operator confirms Yamato renamed to Sakura Walk (READ ONLY)
+
+**Supersedes the prior uncertainty about the Yamato/Sakura Walk relation.** Immediately following the operator's disclosure of planned first-CA succession, the operator explicitly clarified that the **Community name itself changed from `Pokémon GO 奈良 やまと` to `Pokémon GO 奈良 Sakura Walk🌸`**. The operator describes a **rename of an existing community**, not the founding of an unrelated new community. No effective date of platform name change or completion of role transition was supplied.
+
+**Supported separate claims:**
+- **Community display-name change:** **operator-confirmed** `やまと` → `Sakura Walk🌸`.
+- **Linked live group invite:** supplied URL decodes to precisely the same ID/URL as source **row 58**, now labelled Sakura Walk. Row 58's CA key was the previous Yamato 2nd CA in earlier CA source snapshots, but its current role column is blank. Do not automatically declare planned future promotion complete.
+- **Row 159**, the outgoing Yamato 1st CA, still lists **old Yamato display name and a different group URL/UUID** shared with current *Mahoroba* rows **144/199**. This is a **high-priority current-source stale-name and potential mismatched-link case** after the rename; the correct row-159 link cannot be assigned solely from a rename statement unless source owner confirms that the outgoing 1st CA still belonged to this same currently live Sakura Walk group before retirement.
+- **August map row 123**, labelled Sakura Walk, likewise uses the ID shared by Mahoroba, **not** the independently operator-supplied live Sakura Walk ID. Map correction candidate requires confirming authoritative use and intended group; preserve independent Mahoroba group.
+- **Transition timing:** outgoing 1st CA **retirement planned**, historical Yamato 2nd CA **promotion to 1st planned**; **no early inactive/active/role changes, no removal of CA member or identity associations, medals, or exchanges**.
+- **Possible source-only edit candidates for separate permission**: current **G159** old name → Sakura Walk (if current-display source semantics confirmed); **H159** → same as verified H58 (after CA's current Club membership verified); map row 123 UUID should be verified against H58. Do not amend H144/H199 based on another group's rename.
+- Do not assume that the source G58 name + blank C58 proves effective promotion. Require separate confirmation of the change's effective date before touching role assignments.
+
+**Disposition:** `YAMATO_TO_SAKURA_WALK_RENAME=OPERATOR_CONFIRMED`; `S_58_LIVE_URL=EXACT`; `ROW_159_STALE_NAME=LIKELY`; `ROW_159_URL_AND_MAP_ROW_123=NEEDS_CONSISTENCY_REVIEW`; `FIRST_CA_HANDOVER=FUTURE_PLANNED`; `SOURCE_SHEET_WRITES=NONE`; `PRODUCTION_DB_WRITES=NONE`; `MASTER_SYNC=STOP`.
