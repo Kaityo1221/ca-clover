@@ -1,0 +1,92 @@
+# CA Clover CA-master protection-only release candidate.
+# Synthetic database only. No Supabase secrets or production services.
+name: CA Master Minimal Production Barrier QA
+
+on:
+  pull_request:
+    branches: [pages]
+    paths:
+      - ".github/workflows/ca-master-minimal-barrier-qa.yml"
+      - "supabase/functions/sync-ca-master/**"
+      - "supabase/functions/sync-ca-master-coordinates/**"
+      - "supabase/functions/sync-ca-master-admin/**"
+      - "supabase/functions/sync-campfire-auto/**"
+      - "supabase/migrations/20261013_ca_master_minimal_barrier.sql"
+      - "scripts/ci/ca-master-minimal-barrier-*.sql"
+      - "scripts/ci/test-ca-master-minimal-guard.mjs"
+      - "scripts/test-ca-master-minimal-edge-http.mjs"
+      - "src/app/api/sync/ca-master/route.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-guards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify disabled legacy writers and preserved deployed Campfire code
+        run: node scripts/ci/test-ca-master-minimal-guard.mjs
+
+  disposable-postgresql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic-test-only
+          POSTGRES_DB: ca_master_barrier
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ca_master_barrier"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: synthetic-test-only
+      PGDATABASE: ca_master_barrier
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure PostgreSQL client
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client
+          fi
+      - name: Install disposable fixture
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/ci/ca-master-minimal-barrier-fixture.sql
+      - name: Apply exactly reviewed candidate migration in disposable database
+        run: psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20261013_ca_master_minimal_barrier.sql
+      - name: Verify OFF gate and blocked identity-linked DELETE
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/ci/ca-master-minimal-barrier-postcheck.sql
+
+  isolated-edge-http:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: "v2.x"
+      - name: Install project npm dependencies required by Deno 2
+        run: npm install --no-package-lock --ignore-scripts --no-audit --no-fund
+      - name: Cache Deno dependencies only (offline during Edge HTTP QA)
+        run: |
+          deno cache supabase/functions/sync-ca-master/index.ts
+          deno cache supabase/functions/sync-ca-master-coordinates/index.ts
+          deno cache supabase/functions/sync-ca-master-admin/index.ts
+          deno cache supabase/functions/sync-campfire-auto/index.ts
+      - name: Actual isolated Deno HTTP guards; no external Edge network
+        run: node scripts/test-ca-master-minimal-edge-http.mjs
