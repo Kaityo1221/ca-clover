@@ -236,6 +236,27 @@ function unmountStampMedal3D(){
  stamp3d.innerHTML="";
  stampZoom2D.classList.remove("hidden");
 }
+// The small Community thumb is fast for a grid, but not sharp enough for a
+// full-size 3D medal. Preserve the icon design version by trying its archived
+// original first. Only fall back to the thumbnail when full-size sources fail.
+function medalFaceTextureSources(design,imageUrl,fallbackImageUrl){
+ const candidates=[
+  {kind:"storage",bucket:"community-icon-archive",path:design?.archive_path},
+  {kind:"url",url:design?.source_avatar_url},
+  {kind:"url",url:fallbackImageUrl},
+  {kind:"storage",bucket:"community-icon-thumbs",path:design?.thumbnail_path},
+  {kind:"url",url:imageUrl}
+ ];
+ const seen=new Set();
+ return candidates.filter(source=>{
+  const value=String(source.kind==="storage"?source.path||"":source.url||"").trim();
+  if(!value)return false;
+  const key=source.kind==="storage"?source.bucket+":"+value:"url:"+value;
+  if(seen.has(key))return false;
+  seen.add(key);
+  return true;
+ });
+}
 async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines,options){
  unmountStampMedal3D();
  const token=++stamp3dToken;
@@ -489,6 +510,8 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
    canvas.width=canvas.height=resolution;
    const ctx=canvas.getContext("2d");
    if(!ctx)return texture;
+   ctx.imageSmoothingEnabled=true;
+   ctx.imageSmoothingQuality="high";
    ctx.drawImage(image,(width-crop)/2,(height-crop)/2,crop,crop,0,0,resolution,resolution);
    const fitted=new THREE.CanvasTexture(canvas);
    fitted.colorSpace=texture.colorSpace;
@@ -514,30 +537,28 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
    }catch(_){return false}
   };
   let textureApplied=false;
-  if(design?.thumbnail_path){
-   try{
-    const downloaded=await client.storage.from("community-icon-thumbs").download(design.thumbnail_path);
-    if(!downloaded.error&&downloaded.data&&token===stamp3dToken){
-     faceObjectUrl=URL.createObjectURL(downloaded.data);
-     textureApplied=await tryTexture(faceObjectUrl);
+  for(const source of medalFaceTextureSources(design,imageUrl,fallbackImageUrl)){
+   if(token!==stamp3dToken)break;
+   if(source.kind==="url"){
+    textureApplied=await tryTexture(source.url);
+   }else{
+    let objectUrl=null;
+    try{
+     const downloaded=await client.storage.from(source.bucket).download(source.path);
+     if(!downloaded.error&&downloaded.data&&token===stamp3dToken){
+      objectUrl=URL.createObjectURL(downloaded.data);
+      if(await tryTexture(objectUrl)){
+       faceObjectUrl=objectUrl;
+       objectUrl=null; // Revoke the retained URL when the medal is unmounted.
+       textureApplied=true;
+      }
+     }
+    }catch(_){}finally{
+     // Failed downloads or decodes never leak temporary blob URLs.
+     if(objectUrl)URL.revokeObjectURL(objectUrl);
     }
-   }catch(_){}
-  }
-  if(!textureApplied&&design?.archive_path){
-   try{
-    const downloaded=await client.storage.from("community-icon-archive").download(design.archive_path);
-    if(!downloaded.error&&downloaded.data&&token===stamp3dToken){
-     if(faceObjectUrl)URL.revokeObjectURL(faceObjectUrl);
-     faceObjectUrl=URL.createObjectURL(downloaded.data);
-     textureApplied=await tryTexture(faceObjectUrl);
-    }
-   }catch(_){}
-  }
-  if(!textureApplied){
-   const textureCandidates=[imageUrl,fallbackImageUrl].filter((value,index,array)=>value&&array.indexOf(value)===index);
-   for(const textureUrl of textureCandidates){
-    if(await tryTexture(textureUrl)){textureApplied=true;break}
    }
+   if(textureApplied)break;
   }
 
   const box=new THREE.Box3().setFromObject(medal);
