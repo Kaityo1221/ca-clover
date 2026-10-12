@@ -258,3 +258,19 @@ Read-only evidence supplied by the project operator, supplementing the earlier s
 **Next question for operator (not a database change):** after the geographical split, did the KOBE 1st CA officially move to the separate KOBE Campfire group? If known, obtain the approximate split date and any historical meetup link showing its host and club ID. This supports a time-bounded audit rather than deleting associations.
 
 **Status:** `NIGHT_ACTIVITY_GROUP_SPLIT_HISTORY=OPERATOR_CONFIRMED`; `KOBE_ROW_175_REASON=HISTORICAL_LINEAGE_POSSIBLE`; `CURRENT_ASSIGNMENT=REQUIRES_CONFIRMATION`; `GOOGLE_SHEET_WRITES=NONE`; `PRODUCTION_WRITES=NONE`; `CA_MASTER_SYNC=STOP`.
+
+
+## 2026-10-12: operator attestation of current KOBE first-CA assignment
+
+**Direct operator confirmation:** in response to the exact question whether the source **row 175 KOBE first CA** remains an active first CA in the independently established **KOBE** regional community, the operator answered **YES**.
+
+This confirmation, paired with the three separate live operator-shared Campfire group invite URLs, supports the following narrow **current-source data correction candidate**:
+- **H175** (KOBE first CA) should point to the current **KOBE Community invite URL already present in H13 (KOBE second CA)**, **not** the Osaka URL currently present in H175/H198.
+- Keep H198 on the already live-verified **Osaka** Community URL.
+- Keep H11 on the live-verified **WEST** URL.
+- Record the original H175 value as a **historical source observation** in a private operator-controlled review record where required; its past validity or transfer date **is not yet demonstrated**, so do not label it a verified past membership.
+- The three currently distinct regional groups must **not** be merged as historical Campfire ID aliases. Community identity/membership migrations in restored or production DB require separate impact analysis for `user_ca_identities`, `community_ca_members`, medals, and exchanges.
+
+**Disposition:** `ROW_175_CURRENT_KOBE_1ST=OPERATOR_ATTESTED`; `ROW_175_CURRENT_SOURCE_URL_REPLACE_WITH_H13=READY_FOR_SOURCE_OWNER_APPROVAL`; `SOURCE_SHEET_WRITE=NOT_AUTHORIZED`; `RESTORED_DB_ASSOCIATION_UPDATE=NOT_AUTHORIZED`; `MASTER_SYNC=STOP`.
+
+**Other Night Activity issue:** H34 link and I34 prefecture are still **pending separately reviewed source correction**; the current screenshot of a second-CA-badged Meetup host supports participation in Osaka but does not by itself prove ownership of the linked Pokémon GO profile or authorize edits. The remaining non-Night-Activity source discrepancies persist.
