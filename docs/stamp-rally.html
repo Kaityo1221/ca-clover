@@ -38,6 +38,8 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
 .stamps{display:none;border-top:1px solid #f3e8dd;background:#fffdf9;padding:13px 10px 16px;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px 7px}
 .pref.open>.stamps{display:grid}
 .stamp{text-align:center;min-width:0}.medal{position:relative;width:78px;height:78px;margin:auto;border-radius:999px;padding:5px;background:linear-gradient(135deg,#f8e3bf,#fff,#edc993);box-shadow:0 7px 17px rgba(112,73,35,.18)}
+.admin-catalog .hero .summary,.admin-catalog .exchange-card,.admin-catalog .japanmap{display:none!important}
+.admin-catalog .hero{border-color:#c7b7eb;background:linear-gradient(125deg,#f5f0ff,#fff8ef)}
 .medal.unowned{padding:4px;border:2px dashed #cbc5bf;background:#f1efec;box-shadow:none}.medalinner{position:relative;width:100%;height:100%;overflow:hidden;border-radius:999px;background:#eef2e9;display:grid;place-items:center}.medalinner .fallback{font-size:30px;color:#91a889}.medalinner img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.unowned .medalinner{filter:grayscale(1);opacity:.34}
 .check{position:absolute;right:-2px;top:-2px;width:23px;height:23px;border:2px solid #fff;border-radius:999px;background:#6d9758;color:#fff;display:grid;place-items:center;font-size:10px;font-weight:950}
 .cname{margin-top:8px;min-height:31px;font-size:10px;line-height:1.42;font-weight:950;color:#4b433c;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -128,6 +130,8 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
 const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
 const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
 const ROOT="https://kaityo1221.github.io/ca-clover/";
+// ADMIN showcase is a strictly read-only view.
+const isAdminCatalogMode=new URLSearchParams(location.search).get("admin_catalog")==="1";
 const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
 const status=document.getElementById("status");
 const stampBackLink=document.getElementById("stampBackLink");
@@ -598,6 +602,7 @@ async function authGuard(){
  const p=await client.from("profiles").select("role").eq("id",session.user.id).maybeSingle();
  const isAdmin=p.data?.role==="admin";
  const approved=["ca","admin"].includes(p.data?.role);
+ if(isAdminCatalogMode&&!isAdmin){status.className="error";status.textContent="管理者専用の見本帳です。";return false}
  if(isAdmin){
   stampBackLink.href="./admin.html";
   stampBackLink.textContent="管理メニュー";
@@ -614,26 +619,36 @@ async function authGuard(){
 }
 async function load(){
  if(!await authGuard())return;
+ if(isAdminCatalogMode){
+  document.body.classList.add("admin-catalog");
+  document.querySelector(".hero h1").textContent="🪙 全国メダル見本帳";
+  document.querySelector(".hero p").textContent="ADMIN専用。全国のCAメダルを未取得でも3Dで確認できます。";
+  document.querySelector(".hero .note").textContent="閲覧専用サンプルです。メダルの付与や獲得履歴の変更は行いません。";
+  document.querySelector(".footer").textContent="🪙 通常のメダルラリーでは、実際に獲得したメダルだけが表示されます。";
+ }
 
- const [catalog,collectionsResult,identityResult]=await Promise.all([
+ const [catalog,collectionsResult,identityResult,adminDesignResult]=await Promise.all([
   client.rpc("stamp_rally_catalog"),
-  client.from("stamp_collections")
+  isAdminCatalogMode?Promise.resolve({data:[],error:null}):client.from("stamp_collections")
     .select("id,stamp_ca_member_id,community_id,role_at_acquisition,first_acquired_at,first_location,first_event_name,acquisition_source,acquisition_icon_version_id,acquisition_message,acquisition_message_seen_at")
     .eq("owner_user_id",currentUserId),
-  client.from("user_ca_identities")
+  isAdminCatalogMode?Promise.resolve({data:null,error:null}):client.from("user_ca_identities")
     .select("ca_member_id,community_id")
     .eq("user_id",currentUserId)
     .eq("is_primary",true)
-    .maybeSingle()
+    .maybeSingle(),
+  isAdminCatalogMode?client.from("community_icon_versions")
+    .select("id,community_id,content_hash,source_avatar_url,archive_path,thumbnail_path,first_seen_at,last_seen_at,is_current")
+    .order("first_seen_at",{ascending:true}):Promise.resolve({data:[],error:null})
  ]);
- const firstError=catalog.error||collectionsResult.error;
+ const firstError=catalog.error||collectionsResult.error||(isAdminCatalogMode&&adminDesignResult.error);
  if(firstError){status.className="error";status.textContent=firstError.message;return}
 
  const collectionRows=collectionsResult.data||[];
  const collectionMap=new Map(collectionRows.map(x=>[x.stamp_ca_member_id+":"+x.community_id,x]));
  const collectionIds=collectionRows.map(x=>x.id);
 
- let reunionRows=[],designRows=[],preferenceRows=[],versionRows=[];
+ let reunionRows=[],designRows=[],preferenceRows=[],versionRows=isAdminCatalogMode?(adminDesignResult.data||[]):[];
  if(collectionIds.length){
   const [rr,dr,pr]=await Promise.all([
    client.from("stamp_reunions")
@@ -664,6 +679,13 @@ async function load(){
  }
 
  const versionById=new Map(versionRows.map(x=>[x.id,x]));
+ const adminVersionsByCommunity=new Map();
+ if(isAdminCatalogMode){
+  versionRows.forEach(v=>{
+   const designs=adminVersionsByCommunity.get(v.community_id)||[];
+   designs.push(v);adminVersionsByCommunity.set(v.community_id,designs);
+  });
+ }
  const designIdsByCollection=new Map();
  designRows.forEach(x=>{
   const list=designIdsByCollection.get(x.collection_id)||[];
@@ -701,7 +723,9 @@ async function load(){
   return ca.designs.find(x=>x.is_current)||ca.designs[ca.designs.length-1]||null;
  };
  const displayDesign=ca=>{
-  if(!ca||!ca.collection)return null;
+  if(!ca)return null;
+  if(isAdminCatalogMode)return newestDesign(ca);
+  if(!ca.collection)return null;
   const preferred=preferenceMap.get(ca.collection.id);
   return ca.designs.find(x=>x.id===preferred)||newestDesign(ca);
  };
@@ -723,7 +747,7 @@ async function load(){
   }
   if(row.ca_member_id&&row.trainer_name){
    const collection=collectionMap.get(row.ca_member_id+":"+row.community_id)||null;
-   const designs=collection
+   const designs=isAdminCatalogMode?(adminVersionsByCommunity.get(row.community_id)||[]):collection
     ?(designIdsByCollection.get(collection.id)||[])
       .map(id=>versionById.get(id))
       .filter(Boolean)
@@ -805,15 +829,18 @@ async function load(){
     const rows=byPref.get(p)||[],cas=rows.flatMap(c=>c.cas),acquired=cas.filter(c=>c.acquired).length;
     const stamps=rows.length?rows.map(c=>{
       const gotCount=c.cas.filter(x=>x.acquired).length,any=gotCount>0,allGot=c.cas.length>0&&gotCount===c.cas.length;
-      const coverCa=c.cas.find(x=>x.acquired)||null,coverDesign=coverCa?displayDesign(coverCa):null,coverSrc=designUrl(coverDesign);
-      const picture=coverSrc
+      const coverCa=isAdminCatalogMode?c.cas[0]||null:c.cas.find(x=>x.acquired)||null;
+      const coverDesign=coverCa?displayDesign(coverCa):null,coverSrc=designUrl(coverDesign);
+      const showIcon=isAdminCatalogMode||any;
+      const picture=!showIcon?"":coverSrc
        ?'<img data-ca-community-icon="1" data-original="'+esc(c.avatar_url||"")+'" src="'+esc(coverSrc)+'" alt="" loading="lazy">'
        :window.CACommunityIcon.img(client,c,'alt="" loading="lazy"');
-      return '<button type="button" class="stamp" data-community="'+esc(c.id)+'"><div class="medal '+(any?'':'unowned')+'"><div class="medalinner"><span class="fallback">🍀</span>'+picture+'</div>'+(allGot?'<span class="check">✓</span>':'')+'</div><div class="cname">'+esc(c.name)+'</div><div class="canames">'+(c.cas.length?c.cas.slice(0,2).map(x=>'<div class="caname '+(x.acquired?'on':'off')+'">'+(x.acquired?'● ':'○ ')+esc(x.trainer_name)+'</div>').join(""):'<div class="caname off">CA未設定</div>')+(c.cas.length>2?'<div class="caname off">+'+(c.cas.length-2)+'</div>':'')+'</div></button>';
+      const caLabels=c.cas.length?c.cas.slice(0,2).map(x=>'<div class="caname '+(isAdminCatalogMode||x.acquired?'on':'off')+'">'+(isAdminCatalogMode?'◇ ':x.acquired?'● ':'○ ')+esc(x.trainer_name)+'</div>').join(""):'<div class="caname off">CA未設定</div>';
+      return '<button type="button" class="stamp" data-community="'+esc(c.id)+'"><div class="medal '+(showIcon?'':'unowned')+'"><div class="medalinner"><span class="fallback">'+(showIcon?'🍀':'？')+'</span>'+picture+'</div>'+(!isAdminCatalogMode&&allGot?'<span class="check">✓</span>':'')+'</div><div class="cname">'+esc(c.name)+'</div><div class="canames">'+caLabels+(c.cas.length>2?'<div class="caname off">+'+(c.cas.length-2)+'</div>':'')+'</div></button>';
     }).join(""):'<div class="empty">Communityはありません</div>';
-    return '<div class="pref"><button class="prefbtn"><div><div class="prefname">'+esc(p)+'</div><div class="sub">'+rows.length+' Community</div></div><span class="progress">取得 '+acquired+' / '+cas.length+'</span><span class="chev">⌄</span></button><div class="stamps">'+stamps+'</div></div>';
+    return '<div class="pref"><button class="prefbtn"><div><div class="prefname">'+esc(p)+'</div><div class="sub">'+rows.length+' Community</div></div><span class="progress">'+(isAdminCatalogMode?'展示 '+cas.length+'種類':'取得 '+acquired+' / '+cas.length)+'</span><span class="chev">⌄</span></button><div class="stamps">'+stamps+'</div></div>';
   }).join("");
-  return '<div class="region'+(regionAcquired>0?' has-medals':'')+(regionComplete?' complete':'')+'"><button class="regionbtn"><span class="leaf" aria-hidden="true">🍀</span><div class="regioninfo"><div class="regiontitle">'+esc(region)+'</div><div class="regionmeta"><span class="sub">'+rc+'コミュニティ</span><span class="regionprogress">メダル '+regionAcquired+' / '+regionCas.length+'</span>'+(regionComplete?'<span class="complete-label" aria-label="全CAメダル取得済み">COMPLETE</span>':'')+'</div></div><span class="chev" aria-hidden="true">⌄</span></button><div class="prefwrap">'+prefHtml+'</div></div>';
+  return '<div class="region'+(!isAdminCatalogMode&&regionAcquired>0?' has-medals':'')+(!isAdminCatalogMode&&regionComplete?' complete':'')+'"><button class="regionbtn"><span class="leaf" aria-hidden="true">🍀</span><div class="regioninfo"><div class="regiontitle">'+esc(region)+'</div><div class="regionmeta"><span class="sub">'+rc+'コミュニティ</span><span class="regionprogress">'+(isAdminCatalogMode?'見本 '+regionCas.length+'種類':'メダル '+regionAcquired+' / '+regionCas.length)+'</span>'+(!isAdminCatalogMode&&regionComplete?'<span class="complete-label" aria-label="全CAメダル取得済み">COMPLETE</span>':'')+'</div></div><span class="chev" aria-hidden="true">⌄</span></button><div class="prefwrap">'+prefHtml+'</div></div>';
  }).join("");
 
  status.hidden=true;
@@ -828,49 +855,63 @@ async function load(){
 
   let selectedCa=c.cas.find(x=>x.acquired)||c.cas[0]||null;
   let selectedDesign=selectedCa?displayDesign(selectedCa):null;
-  startSuzukiIntro(selectedCa);
+  if(!isAdminCatalogMode)startSuzukiIntro(selectedCa);
 
   const renderModal=()=>{
    stampZoomTitle.textContent=c.name||"";
-   void showStampMessage(selectedCa&&selectedCa.collection?selectedCa.collection:null);
+   if(!isAdminCatalogMode)void showStampMessage(selectedCa&&selectedCa.collection?selectedCa.collection:null);
 
    const lines=[c.prefecture||""];
    if(selectedCa){
     lines.push((selectedCa.ca_level||"CA")+" ・ "+selectedCa.trainer_name);
-    if(selectedCa.collection){
+    if(isAdminCatalogMode)lines.push("🪙 管理者展示見本 ・ メダル未付与");
+    else if(selectedCa.collection){
      const count=(reunionsByCollection.get(selectedCa.collection.id)||[]).length;
      lines.push("取得済み ・ 再会 ×"+count);
-    }else{
-     lines.push("未取得");
-    }
+    }else lines.push("未取得");
    }
    stampZoomArea.textContent=lines.filter(Boolean).join("\n");
    stampZoomArea.style.whiteSpace="pre-line";
 
-   const src=selectedDesign?designUrl(selectedDesign):thumb(c);
-   stampZoom2D.classList.toggle("unowned",!(selectedCa&&selectedCa.collection));
+   const showMedalFace=isAdminCatalogMode||!!(selectedCa&&selectedCa.collection);
+   const src=showMedalFace?(selectedDesign?designUrl(selectedDesign):thumb(c)):"";
+   stampZoom2D.classList.toggle("unowned",!showMedalFace);
+   stampZoom2D.querySelector(".fallback").textContent=showMedalFace?"🍀":"？";
    stampZoomImg.style.display=src?"block":"none";
    stampZoomImg.dataset.original=c.avatar_url||"";
    stampZoomImg.dataset.caCommunityIcon="1";
    stampZoomImg.dataset.caBound="";
    if(src)stampZoomImg.src=src;
    window.CACommunityIcon.bind(stampModalBack);
-   if(selectedCa&&selectedCa.collection){
-    const engravingLines=[
-     selectedCa.trainer_name,
-     selectedCa.ca_level||selectedCa.collection.role_at_acquisition||"CA",
-     prefectureEnglishLabel(c.prefecture),
-     engravingDate(selectedCa.collection.first_acquired_at)
-    ];
-    const suzukiBurned=isSuzukiSpecial(selectedCa)&&window.CASuzukiMedalState?.phase!=="clean_complete";
+   if(selectedCa&&(selectedCa.collection||isAdminCatalogMode)){
+    const engravingLines=isAdminCatalogMode
+     ?[selectedCa.trainer_name,selectedCa.ca_level||"CA",prefectureEnglishLabel(c.prefecture),"SAMPLE"]
+     :[
+      selectedCa.trainer_name,
+      selectedCa.ca_level||selectedCa.collection.role_at_acquisition||"CA",
+      prefectureEnglishLabel(c.prefecture),
+      engravingDate(selectedCa.collection.first_acquired_at)
+     ];
+    const suzukiBurned=!isAdminCatalogMode&&isSuzukiSpecial(selectedCa)&&window.CASuzukiMedalState?.phase!=="clean_complete";
     void mountStampMedal3D(selectedDesign,src,c.avatar_url||"",engravingLines,{suzukiBurned});
    }else unmountStampMedal3D();
 
-   const caButtons=c.cas.map(x=>'<button type="button" class="btn '+(selectedCa&&selectedCa.id===x.id?"":"line")+'" data-modal-ca="'+esc(x.id)+'" style="font-size:10px;padding:8px 10px">'+esc(x.ca_level||"CA")+' ・ '+esc(x.trainer_name)+'</button>').join("");
+  const caButtons=c.cas.map(x=>'<button type="button" class="btn '+(selectedCa&&selectedCa.id===x.id?"":"line")+'" data-modal-ca="'+esc(x.id)+'" style="font-size:10px;padding:8px 10px">'+esc(x.ca_level||"CA")+' ・ '+esc(x.trainer_name)+'</button>').join("");
    let historyHtml="";
    let designHtml="";
 
-   if(selectedCa&&selectedCa.collection){
+   if(isAdminCatalogMode){
+    const designs=selectedCa?.designs||[];
+    if(designs.length>1){
+     const index=Math.max(0,designs.findIndex(x=>selectedDesign&&x.id===selectedDesign.id));
+     designHtml='<div class="section" style="border:1px solid #e4d7ca;border-radius:18px;background:#fff;padding:12px">'
+      +'<div class="row between"><button class="btn line" data-design-dir="-1" aria-label="前のデザイン">‹</button>'
+      +'<div class="center"><div class="tiny strong">保存済みデザイン '+(index+1)+' / '+designs.length+'</div>'
+      +'<div class="tiny muted">'+(selectedDesign?.is_current?'現在':'過去')+'</div></div>'
+      +'<button class="btn line" data-design-dir="1" aria-label="次のデザイン">›</button></div></div>';
+    }
+    designHtml+='<div class="notice section">🪙 ADMIN専用の閲覧見本。ドラッグで回転できます。取得・交換・デザイン固定は行いません。</div>';
+   }else if(selectedCa&&selectedCa.collection){
     const reunionList=reunionsByCollection.get(selectedCa.collection.id)||[];
     const firstDate=new Date(selectedCa.collection.first_acquired_at).toLocaleDateString("ja-JP");
     historyHtml='<div class="section" style="border:1px solid #eadfce;border-radius:18px;background:#fffaf2;padding:12px;text-align:left">'
@@ -914,7 +955,7 @@ async function load(){
     selectedCa=c.cas.find(x=>x.id===button.dataset.modalCa)||null;
     selectedDesign=selectedCa?displayDesign(selectedCa):null;
     renderModal();
-    startSuzukiIntro(selectedCa);
+    if(!isAdminCatalogMode)startSuzukiIntro(selectedCa);
    });
 
    stampDesignControls.querySelectorAll("[data-design-dir]").forEach(button=>button.onclick=()=>{
