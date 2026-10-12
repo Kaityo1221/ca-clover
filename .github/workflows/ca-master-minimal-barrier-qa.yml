@@ -14,6 +14,7 @@ on:
       - "supabase/migrations/20261013_ca_master_minimal_barrier.sql"
       - "scripts/ci/ca-master-minimal-barrier-*.sql"
       - "scripts/ci/test-ca-master-minimal-guard.mjs"
+      - "scripts/test-ca-master-minimal-edge-http.mjs"
   workflow_dispatch:
 
 permissions:
@@ -66,3 +67,23 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20261013_ca_master_minimal_barrier.sql
       - name: Verify OFF gate and blocked identity-linked DELETE
         run: psql -X -v ON_ERROR_STOP=1 -f scripts/ci/ca-master-minimal-barrier-postcheck.sql
+
+  isolated-edge-http:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: "v2.x"
+      - name: Cache Deno dependencies only (offline during Edge HTTP QA)
+        run: |
+          deno cache supabase/functions/sync-ca-master/index.ts
+          deno cache supabase/functions/sync-ca-master-coordinates/index.ts
+          deno cache supabase/functions/sync-ca-master-admin/index.ts
+          deno cache supabase/functions/sync-campfire-auto/index.ts
+      - name: Actual isolated Deno HTTP guards; no external Edge network
+        run: node scripts/test-ca-master-minimal-edge-http.mjs
