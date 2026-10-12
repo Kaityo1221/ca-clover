@@ -298,3 +298,33 @@ Do **not** change row 34's J/K coordinates, row 13, row 11 or row 198. Source **
 **Confidence:** current-region/role confirmation provided directly by operator plus matched share links. **Approval boundary:** this YES answered an affiliation-confirmation question; it is **not permission to edit the upstream Google Sheet or production database**. Separate explicit source-owner authorization, protected local/restored-DB per-key/pair impact analysis, and a post-edit read-only source preflight are still required. Do not change or delete existing `community_ca_members`, `user_ca_identities`, medals, exchanges, old aliases, or emergency stop.
 
 **Night Activity review status:** `OSAKA_ROW_34_2ND=OPERATOR_ATTESTED`; `KOBE_ROW_175_1ST=OPERATOR_ATTESTED`; `NIGHT_ACTIVITY_THREE_FIELD_FIX_CANDIDATES=SPECIFIED`; `SOURCE_SHEET_WRITES=NONE`; `PRODUCTION_WRITES=NONE`; `GLOBAL_CA_MASTER_SYNC=STOP` (other independent P0/P1 discrepancies persist).
+
+
+## 2026-10-12: source rows 7 and 115 historical split or alias investigation
+
+**Read-only source investigation:** Current CA List `[new]CA List 20260828` (gid 633821294) row **7** lists a newly appointed **2nd CA** (join date 2026-09-24) attached to the Osaka-area `GO to今城塚古墳公園` group. Row **115** lists a **1st CA** (joined 2025-05-15) attached to `AMaGO`. Although these are **different listed group names**, **both H7 and H115 use the identical full Campfire group share URL and decoded UUID**. Their listed map points are several kilometers apart.
+
+The same current 1st CA is traceable across snapshots (matched privately by trainer source key, not by name or coordinate alone):
+
+| Snapshot | Historical source group name | Link type | Result |
+| --- | --- | --- | --- |
+| CA List **2026-04-20** | `GO to今城塚古墳公園` | Decodable UUID | **ID B** |
+| CA List **2026-06-22** | `GO to今城塚古墳公園` | Decodable UUID | **ID B** |
+| CA List **2026-06-25** | `GO to今城塚古墳公園` | Decodable UUID | **ID A** |
+| CA List **2026-07-18** | `GO to今城塚古墳公園` | Decodable UUID | **ID A** |
+| Current CA List **2026-08-28** | `AMaGO` | Decodable UUID | **ID A** |
+| CA MAP **2026-03, 04, 06** | `GO to今城塚古墳公園` | Decodable UUID | **ID B** |
+| CA MAP **2026-08** | `AMaGO` | Decodable UUID | **ID B** |
+| Current CA List row **7** | `GO to今城塚古墳公園` | Decodable UUID | **ID A** |
+
+**ID A** is the current identical H7/H115 group UUID. **ID B** is the *different*, consistently mapped March–August map UUID. UUIDs and account identifiers are intentionally **not** copied into this public file.
+
+**Key observation:** Row 115's source group-name change to `AMaGO` coexists with a **stable ID B in August map**, while the **current CA List row 115 still carries ID A**, also carried by the new 2nd CA on row 7. **Two distinct real clubs vs rename/replacement vs split are all plausible**. The historical record alone cannot establish which of ID A/B is actually live today. Do not treat either as interchangeable alias or assume that the new CA is attached to the wrong club.
+
+**Specific evidence required next, read-only:**
+1. Ask operator for the **current in-app Campfire *AMaGO* group share URL**, decode its Community ID; compare with the map's **ID B** and CA List's **ID A**.
+2. Obtain a current separate `GO to今城塚古墳公園` share link (or a public Meetup's group card) and compare its ID with ID A. Verify that the 2nd CA remains officially attached there.
+3. If each group remains separate, preserve two independent logical Community IDs. For a current source correction to H115, obtain explicit owner authorization and protected identity/link review; do not silently reassign or delete the historical 1st CA link.
+4. Retain all prior source observations. A current source-row link correction does **not** by itself authorize a production DB identity, medal, exchange or Community history migration.
+
+**Disposition:** `ROW_7_115_SOURCE_SAME_UUID=CONFIRMED`; `HISTORICAL_ALTERNATE_COMMUNITY_ID=FOUND`; `AMAGO_CURRENT_SHARE_LINK=AWAITING_OPERATOR`; `GO_TO_CURRENT_LINK=AWAITING_OPERATOR`; `SOURCE_EDIT=NONE`; `PRODUCTION_SYNC=STOP`.
