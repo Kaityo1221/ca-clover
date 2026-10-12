@@ -15,6 +15,7 @@ on:
       - "scripts/ci/ca-master-minimal-barrier-*.sql"
       - "scripts/ci/test-ca-master-minimal-guard.mjs"
       - "scripts/test-ca-master-minimal-edge-http.mjs"
+      - "src/app/api/sync/ca-master/route.ts"
   workflow_dispatch:
 
 permissions:
