@@ -274,3 +274,27 @@ This confirmation, paired with the three separate live operator-shared Campfire 
 **Disposition:** `ROW_175_CURRENT_KOBE_1ST=OPERATOR_ATTESTED`; `ROW_175_CURRENT_SOURCE_URL_REPLACE_WITH_H13=READY_FOR_SOURCE_OWNER_APPROVAL`; `SOURCE_SHEET_WRITE=NOT_AUTHORIZED`; `RESTORED_DB_ASSOCIATION_UPDATE=NOT_AUTHORIZED`; `MASTER_SYNC=STOP`.
 
 **Other Night Activity issue:** H34 link and I34 prefecture are still **pending separately reviewed source correction**; the current screenshot of a second-CA-badged Meetup host supports participation in Osaka but does not by itself prove ownership of the linked Pokémon GO profile or authorize edits. The remaining non-Night-Activity source discrepancies persist.
+
+
+## 2026-10-12: operator attestation of current Osaka second-CA assignment
+
+**Direct operator confirmation:** in response to the exact question whether the current source **row 34** CA remains a **2nd CA in the Osaka `夜活 Pokémon GO`** group, the operator answered **YES**.
+
+Fresh **read-only** source check of tab `[new]CA List 20260828` (gid `633821294`) confirms:
+- Row **34** group name `夜活 Pokémon GO`, with **H34** a 38-character shortened/undecodable Campfire link and **I34** marked Aichi even though **J34/K34** match Osaka row **198** coordinates exactly.
+- Osaka row **198** carries the **live operator-verified Osaka full group invite link** and Osaka prefecture.
+- KOBE row **13** carries the **live operator-verified KOBE link**; KOBE 1st row **175** still carries the Osaka row-198 link and has already been affirmed by the operator as the current KOBE 1st CA.
+
+### Proposed source-only correction set, *not authorized or performed*
+
+| Cell | Current issue | Candidate value | Basis |
+| --- | --- | --- | --- |
+| **H175** | KOBE 1st points to distinct Osaka group | Copy current **H13** (KOBE) | Three verified group URLs and operator attestation of current KOBE 1st |
+| **H34** | Osaka 2nd has short group link with no Community UUID | Copy current **H198** (Osaka) | Verified live Osaka link; operator affirms row 34 current Osaka 2nd; public Osaka meetup with corresponding CA-badged host |
+| **I34** | Prefecture field says Aichi | Copy current **I198** (Osaka) | Operator affirms current Osaka 2nd; source self-description and existing coordinates point to Osaka |
+
+Do **not** change row 34's J/K coordinates, row 13, row 11 or row 198. Source **A1/M201 row count and 200 CA source keys must stay unchanged**; correct a field, not a user or group identity. Historical Osaka/KOBE split means the old H175 link must be recorded privately as a **historical source observation**, not automatically marked a verified prior membership.
+
+**Confidence:** current-region/role confirmation provided directly by operator plus matched share links. **Approval boundary:** this YES answered an affiliation-confirmation question; it is **not permission to edit the upstream Google Sheet or production database**. Separate explicit source-owner authorization, protected local/restored-DB per-key/pair impact analysis, and a post-edit read-only source preflight are still required. Do not change or delete existing `community_ca_members`, `user_ca_identities`, medals, exchanges, old aliases, or emergency stop.
+
+**Night Activity review status:** `OSAKA_ROW_34_2ND=OPERATOR_ATTESTED`; `KOBE_ROW_175_1ST=OPERATOR_ATTESTED`; `NIGHT_ACTIVITY_THREE_FIELD_FIX_CANDIDATES=SPECIFIED`; `SOURCE_SHEET_WRITES=NONE`; `PRODUCTION_WRITES=NONE`; `GLOBAL_CA_MASTER_SYNC=STOP` (other independent P0/P1 discrepancies persist).
