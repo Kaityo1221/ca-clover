@@ -24,6 +24,8 @@ This document coordinates the **existing encrypted original v4 archive** with th
 
 Storage buckets are **148 archived icon objects + 270 thumbnail objects**. Production `max(updated_at)` is 2026-10-03 for both buckets, earlier than the verified 2026-10-11 Storage download with **418/418 SHA-256 matching objects**. This is **strong evidence that the existing Storage byte archive may be reusable**, not a substitute for name+byte/hash-by-hash comparison. Three files were not decodable as images despite matching Storage API bytes; keep this `REVIEW`.
 
+**Edge Function inventory comparison:** As of the same read-only production check, **all 32 deployed Edge Functions** have an `updated_at` earlier than 2026-10-11, with the most recent change 2026-10-09. This suggests the preexisting 32-function source backup can also be reused **after exact source/version/hash verification**. No source code or secrets were exported in this audit; deployment timestamps alone are not byte-for-byte backup proof.
+
 **NO LOSS RULE:** the existing 2026-10-11 old snapshot is **not current**. The new live Identity and medal must never be overwritten or deleted by a restore, diff sync or release.
 
 ### Backup execution on operator's Windows PC (not on ChatGPT cloud)
