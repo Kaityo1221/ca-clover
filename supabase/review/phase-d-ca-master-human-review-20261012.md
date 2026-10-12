@@ -354,3 +354,25 @@ The operator supplied the **live AMaGO Campfire group invite link** in response 
 **Next verification**: Request the current Campfire **GO to今城塚古墳公園** group share URL or an actual group-linked Meetup to determine whether row 7 is the correct *AMaGO* shared Club ID with a legacy name versus a different group link. Separately request a share link for `Pokémon GO in 高槻` if map correction is to be independently confirmed. The historic name and ID transition chronology is ambiguous and requires human interpretation.
 
 **Updated dispositions:** `AMAGO_LIVE_LINK_ROW_115=EXACT_PASS`; `ROW_7_SHARED_WITH_AMAGO=CONFIRMED_UUID`; `MAP_AMAGO_ID_B_CONFLICTS_WITH_LIVE_AMAGO=CONFIRMED`; `ID_B_ALSO_CURRENT_TAKATSUKI_1ST_2ND=CONFIRMED_SOURCE`; `SOURCE_DATA_CHANGE=NONE`; `PRODUCTION_SYNC=STOP`.
+
+
+## 2026-10-12: operator-supplied Discord ticket proves AMaGO rename and venue relocation (READ ONLY)
+
+Operator furnished a screenshot from a **2026-09-23** Discord support ticket submitted by the CA identified in source **row 115**, explicitly reporting:
+- community rename **`GO to 今城塚古墳公園` → `AMaGO`**;
+- change of the activity-base location to coordinates that **exactly equal current CA Master J115/K115**;
+- the submitter says the rename and activity-base change had been **performed that day**.
+
+**Privacy and evidentiary limitation:** do not publish the original screenshot, ticket channel/user identifiers, or trainer-name contents. The screenshot proves a *submitted statement* and the operator's corroboration. It does **not** by itself establish separate ticket closure/approval, platform migration date or a Campfire group deletion.
+
+Paired with the immediately preceding **operator-shared current AMaGO invite** which exactly matches **both H115 and H7**, this directly supersedes the earlier hypothesis that the 7/115 different group names necessarily represent two simultaneous distinct groups. The **same-ID/name-change explanation is now supported by direct human primary-source evidence**, and the current H115 / row 115 display name and new site are consistent.
+
+**Revision to row 7 current-source review:**
+- **G7** (row 7 2nd CA's source group display name) remains `GO to今城塚古墳公園`, a strong **stale name** candidate after the 2026-09-23 operator-documented rename. **Proposed SOURCE-ONLY G7 value = current G115 (`AMaGO`)**, subject to source-owner consent.
+- **H7** already **exactly matches the operator's live AMaGO link**: **do not change H7 or H115**.
+- **J7/K7** remain the old listed map coordinate, while **J115/K115** match the new base location stated in the 2026-09-23 ticket. These are **source coordinate review candidates**; only propose J7/K7 = J115/K115 if source owners confirm columns J/K designate one *shared community base* for all 1st/2nd CAs, as opposed to individually maintained CA meeting points. **No automatic overwrite**.
+- Do not alter row-7 or row-115 CA keys, roles, memberships, identity links, medals or exchanges.
+
+**Important unresolved adjacent discrepancy:** 2026-08-labelled CA MAP row **111** records `AMaGO` under ID **B**, while the operator-shared current AMaGO link, H7 and H115 use **A**. ID **B** also belongs in the current source to the distinct `Pokémon GO in 高槻` 1st/2nd pair (rows 197/76) and map row 113. This separate map/source mapping issue **is not resolved** by the rename notice; do not rewrite B as an alias of A or merge their live communities. Tab title dates need not prove when each entry was last edited.
+
+**Disposition:** `AMAGO_RENAME_AND_RELOCATION=OPERATOR_TICKET_SCREENSHOT`; `ROW_7_G_STALE_DISPLAY_NAME=HIGH_CONFIDENCE_CORRECTION_CANDIDATE`; `ROW_7_H_ALREADY_VALID=EXACT_PASS`; `ROW_7_JK=FIELD_SEMANTICS_REVIEW`; `MAP_ROW_111_SECOND_ID_CONFLICT=OPEN`. **No Google Sheets edit, no production Supabase write or release, no master sync restart or 2099 stop change.**
