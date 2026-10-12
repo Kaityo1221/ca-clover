@@ -519,3 +519,19 @@ This **resolves URL #3 ambiguity** from the earlier three-link batch: it referre
 **Conservative source-only candidate** `H94 <- H29`, contingent on explicit operator/CA confirmation that the listed **Higashikagura 1st** currently belongs to the *same* group as its **2nd**. This is **not an approved edit**. No source role/CA deletion, no automatic DB reassignment (a prior manual Hokkaido DB repair exists), no changes to verified Identity or medal assets.
 
 **Evidence status:** `ASAHIKAWA_ROW_177_LIVE_URL=EXACT_PASS`; `ASAHIKAWA_ROW_176_INDEPENDENT_LIVE_URL=EXACT_PASS`; `HIGASHIKAGURA_ROW_29_2ND_URL=SOURCE_EXACT_OPERATOR_LINK`; `HIGASHIKAGURA_ROW_94_URL_COLLISION_WITH_177=EXACT`; `H94_CORRECTION=AWAITING_FIRST_CA_AFFILIATION`; `SOURCE_SHEET_WRITES=NONE`; `PRODUCTION_WRITES=NONE`; `GLOBAL_CA_MASTER_SYNC=STOP`.
+
+
+## 2026-10-12: operator confirms current Higashikagura first- and second-CA co-membership (READ ONLY)
+
+In direct response to the targeted confirmation question whether source row **94**'s first CA currently belongs to the **same Pokémon GO Hokkaido (東神楽) community** as source row **29**'s second CA, the operator answered **YES**. This independently affirms both the **current 1st/2nd relationship** and that they should share the **Higashikagura group's Club ID**, distinct from either Asahikawa source group.
+
+Together with operator-provided current share links and the exact, recent read-only source comparison:
+- **H29**: correct current **Higashikagura** group link, live-invite exact.
+- **H94**: currently incorrectly points to the **Asahikawa H177** link (source H94 == H177 full URL), despite verified Higashikagura first CA affiliation.
+- **H177**: correct **Hokkaido (旭川)** live link; leave untouched.
+- **H176**: correct *separate* **Pokémon GO 旭川** live link; leave untouched.
+- **Source-only proposed correction: H94 <- H29.** Classification **`OWNER_ATTESTED_SOURCE_LINK_REPLACEMENT_CANDIDATE`**. The old H94 URL's previous validity is unknown; retain its existence only as a historical source observation, do not repurpose it as an active ID alias.
+
+**Strict approval boundary:** the operator's YES confirms current group affiliation and is **not approval to modify the Sheet, production Supabase, previously manually repaired Hokkaido DB relationships, identities, medals, role/status columns, Edge/Cron, or emergency sync pause**. Separate current-source owner authorization plus protected local restored-DB impact reconciliation and application-level no-loss tests are required before any live changes. No PR merge.
+
+**Hokkaido operator group-link review:** row 29/94 group jointly attested, row 176 and row 177 separate groups and exact-match URLs verified; current-source H94 URL correction candidate **ready for edit approval only**, source and production stay unchanged.
