@@ -376,3 +376,22 @@ Paired with the immediately preceding **operator-shared current AMaGO invite** w
 **Important unresolved adjacent discrepancy:** 2026-08-labelled CA MAP row **111** records `AMaGO` under ID **B**, while the operator-shared current AMaGO link, H7 and H115 use **A**. ID **B** also belongs in the current source to the distinct `Pokémon GO in 高槻` 1st/2nd pair (rows 197/76) and map row 113. This separate map/source mapping issue **is not resolved** by the rename notice; do not rewrite B as an alias of A or merge their live communities. Tab title dates need not prove when each entry was last edited.
 
 **Disposition:** `AMAGO_RENAME_AND_RELOCATION=OPERATOR_TICKET_SCREENSHOT`; `ROW_7_G_STALE_DISPLAY_NAME=HIGH_CONFIDENCE_CORRECTION_CANDIDATE`; `ROW_7_H_ALREADY_VALID=EXACT_PASS`; `ROW_7_JK=FIELD_SEMANTICS_REVIEW`; `MAP_ROW_111_SECOND_ID_CONFLICT=OPEN`. **No Google Sheets edit, no production Supabase write or release, no master sync restart or 2099 stop change.**
+
+
+## 2026-10-12: operator-supplied Takatsuki first-CA group URL verification (READ ONLY)
+
+The operator provided a **current Campfire group share link identified as belonging to the Takatsuki 1st CA**. The provided link's fully decoded group ID and the complete share URL were compared read-only with the official live source tabs; do not publish raw links, immutable UUIDs, trainer names or private evidence in this public file.
+
+- Current CA List row **197**, `Pokémon GO in 高槻` 1st CA: **FULL URL + UUID EXACT MATCH**.
+- Current CA List row **76**, same `Pokémon GO in 高槻` 2nd CA: **FULL URL + UUID EXACT MATCH**.
+- 2026-08 map row **113**, `Pokémon GO in 高槻`: **FULL URL + UUID EXACT MATCH**.
+- 2026-08 map row **111**, *mislabelled `AMaGO`*: also **FULL URL + UUID EXACT MATCH** to the Takatsuki 1st CA group, **not** the separately verified live AMaGO group link.
+- In contrast, current CA List row **115** (`AMaGO` 1st) and row **7** (2nd, stale pre-renaming display name) exactly match the **other** operator-supplied live AMaGO URL. Therefore two distinct authoritative group IDs are confirmed for **currently separately identified AMaGO vs Pokémon GO in 高槻**.
+- Historical maps and lists were previously discrepant. The provided operator ticket confirms the `GO to今城塚古墳公園` → `AMaGO` rename; the old display name in row 7 requires independent source edit approval. Neither group is to be combined through aliasing.
+
+**Proposed source/map-only corrections for explicit source-owner review, NOT executed:**
+1. CA List **G7** → `AMaGO` (copy G115), preserving H7 exactly. J7/K7 venue coordinates remain REVIEW until the field semantics and CA-specific assignment are confirmed.
+2. 2026-08 **CA MAP row 111**: AMaGO label with *Pokémon GO in 高槻* share link constitutes a **strong confirmed link/label mismatch** versus independently operator-verified AMaGO live group. A review-only suggestion is to replace the map's row-111 URL with the verified current AMaGO link (same as current CA list H115) **only if** that tab is still the active authoritative map and an authorized maintainer confirms row 111 should represent AMaGO rather than a historical state. Keep map row 113, CA List H76/H197, and H7/H115 unchanged.
+3. These are separate source/map fields, not authorization for restored or production DB mapping edits. Preserve identities, association history, medals, and exchanges.
+
+**State:** `TAKATSUKI_1ST_LIVE_URL=EXACT_MATCH_LIST_ROWS_197_76_MAP_ROW_113`; `AMAGO_TAKATSUKI_SEPARATE_LIVE_UUID=YES`; `MAP_ROW_111_LABEL_URL_MISMATCH=VERIFIED`; `CA_LIST_G7_STALE_NAME_REVIEW`; `CA_MASTER_SYNC=STOP`; `SOURCE_WRITES=NONE`; `PRODUCTION_WRITES=NONE`.
