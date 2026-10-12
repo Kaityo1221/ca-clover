@@ -179,3 +179,17 @@ The operator supplied the **live Campfire share link for the screenshot-labelled
 **Still outstanding:** independently receive and compare current share links for WEST and Osaka; verify whether source row 34 (2nd) belongs to Osaka and confirm its prefecture; identify any separate source/DB stale association. Do not publish the operator's raw share link, UUID, CA names or credentials in this public file.
 
 **Status:** `KOBE_OPERATOR_LINK_CHECK=EXACT_MATCH_ROW_13`; `KOBE_1ST_ROW_175_SOURCE_LINK=CORRECTION_CANDIDATE`; `SOURCE_CHANGES=NONE`; `PRODUCTION_CHANGES=NONE`; `CA_MASTER_SYNC=STOP`.
+
+## 2026-10-12: operator-shared live WEST link verification (READ ONLY)
+
+The operator supplied a fresh share link for the screenshot-labelled `夜活Pokémon GO WEST` (Hyogo, Kobe/Nada area). The share link's decoded Community UUID and full URL were compared **read-only** against the current authoritative CA Master tab `[new]CA List 20260828` (gid `633821294`).
+
+- **Row 11** (`夜活Pokémon GO WEST`, 1st CA, Hyogo): **FULL SHARE URL EXACT MATCH / UUID MATCH**.
+- A bounded scan of the **200 current CA source entries** found **only row 11** using that exact WEST share URL, so no source duplication of this particular link.
+- The provided WEST UUID differs from the sources on **row 13** (KOBE 2nd CA), **row 175** (KOBE 1st, currently points to the Osaka source UUID) and **row 198** (Osaka 1st). Row 34 is still undecodable.
+
+**Disposition:** `WEST_ROW_11_OPERATOR_LINK_VERIFIED`; **NO URL CORRECTION IS WARRANTED FOR ROW 11** on current evidence. This checks the actual share link, not the authenticity/continued CA program standing of the 1st CA. No other previously unresolved Night Activity assignment is declared resolved here.
+
+**Next:** obtain operator's *Osaka* `夜活 Pokémon GO` link from the distinct 25,517-member map entry to confirm row 198 and evaluate source row 34's missing ID; consider source row 175 only after KOBE membership and a privately approved edit proposal. Raw operator URL and Community UUID are deliberately omitted from the public repository.
+
+**No source Sheet edits, database writes, deployments, Cron changes, 2099 sentinel changes, merges, or approved baseline**. Global CA Master remains `REVIEW_REQUIRED_SYNC_STOP`.
