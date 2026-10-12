@@ -901,7 +901,16 @@ async function load(){
    let designHtml="";
 
    if(isAdminCatalogMode){
-    designHtml='<div class="notice section">🪙 ADMIN専用の展示モード。表面・裏面を回して確認できます。取得・交換・デザイン固定は行いません。</div>';
+    const designs=selectedCa?.designs||[];
+    if(designs.length>1){
+     const index=Math.max(0,designs.findIndex(x=>selectedDesign&&x.id===selectedDesign.id));
+     designHtml='<div class="section" style="border:1px solid #e4d7ca;border-radius:18px;background:#fff;padding:12px">'
+      +'<div class="row between"><button class="btn line" data-design-dir="-1" aria-label="前のデザイン">‹</button>'
+      +'<div class="center"><div class="tiny strong">保存済みデザイン '+(index+1)+' / '+designs.length+'</div>'
+      +'<div class="tiny muted">'+(selectedDesign?.is_current?'現在':'過去')+'</div></div>'
+      +'<button class="btn line" data-design-dir="1" aria-label="次のデザイン">›</button></div></div>';
+    }
+    designHtml+='<div class="notice section">🪙 ADMIN専用の閲覧見本。ドラッグで回転できます。取得・交換・デザイン固定は行いません。</div>';
    }else if(selectedCa&&selectedCa.collection){
     const reunionList=reunionsByCollection.get(selectedCa.collection.id)||[];
     const firstDate=new Date(selectedCa.collection.first_acquired_at).toLocaleDateString("ja-JP");
