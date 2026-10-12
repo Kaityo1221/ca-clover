@@ -446,3 +446,20 @@ Following the two valid but previously unlabeled Campfire group URLs, the operat
 **Disposition:** `TOKUSHIMA_ROW_60_CURRENT_GROUP_LINK=OPERATOR_ATTESTED`; `TOKUSHIMA_ROW_116_CURRENT_GROUP_LINK=OPERATOR_ATTESTED`; `H60_H116_SOURCE_REPLACEMENT_CANDIDATES=PREPARED`; `ACTUAL_1ST_CA_ROLE_AND_DB_MAPPING=REVIEW_REQUIRED`; `SHEET_WRITES=NONE`; `PRODUCTION_WRITES=NONE`; `MASTER_SYNC=STOP`.
 
 **Remaining requested operator links** in the six-group batch: Hokkaido **東神楽** and **旭川**, Nara **まほろば** and **やまと**. Kagoshima row 17 membership/coordinates and Chiba row 100 historic DB association remain separate, protected review items.
+
+
+## 2026-10-12: Nara Sakura Walk link and future Yamato succession notice (READ ONLY)
+
+**Fresh operator evidence:** In the outstanding Nara link batch, the operator supplied a decodable Campfire **group invite URL**, plus the explicit statement that the current **Yamato** first CA **plans to retire** and a historical second CA **plans to succeed as first**. The statement concerns a **future** handover, not a completed transfer.
+
+Read-only link and source-history verification:
+- Supplied URL decodes exactly to **current CA Master H58**, whose current G58 display is **`Pokémon GO 奈良 Sakura Walk🌸`**. This is a **valid live-link match to row 58**; it cannot be attributed to current **Yamato** merely from the adjacent succession statement.
+- The exact same source trainer key on **current row 58** was listed on previous June/July source snapshots as **`Pokémon GO 奈良 やまと` 2nd CA**. Its current second-role column **C58 is blank**; **do not equate blank with independent proof of effective first-CA promotion**. The operator's wording says first-CA transition is planned, not completed.
+- Current **row 159** carries the outgoing first CA for **`Pokémon GO 奈良 やまと`**, but **H159 is a *different* Campfire UUID**: equal to current Mahoroba 1st/2nd source rows **199/144**. Prior source lists also consistently show that discrepancy.
+- 2026-08 CA MAP has an additional label `Pokémon GO 奈良 Sakura Walk 🌸` whose link equals the Mahoroba/Yamato-shared *other* UUID; it **does not** match the freshly supplied row-58 Sakura Walk link. Thus the historical map has a **separate group-label/URL contradiction**, similar to prior AMaGO map inconsistencies.
+- Source records show **the same historical second CA** changed from Yamato label in old source snapshots to **Sakura Walk** on current row 58, with its own distinct linked UUID. This could represent a rename, split, transferred membership, or distinct current group. No lineage/identity conclusion without owner explanation.
+- **Avoid invented equivalence** between row-58 Sakura Walk UUID, current Yamato row-159 UUID and Mahoroba rows 144/199. Treat all as separate ID claims until verified.
+
+**Next minimum operator clarification:** Does the planned successor take over **the existing Yamato community** (current source row 159) or lead a **separate Sakura Walk community** (row 58)? Is Sakura Walk a rename/replacement of Yamato, or a separate group? Request the current **Yamato group invite link** if available, plus Mahoroba to disambiguate the remaining collision. One brief question at a time is sufficient. The account should always be matched to its **exact current trainer key** (avoid inventing a near-spelling variant and duplicating accounts).
+
+**No updates:** no source Sheet edit, current 1st/2nd promotion, deletion, alias merger, restored/prod DB mapping, Identity, medals, Cron/Edge, master sync restart, 2099 sentinel change or PR merge. Status `NARA_ROW_58_SAKURA_WALK_LIVE_UUID_MATCH=PASS`; `YAMATO_SUCCESSION=PLANNED_NOT_EXECUTED`; `NARA_GROUP_RELATIONSHIP=REQUIRES_OPERATOR_CONFIRMATION`; `MASTER_SYNC=STOP`.
