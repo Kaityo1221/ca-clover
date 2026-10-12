@@ -479,3 +479,25 @@ Read-only link and source-history verification:
 - Do not assume that the source G58 name + blank C58 proves effective promotion. Require separate confirmation of the change's effective date before touching role assignments.
 
 **Disposition:** `YAMATO_TO_SAKURA_WALK_RENAME=OPERATOR_CONFIRMED`; `S_58_LIVE_URL=EXACT`; `ROW_159_STALE_NAME=LIKELY`; `ROW_159_URL_AND_MAP_ROW_123=NEEDS_CONSISTENCY_REVIEW`; `FIRST_CA_HANDOVER=FUTURE_PLANNED`; `SOURCE_SHEET_WRITES=NONE`; `PRODUCTION_DB_WRITES=NONE`; `MASTER_SYNC=STOP`.
+
+
+## 2026-10-12: three additional Nara and Hokkaido live group links (READ ONLY)
+
+The operator supplied three unlabelled, fully formed Campfire group invite URLs in the outstanding Nara/Hokkaido verification batch. Each URL's decoded immutable Club ID was compared read-only to all 200 current CA Master source rows, July source and August CA MAP. **All three IDs were already present in current CA Master; none was a new/unknown source Club.** The three links' **actual order does not correspond to the previously requested Hokkaido-Hokkaido-Nara order**, so match by UUID, never by message position.
+
+- **Incoming URL #1:** EXACT URL/ID match to source **Nara Mahoroba** rows **144 (2nd CA)** and **199 (1st CA)**. The same ID also appears on source **row 159** still labelled the old **Yamato** group, despite the operator-confirmed Yamato→Sakura Walk rename and a *different* verified current Sakura Walk group link on row **58**. Source row 159 remains a stale-link/name correction candidate, but do not prematurely delete the outgoing CA ahead of future retirement.
+- **Incoming URL #2:** EXACT URL/ID match to source **Hokkaido Higashikagura 2nd CA** row **29**, but **does NOT match 1st CA row 94** for the nominally same Hokkaido group. Row 94 currently uses an ID also attached to a different Asahikawa-labeled group on row 177. Do not auto-change H94 until the operator independently attributes this link to the current Higashikagura group/first CA.
+- **Incoming URL #3:** EXACT URL/ID match to a **separate Asahikawa-named 1st CA group** on current source **row 176** and August map **row 6**. **Critically this is NOT the group identified on row 177**, the original requested `Pokémon GO Hokkaido (旭川)`. Row 177 (and August map row 7) has an altogether different UUID, duplicated with Higashikagura row 94. The two Asahikawa-named source entries have **different current 1st CA source keys, labels, coordinates and Club UUIDs**. Do not conflate them, merge aliases, or "fix" row 177 by pasting URL #3 without evidence.
+- August map independently includes separate entries for **Higashikagura**, **Pokémon GO 旭川**, and **Pokémon GO Hokkaido (旭川)**. The link #3 belongs to the second of these, not the third.
+
+**Verified links / careful inferences:**
+`NARA_MAHOROBA_ROWS_144_199=URL_EXACT`;
+`NARA_ROW_159_WRONG_OR_HISTORICAL_LINK=REVIEW`;
+`HIGASHIKAGURA_ROW_29=URL_EXACT`;
+`HIGASHIKAGURA_ROW_94_LINK_DIFF=OPEN`;
+`ASAHIKAWA_ROW_176=URL_EXACT`;
+`ASAHIKAWA_ROW_177_LINK_DIFF=OPEN`.
+
+**Next specific request:** a current group share URL from `Pokémon GO Hokkaido (旭川)` **associated with source row 177**, not the similar-but-distinct `Pokémon GO 旭川` row 176. Ideally independently confirm the **row-94 Higashikagura 1st CA's active Club** also uses URL #2. A group share URL proves an ID, not the current official 1st/2nd role, and none of the three was labelled by the operator in this turn.
+
+**Source and production status:** no source Sheet write, database write, CA promotion/demotion/retirement, Identity or medal migration, Edge/Cron change, emergency 2099 pause change, PR merge or approved baseline. Global CA-master sync remains STOP.
