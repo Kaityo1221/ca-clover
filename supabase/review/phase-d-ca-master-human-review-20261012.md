@@ -230,3 +230,15 @@ Together with the previously provided Meetup screenshot naming the **Osaka 夜�
 **Next independent evidence**: the *Osaka 夜活* group share link from Campfire (preferably opened from the same Meetup's group card), then confirm its decoded UUID against the row 198 URL and inspect whether row 34 should inherit that link through separately verified 2nd CA membership. Check row 175 KOBE mismatch independently and never remove existing identities/medals based on names alone.
 
 No personal names/handles/screenshots or raw profile identifiers reproduced in this public PR. **No Sheet/DB/Edge/Cron/Identity/medal changes; 2099 STOP intact.**
+
+
+## 2026-10-12: three Night Activity group URLs and Osaka second-CA Meetup evidence
+
+Read-only evidence supplied by the project operator, supplementing the earlier sections:
+- Three separate Campfire group share links were supplied from the live map. Their decoded IDs match current CA source rows **11 (WEST first CA), 13 (KOBE second CA), and 198 (Osaka first CA)** respectively.
+- **Row 175 KOBE first CA** instead has exactly the **Osaka row 198** group's share link. This is a strong **source URL mismatch** candidate. A possible source-only fix is H175 = H13, contingent on verifying the current first CA assignment and source-owner approval.
+- **Row 34 Osaka second CA** carries an unusable short group URL and an Aichi prefecture entry, despite its Osaka coordinates and self-description. A source-only fix candidate is H34 = H198 and I34 = I198, subject to source-owner approval.
+- The operator provided a second Osaka Meetup screenshot dated **2026-10-09** at **Osaka Umekita Park**. The host card displays a purple CA badge and a name textually matching row 34's trainer name, and the event group card reads **Osaka Night Activity**. This is strong independent evidence that this account hosts events in the Osaka group. Because the linked Pokémon GO profile for this second host was not shown, **do not declare a fully independently verified account identity**; the purple badge also does not independently establish a 1st/2nd designation.
+- An earlier Osaka Meetup plus its host's linked Pokémon GO profile **did** show an exact trainer-name match to row 198 and a CA badge.
+
+**Evidence status:** `NIGHT_ACTIVITY_THREE_GROUP_SOURCE_UUID_MATCH=PASS_FOR_ROWS_11_13_198`; `ROW_175_URL_MISMATCH=CONFIRMED`; `ROW_34_HOST_AND_GROUP_SCREENSHOT=CORROBORATED`; `ROW_34_SOURCE_FIELDS=REVIEW_REQUIRED`. These are review dispositions only. No source Sheet or production DB edits, membership reassignments, Identity/medal changes, Cron/Edge changes, 2099 stop removal, baseline authorization or PR merge. Other source conflicts remain unresolved, so global CA master synchronization stays STOP.
