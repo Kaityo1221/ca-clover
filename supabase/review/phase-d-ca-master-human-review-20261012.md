@@ -164,3 +164,18 @@ There are five source records and exactly three **distinct decoded IDs** among t
 5. After explicit source-owner approval, re-run frozen source-to-restored-db association diff **read-only**. Do not automatically delete/merge old CA-Community links, identities, medals or exchanges.
 
 **Status:** `NIGHT_ACTIVITY_THREE_DISPLAYED_GROUPS=VISUALLY_CONFIRMED`; `NIGHT_ACTIVITY_DECODED_SOURCE_IDS=THREE`; `NIGHT_ACTIVITY_GROUP_ID_OWNER_ATTESTATION=PENDING`; `NIGHT_ACTIVITY_SOURCE_CORRECTION=NOT_AUTHORIZED`; `MASTER_SYNC=STOP`. No live Sheet or Supabase writes. No PR merge.
+
+## 2026-10-12: operator-shared live KOBE link verification (READ ONLY)
+
+The operator supplied the **live Campfire share link for the screenshot-labelled `夜活Pokémon GO KOBE`**. The decoded Community UUID and full canonical URL were compared against source values in the current CA Master tab (gid 633821294):
+
+- **Row 13, KOBE 2nd CA:** **EXACT MATCH** to operator-provided KOBE group share link.
+- **Row 175, KOBE 1st CA:** **MISMATCH**. Its source share link matches **row 198 (Osaka 1st CA)** instead.
+- **Rows 11 (WEST) and 198 (Osaka):** their source links differ from the operator-provided KOBE link.
+- **Row 34 (Osaka 2nd):** still has an incomplete short URL without decoded Community ID.
+
+**Provisional corrective action:** row 175 H175 has a **high-confidence wrong-source-link candidate**: suggest the already independently matched row 13 KOBE share link, **subject to approval of current 1st/2nd group membership and private restored-DB alias comparison**. Do not infer that row 175's present verified Identity should be deleted or transferred. Row 13 itself needs no URL correction on currently available evidence.
+
+**Still outstanding:** independently receive and compare current share links for WEST and Osaka; verify whether source row 34 (2nd) belongs to Osaka and confirm its prefecture; identify any separate source/DB stale association. Do not publish the operator's raw share link, UUID, CA names or credentials in this public file.
+
+**Status:** `KOBE_OPERATOR_LINK_CHECK=EXACT_MATCH_ROW_13`; `KOBE_1ST_ROW_175_SOURCE_LINK=CORRECTION_CANDIDATE`; `SOURCE_CHANGES=NONE`; `PRODUCTION_CHANGES=NONE`; `CA_MASTER_SYNC=STOP`.
