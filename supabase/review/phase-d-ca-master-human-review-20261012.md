@@ -395,3 +395,22 @@ The operator provided a **current Campfire group share link identified as belong
 3. These are separate source/map fields, not authorization for restored or production DB mapping edits. Preserve identities, association history, medals, and exchanges.
 
 **State:** `TAKATSUKI_1ST_LIVE_URL=EXACT_MATCH_LIST_ROWS_197_76_MAP_ROW_113`; `AMAGO_TAKATSUKI_SEPARATE_LIVE_UUID=YES`; `MAP_ROW_111_LABEL_URL_MISMATCH=VERIFIED`; `CA_LIST_G7_STALE_NAME_REVIEW`; `CA_MASTER_SYNC=STOP`; `SOURCE_WRITES=NONE`; `PRODUCTION_WRITES=NONE`.
+
+
+## 2026-10-12: all remaining five regions batch historical triage (READ ONLY)
+
+**Operator workflow change:** Rather than ask about every source row individually, consolidate all remaining regions into **one six-link batch request** and independently classify Kagoshima/Chiba from existing verified evidence. Read-only cross-check of the live 200-row master against **April, June, July 2026 CA Lists**, **March, April, June, August CA MAP** (where applicable). This is a provisional audit, not a data correction.
+
+### Batch results before new live link submission
+
+| Region / current source rows | Historical pattern cross-checked | Current safe disposition | Needed operator evidence |
+| --- | --- | --- | --- |
+| **Tokushima 60 / 116** | Two different 1st CA group names and geographies have **the same decoded group UUID** in **all** inspected historic CA Lists and CA MAP snapshots, at least back to March map. That UUID is absent from restored DB current/history according to the local report; each CA currently links to a separate other DB community. | **Historical copied UUID / shared one-group hypotheses both remain open. Do not merge or reassign either group.** | Independent current group share invite for each of the two named groups; verify current 1st CA. |
+| **Hokkaido 29 / 94 / 177** | Same-name `東神楽` 1st/2nd entries have **different UUIDs** persisting in old CA Lists; source 1st row **94** instead has **exact same UUID as the distinct `旭川` 1st** row **177**, also consistently duplicated in old map snapshots. Restored history documents prior manual Hokkaido repair. | **Possible multiple long-lived copied URL errors and independent DB repair; absolutely no automatic correction.** | Current share invites from 東神楽 and 旭川 1st CA; if 東神楽 1st/2nd still disagree, obtain 2nd host's linked group proof. |
+| **Nara 144 / 159 / 199** | `まほろば` 1st/2nd rows share one UUID, but `やまと` 1st also uses it across old lists/maps. A *different* historic UUID is visible on a `やまと` 2nd CA in April–July lists, while Aug map renamed a third row to `Sakura Walk` with the shared UUID. | **Likely multi-group mistaken link(s), but verify community/group succession and role before any edit.** | Current independent group share invites for `まほろば` and `やまと`; if ID identical, get explicit relation/rename explanation. |
+| **Kagoshima 17 / 128** | 1st CA URL/ID stable over April–July and map snapshots; 2nd CA present in July and current records with missing URL/coords. Prior operator link has already independently matched current 1st CA row 128. | **H17 = H128 is a conditional source-only completion candidate.** 2nd CA is not independently membership-confirmed; J17/K17 must not be fabricated. | Only ask current CA affiliation and meetup-location coordinates once, if needed. No re-request of existing share link. |
+| **Chiba 100** | 1st CA source UUID, name and prefecture stable in all CA Lists April–July and maps March–August. Restored local DB instead records distinct current relation and a retired/historic alias. | **SOURCE_STABLE_BUT_DB_ALIAS_REVIEW**, not a source Sheet correction on evidence available. | Restored-local no-write historical alias/current linkage evidence, then explicit CA/source-owner attestation if needed; live Campfire share link optional only if discrepancy persists. |
+
+**Request sequence:** six targeted current Campfire group links: Tokushima 2, Hokkaido 2, Nara 2. Only after matching decoded IDs request a screenshot or club-host identity detail for unresolved affiliation. Do not ask user to reproduce already established Osaka, AMaGO, Kagoshima 1st or Takatsuki links.
+
+**Guardrails:** source CA row count 200, unique keys 200; no Google Sheet writes, no production SQL/Edge/Cron/sync, no merges, no baseline registration, no emergency 2099 pause changes. Preserve all current associations, user identities, medal collections and exchanges. For local DB discrepancies, require guarded local rehearsal and final no-loss checks before any approval.
