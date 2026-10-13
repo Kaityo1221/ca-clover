@@ -87,3 +87,7 @@ Open safety gates remain:
 - Historic #131 documents saying gate MISSING / FK CASCADE are earlier-state observations. Current 2026-10-13 reported production protective gate OFF, 2099 sentinel and validated RESTRICT take precedence. Do not copy old master writers.
 - Current writers, scheduler, Next route, DB migration, and actual production services remain untouched.
 - Pending: current source row review; verified baseline remains 0; fresh private backup/restore and isolated full E2E remain incomplete. Production merge and sync remain STOP.
+
+### 2026-10-13 supplement: recovery helper abnormal-path tests
+
+Copied the **mock-only** failure-injection cases from draft #128 into a new Phase E CI regression, excluding every old assertion that assumes a write-capable Edge entrypoint. Six outcomes cover owner-specific pause success/no-row/error/transport failure and audit DB/transport failure. This remains a test of the staged pure helper, **not evidence that the retired production Edge writer executes that helper**. The old direct and coordinate writers must remain RETIRED and not import recovery code. No real identifiers, Supabase calls or changes to production infrastructure.

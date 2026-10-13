@@ -7,6 +7,7 @@ on:
     paths:
       - "supabase/functions/_shared/ca-master-*"
       - "scripts/ci/test-ca-master-integration-off.mjs"
+      - "scripts/ci/test-ca-master-recovery-failclosed.mjs"
       - "scripts/ci/test-phase-d-ca-master-local-compare.mjs"
       - "scripts/phase-d-compare-ca-master-local.ps1"
       - "scripts/ci/phase-d-fk-no-action-vs-restrict-postgres.sql"
@@ -30,6 +31,8 @@ jobs:
         run: node scripts/ci/test-ca-master-minimal-guard.mjs
       - name: Validate isolated extra safeguards against fake data
         run: node scripts/ci/test-ca-master-integration-off.mjs
+      - name: Recheck failure recovery using 6 injected REST responses (no live DB)
+        run: node scripts/ci/test-ca-master-recovery-failclosed.mjs
       - name: Compare synthetic CA-master CSV offline (PowerShell, no DB or network)
         run: node scripts/ci/test-phase-d-ca-master-local-compare.mjs
 
