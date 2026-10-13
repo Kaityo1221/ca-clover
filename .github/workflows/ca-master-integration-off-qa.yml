@@ -21,6 +21,7 @@ on:
       - "scripts/ci/test-phase-e-local-restore-contract.mjs"
       - "scripts/ci/test-phase-e-oneshot-contract.mjs"
       - "scripts/recovery/Start-CA-Clover-PhaseE-OneShot.ps1"
+      - "scripts/recovery/README-PhaseE-OneShot.md"
       - "scripts/recovery/Restore-CA-Clover-Isolated.ps1"
       - "scripts/recovery/Validate-CA-Clover-Restored-Local.ps1"
       - "scripts/recovery/phase-e-restored-local-readonly-audit.sql"
@@ -116,3 +117,44 @@ jobs:
           fi
           grep -q 'STOP: designs expected 14' /tmp/phase-e-negative.log
           echo 'PHASE_E_LOCAL_RESTORE_AUDIT_PASS: healthy fake restore accepted, missing design rejected'
+
+  windows-one-shot-failclosed:
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse Phase E scripts with native Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          foreach($path in @(
+            "scripts/recovery/Backup-CA-Clover-Production-Latest.ps1",
+            "scripts/recovery/Restore-CA-Clover-Isolated.ps1",
+            "scripts/recovery/Validate-CA-Clover-Restored-Local.ps1",
+            "scripts/recovery/Start-CA-Clover-PhaseE-OneShot.ps1"
+          )){
+            $tokens=$null; $errors=$null
+            $null=[System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path).Path,[ref]$tokens,[ref]$errors)
+            if($errors.Count -ne 0){throw "STOP: native PowerShell 5.1 syntax failure"}
+          }
+          Write-Host "WINDOWS_POWERSHELL_51_PARSE_PASS"
+      - name: Reject untrusted host and wrong Session Pooler account before secrets or Docker
+        shell: powershell
+        run: |
+          $scriptPath="scripts/recovery/Start-CA-Clover-PhaseE-OneShot.ps1"
+          $cases=@(
+            @{Host="not-supabase.invalid"; User="postgres"; Port=5432},
+            @{Host="aws-0-ap-northeast-1.pooler.supabase.com"; User="postgres"; Port=5432},
+            @{Host="aws-0-ap-northeast-1.pooler.supabase.com"; User="postgres.wgiittrvgtiosogyhfcl"; Port=6543}
+          )
+          foreach($test in $cases){
+            $blocked=$false
+            try{
+              & $scriptPath -DbHost $test.Host -DbUser $test.User -DbPort $test.Port
+            }catch{
+              if($_.Exception.Message -match "STOP: Use only this project's direct connection or Session Pooler on 5432"){
+                $blocked=$true
+              }else{throw}
+            }
+            if(-not $blocked){throw "FAIL: untrusted route passed or did not fail closed"}
+          }
+          Write-Host "WINDOWS_ONESHOT_REJECT_UNTRUSTED_TARGETS_PASS"
