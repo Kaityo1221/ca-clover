@@ -9,6 +9,8 @@ on:
       - "scripts/ci/test-ca-master-integration-off.mjs"
       - "scripts/ci/test-ca-master-recovery-failclosed.mjs"
       - "scripts/ci/test-ca-master-readonly-preflight.mjs"
+      - "scripts/ci/test-ca-master-backup-contract.mjs"
+      - "scripts/recovery/Backup-CA-Clover-Production-Latest.ps1"
       - "supabase/review/phase-e-production-readonly-stop-preflight-20261013.sql"
       - "scripts/ci/test-phase-d-ca-master-local-compare.mjs"
       - "scripts/phase-d-compare-ca-master-local.ps1"
@@ -35,7 +37,9 @@ jobs:
         run: node scripts/ci/test-ca-master-integration-off.mjs
       - name: Recheck failure recovery using 6 injected REST responses (no live DB)
         run: node scripts/ci/test-ca-master-recovery-failclosed.mjs
-      - name: Staticaly validate reviewed production preflight is SELECT-only
+      - name: Check staged operator-only backup is non-restoring and encrypted
+        run: node scripts/ci/test-ca-master-backup-contract.mjs
+      - name: Statically validate reviewed production preflight is SELECT-only
         run: node scripts/ci/test-ca-master-readonly-preflight.mjs
       - name: Compare synthetic CA-master CSV offline (PowerShell, no DB or network)
         run: node scripts/ci/test-phase-d-ca-master-local-compare.mjs

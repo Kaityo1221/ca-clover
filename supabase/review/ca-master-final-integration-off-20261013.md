@@ -151,3 +151,11 @@ All observations below were obtained via permitted read-only Supabase queries / 
 Created a refreshed strictly READ-ONLY SQL review file and CI static safety validation. Both are artifacts for manual operator audit, NOT permission to modify production. The read-only aggregate check was independently executed during this continuation and returned the states summarized above. Fresh authenticated/encrypted Postgres DB backup **has NOT been verified in this continuation**; old local restore has only 6 identities / 13 medals / 19 exchanges, so it is insufficient for new data.
 
 Still STOP: automated CA-master sync, initial one-time sync, manual source edits, automatic baseline creation, changes to current validated FK, Edge deploy, Cron, Vault, PR merge, and private-repository separation.
+
+## 2026-10-13 latest backup preparation: operator-only, NOT RUN
+
+- Copied `scripts/recovery/Backup-CA-Clover-Production-Latest.ps1` from draft #131 by its unchanged source Git blob; added static no-restore/manifest/encryption contract in offline CI.
+- Script requirements: operator's Windows PowerShell, Docker Postgres 17 container, 7-Zip, verified Supabase Connect host/user, password entered privately. It performs `pg_dump` READS (not SQL writes), archive catalog inspection, SHA256 hashing, AES/7z encryption and archive test. Never paste DB credentials into ChatGPT or GitHub.
+- It stores a new backup in `C:\CA-Clover-Backup-Latest` with a timestamp. Raw temporary directory contains sensitive plaintext database data and remains on disk after encryption; operator MUST secure local access before execution and handle retention separately. Script does not touch existing original backup or encrypted v4 archive.
+- The script itself is NOT a verified backup. No operator local execution, password handling inspection on real Windows, archive file, Storage object bytes, OAuth/Secrets/Edge/Cron recovery or fresh isolated restore was confirmed in this continuation.
+- Fresh target remains 7 Auth/CA Identities, 14 medals/designs, 20 exchanges and 418 Storage metadata objects, plus exact per-person link/content verification. No automatic restore to production, and no automatic sync.
