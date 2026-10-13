@@ -76,3 +76,14 @@ Open safety gates remain:
 - Pending #128/#130/#131 contains a write-capable candidate master handler.
   Its update logic must not replace the currently retired writer without
   separate independent approval and renewed proof of all guards.
+
+## 2026-10-13 Phase E: imported Phase D CSV evidence tools, without enabling sync
+
+- Confirmed initial #141 HEAD at 5f92e2b271a48d94516858e9b24ac3abb801203d.
+- Reused exact blob content from old draft #131 for scripts/phase-d-compare-ca-master-local.ps1 and scripts/ci/test-phase-d-ca-master-local-compare.mjs.
+- CI executes the synthetic -CsvPath and -SheetOnly fixture: no live Sheet, production database, network, secrets, or identity data.
+- The comparator is operator-only. Its default no-argument behavior downloads a read-only live Sheet CSV; NEVER invoke that mode in CI or unattended tasks. When comparing a restored Docker database, it is fixed to the named local-only container and uses a SELECT-only SQL transaction.
+- A CSV-to-DB match is NOT an approved master baseline or a release authorization. No CA links may be deleted, moved, or inferred from these results.
+- Historic #131 documents saying gate MISSING / FK CASCADE are earlier-state observations. Current 2026-10-13 reported production protective gate OFF, 2099 sentinel and validated RESTRICT take precedence. Do not copy old master writers.
+- Current writers, scheduler, Next route, DB migration, and actual production services remain untouched.
+- Pending: current source row review; verified baseline remains 0; fresh private backup/restore and isolated full E2E remain incomplete. Production merge and sync remain STOP.
