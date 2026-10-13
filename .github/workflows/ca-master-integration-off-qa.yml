@@ -19,6 +19,9 @@ on:
       - "scripts/ci/phase-e-restored-negatives.sql"
       - "scripts/ci/test-phase-e-synthetic-restore.sh"
       - "scripts/ci/test-phase-e-local-restore-contract.mjs"
+      - "scripts/ci/test-phase-e-oneshot-contract.mjs"
+      - "scripts/recovery/Start-CA-Clover-PhaseE-OneShot.ps1"
+      - "scripts/recovery/Restore-CA-Clover-Isolated.ps1"
       - "scripts/recovery/Validate-CA-Clover-Restored-Local.ps1"
       - "scripts/recovery/phase-e-restored-local-readonly-audit.sql"
       - ".github/workflows/ca-master-integration-off-qa.yml"
@@ -43,6 +46,23 @@ jobs:
         run: node scripts/ci/test-ca-master-integration-off.mjs
       - name: Recheck failure recovery using 6 injected REST responses (no live DB)
         run: node scripts/ci/test-ca-master-recovery-failclosed.mjs
+      - name: Statically verify one-shot workflow cannot restore to production
+        run: node scripts/ci/test-phase-e-oneshot-contract.mjs
+      - name: Parse Windows PowerShell scripts without executing or connecting
+        shell: pwsh
+        run: |
+          $paths=@(
+            "scripts/recovery/Backup-CA-Clover-Production-Latest.ps1",
+            "scripts/recovery/Restore-CA-Clover-Isolated.ps1",
+            "scripts/recovery/Validate-CA-Clover-Restored-Local.ps1",
+            "scripts/recovery/Start-CA-Clover-PhaseE-OneShot.ps1"
+          )
+          foreach($path in $paths) {
+            $tokens=$null; $errors=$null
+            $null=[System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path).Path,[ref]$tokens,[ref]$errors)
+            if($errors.Count -ne 0){ $errors | ForEach-Object { Write-Error $_.Message }; throw "PowerShell parser STOP" }
+            Write-Host "PARSE_PASS: $path"
+          }
       - name: Statically verify Windows restore audit is local-only
         run: node scripts/ci/test-phase-e-local-restore-contract.mjs
       - name: Check staged operator-only backup is non-restoring and encrypted
