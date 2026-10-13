@@ -116,3 +116,38 @@ Added synthetic content fingerprints for linked membership, CA Identity, medals,
 - Approved source baseline still 0; **DO NOT create it automatically**.
 - Fresh encrypted production backup and 7 Identity/14 medal/20 exchange local restore remains outstanding; old 6/13/19 restore cannot prove latest data.
 - Status: CA master sync OFF, no branch merge, no production SQL/Edge/Cron/Vault edits, no Google Sheet edits, no private-repo migration.
+
+## 2026-10-13 current production audit, read-only evidence (post minimal barriers)
+
+All observations below were obtained via permitted read-only Supabase queries / deployed Edge source reads and Google Sheets range reads, with no production mutations, no Google Sheet edits and no secret / personal record exports to GitHub.
+
+| Observation | Confirmed (2026-10-13) |
+| --- | --- |
+| General scheduler flag | TRUE |
+| Dedicated `ca_master_sync_enabled` | **FALSE** |
+| Emergency `last_ca_master_at` | **2099-01-01**; future sentinel |
+| Composite Identity FK | **RESTRICT**, VALIDATED, NOT DEFERRABLE |
+| CA members / Communities / CA links | **200 / 155 / 196** |
+| Auth / Identity / medals / designs / exchanges | **7 / 7 / 14 / 14 / 20** |
+| Storage metadata | **418** |
+| Orphan verified identities / unvalidated FKs | **0 / 0** |
+| Approved master baseline run | **0**, remains hard STOP |
+| Normal Campfire public collection | Recent `campfire-public-map` success records exist; CA-master sync was not invoked |
+| Deployed master writer | `sync-ca-master` **v6** is retired with hard-stop before CSV fetch |
+| Deployed coordinate writer | `sync-ca-master-coordinates` **v5** is retired with hard-stop before CSV fetch |
+| Deployed scheduler / admin | `sync-campfire-auto` **v12**, manual master admin gate check present |
+
+### Live Google Sheets versus live DB comparison, SELECT-only
+
+- Source tab `[new]CA List 20260828` (gid 633821294) has **200 rows**, **200 unique CA keys**, **198 parsed CA/Community pairs**, **155 distinct Community IDs**.
+- Exact source-to-current DB direct pair matches **192 of 198**.
+- Six direct source-vs-DB mismatches are **Sheet rows 7, 13, 60, 94, 100, 116**. One row (**100**) matches an historical alias, so **five remain unmatched even including aliases**.
+- Source ID unresolved rows **17 and 34**. Source URL/name-region collision groups observed: **7/115, 60/116, 94/177, 144/159/199, 175/198**. Some cases may be valid rename/multi-area operation; nothing is auto-merged or automatically moved.
+- **Four** DB current CA/Community links have no directly matching source pair; **three** are not explained even by the source-to-history alias comparison. These are counts, not deletion candidates.
+- No Sheet field was edited. Former proposals for H60/H94/H116 and all other cells remain subject to separate owner approval.
+
+### Phase E stop/restore condition
+
+Created a refreshed strictly READ-ONLY SQL review file and CI static safety validation. Both are artifacts for manual operator audit, NOT permission to modify production. The read-only aggregate check was independently executed during this continuation and returned the states summarized above. Fresh authenticated/encrypted Postgres DB backup **has NOT been verified in this continuation**; old local restore has only 6 identities / 13 medals / 19 exchanges, so it is insufficient for new data.
+
+Still STOP: automated CA-master sync, initial one-time sync, manual source edits, automatic baseline creation, changes to current validated FK, Edge deploy, Cron, Vault, PR merge, and private-repository separation.

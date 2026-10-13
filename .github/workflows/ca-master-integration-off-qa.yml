@@ -8,6 +8,8 @@ on:
       - "supabase/functions/_shared/ca-master-*"
       - "scripts/ci/test-ca-master-integration-off.mjs"
       - "scripts/ci/test-ca-master-recovery-failclosed.mjs"
+      - "scripts/ci/test-ca-master-readonly-preflight.mjs"
+      - "supabase/review/phase-e-production-readonly-stop-preflight-20261013.sql"
       - "scripts/ci/test-phase-d-ca-master-local-compare.mjs"
       - "scripts/phase-d-compare-ca-master-local.ps1"
       - "scripts/ci/phase-d-fk-no-action-vs-restrict-postgres.sql"
@@ -33,6 +35,8 @@ jobs:
         run: node scripts/ci/test-ca-master-integration-off.mjs
       - name: Recheck failure recovery using 6 injected REST responses (no live DB)
         run: node scripts/ci/test-ca-master-recovery-failclosed.mjs
+      - name: Staticaly validate reviewed production preflight is SELECT-only
+        run: node scripts/ci/test-ca-master-readonly-preflight.mjs
       - name: Compare synthetic CA-master CSV offline (PowerShell, no DB or network)
         run: node scripts/ci/test-phase-d-ca-master-local-compare.mjs
 
