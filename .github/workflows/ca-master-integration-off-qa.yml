@@ -1,0 +1,29 @@
+# No prod secrets, no SQL writes, and no Edge deployments.
+name: CA Master Integration OFF QA
+
+on:
+  pull_request:
+    branches: [pages]
+    paths:
+      - "supabase/functions/_shared/ca-master-*"
+      - "scripts/ci/test-ca-master-integration-off.mjs"
+      - ".github/workflows/ca-master-integration-off-qa.yml"
+      - "supabase/review/ca-master-final-integration-off-20261013.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration-off:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Preserve minimal 2026-10-13 protection
+        run: node scripts/ci/test-ca-master-minimal-guard.mjs
+      - name: Validate isolated extra safeguards against fake data
+        run: node scripts/ci/test-ca-master-integration-off.mjs
