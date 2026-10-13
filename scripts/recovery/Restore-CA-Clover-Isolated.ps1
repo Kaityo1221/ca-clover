@@ -52,7 +52,10 @@ $localSecret=$null
 $inspectRaw=@(& docker inspect --type container $Container 2>&1)
 Assert-DockerSuccess "Inspect isolated container"
 $inspect=@(($inspectRaw -join [Environment]::NewLine | ConvertFrom-Json))
-if($inspect.Count -ne 1 -or $inspect[0].Name -cne ("/"+$Container) -or $inspect[0].HostConfig.NetworkMode -cne "none" -or $null -ne $inspect[0].HostConfig.PortBindings){
+if($inspect.Count -ne 1 -or $inspect[0].Name -cne ("/"+$Container) -or $inspect[0].HostConfig.NetworkMode -cne "none" -or
+ $inspect[0].Config.Image -cne $Image -or
+ ($null -ne $inspect[0].HostConfig.PortBindings -and
+  @($inspect[0].HostConfig.PortBindings.PSObject.Properties).Count -gt 0)){
  throw "STOP: Container is not network-none without published ports."
 }
 $socket=$null

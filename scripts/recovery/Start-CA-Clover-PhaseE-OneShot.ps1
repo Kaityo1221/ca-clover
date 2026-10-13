@@ -13,15 +13,14 @@ Set-StrictMode -Version Latest
 if([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
  throw "STOP: This operator workflow is for Windows."
 }
-if($DbHost -notmatch '^[A-Za-z0-9.-]+$' -or $DbHost -notlike '*wgiittrvgtiosogyhfcl*'){
- throw "STOP: Exact production project Supabase Connect hostname required."
+# Direct PostgreSQL 5432 OR the official Session Pooler 5432 for this project.
+# Transaction Pooler 6543 and arbitrary hosts are explicitly forbidden.
+$isDirect=($DbHost -ceq "db.wgiittrvgtiosogyhfcl.supabase.co" -and $DbUser -ceq "postgres")
+$isSessionPooler=($DbHost -cmatch '^[a-z0-9-]+[.]pooler[.]supabase[.]com$' -and
+                  $DbUser -ceq "postgres.wgiittrvgtiosogyhfcl")
+if((-not $isDirect -and -not $isSessionPooler) -or $DbPort -ne 5432) {
+ throw "STOP: Use only this project's direct connection or Session Pooler on 5432."
 }
-if($DbUser -notmatch '^[A-Za-z0-9_.-]+$' -or
-   ($DbUser -notlike '*wgiittrvgtiosogyhfcl*' -and
-    $DbHost -cne 'db.wgiittrvgtiosogyhfcl.supabase.co')) {
- throw "STOP: DB user/host does not match allowed Supabase project."
-}
-if($DbPort -lt 1 -or $DbPort -gt 65535){throw "STOP: Unexpected port."}
 foreach($name in @("Backup-CA-Clover-Production-Latest.ps1",
  "Restore-CA-Clover-Isolated.ps1","Validate-CA-Clover-Restored-Local.ps1",
  "phase-e-restored-local-readonly-audit.sql")) {
@@ -75,11 +74,11 @@ try {
  Write-Host "[2/4] Restore the just-captured dump into a NEW network-none local container."
  $state="LOCAL_RESTORE_STARTED"
  $result=@(& (Join-Path $PSScriptRoot "Restore-CA-Clover-Isolated.ps1") -DumpPath $dump -ManifestPath $manifest -ArchivePath $encrypted -RunId $nonce -PrivateLog $log)
- $matches=@($result | Where-Object { $_ -is [psobject] -and $_.PSObject.Properties.Name -contains "LocalOnly" })
- if($matches.Count -ne 1 -or $matches[0].LocalOnly -ne $true) {
+ $verifiedRestore=@($result | Where-Object { $_ -is [psobject] -and $_.PSObject.Properties.Name -contains "LocalOnly" })
+ if($verifiedRestore.Count -ne 1 -or $verifiedRestore[0].LocalOnly -ne $true) {
   throw "STOP: Isolated restore did not return verified result."
  }
- $target=$matches[0]
+ $target=$verifiedRestore[0]
  Write-Host "[3/4] Run read-only identity, medal, exchange and stop-gate audit."
  $state="LOCAL_AUDIT_STARTED"
  $auditRoot=Join-Path $runDir "local-audit"
