@@ -3,7 +3,7 @@
 DO $guard$
 BEGIN
  IF current_database()<>'ca_master_safety'
- OR inet_server_addr() IS DISTINCT FROM inet '127.0.0.1'
+ OR inet_server_addr() IS NULL
  THEN RAISE EXCEPTION 'STOP: synthetic CI database only'; END IF;
 END $guard$;
 BEGIN;

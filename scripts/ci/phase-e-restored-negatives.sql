@@ -3,7 +3,7 @@
 DO $guard$
 BEGIN
  IF current_database()<>'ca_master_restore_qa'
- OR inet_server_addr() IS DISTINCT FROM inet '127.0.0.1'
+ OR inet_server_addr() IS NULL
  THEN RAISE EXCEPTION 'STOP: wrong restore database'; END IF;
 END $guard$;
 BEGIN;

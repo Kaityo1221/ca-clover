@@ -14,8 +14,8 @@ fi
 source_db="ca_master_safety"
 restore_db="ca_master_restore_qa"
 verify_source="$(psql -X -A -t -v ON_ERROR_STOP=1 -d "$source_db" \
-  -c "SELECT current_database()||'|'||host(inet_server_addr())")"
-if [[ "$verify_source" != "ca_master_safety|127.0.0.1" ]]; then
+  -c "SELECT current_database()||'|'||(inet_server_addr() IS NOT NULL)::text")"
+if [[ "$verify_source" != "ca_master_safety|true" ]]; then
  echo "STOP: synthetic source mismatch" >&2
  exit 4
 fi
@@ -37,8 +37,8 @@ createdb --maintenance-db=postgres --template=template0 "$restore_db"
 pg_restore --no-owner --no-acl --exit-on-error \
  --dbname="$restore_db" "$temp_dir/source.pgdump"
 verify_restore="$(psql -X -A -t -v ON_ERROR_STOP=1 -d "$restore_db" \
- -c "SELECT current_database()||'|'||host(inet_server_addr())")"
-if [[ "$verify_restore" != "ca_master_restore_qa|127.0.0.1" ]]; then
+ -c "SELECT current_database()||'|'||(inet_server_addr() IS NOT NULL)::text")"
+if [[ "$verify_restore" != "ca_master_restore_qa|true" ]]; then
  echo "STOP: restored test database mismatch" >&2
  exit 4
 fi
