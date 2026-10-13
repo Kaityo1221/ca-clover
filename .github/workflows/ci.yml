@@ -14,7 +14,7 @@ jobs:
         with:
           node-version: 22
       - run: npm install --no-audit --no-fund
-      - run: npm run test:share-url
+      - run: node scripts/ci/verify-public-boundary.mjs
       - run: node scripts/test-community-title-fit.mjs
       - run: node scripts/test-medal-face-hires.mjs
       - run: npm run build
