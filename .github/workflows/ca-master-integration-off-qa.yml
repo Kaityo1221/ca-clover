@@ -87,8 +87,7 @@ jobs:
         run: |
           docker cp scripts/recovery/phase-e-restored-local-readonly-audit.sql "${{ job.services.postgres.id }}:/tmp/phase-e-readonly.sql"
           docker exec "${{ job.services.postgres.id }}" psql -X -v ON_ERROR_STOP=1 -U postgres -h /var/run/postgresql -d ca_master_restore_qa -At -f /tmp/phase-e-readonly.sql > /tmp/phase-e-positive.log
-          grep -q '^AUDIT_LOCAL_PASS|12_TABLES|COUNTS_AND_FINGERPRINTS
- /tmp/phase-e-positive.log
+          grep -Fq 'AUDIT_LOCAL_PASS|12_TABLES|COUNTS_AND_FINGERPRINTS' /tmp/phase-e-positive.log
           test "$(grep -c '^DATA|' /tmp/phase-e-positive.log)" -eq 12
           docker exec "${{ job.services.postgres.id }}" psql -X -v ON_ERROR_STOP=1 -U postgres -h /var/run/postgresql -d ca_master_restore_qa -c "DELETE FROM public.stamp_collection_designs WHERE id='fake-design-14'"
           if docker exec "${{ job.services.postgres.id }}" psql -X -v ON_ERROR_STOP=1 -U postgres -h /var/run/postgresql -d ca_master_restore_qa -At -f /tmp/phase-e-readonly.sql > /tmp/phase-e-negative.log 2>&1; then
