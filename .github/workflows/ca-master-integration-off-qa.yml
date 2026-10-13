@@ -15,6 +15,9 @@ on:
       - "scripts/ci/test-phase-d-ca-master-local-compare.mjs"
       - "scripts/phase-d-compare-ca-master-local.ps1"
       - "scripts/ci/phase-d-fk-no-action-vs-restrict-postgres.sql"
+      - "scripts/ci/phase-e-synthetic-restore-fixture.sql"
+      - "scripts/ci/phase-e-restored-negatives.sql"
+      - "scripts/ci/test-phase-e-synthetic-restore.sh"
       - ".github/workflows/ca-master-integration-off-qa.yml"
       - "supabase/review/ca-master-final-integration-off-20261013.md"
   workflow_dispatch:
@@ -73,3 +76,5 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -tAc "SELECT current_database(), inet_server_addr() IS NOT NULL;"
       - name: Demonstrate and rollback CASCADE vs NO ACTION vs RESTRICT behavior
         run: psql -X -v ON_ERROR_STOP=1 -f scripts/ci/phase-d-fk-no-action-vs-restrict-postgres.sql
+      - name: Dump and restore synthetic snapshot; assert current-count row contents
+        run: bash scripts/ci/test-phase-e-synthetic-restore.sh
