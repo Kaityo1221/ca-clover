@@ -91,3 +91,28 @@ Open safety gates remain:
 ### 2026-10-13 supplement: recovery helper abnormal-path tests
 
 Copied the **mock-only** failure-injection cases from draft #128 into a new Phase E CI regression, excluding every old assertion that assumes a write-capable Edge entrypoint. Six outcomes cover owner-specific pause success/no-row/error/transport failure and audit DB/transport failure. This remains a test of the staged pure helper, **not evidence that the retired production Edge writer executes that helper**. The old direct and coordinate writers must remain RETIRED and not import recovery code. No real identifiers, Supabase calls or changes to production infrastructure.
+
+## 2026-10-13 safety merge inventory and verification boundaries
+
+| Source draft | Safeguard | Present in #141 | Residual limitation |
+| --- | --- | --- | --- |
+| #128 | Pure source preflight and fail-pause helpers | YES, staged only | No active Edge writer wiring, no live recovery certification |
+| #128 | Unlisted CA own-medal transactional approval and claim event changes | NO | Independent feature; never mix into CA-master safety roll-out without separate scoped review |
+| #128 | Synthetic backup/RLS/PostgREST/lease-RPC review suite | Partial synthetic FK + mock fail paths | Old tests depend on an enabled writer, cannot directly run against retired production handler |
+| #130 | Atomic add-only link reconciliation and stale-link rejection | REVIEW ONLY | Write-capable RPC and Edge handler deliberately NOT imported |
+| #130 | Dangerous Next.js old master update endpoint | Protected via previously merged #138 (HTTP 410 on main) | Do not restore the old API implementation |
+| #131 | PowerShell CSV-versus-DB local comparison | YES, source and fake CSV test | Real current Sheet and operator Windows restored DB not compared in this CI |
+| #131 | NO ACTION/RESTRICT/CASCADE SQL demonstration | YES, synthetic only | Does not certify full real schema or future writer transaction behavior |
+| #131 | Full local restore / Edge HTTP / emergency sentinel and gate | Partial static gate + helper tests | Real private backup, OAuth, deployed Edge/Cron/Storage complete E2E not certified |
+
+### Isolation fixture extension
+
+Added synthetic content fingerprints for linked membership, CA Identity, medals, and exchanges. After CASCADE rollback, NO ACTION rejection, RESTRICT deletion rejection and RESTRICT key-update rejection, every fingerprint must equal the pre-injection snapshot. The fixture itself ends with ROLLBACK. The production Identity RESTRICT FK, dedicated OFF gate, 2099 sentinel, and retired writers remain unchanged.
+
+### Source review and release gate
+
+- Still review six historical direct mismatches: source rows 7, 13, 60, 94, 100, 116; unresolved 17 and 34; related 1st/2nd, rename/retirement and multi-prefecture conflicts require manual evidence.
+- Compare against a fresh authoritative read-only Sheet snapshot and current protected database; a 2026-10-12 fixture is not today's signed baseline.
+- Approved source baseline still 0; **DO NOT create it automatically**.
+- Fresh encrypted production backup and 7 Identity/14 medal/20 exchange local restore remains outstanding; old 6/13/19 restore cannot prove latest data.
+- Status: CA master sync OFF, no branch merge, no production SQL/Edge/Cron/Vault edits, no Google Sheet edits, no private-repo migration.

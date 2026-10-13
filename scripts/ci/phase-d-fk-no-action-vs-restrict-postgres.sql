@@ -32,6 +32,19 @@ insert into phase_d_fk_ci.identities values('fake-user','community-A','ca-A');
 insert into phase_d_fk_ci.medals values('fake-medal');
 insert into phase_d_fk_ci.exchanges values('fake-exchange');
 
+-- Capture canonical synthetic row-content fingerprints before fault injection.
+create temporary table phase_d_preservation_snapshot as
+select
+  (select md5(coalesce(string_agg(to_jsonb(t)::text,E'\n' order by to_jsonb(t)::text),''))
+   from phase_d_fk_ci.links t) as links_hash,
+  (select md5(coalesce(string_agg(to_jsonb(t)::text,E'\n' order by to_jsonb(t)::text),''))
+   from phase_d_fk_ci.identities t) as identity_hash,
+  (select md5(coalesce(string_agg(to_jsonb(t)::text,E'\n' order by to_jsonb(t)::text),''))
+   from phase_d_fk_ci.medals t) as medal_hash,
+  (select md5(coalesce(string_agg(to_jsonb(t)::text,E'\n' order by to_jsonb(t)::text),''))
+   from phase_d_fk_ci.exchanges t) as exchange_hash;
+
+
 -- First show the dangerous behavior, then completely reverse the simulated deletion.
 savepoint synthetic_cascade;
 delete from phase_d_fk_ci.links where community_id='community-A' and ca_member_id='ca-A';
@@ -78,6 +91,18 @@ alter table phase_d_fk_ci.identities
   add constraint identity_link_fk foreign key(community_id,ca_member_id)
     references phase_d_fk_ci.links(community_id,ca_member_id)
     on delete restrict;
+do $update_protection$
+declare blocked boolean := false;
+begin
+  begin
+    update phase_d_fk_ci.links set ca_member_id='ca-replaced'
+     where community_id='community-A' and ca_member_id='ca-A';
+  exception when foreign_key_violation then blocked := true;
+  end;
+  if not blocked then raise exception 'FAIL: RESTRICT allowed an identity-linked key update'; end if;
+end
+$update_protection$;
+
 do $check$
 declare blocked boolean := false;
 begin
@@ -99,6 +124,28 @@ begin
      or (select count(*) from phase_d_fk_ci.links) <> 2 then
     raise exception 'Synthetic identity, medal, exchange or link was changed';
   end if;
+
+  -- Recheck complete row content, not merely collection counts.
+  if exists (
+    select 1 from phase_d_preservation_snapshot p
+    where p.links_hash is distinct from (
+      select md5(coalesce(string_agg(to_jsonb(t)::text,E'\n' order by to_jsonb(t)::text),''))
+      from phase_d_fk_ci.links t
+    )
+    or p.identity_hash is distinct from (
+      select md5(coalesce(string_agg(to_jsonb(t)::text,E'\n' order by to_jsonb(t)::text),''))
+      from phase_d_fk_ci.identities t
+    )
+    or p.medal_hash is distinct from (
+      select md5(coalesce(string_agg(to_jsonb(t)::text,E'\n' order by to_jsonb(t)::text),''))
+      from phase_d_fk_ci.medals t
+    )
+    or p.exchange_hash is distinct from (
+      select md5(coalesce(string_agg(to_jsonb(t)::text,E'\n' order by to_jsonb(t)::text),''))
+      from phase_d_fk_ci.exchanges t
+    )
+  ) then raise exception 'FAIL: synthetic link/Identity/medal/exchange CONTENT changed'; end if;
+
   raise notice 'PHASE_D_SYNTHETIC_PASS: CASCADE hazard reproduced, NO ACTION and RESTRICT both protect, all data preserved';
 end
 $check$;
