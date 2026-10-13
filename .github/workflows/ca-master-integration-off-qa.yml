@@ -18,6 +18,9 @@ on:
       - "scripts/ci/phase-e-synthetic-restore-fixture.sql"
       - "scripts/ci/phase-e-restored-negatives.sql"
       - "scripts/ci/test-phase-e-synthetic-restore.sh"
+      - "scripts/ci/test-phase-e-local-restore-contract.mjs"
+      - "scripts/recovery/Validate-CA-Clover-Restored-Local.ps1"
+      - "scripts/recovery/phase-e-restored-local-readonly-audit.sql"
       - ".github/workflows/ca-master-integration-off-qa.yml"
       - "supabase/review/ca-master-final-integration-off-20261013.md"
   workflow_dispatch:
@@ -40,6 +43,8 @@ jobs:
         run: node scripts/ci/test-ca-master-integration-off.mjs
       - name: Recheck failure recovery using 6 injected REST responses (no live DB)
         run: node scripts/ci/test-ca-master-recovery-failclosed.mjs
+      - name: Statically verify Windows restore audit is local-only
+        run: node scripts/ci/test-phase-e-local-restore-contract.mjs
       - name: Check staged operator-only backup is non-restoring and encrypted
         run: node scripts/ci/test-ca-master-backup-contract.mjs
       - name: Statically validate reviewed production preflight is SELECT-only
@@ -78,3 +83,17 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f scripts/ci/phase-d-fk-no-action-vs-restrict-postgres.sql
       - name: Dump and restore synthetic snapshot; assert current-count row contents
         run: bash scripts/ci/test-phase-e-synthetic-restore.sh
+      - name: Audit isolated restored database via UNIX socket and reject a stale copy
+        run: |
+          docker cp scripts/recovery/phase-e-restored-local-readonly-audit.sql "${{ job.services.postgres.id }}:/tmp/phase-e-readonly.sql"
+          docker exec "${{ job.services.postgres.id }}" psql -X -v ON_ERROR_STOP=1 -U postgres -h /var/run/postgresql -d ca_master_restore_qa -At -f /tmp/phase-e-readonly.sql > /tmp/phase-e-positive.log
+          grep -q '^AUDIT_LOCAL_PASS|12_TABLES|COUNTS_AND_FINGERPRINTS
+ /tmp/phase-e-positive.log
+          test "$(grep -c '^DATA|' /tmp/phase-e-positive.log)" -eq 12
+          docker exec "${{ job.services.postgres.id }}" psql -X -v ON_ERROR_STOP=1 -U postgres -h /var/run/postgresql -d ca_master_restore_qa -c "DELETE FROM public.stamp_collection_designs WHERE id='fake-design-14'"
+          if docker exec "${{ job.services.postgres.id }}" psql -X -v ON_ERROR_STOP=1 -U postgres -h /var/run/postgresql -d ca_master_restore_qa -At -f /tmp/phase-e-readonly.sql > /tmp/phase-e-negative.log 2>&1; then
+            echo "FAIL: stale synthetic restore was accepted"
+            exit 1
+          fi
+          grep -q 'STOP: designs expected 14' /tmp/phase-e-negative.log
+          echo 'PHASE_E_LOCAL_RESTORE_AUDIT_PASS: healthy fake restore accepted, missing design rejected'

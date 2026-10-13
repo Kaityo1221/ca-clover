@@ -181,3 +181,14 @@ Still STOP: automated CA-master sync, initial one-time sync, manual source edits
 5. Complete OAuth/Edge/Storage/Cron full E2E separately or retain STOP. Source review and verified baseline remain separate authorization gates. Do not change gate, 2099, identity FK, old retired writers, PR merge, or private split.
 
 **PHASE_E_SYNTHETIC_RESTORE=PASS. FRESH_PRODUCTION_BACKUP=NOT_VERIFIED. FULL_APP_RECOVERY=NOT_TESTED. SOURCE_RECONCILIATION=STOP. PROD_APPLY=STOP.**
+
+## 2026-10-14 operator-only restored DB audit (staged; real backup NOT executed)
+
+- Added `scripts/recovery/Validate-CA-Clover-Restored-Local.ps1` and `phase-e-restored-local-readonly-audit.sql` for **already-restored** private local PostgreSQL 17 only. This does not perform `pg_restore`, capture new production files, connect to Supabase, or change any source/destination DB.
+- Windows script enforces exact dedicated `ca-clover-(supabase-)?restore-YYYYMMDD` container identity, running Postgres 17 image, no host network or published TCP port, local Unix socket and allowlisted local DB/DB user. If the check fails, it STOPS without accepting any result.
+- SQL executes a `REPEATABLE READ, READ ONLY` transaction. It validates gate OFF, 2099 emergency stop, validated RESTRICT FK, foreign-key integrity / orphans / duplicate primary, plus fixed 2026-10-13 counts (7 Auth, 7 identities, 14 medals/designs, 20 exchanges, 418 Storage metadata, 200 CAs, 155 communities, 196 links). It computes locally retained SHA-256 content fingerprints for 12 relation tables. No names or IDs are transmitted or checked into public GitHub.
+- The stale 2026-10-11 backup (6 identities / 13 medals / 19 exchanges) intentionally **fails** this strict count audit. Legitimate data updates since this snapshot also require deliberate refresh of the privately approved baseline, not weakening the check.
+- The fingerprints prove *internal local snapshot content capture*, not equality with production on a separate date. A private live snapshot fingerprint comparison and complete Storage bytes/OAuth/Edge/Cron application recovery remain REQUIRED before declaring production recovery PASS.
+- The CI exercise uses only fabricated database records: restored fake data MUST PASS via PostgreSQL container Unix socket, and missing one fake medal-design MUST FAIL. PowerShell is statically checked, not executed against the owner's Windows machine.
+- All changes remain in Draft #141. Owner must first capture and restore a **new** authenticated encrypted production database backup into a **separate isolated local container**; existing local restore cannot be overwritten or used to claim fresh recovery. Never run source scripts against production and never post credentials/identities to this public repository.
+
