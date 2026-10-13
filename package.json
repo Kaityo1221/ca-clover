@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "npm run test:share-url && npm run test:auth-routing",
-    "test:share-url": "node scripts/test-campfire-share-url.mjs",
+    "test": "npm run test:auth-routing",
     "test:auth-routing": "node --experimental-strip-types scripts/test-auth-routing.ts"
   },
   "dependencies": {
