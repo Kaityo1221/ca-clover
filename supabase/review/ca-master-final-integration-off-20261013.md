@@ -159,3 +159,25 @@ Still STOP: automated CA-master sync, initial one-time sync, manual source edits
 - It stores a new backup in `C:\CA-Clover-Backup-Latest` with a timestamp. Raw temporary directory contains sensitive plaintext database data and remains on disk after encryption; operator MUST secure local access before execution and handle retention separately. Script does not touch existing original backup or encrypted v4 archive.
 - The script itself is NOT a verified backup. No operator local execution, password handling inspection on real Windows, archive file, Storage object bytes, OAuth/Secrets/Edge/Cron recovery or fresh isolated restore was confirmed in this continuation.
 - Fresh target remains 7 Auth/CA Identities, 14 medals/designs, 20 exchanges and 418 Storage metadata objects, plus exact per-person link/content verification. No automatic restore to production, and no automatic sync.
+
+## 2026-10-13 Phase E synthetic full-file restore rehearsal: PASS (NOT production proof)
+
+- GitHub Actions run [38416184218](https://github.com/Kaityo1221/ca-clover/actions/runs/38416184218): both `integration-off` and `synthetic-identity-fk` jobs succeeded on commit `21a527cb0a3b0a3d90e6478f0d193a40f9073c2a`. Minimal Production Barrier QA and normal CI also PASS.
+- Added three fake-only assets under `scripts/ci/`: `phase-e-synthetic-restore-fixture.sql`, `test-phase-e-synthetic-restore.sh`, and `phase-e-restored-negatives.sql`.
+- Test begins only with `PGHOST=127.0.0.1`, `PGPORT=5432`, `PGDATABASE=ca_master_safety`, `PGUSER=postgres`; SQL validates exact synthetic source and target DB names and a TCP PostgreSQL connection. The destination `ca_master_restore_qa` must not preexist. All data is fabricated.
+- First isolated test run STOPPED because GitHub runner pg_dump was v16 and service was v17; client was upgraded to an exact PostgreSQL 17 Docker client image with host-only local routing and separate Docker `--network none` catalog inspection. No production endpoints involved.
+- `pg_dump -Fc` archive was cataloged and archive SHA-256 verified; then `pg_restore` imported into a fresh synthetic database. Before/after each of 12 table counts and canonical JSON-row SHA-256 digests matched.
+- Synthetic counts deliberately mirror current observed production *volumes* only: 7 Auth users, 7 Auth identities, 7 profiles, 200 CAs, 155 Communities, 196 CA links, 7 CA identities, 14 medals, 14 designs, 20 exchanges, 1 automation state, 418 Storage metadata objects.
+- The restored fake source retains independent CA-master gate OFF, emergency 2099-01-01 and validated composite Identity FK RESTRICT. Attempted deletion of a linked identity association is rejected; a deliberate medal field tamper is detected; negative test rolls back.
+- `postgres:17` synthetic schema is a **limited representative fixture**, not an exact 98-FK Supabase schema or the real Windows restore. It does **not** prove real-current OAuth, Edge source/secrets, Cron, image bytes, actual Storage objects, policies, or future write-capable master sync behavior.
+- Current live source mismatch persists (six direct discrepancy rows 7,13,60,94,100,116, two unparseable 17,34, plus name/ID collision review). Production verified baseline 0, no source write, no sync restart.
+
+### Required owner-only continuation before any production release
+
+1. Run operator-only latest production backup on the Windows PC in a protected local workspace. Archive secret is entered privately; do not transmit raw dump, IDs, credentials or hash manifests through public PR.
+2. Verify backup catalog and encrypted archive; preserve existing v4 original; ensure plaintext snapshot and its directory are access-controlled. Avoid publishing paths or individual identifiers.
+3. Restore this **new** latest archive into an isolated local PostgreSQL instance, never the production project. Inspect actual dependent FK, trigger, policy, grants, sequence and schema coverage, then compare private per-record fingerprints across Auth, links, medals, designs, exchanges and Storage metadata.
+4. Confirm exact latest counts (7 identities, 14 medals/designs, 20 exchanges) and zero relationship loss. Compare current live record content inside private protected environment; a match of only counts is not enough.
+5. Complete OAuth/Edge/Storage/Cron full E2E separately or retain STOP. Source review and verified baseline remain separate authorization gates. Do not change gate, 2099, identity FK, old retired writers, PR merge, or private split.
+
+**PHASE_E_SYNTHETIC_RESTORE=PASS. FRESH_PRODUCTION_BACKUP=NOT_VERIFIED. FULL_APP_RECOVERY=NOT_TESTED. SOURCE_RECONCILIATION=STOP. PROD_APPLY=STOP.**
