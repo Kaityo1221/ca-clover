@@ -7,6 +7,7 @@ on:
     paths:
       - "supabase/functions/_shared/ca-master-*"
       - "scripts/ci/test-ca-master-integration-off.mjs"
+      - "scripts/ci/phase-d-fk-no-action-vs-restrict-postgres.sql"
       - ".github/workflows/ca-master-integration-off-qa.yml"
       - "supabase/review/ca-master-final-integration-off-20261013.md"
   workflow_dispatch:
@@ -27,3 +28,33 @@ jobs:
         run: node scripts/ci/test-ca-master-minimal-guard.mjs
       - name: Validate isolated extra safeguards against fake data
         run: node scripts/ci/test-ca-master-integration-off.mjs
+
+  synthetic-identity-fk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic-ci-only
+          POSTGRES_DB: ca_master_safety
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ca_master_safety"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: ca_master_safety
+      PGUSER: postgres
+      PGPASSWORD: synthetic-ci-only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify temporary database connection
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -tAc "SELECT current_database(), inet_server_addr() IS NOT NULL;"
+      - name: Demonstrate and rollback CASCADE vs NO ACTION vs RESTRICT behavior
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/ci/phase-d-fk-no-action-vs-restrict-postgres.sql

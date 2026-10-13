@@ -51,3 +51,28 @@ handler with the production hard-retirement. Do not copy its full
 A separate explicit authorization is mandatory for any plan that would
 restore a write-capable master sync, migration, cron, Edge deployment,
 public branch merge, or sentinel change.
+
+## 2026-10-13 continuation: Phase D identity-linked FK regression
+
+Ported exact Phase D fixture `scripts/ci/phase-d-fk-no-action-vs-restrict-postgres.sql`
+from parent #131 without modifying its content. It has **fake** identities,
+medals, exchanges and link records, a disposable-database/TCP guard,
+and an outer `BEGIN ... ROLLBACK`. The CI job shows the CASCADE hazard and
+requires both NO ACTION and RESTRICT to reject referenced-link removal
+while preserving identity/medal/exchange rows.
+
+This is an **isolated demonstration only** and deliberately does not apply
+DDL to the production Supabase database. The production composite FK is
+already validated RESTRICT from the earlier minimum-protection rollout,
+which must remain in place. The replayed test is an extra regression
+gate, not permission to revert/reapply that DDL.
+
+Open safety gates remain:
+- No manually verified CA-master baseline is recorded in production; master
+  must remain OFF/2099, regardless of CI PASS.
+- Source/DB Community mismatches require operator-reviewed reconciliation,
+  not automatically guessed updates.
+- Current backup / full application restore E2E are not certified by CI.
+- Pending #128/#130/#131 contains a write-capable candidate master handler.
+  Its update logic must not replace the currently retired writer without
+  separate independent approval and renewed proof of all guards.
