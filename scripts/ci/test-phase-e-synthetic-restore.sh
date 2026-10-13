@@ -29,13 +29,22 @@ temp_dir="$(mktemp -d)"
 trap 'rm -rf "$temp_dir"' EXIT
 psql -X -v ON_ERROR_STOP=1 -d "$source_db" \
  -f scripts/ci/phase-e-synthetic-restore-fixture.sql >/dev/null
-pg_dump --format=custom --no-owner --no-acl --dbname="$source_db" \
- --file="$temp_dir/source.pgdump"
-pg_restore --list "$temp_dir/source.pgdump" > "$temp_dir/catalog.txt"
+# Ubuntu's default pg_dump is older than PostgreSQL 17. Use a matching,
+# disposable postgres:17 client image against localhost CI only.
+docker run --rm --network host \
+ -e PGHOST -e PGPORT -e PGDATABASE -e PGUSER -e PGPASSWORD \
+ -v "$temp_dir:/backup" postgres:17 \
+ pg_dump --format=custom --no-owner --no-acl --dbname="$source_db" \
+ --file="/backup/source.pgdump"
+docker run --rm --network none -v "$temp_dir:/backup:ro" postgres:17 \
+ pg_restore --list "/backup/source.pgdump" > "$temp_dir/catalog.txt"
 (cd "$temp_dir" && sha256sum source.pgdump > manifest.sha256 && sha256sum --check manifest.sha256 >/dev/null)
 createdb --maintenance-db=postgres --template=template0 "$restore_db"
-pg_restore --no-owner --no-acl --exit-on-error \
- --dbname="$restore_db" "$temp_dir/source.pgdump"
+docker run --rm --network host \
+ -e PGHOST -e PGPORT -e PGDATABASE -e PGUSER -e PGPASSWORD \
+ -v "$temp_dir:/backup:ro" postgres:17 \
+ pg_restore --no-owner --no-acl --exit-on-error \
+ --dbname="$restore_db" "/backup/source.pgdump"
 verify_restore="$(psql -X -A -t -v ON_ERROR_STOP=1 -d "$restore_db" \
  -c "SELECT current_database()||'|'||(inet_server_addr() IS NOT NULL)::text")"
 if [[ "$verify_restore" != "ca_master_restore_qa|true" ]]; then
