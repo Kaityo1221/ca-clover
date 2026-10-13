@@ -5,7 +5,7 @@
 ## Prerequisites (before command)
 
 - Windows PC, Docker Desktop and 7-Zip installed. Keep adequate local disk space for the raw dump, encrypted copy, and new container database.
-- Download the complete `scripts/recovery` directory from this **exact safety branch**, preserving filenames side by side. Do **not** run from `pages` or `main`, where these tools are not released.
+- Download or clone the complete `scripts/recovery` directory from this **exact safety branch**, preserving filenames side by side. When using Git, clone `Kaityo1221/ca-clover` with branch `safety/ca-master-final-integration-off-20261013`, then open PowerShell in its `scripts/recovery` folder. Do **not** run from `pages` or `main`, where these tools are not released.
 - Obtain the latest **Connect** settings from the project's Supabase dashboard. Supported: `db.wgiittrvgtiosogyhfcl.supabase.co` with `postgres`, or the official Session Pooler `*.pooler.supabase.com` with `postgres.wgiittrvgtiosogyhfcl`, always port 5432.
 - Choose a secure Windows desktop session. Passwords are entered interactively on the operator PC. They must not be sent to chat, public GitHub, CI or logs.
 
@@ -20,7 +20,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\Start-CA-Clover-Phase
 For the **Session Pooler**, use the actual project-specific host shown in Supabase Connect, not a guessed server:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\Start-CA-Clover-PhaseE-OneShot.ps1" -DbHost "<HOST_FROM_SUPABASE_CONNECT>.pooler.supabase.com" -DbUser "postgres.wgiittrvgtiosogyhfcl"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\Start-CA-Clover-PhaseE-OneShot.ps1" -DbHost "<EXACT_SESSION_POOLER_HOST_FROM_SUPABASE_CONNECT>" -DbUser "postgres.wgiittrvgtiosogyhfcl"
 ```
 
 Supply the production database password **only at the local private prompt**, followed by 7-Zip password entry.
