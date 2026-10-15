@@ -50,7 +50,7 @@ export function buildParticipantCsv({ event, members, rsvpStatuses, allPagesComp
   const byId = new Map();
   for (const member of members) {
     const id = requiredString(member?.id, "member.id");
-    const username = typeof member?.username === "string" ? member.username.trim() : "";
+    const username = typeof member?.username === "string" && member.username.trim() ? member.username : "";
     const existing = byId.get(id);
     if (existing && existing.username !== username) {
       throw new Error("Conflicting usernames for participant");
