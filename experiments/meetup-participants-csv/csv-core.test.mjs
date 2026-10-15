@@ -14,7 +14,7 @@ const rsvpStatuses = [
   { userId: "u3", rsvpStatus: "DECLINED" }
 ];
 const input = (changes = {}) => ({
-  event, members, rsvpStatuses, allPagesComplete: true, ...changes,
+  event, members, rsvpStatuses, allPagesComplete: true, allStatusesComplete: true, ...changes,
 });
 
 test("creates Japanese Excel-friendly CSV without declined participants", () => {
@@ -84,4 +84,34 @@ test("uses a sanitized event ID in the filename", () => {
     makeCsvFilename({ id: "event/strange:name", eventTime: "bad" }),
     "meetup_undated_event_strange_name.csv"
   );
+});
+
+test("preserves calendar day in Japan for a midnight meetup filename", () => {
+  assert.equal(
+    makeCsvFilename({ id: "tokyo", eventTime: "2026-10-16T00:30:00+09:00" }),
+    "meetup_20261016_tokyo.csv"
+  );
+});
+
+test("refuses a partially collected RSVP status list", () => {
+  assert.throws(
+    () => buildParticipantCsv(input({ allStatusesComplete: false })),
+    /status collection is not verified complete/
+  );
+});
+
+test("rejects missing status-completeness evidence by default", () => {
+  const { allStatusesComplete, ...withoutFlag } = input();
+  assert.throws(
+    () => buildParticipantCsv(withoutFlag),
+    /status collection is not verified complete/
+  );
+});
+
+test("quotes and preserves embedded newlines and commas", () => {
+  const result = buildParticipantCsv(input({
+    members: [{ id: "u1", username: 'A,"B"\\nC'.replace("\\n", "\n") }],
+    rsvpStatuses: [rsvpStatuses[0]],
+  }));
+  assert.ok(result.csv.includes('"A,""B""\nC"'));
 });
