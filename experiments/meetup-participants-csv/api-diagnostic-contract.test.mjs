@@ -118,5 +118,6 @@ test("safe output codes reject unknown injected strings", () => {
     reasonCodes: ["__PRIVATE__", "BAD: alice@example.org", "GOOD_CODE"],
   });
   assert.ok(!printed.includes("alice@example.org"));
-  assert.ok(printed.includes("GOOD_CODE"));
+  assert.ok(!printed.includes("__PRIVATE__"));
+  assert.ok(!printed.includes("GOOD_CODE"));
 });
