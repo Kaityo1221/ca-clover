@@ -44,7 +44,9 @@ test("detects cursor loops", async () => {
   await assert.rejects(
     () => collectMemberPages({
       eventId: "event-001",
-      fetchPage: async () => response([], 2, true, "repeat"),
+      fetchPage: async ({ after }) => after
+        ? response([{ id: "u2" }], 3, true, "repeat")
+        : response([{ id: "u1" }], 3, true, "repeat"),
     }),
     /repeated pagination cursor/
   );
