@@ -80,6 +80,7 @@ async function mockDownload(item, button) {
       members: item.members,
       rsvpStatuses: item.rsvpStatuses,
       allPagesComplete: true,
+      allStatusesComplete: true,
     });
     const blob = new Blob([result.csv], { type: "text/csv;charset=utf-8" });
     const href = URL.createObjectURL(blob);
@@ -111,6 +112,7 @@ for (const item of fakeEvents) {
     members: item.members,
     rsvpStatuses: item.rsvpStatuses,
     allPagesComplete: true,
+    allStatusesComplete: true,
   });
   const card = node("article", "meetup-card");
   const main = node("button", "card-primary");
