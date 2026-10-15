@@ -82,3 +82,34 @@ test("caps member page size and page count", async () => {
     /Invalid pageSize/
   );
 });
+
+test("fails fast on an empty page while pagination continues", async () => {
+  await assert.rejects(
+    () => collectMemberPages({
+      eventId: "event-001",
+      fetchPage: async () => response([], 2, true, "next"),
+    }),
+    /Empty member page/
+  );
+});
+
+test("rejects duplicate member IDs across pages", async () => {
+  await assert.rejects(
+    () => collectMemberPages({
+      eventId: "event-001",
+      fetchPage: async ({ after }) => after
+        ? response([{ id: "u1" }], 2, false)
+        : response([{ id: "u1" }], 2, true, "next"),
+    }),
+    /Duplicate member/
+  );
+});
+
+test("handles an empty event without phantom records", async () => {
+  const result = await collectMemberPages({
+    eventId: "event-001",
+    fetchPage: async () => response([], 0, false),
+  });
+  assert.equal(result.members.length, 0);
+  assert.equal(result.allPagesComplete, true);
+});
