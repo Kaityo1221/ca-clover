@@ -134,7 +134,7 @@ const ROOT="https://kaityo1221.github.io/ca-clover/";
 // ADMIN showcase is a strictly read-only view.
 const isAdminCatalogMode=new URLSearchParams(location.search).get("admin_catalog")==="1";
 // Gachi-Mon Club specific correction for the grid, 2D fallback, and 3D face.
-const GACHI_MON_FACE=Object.freeze({sheetScale:1.15,modal2DScale:1.12,modal3DScale:1.07,offset:.009});
+const GACHI_MON_FACE=Object.freeze({sheetScale:1.15,modal2DScale:1.12,modal3DScale:1.07,offset:.012});
 function isGachiMonCommunity(c){return String(c?.name||"").includes("がちもんくらぶ")}
 document.documentElement.style.setProperty("--gachi-mon-sheet-scale",String(GACHI_MON_FACE.sheetScale));
 document.documentElement.style.setProperty("--gachi-mon-modal2d-scale",String(GACHI_MON_FACE.modal2DScale));
