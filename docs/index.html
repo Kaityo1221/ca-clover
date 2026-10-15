@@ -227,7 +227,7 @@
     }).join("")+(profile&&profile.role==="admin"?'<a href="./admin.html?v=20260921-1815" style="border:0;border-radius:999px;padding:9px 13px;background:#ede9fe;color:#6d28d9;font-weight:900;text-decoration:none">管理画面</a>':"");
     nav.querySelectorAll("[data-go]").forEach(function(b){b.onclick=function(){
       flash=null;
-      if(b.dataset.go==="stamp"){location.href="./stamp-rally.html";return}
+      if(b.dataset.go==="stamp"){location.href="./stamp-rally.html?v=20261015-offset009";return}
       go(b.dataset.go)
     }})
   }
@@ -299,7 +299,7 @@
     }
 
     if(profile.role==="admin"||profile.role==="ca"){
-      html+='<section class="card section" style="border-color:#f0d7bd;background:linear-gradient(135deg,#fff8ef,#fff,#edf7e8)"><div class="row"><div style="font-size:34px">🍀</div><div><span class="pill">MEDAL RALLY</span><h2 style="margin-top:8px">CA Medal Rally</h2><p class="muted small strong">全国のCAとの出会いをメダルで記録します。</p></div></div><div class="section" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:stretch"><a class="btn stamp-rally-open" href="./stamp-rally.html" style="display:flex;margin:0;width:100%;min-height:52px">メダルラリーを開く →</a><a class="btn line" href="./stamp-exchange.html" aria-label="QRでメダル交換" style="display:flex;align-items:center;justify-content:center;gap:7px;width:auto;min-width:108px;min-height:52px;text-decoration:none;font-size:15px">▦ QR交換</a></div></section>';
+      html+='<section class="card section" style="border-color:#f0d7bd;background:linear-gradient(135deg,#fff8ef,#fff,#edf7e8)"><div class="row"><div style="font-size:34px">🍀</div><div><span class="pill">MEDAL RALLY</span><h2 style="margin-top:8px">CA Medal Rally</h2><p class="muted small strong">全国のCAとの出会いをメダルで記録します。</p></div></div><div class="section" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:stretch"><a class="btn stamp-rally-open" href="./stamp-rally.html?v=20261015-offset009" style="display:flex;margin:0;width:100%;min-height:52px">メダルラリーを開く →</a><a class="btn line" href="./stamp-exchange.html" aria-label="QRでメダル交換" style="display:flex;align-items:center;justify-content:center;gap:7px;width:auto;min-width:108px;min-height:52px;text-decoration:none;font-size:15px">▦ QR交換</a></div></section>';
     }
 
     if(profile.role==="pending"&&claims.length){
