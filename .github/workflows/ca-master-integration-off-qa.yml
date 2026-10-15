@@ -161,4 +161,8 @@ jobs:
           Write-Host "WINDOWS_ONESHOT_REJECT_UNTRUSTED_TARGETS_PASS"
       - name: Reject redirected report paths and directory replacement using synthetic data
         shell: powershell
-        run: ./scripts/ci/test-phase-e-report-paths.ps1
+        run: |
+          # Windows TEMP can contain an 8.3 alias, which the physical-path guard rejects.
+          Write-Host ("SYNTHETIC_TEMP_ALIAS=" + $env:TEMP)
+          Write-Host ("SYNTHETIC_RUNNER_TEMP=" + $env:RUNNER_TEMP)
+          ./scripts/ci/test-phase-e-report-paths.ps1 -EvidenceRoot $env:RUNNER_TEMP
