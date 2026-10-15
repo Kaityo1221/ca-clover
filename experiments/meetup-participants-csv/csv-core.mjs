@@ -30,16 +30,20 @@ function safeEventId(value) {
 
 export function makeCsvFilename(event) {
   const id = safeEventId(requiredString(event?.id, "event.id"));
-  const d = event?.eventTime ? new Date(event.eventTime) : null;
+  // Preserve the original local calendar date rather than switching to UTC.
+  const raw = event?.eventTime;
+  const d = typeof raw === "string" && raw.trim() ? new Date(raw) : null;
+  const localDate = typeof raw === "string" ? /^(\d{4}-\d{2}-\d{2})(?:T|\s)/.exec(raw)?.[1] : null;
   const date = d && !Number.isNaN(d.getTime())
-    ? d.toISOString().slice(0, 10).replace(/-/g, "")
+    ? (localDate ?? d.toISOString().slice(0, 10)).replace(/-/g, "")
     : "undated";
   return "meetup_" + date + "_" + id + ".csv";
 }
 
-export function buildParticipantCsv({ event, members, rsvpStatuses, allPagesComplete }) {
+export function buildParticipantCsv({ event, members, rsvpStatuses, allPagesComplete, allStatusesComplete }) {
   requiredString(event?.id, "event.id");
   if (allPagesComplete !== true) throw new Error("Member pagination is not complete");
+  if (allStatusesComplete !== true) throw new Error("RSVP status collection is not verified complete");
   if (!Array.isArray(members) || !Array.isArray(rsvpStatuses)) {
     throw new Error("members and rsvpStatuses must be arrays");
   }
