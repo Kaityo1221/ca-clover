@@ -1,0 +1,50 @@
+name: Meetup CSV isolated QA (no production)
+run-name: Meetup CSV fixture tests on ${{ github.ref_name }}
+
+on:
+  push:
+    branches:
+      - feature/meetup-participants-csv-v1
+    paths:
+      - "experiments/meetup-participants-csv/**"
+      - ".github/workflows/meetup-participants-csv-isolated-qa.yml"
+  pull_request:
+    paths:
+      - "experiments/meetup-participants-csv/**"
+      - ".github/workflows/meetup-participants-csv-isolated-qa.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: meetup-csv-fixture-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fixture-only:
+    name: Offline unit tests and browser smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: "true"
+    steps:
+      - name: Checkout PR files, no credentials persisted
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Assert only isolated test code is exercised
+        run: |
+          test -f experiments/meetup-participants-csv/preview.html
+          test -f experiments/meetup-participants-csv/browser-smoke.mjs
+      - name: Offline fixture unit tests (no credentials or services)
+        run: node --test experiments/meetup-participants-csv/*.test.mjs
+      - name: Install isolated browser test runner
+        run: npm install --prefix experiments/meetup-participants-csv --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright@1.55.1
+      - name: Install headless Chromium for local fixture browser
+        run: experiments/meetup-participants-csv/node_modules/.bin/playwright install --with-deps chromium
+      - name: Offline mobile browser smoke (in-memory HTML)
+        run: node experiments/meetup-participants-csv/browser-smoke.mjs
