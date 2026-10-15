@@ -1,0 +1,61 @@
+# CA Clover | Meetup参加者CSV 試作 v1
+
+**状態：独立試作 / 模擬データのみ / 本番未接続 / 実API通信未実施**
+
+このフォルダだけで完結します。既存の My Community、Campfire 取得クライアント、Supabase、DB、Cron、CAマスター保護、復元スクリプトには変更を加えません。
+
+## 現時点の実装
+
+- **csv-core.mjs**: Meetup 1件の参加状況とアカウント名から、Excel向けUTF-8 BOM付きCSVをメモリ上で生成する純粋関数。ファイル保管は行わない
+- **member-pages.mjs**: API呼び出し関数を外から受け取る、上限付きの参加者ページ分割補助。実際のAPIアクセスは未実装
+- **preview.html / preview.mjs**: 仮名 Trainer_A などだけを使うコンパクトMeetupカードのローカルプレビュー。「↓ CSV」で架空データのCSVのみダウンロード可能。実データへの接続なし
+- **テストファイル**: 出力形式、辞退者除外、CSV数式注入対策、重複、欠落、ページ分割、カーソルループ、人数不整合
+
+## ローカルテスト（Node.js 22）
+
+リポジトリ直下から:
+
+    node --test experiments/meetup-participants-csv/*.test.mjs
+
+試作画面（Python 3、または他のローカル静的ファイルサーバー）:
+
+    python -m http.server 8765
+
+ブラウザで次を開く:
+
+    http://127.0.0.1:8765/experiments/meetup-participants-csv/preview.html
+
+プレビューを開いただけではCampfire・SupabaseのAPIを実行しません。ページの読み込みはローカルHTTPサーバーの静的ファイルだけです。
+
+## 暫定CSV契約
+
+| 列 | 値 |
+|---|---|
+| アカウント名 | Campfire username（実API通信後に確定） |
+| 参加表明 | ACCEPTED, CHECKED_IN の両方を「あり」 |
+| チェックイン | CHECKED_IN を「済」、ACCEPTED を「未」 |
+
+DECLINED はCSVから除外。未知の状態、矛盾した重複、参加者名の欠落、ページ未取得の場合は**部分CSVを出さずに失敗**する。これらの集計定義はCampfire本家表示と照合するまでは暫定。
+
+出力名: meetup_YYYYMMDD_EVENTID.csv。ヘッダー + 参加者行、UTF-8 BOM、CRLF、引用符で囲む。セル先頭のExcel数式候補はアポストロフィで無害化する。
+
+## 本番統合までに必要なゲート
+
+1. 復元・CAマスター保護の全工程完了。復元側の作業ファイルやブランチを触らない
+2. 所属コミュニティのMeetup URLによる**読み取り通信診断**で、終了済みとLIVE中の rsvpStatuses、members.username が取得できるか確認
+3. API利用条件と権限を確認。本番では本人確認済みのCA/許可管理者のみ。**サーバー側**で event ID と担当communityの一致を検証する
+4. CSV出力をサーバー側のオンデマンド取得に接続。機密トークンをクライアントへ渡さず、名簿・レスポンス本文をDB/Storage/ログ/解析ツールへ保存しない
+5. 同時実行・レート制御（全体の共有制御）、1ユーザー多重実行抑止、適切なタイムアウトと429バックオフ。通常の15分巡回Cronとリソースを分離
+6. 画面への組み込みは My Community Meetupカード右下の「CSV」。カードの詳細タップは残し、ダウンロードボタンとのイベント干渉を防止
+7. 権限と不完全取得の負荷・回帰テストにPASSしてから、別途、本番リリース判断
+
+**注意**: このブランチの現状は権限確認も実Campfire API取得も含まない。現状のプレビューは一般ユーザーに配布して実データを扱う用途には使用しない。
+
+## 今回の変更禁止領域
+
+- supabase/ 以下
+- src/、docs/（本番サイト）
+- scripts/recovery/ 以下、保護・復元用CI
+- .github/workflows/（既存ワークフロー）
+
+開発を続ける場合もレビューによりこの境界を維持する。
