@@ -28,7 +28,7 @@ video{width:100%;aspect-ratio:3/4;object-fit:cover;background:#111;border-radius
 </head>
 <body>
 <main class="wrap">
-  <div class="head"><a href="./stamp-rally.html?v=20261015-offset009" class="back">← メダル一覧</a><span class="pill">1対1交換</span></div>
+  <div class="head"><a href="./stamp-rally.html?v=20261015-offset012" class="back">← メダル一覧</a><span class="pill">1対1交換</span></div>
   <section class="card">
     <div class="center"><div class="hero">🍀</div><h1 class="title">CAメダル交換</h1><p class="desc">QRを見せる人と、読み取る人。ふたりがOKしたら交換成立です。</p></div>
     <div id="netState"></div>
@@ -241,7 +241,7 @@ function render(){
   if(!currentSession.my_confirmed)html+='<div class="confirm center">交換しますか？</div><div class="twocol"><button id="cancelExchange" class="btn mutedbtn" '+(busy||!online?"disabled":"")+'>やめる</button><button id="confirmExchange" class="btn primary" '+(busy||!online?"disabled":"")+'>'+(phase==="saving"?"保存中...":"OK")+'</button></div>';
   else html+='<div class="wait">あなたはOK済みです。相手の確認を待っています 🍀</div>';
  }else if(currentSession.status==="completed"){
-  html+='<div class="center" style="margin-top:24px"><div style="font-size:54px">🎉</div><h2 class="title">'+e(resultTitle())+'</h2><p class="desc">'+e(currentSession.partner?currentSession.partner.trainer_name:"相手")+'さんとの交換を保存しました。</p>'+(currentSession.event?'<p class="small" style="color:#9a3412;font-weight:900">🎪 '+e(currentSession.event.name||"イベント")+' ・ '+e(currentSession.event.location||"場所未設定")+'</p>':'')+'<a class="btn primary" style="display:block;margin-top:18px" href="./stamp-rally.html?v=20261015-offset009">メダル一覧へ戻る</a></div>';
+  html+='<div class="center" style="margin-top:24px"><div style="font-size:54px">🎉</div><h2 class="title">'+e(resultTitle())+'</h2><p class="desc">'+e(currentSession.partner?currentSession.partner.trainer_name:"相手")+'さんとの交換を保存しました。</p>'+(currentSession.event?'<p class="small" style="color:#9a3412;font-weight:900">🎪 '+e(currentSession.event.name||"イベント")+' ・ '+e(currentSession.event.location||"場所未設定")+'</p>':'')+'<a class="btn primary" style="display:block;margin-top:18px" href="./stamp-rally.html?v=20261015-offset012">メダル一覧へ戻る</a></div>';
  }else if(currentSession.status==="cancelled"){
   html+='<div class="notice warn center">この交換はキャンセルされました。</div><button id="reset" class="btn outline" style="width:100%;margin-top:12px">最初に戻る</button>';
  }else if(currentSession.status==="expired"){
