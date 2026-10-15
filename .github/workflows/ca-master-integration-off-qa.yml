@@ -19,6 +19,7 @@ on:
       - "scripts/ci/phase-e-restored-negatives.sql"
       - "scripts/ci/test-phase-e-synthetic-restore.sh"
       - "scripts/ci/test-phase-e-local-restore-contract.mjs"
+      - "scripts/ci/test-phase-e-report-paths.ps1"
       - "scripts/ci/test-phase-e-oneshot-contract.mjs"
       - "scripts/recovery/Start-CA-Clover-PhaseE-OneShot.ps1"
       - "scripts/recovery/README-PhaseE-OneShot.md"
@@ -158,3 +159,6 @@ jobs:
             if(-not $blocked){throw "FAIL: untrusted route passed or did not fail closed"}
           }
           Write-Host "WINDOWS_ONESHOT_REJECT_UNTRUSTED_TARGETS_PASS"
+      - name: Reject redirected report paths and directory replacement using synthetic data
+        shell: powershell
+        run: ./scripts/ci/test-phase-e-report-paths.ps1

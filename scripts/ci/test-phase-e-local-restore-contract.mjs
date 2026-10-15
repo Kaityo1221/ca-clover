@@ -4,7 +4,7 @@ const ps=readFileSync("scripts/recovery/Validate-CA-Clover-Restored-Local.ps1","
 const sql=readFileSync("scripts/recovery/phase-e-restored-local-readonly-audit.sql","utf8");
 for(const check of [
   "docker inspect --type container", "NetworkMode", "HostConfig.PortBindings",
-  "docker exec -i -u postgres", "phase-e-restored-local-readonly-audit.sql",
+  "Start-Process", "phase-e-restored-local-readonly-audit.sql",
   "AUDIT_LOCAL_PASS|12_TABLES|COUNTS_AND_FINGERPRINTS"
 ]) assert.ok(ps.includes(check),"Missing local-only preflight: "+check);
 assert.match(ps,/Container -cnotmatch/);
@@ -27,3 +27,23 @@ const withoutComments=sql.replace(/^\s*--[^\n]*$/gm,"");
 assert.doesNotMatch(withoutComments,/^\s*(?:CREATE|ALTER|DROP|TRUNCATE|INSERT|UPDATE|DELETE|COPY|GRANT|REVOKE|CALL|VACUUM)\b/im);
 assert.doesNotMatch(ps,/\b(?:Invoke-Sqlcmd|Invoke-RestMethod|Invoke-WebRequest|pg_restore|pg_dump|supabase\s+db\s+(?:reset|push))\b/i);
 console.log("PHASE_E_LOCAL_RESTORE_CONTRACT_STATIC_PASS: local-only, READ ONLY, no restore/network commands");
+
+assert.match(ps,/"exec",\s*"-i",\s*"-u",\s*"postgres",\s*\$Container,\s*"psql"/);
+assert.match(ps,/"-U",\s*\$DbUser,\s*"-h",\s*\$SocketDir,\s*"-d",\s*\$Database/);
+assert.match(ps,/Start-Process -FilePath "docker\.exe"/);
+assert.match(ps,/RedirectStandardInput \$inputFile/);
+assert.match(ps,/RedirectStandardOutput \$outFile/);
+assert.match(ps,/RedirectStandardError \$errFile/);
+assert.match(ps,/if \(\$exit -ne 0\).*throw/);
+
+// Keep the Windows path-race regression in the synthetic-only CI job.
+for (const check of ["AuditDirectoryLease", "CreateFileW(current, 0x81, 1",
+  "GetFileInformationByHandle", "0x400", "GetFinalPathNameByHandleW",
+  "physical path mismatch", "FileMode]::CreateNew", "FileShare]::None",
+  "AssertFinalPath($stream.SafeFileHandle", "Directory.CreateDirectory(current, acl)"])
+  assert.ok(ps.includes(check), "Missing report path safeguard: " + check);
+assert.ok(ps.indexOf('$reportLease=Open-PrivateAuditDirectory') < ps.indexOf('$process = Start-Process'));
+assert.ok(ps.includes('if ($null -ne $reportLease) { $reportLease.Dispose() }'));
+const workflow=readFileSync('.github/workflows/ca-master-integration-off-qa.yml','utf8');
+assert.ok(workflow.includes('test-phase-e-report-paths.ps1'));
+console.log("PHASE_E_REPORT_PATH_CONTRACT_PASS");
