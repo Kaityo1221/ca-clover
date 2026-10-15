@@ -3,6 +3,15 @@
 // Status completeness cannot be established from a bare rsvpStatuses array.
 const VALID_STATUS = new Set(["ACCEPTED", "CHECKED_IN", "DECLINED"]);
 const MAX_RECORDS = 20_000;
+const REASON_CODES = new Set([
+  "EVENT_ID_MISMATCH", "RESPONSE_FIELDS_MISSING", "RECORD_LIMIT",
+  "MEMBER_TOTAL_UNKNOWN", "CHECKIN_TOTAL_UNKNOWN",
+  "MEMBER_PAGINATION_UNVERIFIED", "MEMBER_TOTAL_MISMATCH",
+  "MEMBER_IDENTITY_MISSING", "DUPLICATE_MEMBER_ID",
+  "STATUS_ID_MISSING", "STATUS_UNRECOGNIZED", "DUPLICATE_STATUS_ID",
+  "CHECKIN_TOTAL_MISMATCH", "PARTICIPANT_USERNAME_MISSING",
+  "STATUS_LIST_COMPLETENESS_UNVERIFIED",
+]);
 
 function validCount(value) {
   return Number.isSafeInteger(value) && value >= 0;
@@ -134,7 +143,7 @@ export function printSafeDiagnosticSummary(report) {
     "rsvp_records=" + (validCount(report?.statusRecordCount) ? report.statusRecordCount : "unknown"),
     "status_proof=" + (report?.statusCompletenessVerified === true ? "yes" : "no"),
     "issues=" + (Array.isArray(report?.reasonCodes)
-      ? report.reasonCodes.filter(v => typeof v === "string" && /^[A-Z_]+$/.test(v)).join(",")
+      ? report.reasonCodes.filter(v => REASON_CODES.has(v)).join(",")
       : "DIAGNOSTIC_INVALID"),
   ];
   return fields.join("\n");
