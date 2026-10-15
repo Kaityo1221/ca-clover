@@ -1,4 +1,5 @@
 import { buildParticipantCsv } from "./csv-core.mjs";
+import { getPublicExportFailure } from "./export-failure.mjs";
 
 // FICTIONAL DATA ONLY. This preview makes no network or Supabase requests.
 const fakeEvents = [
@@ -48,6 +49,7 @@ const cards = document.querySelector("#cards");
 const output = document.querySelector("#feedback");
 const dialog = document.querySelector("#detail");
 const detailText = document.querySelector("#detail-text");
+const demoMode = document.querySelector("#demo-mode");
 
 function node(tag, className, text) {
   const element = document.createElement(tag);
@@ -71,15 +73,21 @@ function showDetail(item) {
 }
 
 async function mockDownload(item, button) {
+  if (button.disabled) return;
+  const mode = demoMode.value;
   button.disabled = true;
   button.textContent = "取得中…";
-  output.textContent = "模擬データからCSVを生成しています（Campfire通信なし）。";
+  output.textContent = "模擬データで取得処理を試しています（Campfire通信なし）。";
   try {
+    // Demo-only delay: makes the loading state visible. Never used by the API.
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    if (mode === "busy") throw { status: 429 };
+    if (mode === "timeout") throw { code: "TIMEOUT" };
     const result = buildParticipantCsv({
       event: item.event,
       members: item.members,
       rsvpStatuses: item.rsvpStatuses,
-      allPagesComplete: true,
+      allPagesComplete: mode !== "incomplete",
       allStatusesComplete: true,
     });
     const blob = new Blob([result.csv], { type: "text/csv;charset=utf-8" });
@@ -97,9 +105,12 @@ async function mockDownload(item, button) {
       setTimeout(() => URL.revokeObjectURL(href), 1000);
     }
     output.textContent = "デモCSV生成完了：" + result.summary.rows + "件（架空のアカウントのみ）";
-  } catch {
-    // Avoid including raw participant fields or API responses in diagnostics.
-    output.textContent = "CSV生成に失敗しました。取得状況を確認してください。";
+  } catch (error) {
+    // The UI must never leak a raw API response or participant name on failures.
+    const safeError = getPublicExportFailure(mode === "incomplete"
+      ? { code: "INCOMPLETE" }
+      : error);
+    output.textContent = safeError.message + "（この画面では模擬エラーです）";
   } finally {
     button.disabled = false;
     button.textContent = "↓ CSV";
