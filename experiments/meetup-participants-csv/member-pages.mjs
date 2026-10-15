@@ -55,6 +55,9 @@ export async function collectMemberPages({
     }
 
     if (members.length > expected) throw new Error("Fetched more members than totalCount");
+    if (connection.edges.length === 0 && connection.pageInfo.hasNextPage) {
+      throw new Error("Empty member page while pagination continues");
+    }
     if (connection.pageInfo.hasNextPage === false) {
       if (members.length !== expected) {
         throw new Error("Member records incomplete; refusing partial export");
