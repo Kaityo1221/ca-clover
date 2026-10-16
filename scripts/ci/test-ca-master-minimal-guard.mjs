@@ -1,7 +1,6 @@
 // Static guard checks for minimal CA master release, no live endpoints.
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {execFileSync} from "node:child_process";
 
 const read = p => readFileSync(p,"utf8");
 const main=read("supabase/functions/sync-ca-master/index.ts");
@@ -30,14 +29,13 @@ assert.match(migration,/ca_master_sync_enabled boolean NOT NULL DEFAULT false/);
 assert.match(migration,/2099-01-01T00:00:00Z/);
 assert.doesNotMatch(migration,/UPDATE\s+public\.sync_automation_state\s+SET\s+ca_master_sync_enabled\s*=\s*true/i);
 
-const oldRef="bc7ad70582e219c69fbe512d0c30dad3c4e1ad81";
-const file="supabase/functions/sync-campfire-auto/index.ts";
-const preserved=execFileSync("git",["show",oldRef+":"+file],{encoding:"utf8"});
-const original='    if(coordinateRefreshDue){';
-assert.equal(preserved.split(original).length,2,"baseline must contain exactly one condition");
-const expected=preserved.replace(original,
-'    // Fail closed if the dedicated CA-master gate is absent, false or unreadable.\n'+
-'    // General Campfire jobs continue independently.\n'+
-'    if(state.ca_master_sync_enabled===true && coordinateRefreshDue){');
-assert.equal(auto,expected,"Auto must equal exactly preserved deployed source plus master-only guard");
+// Pin exact protected scheduler source. This replaces a broken git-show
+// lookup to an older commit without the file at that path.
+const {createHash}=await import("node:crypto");
+const schedulerBytes=Buffer.from(auto,"utf8");
+const schedulerGitSha=createHash("sha1")
+  .update(Buffer.from("blob "+schedulerBytes.length+"\0","utf8"))
+  .update(schedulerBytes).digest("hex");
+assert.equal(schedulerGitSha,"91c5395c11d3406d29af2f050262f4deaecc1b28",
+  "Protected Campfire scheduler must remain byte-for-byte unchanged");
 console.log("MINIMAL_MASTER_GUARD_STATIC_PASS");

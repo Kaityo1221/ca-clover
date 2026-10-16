@@ -1,0 +1,168 @@
+# No prod secrets, no SQL writes, and no Edge deployments.
+name: CA Master Integration OFF QA
+
+on:
+  pull_request:
+    branches: [pages]
+    paths:
+      - "supabase/functions/_shared/ca-master-*"
+      - "scripts/ci/test-ca-master-integration-off.mjs"
+      - "scripts/ci/test-ca-master-recovery-failclosed.mjs"
+      - "scripts/ci/test-ca-master-readonly-preflight.mjs"
+      - "scripts/ci/test-ca-master-backup-contract.mjs"
+      - "scripts/recovery/Backup-CA-Clover-Production-Latest.ps1"
+      - "supabase/review/phase-e-production-readonly-stop-preflight-20261013.sql"
+      - "scripts/ci/test-phase-d-ca-master-local-compare.mjs"
+      - "scripts/phase-d-compare-ca-master-local.ps1"
+      - "scripts/ci/phase-d-fk-no-action-vs-restrict-postgres.sql"
+      - "scripts/ci/phase-e-synthetic-restore-fixture.sql"
+      - "scripts/ci/phase-e-restored-negatives.sql"
+      - "scripts/ci/test-phase-e-synthetic-restore.sh"
+      - "scripts/ci/test-phase-e-local-restore-contract.mjs"
+      - "scripts/ci/test-phase-e-report-paths.ps1"
+      - "scripts/ci/test-phase-e-oneshot-contract.mjs"
+      - "scripts/recovery/Start-CA-Clover-PhaseE-OneShot.ps1"
+      - "scripts/recovery/README-PhaseE-OneShot.md"
+      - "scripts/recovery/Restore-CA-Clover-Isolated.ps1"
+      - "scripts/recovery/Validate-CA-Clover-Restored-Local.ps1"
+      - "scripts/recovery/phase-e-restored-local-readonly-audit.sql"
+      - ".github/workflows/ca-master-integration-off-qa.yml"
+      - "supabase/review/ca-master-final-integration-off-20261013.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration-off:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Preserve minimal 2026-10-13 protection
+        run: node scripts/ci/test-ca-master-minimal-guard.mjs
+      - name: Validate isolated extra safeguards against fake data
+        run: node scripts/ci/test-ca-master-integration-off.mjs
+      - name: Recheck failure recovery using 6 injected REST responses (no live DB)
+        run: node scripts/ci/test-ca-master-recovery-failclosed.mjs
+      - name: Statically verify one-shot workflow cannot restore to production
+        run: node scripts/ci/test-phase-e-oneshot-contract.mjs
+      - name: Parse Windows PowerShell scripts without executing or connecting
+        shell: pwsh
+        run: |
+          $paths=@(
+            "scripts/recovery/Backup-CA-Clover-Production-Latest.ps1",
+            "scripts/recovery/Restore-CA-Clover-Isolated.ps1",
+            "scripts/recovery/Validate-CA-Clover-Restored-Local.ps1",
+            "scripts/recovery/Start-CA-Clover-PhaseE-OneShot.ps1"
+          )
+          foreach($path in $paths) {
+            $tokens=$null; $errors=$null
+            $null=[System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path).Path,[ref]$tokens,[ref]$errors)
+            if($errors.Count -ne 0){ $errors | ForEach-Object { Write-Error $_.Message }; throw "PowerShell parser STOP" }
+            Write-Host "PARSE_PASS: $path"
+          }
+      - name: Statically verify Windows restore audit is local-only
+        run: node scripts/ci/test-phase-e-local-restore-contract.mjs
+      - name: Check staged operator-only backup is non-restoring and encrypted
+        run: node scripts/ci/test-ca-master-backup-contract.mjs
+      - name: Statically validate reviewed production preflight is SELECT-only
+        run: node scripts/ci/test-ca-master-readonly-preflight.mjs
+      - name: Compare synthetic CA-master CSV offline (PowerShell, no DB or network)
+        run: node scripts/ci/test-phase-d-ca-master-local-compare.mjs
+
+  synthetic-identity-fk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic-ci-only
+          POSTGRES_DB: ca_master_safety
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ca_master_safety"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: ca_master_safety
+      PGUSER: postgres
+      PGPASSWORD: synthetic-ci-only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify temporary database connection
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -tAc "SELECT current_database(), inet_server_addr() IS NOT NULL;"
+      - name: Demonstrate and rollback CASCADE vs NO ACTION vs RESTRICT behavior
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/ci/phase-d-fk-no-action-vs-restrict-postgres.sql
+      - name: Dump and restore synthetic snapshot; assert current-count row contents
+        run: bash scripts/ci/test-phase-e-synthetic-restore.sh
+      - name: Audit isolated restored database via UNIX socket and reject a stale copy
+        run: |
+          docker cp scripts/recovery/phase-e-restored-local-readonly-audit.sql "${{ job.services.postgres.id }}:/tmp/phase-e-readonly.sql"
+          docker exec "${{ job.services.postgres.id }}" psql -X -v ON_ERROR_STOP=1 -U postgres -h /var/run/postgresql -d ca_master_restore_qa -At -f /tmp/phase-e-readonly.sql > /tmp/phase-e-positive.log
+          grep -Fq 'AUDIT_LOCAL_PASS|12_TABLES|COUNTS_AND_FINGERPRINTS' /tmp/phase-e-positive.log
+          test "$(grep -c '^DATA|' /tmp/phase-e-positive.log)" -eq 12
+          docker exec "${{ job.services.postgres.id }}" psql -X -v ON_ERROR_STOP=1 -U postgres -h /var/run/postgresql -d ca_master_restore_qa -c "DELETE FROM public.stamp_collection_designs WHERE id='fake-design-14'"
+          if docker exec "${{ job.services.postgres.id }}" psql -X -v ON_ERROR_STOP=1 -U postgres -h /var/run/postgresql -d ca_master_restore_qa -At -f /tmp/phase-e-readonly.sql > /tmp/phase-e-negative.log 2>&1; then
+            echo "FAIL: stale synthetic restore was accepted"
+            exit 1
+          fi
+          grep -q 'STOP: designs expected 14' /tmp/phase-e-negative.log
+          echo 'PHASE_E_LOCAL_RESTORE_AUDIT_PASS: healthy fake restore accepted, missing design rejected'
+
+  windows-one-shot-failclosed:
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse Phase E scripts with native Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          foreach($path in @(
+            "scripts/recovery/Backup-CA-Clover-Production-Latest.ps1",
+            "scripts/recovery/Restore-CA-Clover-Isolated.ps1",
+            "scripts/recovery/Validate-CA-Clover-Restored-Local.ps1",
+            "scripts/recovery/Start-CA-Clover-PhaseE-OneShot.ps1"
+          )){
+            $tokens=$null; $errors=$null
+            $null=[System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path).Path,[ref]$tokens,[ref]$errors)
+            if($errors.Count -ne 0){throw "STOP: native PowerShell 5.1 syntax failure"}
+          }
+          Write-Host "WINDOWS_POWERSHELL_51_PARSE_PASS"
+      - name: Reject untrusted host and wrong Session Pooler account before secrets or Docker
+        shell: powershell
+        run: |
+          $scriptPath="scripts/recovery/Start-CA-Clover-PhaseE-OneShot.ps1"
+          $cases=@(
+            @{Host="not-supabase.invalid"; User="postgres"; Port=5432},
+            @{Host="aws-0-ap-northeast-1.pooler.supabase.com"; User="postgres"; Port=5432},
+            @{Host="aws-0-ap-northeast-1.pooler.supabase.com"; User="postgres.wgiittrvgtiosogyhfcl"; Port=6543}
+          )
+          foreach($test in $cases){
+            $blocked=$false
+            try{
+              & $scriptPath -DbHost $test.Host -DbUser $test.User -DbPort $test.Port
+            }catch{
+              if($_.Exception.Message -match "STOP: Use only this project's direct connection or Session Pooler on 5432"){
+                $blocked=$true
+              }else{throw}
+            }
+            if(-not $blocked){throw "FAIL: untrusted route passed or did not fail closed"}
+          }
+          Write-Host "WINDOWS_ONESHOT_REJECT_UNTRUSTED_TARGETS_PASS"
+      - name: Reject redirected report paths and directory replacement using synthetic data
+        shell: powershell
+        run: |
+          # Windows TEMP can contain an 8.3 alias, which the physical-path guard rejects.
+          Write-Host ("SYNTHETIC_TEMP_ALIAS=" + $env:TEMP)
+          Write-Host ("SYNTHETIC_RUNNER_TEMP=" + $env:RUNNER_TEMP)
+          ./scripts/ci/test-phase-e-report-paths.ps1 -EvidenceRoot $env:RUNNER_TEMP

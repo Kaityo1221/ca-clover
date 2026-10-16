@@ -1,0 +1,14 @@
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+const code=readFileSync("scripts/recovery/Backup-CA-Clover-Production-Latest.ps1","utf8");
+assert.match(code,/wgiittrvgtiosogyhfcl/,"Project binding required");
+assert.match(code,/pg_dump --format=custom --no-owner --no-privileges/,"Must use non-restoring pg_dump");
+assert.match(code,/pg_restore --list/,"Must inspect archive catalog only");
+assert.doesNotMatch(code,/\bpg_restore\s+--(?:dbname|clean|create|single-transaction|if-exists)|\bpg_restore\s+-d\b/i,"Never restore into production");
+assert.doesNotMatch(code,/\b(?:supabase\s+db\s+(?:push|reset)|supabase\s+functions\s+deploy|psql\s+-c\s+[^\n]*\b(?:ALTER|DELETE|UPDATE|DROP|INSERT))\b/i,"No production writes");
+assert.match(code,/Read-Host[^\n]*-AsSecureString/,"Require private password prompt");
+assert.match(code,/-mhe=on/,"Encrypted file names / 7z protected archive required");
+assert.match(code,/Get-FileHash[^\n]*SHA256/,"SHA-256 manifest/checksum required");
+assert.match(code,/Refusing to overwrite existing backup/);
+assert.match(code,/Do NOT delete originals/);
+console.log("CA_MASTER_BACKUP_CONTRACT_PASS: static only; operator script is not executed");
