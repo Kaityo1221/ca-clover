@@ -11,7 +11,7 @@ const dir = dirname(fileURLToPath(import.meta.url));
 
 async function bundledFixtureHtml() {
   let html = await readFile(join(dir, "preview.html"), "utf8");
-  const sourceFiles = ["csv-core.mjs", "export-failure.mjs", "csv-permission.mjs", "preview.mjs"];
+  const sourceFiles = ["csv-core.mjs", "export-failure.mjs", "csv-permission.mjs", "csv-purpose.mjs", "preview.mjs"];
   let inlineJs = "";
   for (const file of sourceFiles) {
     const source = await readFile(join(dir, file), "utf8");
