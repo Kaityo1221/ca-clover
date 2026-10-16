@@ -28,7 +28,8 @@ export default function Page(){
 
   async function load(){
     setPermissionsReady(false);
-    const [profileResult,permissionResult]=await Promise.all([
+    try{
+      const [profileResult,permissionResult]=await Promise.all([
       supabase.from("profiles").select("id,email,niantic_id,role,created_at").order("created_at",{ascending:false}),
       supabase.from("user_permissions").select("user_id,permission_code").in("permission_code",["S","D"]),
     ]);
@@ -42,26 +43,47 @@ export default function Page(){
     setDownloadUsers(new Set(permissions.filter(row=>row.permission_code==="D").map(row=>row.user_id)));
     setPermissionError(null);
     setPermissionsReady(true);
+    }catch{
+      setPermissionError("CAアカウントまたは権限情報を取得できませんでした。権限の変更は停止しています。");
+      setPermissionsReady(false);
+    }
   }
 
   useEffect(()=>{ if(!loading && user && profile?.role==="admin") load(); },[loading,user,profile?.role]);
 
   async function changeRole(id:string,role:AppRole){
+    if(busy!==null||!permissionsReady) return;
     setBusy(id);
-    const {error}=await supabase.functions.invoke("admin-manage",{body:{action:"set_role",userId:id,role}});
-    if(!error) await load();
-    setBusy(null);
+    try{
+      const {data,error}=await supabase.functions.invoke("admin-manage",{body:{action:"set_role",userId:id,role}});
+      const failed=Boolean(error)||data?.ok!==true;
+      await load();
+      if(failed) setPermissionError("ロール変更を完了できませんでした。現在の権限を再確認してください。");
+    }catch{
+      setPermissionsReady(false);
+      setPermissionError("ロール変更中にエラーが発生しました。再取得してください。");
+    }finally{
+      setBusy(null);
+    }
   }
 
   async function toggleStampPermission(row:ProfileRow){
-    if(row.role==="pending") return;
+    if(row.role==="pending"||busy!==null||!permissionsReady) return;
     setBusy(row.id);
-    const enabled=!stampUsers.has(row.id);
-    const {error}=await supabase.functions.invoke("admin-manage",{
-      body:{action:"set_permission",userId:row.id,permissionCode:"S",enabled}
-    });
-    if(!error) await load();
-    setBusy(null);
+    try{
+      const enabled=!stampUsers.has(row.id);
+      const {data,error}=await supabase.functions.invoke("admin-manage",{
+        body:{action:"set_permission",userId:row.id,permissionCode:"S",enabled}
+      });
+      const failed=Boolean(error)||data?.ok!==true;
+      await load();
+      if(failed) setPermissionError("S権限の更新を確認できませんでした。現在の権限を再確認してください。");
+    }catch{
+      setPermissionsReady(false);
+      setPermissionError("S権限の更新中にエラーが発生しました。再取得してください。");
+    }finally{
+      setBusy(null);
+    }
   }
 
   async function toggleDownloadPermission(row:ProfileRow){
@@ -106,12 +128,12 @@ export default function Page(){
             <div className="mt-1 text-[11px] text-slate-400">登録 {new Date(row.created_at).toLocaleString("ja-JP")}</div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {(["pending","ca","admin"] as AppRole[]).map(role=><button key={role} disabled={busy===row.id || row.role===role} onClick={()=>changeRole(row.id,role)} className={row.role===role?"rounded-full bg-lime-400 px-4 py-2 text-xs font-black text-lime-950":"rounded-full border border-lime-200 bg-white px-4 py-2 text-xs font-black text-lime-700 disabled:opacity-50"}>{role.toUpperCase()}</button>)}
+            {(["pending","ca","admin"] as AppRole[]).map(role=><button key={role} disabled={!permissionsReady || busy!==null || row.role===role} onClick={()=>changeRole(row.id,role)} className={row.role===role?"rounded-full bg-lime-400 px-4 py-2 text-xs font-black text-lime-950":"rounded-full border border-lime-200 bg-white px-4 py-2 text-xs font-black text-lime-700 disabled:opacity-50"}>{role.toUpperCase()}</button>)}
             {row.role==="admin"
               ? <span className="rounded-full bg-violet-100 px-4 py-2 text-xs font-black text-violet-700">S・D相当 / ADMIN</span>
               : <button
                   type="button"
-                  disabled={busy===row.id || row.role==="pending"}
+                  disabled={!permissionsReady || busy!==null || row.role==="pending"}
                   onClick={()=>toggleStampPermission(row)}
                   className={stampUsers.has(row.id)
                     ?"rounded-full bg-emerald-500 px-4 py-2 text-xs font-black text-white disabled:opacity-50"
