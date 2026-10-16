@@ -72,9 +72,27 @@ async function testBrowser() {
 
     const button = page.locator(".csv-button").first();
     await page.selectOption("#demo-mode", "normal");
+
+    // Opening the confirmation must NOT generate a CSV or fetch account data.
+    await button.click();
+    assert.equal(await page.locator("#confirm-export").evaluate(d => d.open), true);
+    assert.equal(downloads.length, 0, "First CSV tap only opens confirmation");
+    assert.equal(await button.isDisabled(), false);
+    await page.locator("#confirm-cancel").click();
+    assert.equal(await page.locator("#confirm-export").evaluate(d => d.open), false);
+    assert.equal(downloads.length, 0, "Cancel must never download");
+    assert.ok(!(await page.locator("#feedback").innerText()).includes("完了"));
+
+    // Escape also aborts without generating and preserves the details flow.
+    await button.click();
+    await page.keyboard.press("Escape");
+    assert.equal(await page.locator("#confirm-export").evaluate(d => d.open), false);
+    assert.equal(downloads.length, 0, "Escape must never download");
+
+    await button.click();
     const [download] = await Promise.all([
       page.waitForEvent("download"),
-      button.click(),
+      page.locator("#confirm-generate").click(),
     ]);
     assert.equal(download.suggestedFilename(), "meetup_20261011_demo-past-001.csv");
     const csv = await readFile(await download.path(), "utf8");
@@ -93,6 +111,8 @@ async function testBrowser() {
     for (const [mode, message] of errorsToCheck) {
       await page.selectOption("#demo-mode", mode);
       await button.click();
+      assert.equal(downloads.length, 1, "Confirmation cannot generate on its own");
+      await page.locator("#confirm-generate").click();
       await page.waitForFunction(expected => {
         const text = document.querySelector("#feedback")?.textContent ?? "";
         return text.includes(expected);
@@ -106,7 +126,7 @@ async function testBrowser() {
     assert.deepEqual(errors, [], "Uncaught browser errors");
     assert.deepEqual(requests, [], "Preview must not make network requests");
     await page.close();
-    console.log("PASS browser smoke: 3 cards, details, CSV, 3 failure modes, 5 widths, no network requests");
+    console.log("PASS browser smoke: confirmation/cancel/Escape, 3 cards, details, CSV, 3 failure modes, 5 widths, no network requests");
   } finally {
     await browser.close();
   }
