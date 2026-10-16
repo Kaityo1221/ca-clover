@@ -6,6 +6,7 @@ const fakeEvents = [
   {
     event: { id: "demo-past-001", eventTime: "2026-10-11T14:00:00+09:00" },
     title: "コミュニティ・デイ ミートアップ", date: "2026.10.11（日）14:00", status: "終了",
+    counts: { participating: 2, checkedIn: 1 },
     members: [
       { id: "a", username: "Trainer_A" },
       { id: "b", username: "Trainer_B" },
@@ -20,6 +21,7 @@ const fakeEvents = [
   {
     event: { id: "demo-live-002", eventTime: "2026-10-15T14:00:00+09:00" },
     title: "キョダイマックス レイド", date: "2026.10.15（木）14:00", status: "LIVE（例）",
+    counts: { participating: 3, checkedIn: 2 },
     members: [
       { id: "d", username: "Trainer_D" },
       { id: "e", username: "Trainer_E" },
@@ -34,6 +36,7 @@ const fakeEvents = [
   {
     event: { id: "demo-future-003", eventTime: "2026-10-25T14:00:00+09:00" },
     title: "週末ミートアップ", date: "2026.10.25（日）14:00", status: "開催予定（例）",
+    counts: { participating: 2, checkedIn: 0 },
     members: [
       { id: "g", username: "Trainer_G" },
       { id: "h", username: "Trainer_H" },
@@ -50,6 +53,33 @@ const output = document.querySelector("#feedback");
 const dialog = document.querySelector("#detail");
 const detailText = document.querySelector("#detail-text");
 const demoMode = document.querySelector("#demo-mode");
+const confirmDialog = document.querySelector("#confirm-export");
+const confirmEvent = document.querySelector("#confirm-event");
+const confirmCancel = document.querySelector("#confirm-cancel");
+const confirmGenerate = document.querySelector("#confirm-generate");
+let pendingExport = null;
+
+function requestExportConfirmation(item, button) {
+  if (button.disabled || pendingExport) return;
+  if (typeof confirmDialog.showModal !== "function") {
+    output.textContent = "この環境では確認画面を開けないため、CSVの生成を中止しました。";
+    return;
+  }
+  // No member-status collection and no CSV creation before confirmation.
+  pendingExport = { item, button };
+  confirmEvent.textContent = item.title + " / " + item.date;
+  confirmDialog.showModal();
+}
+
+confirmCancel.addEventListener("click", () => confirmDialog.close());
+confirmDialog.addEventListener("close", () => { pendingExport = null; });
+confirmGenerate.addEventListener("click", () => {
+  if (!pendingExport) return;
+  const { item, button } = pendingExport;
+  pendingExport = null; // prevent double confirmation
+  confirmDialog.close();
+  void mockDownload(item, button);
+});
 
 function node(tag, className, text) {
   const element = document.createElement(tag);
@@ -118,13 +148,8 @@ async function mockDownload(item, button) {
 }
 
 for (const item of fakeEvents) {
-  const result = buildParticipantCsv({
-    event: item.event,
-    members: item.members,
-    rsvpStatuses: item.rsvpStatuses,
-    allPagesComplete: true,
-    allStatusesComplete: true,
-  });
+  // These aggregate counts are mock equivalents of existing DB summary fields.
+  // Never prefetch member details or generate CSV when rendering a list.
   const card = node("article", "meetup-card");
   const main = node("button", "card-primary");
   main.type = "button";
@@ -136,13 +161,13 @@ for (const item of fakeEvents) {
   const footer = node("div", "card-footer");
   const stats = node("div", "stats");
   stats.append(
-    summaryBlock("参加表明", result.summary.participating + "人"),
-    summaryBlock("チェックイン", result.summary.checkedIn + "人", "green"),
+    summaryBlock("参加表明", item.counts.participating + "人"),
+    summaryBlock("チェックイン", item.counts.checkedIn + "人", "green"),
   );
   const download = node("button", "csv-button", "↓ CSV");
   download.type = "button";
-  download.setAttribute("aria-label", item.title + "のCSVをダウンロード");
-  download.addEventListener("click", () => mockDownload(item, download));
+  download.setAttribute("aria-label", item.title + "のCSV生成の確認画面を開く");
+  download.addEventListener("click", () => requestExportConfirmation(item, download));
   footer.append(stats, download);
   card.append(node("div", "status", item.status), main, footer);
   cards.append(card);
