@@ -1,0 +1,21 @@
+name: Public/Private Boundary CI
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Confirm only public frontend is present
+        run: node scripts/ci/verify-public-boundary.mjs
+      - name: Verify login routing
+        run: npm run test:auth-routing
+      - name: Verify public frontend builds
+        run: npm run build
