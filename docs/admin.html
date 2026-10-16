@@ -237,20 +237,54 @@ async function icons(){
 }
 
 async function accounts(){
- app.innerHTML=title("home","ACCOUNTS","👥 CAアカウント","Googleログイン後のアカウント権限を管理します。認証済みCAとADMINは全員メダルラリーを利用できます。")+'<div id="list" class="section">'+msg("読み込み中...")+'</div>';
- const {data:profiles,error}=await client.from("profiles")
-  .select("id,email,niantic_id,role,created_at")
-  .order("created_at",{ascending:false});
- if(error){document.getElementById("list").innerHTML=msg(error.message,"err");return}
- document.getElementById("list").innerHTML=(profiles||[]).map(x=>{
-  const roles=["pending","ca","admin"].map(role=>'<button class="btn '+(x.role===role?"":"line")+'" data-role="'+role+'" data-id="'+x.id+'" '+(x.role===role?"disabled":"")+'>'+role.toUpperCase()+'</button>').join("");
-  return '<section class="claim"><div class="row between wraprow"><div><h3>'+e(x.email||"メール未取得")+'</h3><div class="small muted strong">SCOPELY EXPLORE ID: '+e(x.niantic_id||"未登録")+'</div><div class="tiny muted">登録 '+e(fmt(x.created_at))+'</div></div><div class="actions">'+roles+'</div></div></section>'
+ app.innerHTML=title("home","ACCOUNTS","👥 CAアカウント","Googleログイン後のアカウント権限を管理します。認証済みCAとADMINは全員メダルラリーを利用できます。Dは参加者CSVの追加権限です。")+
+  '<div id="accountsStatus" class="tiny strong muted section" role="status" aria-live="polite"></div><div id="list" class="section">'+msg("読み込み中...")+'</div>';
+ const [profilesResult,permissionsResult]=await Promise.all([
+  client.from("profiles").select("id,email,niantic_id,role,created_at").order("created_at",{ascending:false}),
+  client.from("user_permissions").select("user_id,permission_code").eq("permission_code","D")
+ ]);
+ const list=document.getElementById("list");
+ if(profilesResult.error||permissionsResult.error){
+  list.innerHTML=msg("アカウントまたはD権限を確認できません。変更操作は停止しています。","err");
+  return;
+ }
+ const dUsers=new Set((permissionsResult.data||[]).map(x=>x.user_id));
+ list.innerHTML=(profilesResult.data||[]).map(x=>{
+  const id=e(x.id);
+  const granted=dUsers.has(x.id);
+  const roles=["pending","ca","admin"].map(role=>{
+   const blocked=granted&&role!=="ca";
+   return '<button type="button" class="btn '+(x.role===role?"":"line")+'" data-role="'+role+'" data-id="'+id+'" '+(x.role===role||blocked?"disabled":"")+(blocked?' title="ロール変更前にD権限を解除してください"':"")+'>'+role.toUpperCase()+'</button>';
+  }).join("");
+  const dButton=x.role==="ca"
+   ?'<button type="button" class="btn '+(granted?"":"line")+'" data-d="'+id+'" aria-pressed="'+String(granted)+'" title="D：参加者CSVダウンロード権限">'+(granted?"D ✓":"D")+'</button>'
+   :"";
+  const help=granted&&x.role==="ca"
+   ?'<div class="tiny muted section">ロール変更する場合は、先にD権限を解除してください。</div>'
+   :"";
+  return '<section class="claim"><div class="row between wraprow"><div><h3>'+e(x.email||"メール未取得")+'</h3><div class="small muted strong">SCOPELY EXPLORE ID: '+e(x.niantic_id||"未登録")+'</div><div class="tiny muted">登録 '+e(fmt(x.created_at))+'</div></div><div class="actions">'+roles+dButton+'</div></div>'+help+'</section>';
  }).join("");
- app.querySelectorAll("[data-role]").forEach(b=>b.onclick=async()=>{
-  b.disabled=true;
-  const r=await client.functions.invoke("admin-manage",{body:{action:"set_role",userId:b.dataset.id,role:b.dataset.role}});
-  if(r.error)alert(r.error.message);
-  await accounts();
+ let locked=false;
+ const buttons=app.querySelectorAll("[data-role],[data-d]");
+ buttons.forEach(b=>b.onclick=async()=>{
+  if(locked)return;
+  locked=true;
+  buttons.forEach(x=>x.disabled=true);
+  const body=b.hasAttribute("data-d")
+   ?{action:"set_permission",permissionCode:"D",userId:b.dataset.d,enabled:b.getAttribute("aria-pressed")!=="true"}
+   :{action:"set_role",userId:b.dataset.id,role:b.dataset.role};
+  try{
+   const r=await client.functions.invoke("admin-manage",{body});
+   if(r.error||r.data?.ok!==true)throw new Error("変更結果を確認できません");
+   await accounts();
+  }catch{
+   await accounts();
+   const status=document.getElementById("accountsStatus");
+   if(status){
+    status.textContent="変更を確認できませんでした。最新の状態を再取得してください。";
+    status.style.color="#b45309";
+   }
+  }
  });
 }
 
