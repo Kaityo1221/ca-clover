@@ -2,7 +2,8 @@ import { buildParticipantCsv } from './csv-core.mjs';
 import { collectMemberPages } from './member-pages.mjs';
 
 // Pure dependency-injected integration. No production network, auth keys, DB, or tokens.
-// The injected gate MUST be distributed/shared in a production deployment.
+// Optional admission control hook for testing or future operational needs.
+// No distributed 300-user queue or global semaphore is required for the initial CSV feature.
 export class ExportFailure extends Error {
   constructor(code) {
     super(code);
@@ -28,7 +29,7 @@ export async function exportParticipantCsv({
   if (typeof eventId !== 'string' || !/^[a-zA-Z0-9_-]{3,200}$/.test(eventId)) fail('INVALID_INPUT');
   if (typeof actorId !== 'string' || !actorId.trim()) fail('INVALID_INPUT');
   requireCallback(authorize, 'authorize');
-  requireCallback(tryAcquire, 'tryAcquire');
+  if (tryAcquire !== undefined && typeof tryAcquire !== 'function') fail('CONFIG');
   requireCallback(fetchEventSnapshot, 'fetchEventSnapshot');
   requireCallback(fetchMemberPage, 'fetchMemberPage');
 
@@ -39,13 +40,16 @@ export async function exportParticipantCsv({
   catch { fail('FORBIDDEN'); }
   if (allowed !== true) fail('FORBIDDEN');
 
-  // Null lease means BUSY. In production this must be a cross-instance lease
-  // with an expiry; an in-process semaphore is NOT enough for Supabase.
-  let lease;
-  try { lease = await tryAcquire({ actorId, eventId }); }
-  catch { fail('BUSY'); }
-  if (!lease) fail('BUSY');
-  if (typeof lease.release !== 'function') fail('CONFIG');
+  // Default to on-demand execution without a global queue. The UI prevents
+  // duplicate clicks; bounded paging and server-side authorization remain essential.
+  // A caller may optionally inject a gate when operational measurements justify it.
+  let lease = { release: async () => {} };
+  if (tryAcquire) {
+    try { lease = await tryAcquire({ actorId, eventId }); }
+    catch { fail('BUSY'); }
+    if (!lease) fail('BUSY');
+    if (typeof lease.release !== 'function') fail('CONFIG');
+  }
 
   try {
     const snapshot = await fetchEventSnapshot({ eventId });
