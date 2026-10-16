@@ -35,7 +35,7 @@ Deno.serve(async(req:Request)=>{
           .from("user_permissions")
           .delete()
           .eq("user_id",userId)
-          .eq("permission_code","S");
+          .in("permission_code",["S","D"]);
         if(permissionError) throw permissionError;
       }
       return new Response(JSON.stringify({ok:true}),{headers:{...corsHeaders,"Content-Type":"application/json"}});
@@ -45,7 +45,8 @@ Deno.serve(async(req:Request)=>{
       const permissionCode=String(body.permissionCode??"").trim().toUpperCase();
       const userId=String(body.userId??"");
       const enabled=Boolean(body.enabled);
-      if(permissionCode!=="S"||!userId) throw new Error("invalid permission request");
+      // S remains the existing Stamp Rally right; D is the independent CSV download right.
+      if(!["S","D"].includes(permissionCode)||!userId||typeof body.enabled!=="boolean") throw new Error("invalid permission request");
 
       const {data:targetProfile,error:targetError}=await admin
         .from("profiles")
@@ -53,7 +54,8 @@ Deno.serve(async(req:Request)=>{
         .eq("id",userId)
         .single();
       if(targetError) throw targetError;
-      if(enabled&&targetProfile?.role==="pending") throw new Error("pending account cannot receive S permission");
+      if(enabled&&targetProfile?.role==="pending") throw new Error("pending account cannot receive permission");
+      if(enabled&&permissionCode==="D"&&targetProfile?.role!=="ca") throw new Error("D permission requires CA account");
 
       if(enabled){
         const {error}=await admin.from("user_permissions").upsert({
