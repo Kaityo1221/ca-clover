@@ -76,7 +76,9 @@ confirmCancel.addEventListener("click", () => {
   confirmDialog.close();
 });
 confirmDialog.addEventListener("cancel", () => { pendingExport = null; });
-confirmDialog.addEventListener("close", () => { pendingExport = null; });
+confirmDialog.addEventListener("close", () => {
+  if (!confirmDialog.open) pendingExport = null;
+});
 confirmGenerate.addEventListener("click", () => {
   if (!pendingExport) return;
   const { item, button } = pendingExport;
