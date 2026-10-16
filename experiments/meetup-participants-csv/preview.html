@@ -124,10 +124,10 @@
   </header>
   <div class="notice">
     <strong>独立モック（本番未接続）</strong><br>
-    この画面はすべて架空のサンプルです。通常のCAにはCSVボタンを表示しません。模擬権限で表示を切り替えられます。Campfire通信はありません。
+    この画面はすべて架空のサンプルです。通常のCAにはCSVボタンを表示しません。D権限の模擬切替で表示を確認できます。Campfire通信はありません。
   </div>
   <div class="section"><h2>🔥 Meetup履歴 / 1か月</h2><span class="hint">最新順</span></div>
-  <div class="demo-control"><label for="viewer-mode"><strong>権限表示テスト</strong></label><select id="viewer-mode" aria-label="架空の権限状態を選択"><option value="ungranted">通常CA（権限なし）</option><option value="granted">CSV権限ありのCA</option><option value="other-community">他CommunityのCA</option><option value="pending">承認待ちユーザー</option><option value="admin">ADMIN</option></select></div>
+  <div class="demo-control"><label for="viewer-mode"><strong>権限表示テスト</strong></label><select id="viewer-mode" aria-label="架空の権限状態を選択"><option value="ungranted">通常CA（権限なし）</option><option value="granted">D権限ありのCA</option><option value="other-community">他CommunityのCA</option><option value="pending">承認待ちユーザー</option><option value="admin">ADMIN</option></select></div>
   <div class="demo-control"><label for="demo-mode"><strong>動作シミュレーション</strong></label><select id="demo-mode" aria-label="CSV操作の模擬状態"><option value="normal">正常取得</option><option value="busy">混雑時（429）</option><option value="incomplete">一部取得失敗</option><option value="timeout">タイムアウト</option></select></div>
   <section id="cards" class="meetups" aria-label="Meetupカード一覧"></section>
   <p id="feedback" role="status" aria-live="polite"></p>
