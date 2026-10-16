@@ -92,6 +92,19 @@
   .confirm-actions button { min-height:46px; padding:10px 8px; border-radius:14px; font:inherit; font-size:12px; font-weight:900; cursor:pointer; }
   #confirm-cancel { background:#fff; color:#475569; border:1px solid #cbd5e1; }
   #confirm-generate { background:var(--clover-300); color:#365314; border:1px solid var(--clover-400); }
+  #confirm-generate:disabled { background:#f1f5f9; color:#94a3b8; border-color:#e2e8f0; cursor:not-allowed; }
+  .purpose-label { display:block; margin-top:12px; color:#365314; font-size:12px; font-weight:900; }
+  #purpose-category, #purpose-detail { display:block; width:100%; margin-top:6px; padding:10px 12px;
+    border:1px solid #d9f99d; border-radius:13px; background:#fff; font:inherit;
+    font-size:13px; color:#365314; }
+  #purpose-category { min-height:44px; }
+  #purpose-detail { min-height:68px; resize:vertical; }
+  #purpose-category:focus-visible, #purpose-detail:focus-visible, #purpose-ack:focus-visible {
+    outline:3px solid #84cc16; outline-offset:2px;
+  }
+  .purpose-ack { display:flex; gap:10px; align-items:flex-start; margin-top:12px; color:#475569; font-size:12px; line-height:1.55; }
+  #purpose-ack { width:18px; height:18px; margin:1px 0 0; accent-color:#65a30d; flex-shrink:0; }
+  #purpose-error { font-size:12px; color:#b45309; min-height:1.3em; margin-top:6px; }
   #close-detail { background:var(--clover-300); color:#365314; border:0;
     border-radius:14px; padding:10px 24px; font:inherit; font-weight:900; min-height:44px; }
   @media(max-width:360px) {
@@ -128,11 +141,23 @@
 <dialog id="confirm-export" aria-labelledby="confirm-title" aria-describedby="confirm-info">
   <h2 id="confirm-title">参加者CSVを生成しますか？</h2>
   <div id="confirm-event" class="confirm-event"></div>
-  <p id="confirm-info" class="confirm-note">参加者のアカウント名と参加状況を含むCSVです。運営上必要な場合だけ生成し、第三者への共有に注意してください。</p>
-  <p class="confirm-note"><strong>この画面は模擬データのみ。</strong> 確認ボタンを押すまではCSV生成処理を開始しません。</p>
+  <p id="confirm-info" class="confirm-note">参加者のアカウント名と参加状況を含むCSVです。取得目的は持ち出し履歴に記録する想定です。</p>
+  <label class="purpose-label" for="purpose-category">利用目的（必須）</label>
+  <select id="purpose-category">
+    <option value="">選択してください</option>
+    <option value="mini_game">ミニゲーム利用</option>
+    <option value="attendance">出欠確認と照合のため</option>
+    <option value="event_operations">イベント運営</option>
+    <option value="other">その他</option>
+  </select>
+  <label class="purpose-label" for="purpose-detail">補足情報（任意・「その他」の場合は必須）</label>
+  <textarea id="purpose-detail" maxlength="200" rows="2" placeholder="必要があれば一言だけ"></textarea>
+  <label class="purpose-ack"><input id="purpose-ack" type="checkbox"/> <span>申告した目的に限り利用し、第三者への無断共有をしません。</span></label>
+  <div id="purpose-error" aria-live="polite"></div>
+  <p class="confirm-note"><strong>独立モック。</strong>この画面では実際の権限付与・持ち出しログ保存は行いません。</p>
   <div class="confirm-actions">
     <button id="confirm-cancel" type="button">キャンセル</button>
-    <button id="confirm-generate" type="button">生成してダウンロード</button>
+    <button id="confirm-generate" type="button" disabled>生成してダウンロード</button>
   </div>
 </dialog>
 <script type="module" src="./preview.mjs"></script>
