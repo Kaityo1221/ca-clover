@@ -110,3 +110,20 @@ test('requires actual callbacks and rejects malformed IDs', async () => {
   await assert.rejects(() => exportParticipantCsv({ ...options, eventId: '../evil' }), /INVALID_INPUT/);
   await assert.rejects(() => exportParticipantCsv({ ...options, authorize: undefined }), /CONFIG/);
 });
+
+test('runs on demand without a global concurrency gate', async () => {
+  const { options } = setup({ tryAcquire: undefined });
+  const result = await exportParticipantCsv(options);
+  assert.equal(result.summary.participating, 2);
+});
+
+test('authorization still blocks participant lookup without a global gate', async () => {
+  let calls = 0;
+  const { options } = setup({
+    tryAcquire: undefined,
+    authorize: async () => false,
+    fetchEventSnapshot: async () => { calls++; return snapshot; },
+  });
+  await assert.rejects(() => exportParticipantCsv(options), /FORBIDDEN/);
+  assert.equal(calls, 0);
+});
