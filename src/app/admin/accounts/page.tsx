@@ -73,10 +73,11 @@ export default function Page(){
       const {data,error}=await supabase.functions.invoke("admin-manage",{
         body:{action:"set_permission",userId:row.id,permissionCode:"D",enabled}
       });
-      if(error||data?.ok!==true){
+      const updateFailed=Boolean(error)||data?.ok!==true;
+      await load();
+      if(updateFailed){
         setPermissionError("D権限を更新できませんでした。現在の権限を再確認してください。");
       }
-      await load();
     }catch{
       setPermissionError("D権限の更新中にエラーが発生しました。再度確認してください。");
       setPermissionsReady(false);
@@ -122,7 +123,7 @@ export default function Page(){
               type="button"
               disabled={busy!==null || row.role!=="ca" || !permissionsReady}
               onClick={()=>{void toggleDownloadPermission(row);}}
-              aria-label={row.email??row.niantic_id??"CA"+" のD権限"}
+              aria-label={(row.email??row.niantic_id??"CA")+" のD権限"}
               aria-pressed={downloadUsers.has(row.id)}
               title="D：参加者CSVダウンロード権限"
               className={downloadUsers.has(row.id)
