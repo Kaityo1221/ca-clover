@@ -26,9 +26,9 @@ function render() {
     nameGroup.append(element("div", "meta", account.community + " / " + account.role.toUpperCase()));
     const controls = element("div", "controls");
     controls.append(element("span", account.granted ? "permission on" : "permission",
-      account.granted ? "CSV権限：あり" : "CSV権限：なし"));
+      account.granted ? "D権限：あり" : "D権限：なし"));
     const toggle = element("button", account.granted ? "active" : "",
-      account.granted ? "CSV権限を解除" : "CSV権限を付与");
+      account.granted ? "D権限を解除" : "D権限を付与");
     toggle.type = "button";
     toggle.dataset.accountId = account.id;
     toggle.disabled = !canAdminGrantCsvExport({ actorRole: "admin", targetRole: account.role });
@@ -36,7 +36,7 @@ function render() {
     toggle.addEventListener("click", () => {
       if (!canAdminGrantCsvExport({ actorRole: "admin", targetRole: account.role })) return;
       account.granted = !account.granted;
-      feedback.textContent = account.name + "の模擬CSV権限を" +
+      feedback.textContent = account.name + "の模擬D権限を" +
         (account.granted ? "ON" : "OFF") + "にしました（保存・通信なし）。";
       render();
     });
