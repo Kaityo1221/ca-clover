@@ -1,7 +1,7 @@
 // Offline UI visibility contract only. NEVER use browser visibility as authorization.
 // Any production CSV endpoint MUST verify its own authenticated actor,
-// CSV_EXPORT permission and event->community membership at request time.
-export const CSV_EXPORT_PERMISSION = "CSV_EXPORT";
+// D (Download) permission and event->community membership at request time.
+export const CSV_EXPORT_PERMISSION = "D";
 
 export function canShowCsvExport({
   role,
