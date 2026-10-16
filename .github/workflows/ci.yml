@@ -14,5 +14,6 @@ jobs:
         with:
           node-version: 22
       - run: npm install --no-audit --no-fund
+      - run: node scripts/ci/verify-public-boundary.mjs
       - run: npm test
       - run: npm run build
