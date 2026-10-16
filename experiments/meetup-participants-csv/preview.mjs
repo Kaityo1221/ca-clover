@@ -1,11 +1,13 @@
 import { buildParticipantCsv } from "./csv-core.mjs";
 import { getPublicExportFailure } from "./export-failure.mjs";
+import { canShowCsvExport, CSV_EXPORT_PERMISSION } from "./csv-permission.mjs";
 
 // FICTIONAL DATA ONLY. This preview makes no network or Supabase requests.
 const fakeEvents = [
   {
     event: { id: "demo-past-001", eventTime: "2026-10-11T14:00:00+09:00" },
     title: "コミュニティ・デイ ミートアップ", date: "2026.10.11（日）14:00", status: "終了",
+    communityId: "demo-community",
     counts: { participating: 2, checkedIn: 1 },
     members: [
       { id: "a", username: "Trainer_A" },
@@ -21,6 +23,7 @@ const fakeEvents = [
   {
     event: { id: "demo-live-002", eventTime: "2026-10-15T14:00:00+09:00" },
     title: "キョダイマックス レイド", date: "2026.10.15（木）14:00", status: "LIVE（例）",
+    communityId: "demo-community",
     counts: { participating: 3, checkedIn: 2 },
     members: [
       { id: "d", username: "Trainer_D" },
@@ -36,6 +39,7 @@ const fakeEvents = [
   {
     event: { id: "demo-future-003", eventTime: "2026-10-25T14:00:00+09:00" },
     title: "週末ミートアップ", date: "2026.10.25（日）14:00", status: "開催予定（例）",
+    communityId: "demo-community",
     counts: { participating: 2, checkedIn: 0 },
     members: [
       { id: "g", username: "Trainer_G" },
@@ -53,6 +57,7 @@ const output = document.querySelector("#feedback");
 const dialog = document.querySelector("#detail");
 const detailText = document.querySelector("#detail-text");
 const demoMode = document.querySelector("#demo-mode");
+const viewerMode = document.querySelector("#viewer-mode");
 const confirmDialog = document.querySelector("#confirm-export");
 const confirmEvent = document.querySelector("#confirm-event");
 const confirmCancel = document.querySelector("#confirm-cancel");
@@ -153,7 +158,26 @@ async function mockDownload(item, button) {
   }
 }
 
-for (const item of fakeEvents) {
+// Viewer selection is a demo-only stand-in for server-confirmed account permissions.
+function mockViewer() {
+  switch (viewerMode.value) {
+    case "granted":
+      return { role: "ca", permissionCodes: [CSV_EXPORT_PERMISSION], membershipCommunityIds: ["demo-community"] };
+    case "admin":
+      return { role: "admin", permissionCodes: [], membershipCommunityIds: [] };
+    case "other-community":
+      return { role: "ca", permissionCodes: [CSV_EXPORT_PERMISSION], membershipCommunityIds: ["other-demo-community"] };
+    case "pending":
+      return { role: "pending", permissionCodes: [CSV_EXPORT_PERMISSION], membershipCommunityIds: ["demo-community"] };
+    default:
+      return { role: "ca", permissionCodes: [], membershipCommunityIds: ["demo-community"] };
+  }
+}
+
+function renderCards() {
+  cards.replaceChildren();
+  const viewer = mockViewer();
+  for (const item of fakeEvents) {
   // These aggregate counts are mock equivalents of existing DB summary fields.
   // Never prefetch member details or generate CSV when rendering a list.
   const card = node("article", "meetup-card");
@@ -170,13 +194,23 @@ for (const item of fakeEvents) {
     summaryBlock("参加表明", item.counts.participating + "人"),
     summaryBlock("チェックイン", item.counts.checkedIn + "人", "green"),
   );
-  const download = node("button", "csv-button", "↓ CSV");
-  download.type = "button";
-  download.setAttribute("aria-label", item.title + "のCSV生成の確認画面を開く");
-  download.addEventListener("click", () => requestExportConfirmation(item, download));
-  footer.append(stats, download);
+  footer.append(stats);
+  if (canShowCsvExport({
+    ...viewer,
+    eventCommunityId: item.communityId,
+    authVerified: true,
+  })) {
+    const download = node("button", "csv-button", "↓ CSV");
+    download.type = "button";
+    download.setAttribute("aria-label", item.title + "のCSV生成の確認画面を開く");
+    download.addEventListener("click", () => requestExportConfirmation(item, download));
+    footer.append(download);
+  }
   card.append(node("div", "status", item.status), main, footer);
   cards.append(card);
+  }
 }
+viewerMode.addEventListener("change", renderCards);
+renderCards();
 
 document.querySelector("#close-detail").addEventListener("click", () => dialog.close());
