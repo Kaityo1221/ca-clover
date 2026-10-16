@@ -62,7 +62,28 @@ const confirmDialog = document.querySelector("#confirm-export");
 const confirmEvent = document.querySelector("#confirm-event");
 const confirmCancel = document.querySelector("#confirm-cancel");
 const confirmGenerate = document.querySelector("#confirm-generate");
+const purposeCategory = document.querySelector("#purpose-category");
+const purposeDetail = document.querySelector("#purpose-detail");
+const purposeAck = document.querySelector("#purpose-ack");
+const purposeError = document.querySelector("#purpose-error");
 let pendingExport = null;
+
+function hasValidPurpose() {
+  const category = purposeCategory.value;
+  const detail = purposeDetail.value.trim();
+  return ["mini_game", "attendance", "event_operations", "other"].includes(category) &&
+    (category !== "other" || detail.length > 0) &&
+    detail.length <= 200 &&
+    purposeAck.checked === true;
+}
+function updatePurposeControls() {
+  confirmGenerate.disabled = !pendingExport || !hasValidPurpose();
+  purposeError.textContent = purposeCategory.value === "other" && !purposeDetail.value.trim()
+    ? "「その他」は補足情報が必要です。" : "";
+}
+purposeCategory.addEventListener("change", updatePurposeControls);
+purposeDetail.addEventListener("input", updatePurposeControls);
+purposeAck.addEventListener("change", updatePurposeControls);
 
 function requestExportConfirmation(item, button) {
   if (button.disabled || pendingExport) return;
@@ -73,6 +94,10 @@ function requestExportConfirmation(item, button) {
   // No member-status collection and no CSV creation before confirmation.
   pendingExport = { item, button };
   confirmEvent.textContent = item.title + " / " + item.date;
+  purposeCategory.value = "";
+  purposeDetail.value = "";
+  purposeAck.checked = false;
+  updatePurposeControls();
   confirmDialog.showModal();
 }
 
@@ -85,7 +110,7 @@ confirmDialog.addEventListener("close", () => {
   if (!confirmDialog.open) pendingExport = null;
 });
 confirmGenerate.addEventListener("click", () => {
-  if (!pendingExport) return;
+  if (!pendingExport || !hasValidPurpose()) return;
   const { item, button } = pendingExport;
   pendingExport = null; // prevent double confirmation
   confirmDialog.close();
