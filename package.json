@@ -6,9 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "npm run test:share-url && npm run test:auth-routing",
+    "test": "npm run test:share-url && npm run test:auth-routing && npm run test:d-permission",
     "test:share-url": "node scripts/test-campfire-share-url.mjs",
-    "test:auth-routing": "node --experimental-strip-types scripts/test-auth-routing.ts"
+    "test:auth-routing": "node --experimental-strip-types scripts/test-auth-routing.ts",
+    "test:d-permission": "node --test scripts/test-admin-d-permission.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0",
