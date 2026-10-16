@@ -74,8 +74,8 @@ Playwrightを明示的にセットアップしたローカル環境であれば 
 
 **初期状態では、一般CAにCSVボタンを表示しない。**
 
-- 許可条件：明示的な `CSV_EXPORT` 権限 + 自分に割り当てられたCommunityのMeetup。権限未取得時、未割当Community、未承認アカウントは非表示。ADMINは本人確認済みの管理者として扱う。
-- 管理方法：既存のADMIN「👥 CAアカウント」に、S（Stamp Rally）とは独立のCSV権限ON/OFFを設ける。新たな管理メニューは増やさない。
+- 許可条件：明示的な `D` 権限 + 自分に割り当てられたCommunityのMeetup。権限未取得時、未割当Community、未承認アカウントは非表示。ADMINは本人確認済みの管理者として扱う。
+- 管理方法：既存のADMIN「👥 CAアカウント」に、S（Stamp Rally）とは独立のD権限ON/OFFを設ける。新たな管理メニューは増やさない。
 - `preview.html` では通常CA（非表示）・権限ありCA（表示）・他Community（非表示）・pending（非表示）・ADMIN（表示）を**デモ選択**で確認可能。
 - `admin-csv-permissions-preview.html` は架空のCAだけの管理画面モック。付与・解除を試せるが**DBにも本番権限にも保存しない**。
 - `csv-permission.mjs` は**画面上の表示だけ**を判定する純粋関数。**本番CSV APIではサーバー側で権限と所属Communityを再検証することが必須**。
@@ -84,14 +84,14 @@ Playwrightを明示的にセットアップしたローカル環境であれば 
 - 監査ログは別途DB/RLSとサーバー側保存が必要。ログを保存できない場合はCSV出力しない設計。
 
 詳しい監査・権限・変更候補は `CSV-AUDIT-DESIGN-v1.md` を参照。
-公開GitHubソースの読み取り専用影響調査は `CSV-PERMISSION-IMPACT-REVIEW-2026-10-16.md` 参照。既存権限テーブルの`CSV_EXPORT`形式は許容される見込み。ただし実DB未確認、ADMIN Edgeの変更はSTOP。
+公開GitHubソースの読み取り専用影響調査は `CSV-PERMISSION-IMPACT-REVIEW-2026-10-16.md` 参照。既存権限テーブルの`D`形式は許容される見込み。ただし実DB未確認、ADMIN Edgeの変更はSTOP。
 
 
 ## 独立モックの確認場所と検証状況（2026-10-16）
 
 ローカルサーバー `python -m http.server 8765` をリポジトリ直下で起動すると、以下を表示できる。
 
-- CA側: `http://127.0.0.1:8765/experiments/meetup-participants-csv/preview.html`。初期の通常CAはCSVボタン非表示。デモ用の権限選択で「CSV権限あり」「他Community」「pending」「ADMIN」を切り替えられる。
+- CA側: `http://127.0.0.1:8765/experiments/meetup-participants-csv/preview.html`。初期の通常CAはCSVボタン非表示。デモ用の権限選択で「D権限あり」「他Community」「pending」「ADMIN」を切り替えられる。
 - ADMIN側: `http://127.0.0.1:8765/experiments/meetup-participants-csv/admin-csv-permissions-preview.html`。架空CAへの付与・解除のみ。**実アカウントへの操作ではない**。
 - `csv-permission.mjs`/`.test.mjs`: ブラウザ上の表示可否のみを模擬。サーバー側の認可処理ではない。
 - `csv-purpose.mjs`/`.test.mjs`: 目的4択＋任意補足（その他の場合だけ必須）＋取り扱い同意を検証。サーバー側の入力検証ではない。
