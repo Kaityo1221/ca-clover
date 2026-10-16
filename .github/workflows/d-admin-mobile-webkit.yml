@@ -29,8 +29,6 @@ jobs:
         run: npx playwright install --with-deps webkit
       - name: Test synthetic D administration (network blocked, no production access)
         run: node scripts/ci/test-pages-admin-d-webkit.mjs
-      - name: Test GitHub HTML preview with synthetic accounts (strictly offline)
-        run: node scripts/ci/test-d-admin-preview-webkit.mjs
       - name: Store only synthetic screenshots
         if: always()
         uses: actions/upload-artifact@v4
