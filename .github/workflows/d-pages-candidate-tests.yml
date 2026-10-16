@@ -1,0 +1,27 @@
+name: D ADMIN Pages Candidate Node Tests (No Deploy)
+
+on:
+  push:
+    branches:
+      - feature/pages-admin-d-20261016
+  pull_request:
+    paths:
+      - "docs/admin.html"
+      - "scripts/ci/test-pages-admin-d.mjs"
+      - ".github/workflows/d-pages-candidate-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  d-pages-node-test:
+    name: D ADMIN pages / node --test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run isolated ADMIN D UI tests (no browser or production calls)
+        run: node --test scripts/ci/test-pages-admin-d.mjs
