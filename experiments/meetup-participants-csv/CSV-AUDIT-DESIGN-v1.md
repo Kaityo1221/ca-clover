@@ -59,7 +59,7 @@ My CommunityのMeetup履歴の既存白パネル・lime配色を維持。既存�
   - `src/app/admin/accounts/page.tsx`: 既存Sとは別のCSV権限ボタン
   - `src/lib/use-auth-profile.ts`: 既存の`user_permissions`参照と`hasPermission`の利用可能性を検証。認証ロジック自体は変更を避ける
   - `supabase/functions/admin-manage/index.ts`: 現行`set_permission`は`S`しか受け付けない。新コードを追加する場合は高リスク領域としてSTOP
-  - `user_permissions`の権限コード制約/RLS/運用設定: `CSV_EXPORT`が既存テーブルで許可されるか未証明。DBスキーマ/Policy変更の可能性は要調査
+  - `user_permissions`の権限コード制約/RLS/運用設定: `supabase/migrations/20260921210000_stamp_rally_permissions_and_collection.sql`の定義では`CSV_EXPORT`形式が許容され、コード追加だけを理由とするDB定義変更は不要と見込まれる。ただし**実配備された本番DBとの一致は未確認**であり、本番DBを照会しない
   - `src/app/community/[id]/page.tsx`: 許可されたCAの行だけCSVボタンをレンダリング
   - 新規独立のサーバー側CSV出力/監査API: **アクセス権限と対象Communityの照合を必ず再実行**
 
@@ -126,5 +126,7 @@ My CommunityのMeetup履歴の既存白パネル・lime配色を維持。既存�
 - **D4 STOP/要個別GO**: Campfire実通信/参加者データ利用条件/全件性の検証。
 - **D5 STOP/要個別GO**: 既存My Communityの正式統合、ADMIN監査画面、権限回帰/セキュリティ検証、iPhone Safari実機。
 - **D6 明示GO必須**: mainマージと本番公開。Phase EのSTEP 45凍結を解除しない。
+
+権限保存と実APIの変更候補を詳しく調査した結果は `CSV-PERMISSION-IMPACT-REVIEW-2026-10-16.md` 参照。実DB/Edge Functions/本番環境の動作検証ではない。
 
 **ここに書いたDB/API/認証設計は提案であり、本番やリポジトリの高リスク領域に適用しない。**
