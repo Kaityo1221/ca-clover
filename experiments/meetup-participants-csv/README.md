@@ -85,6 +85,17 @@ Playwrightを明示的にセットアップしたローカル環境であれば 
 
 詳しい監査・権限・変更候補は `CSV-AUDIT-DESIGN-v1.md` を参照。
 
+
+## 独立モックの確認場所と検証状況（2026-10-16）
+
+ローカルサーバー `python -m http.server 8765` をリポジトリ直下で起動すると、以下を表示できる。
+
+- CA側: `http://127.0.0.1:8765/experiments/meetup-participants-csv/preview.html`。初期の通常CAはCSVボタン非表示。デモ用の権限選択で「CSV権限あり」「他Community」「pending」「ADMIN」を切り替えられる。
+- ADMIN側: `http://127.0.0.1:8765/experiments/meetup-participants-csv/admin-csv-permissions-preview.html`。架空CAへの付与・解除のみ。**実アカウントへの操作ではない**。
+- `csv-permission.mjs`/`.test.mjs`: ブラウザ上の表示可否のみを模擬。サーバー側の認可処理ではない。
+- `csv-purpose.mjs`/`.test.mjs`: 目的4択＋任意補足（その他の場合だけ必須）＋取り扱い同意を検証。サーバー側の入力検証ではない。
+- テスト: 独立JavaScript評価で純粋ロジック**60/60 PASS**、架空DOM操作の模擬で**23/23 PASS**。Node `--test` と実Chromiumの再実行結果ではない。GitHub Actionsの既存CIとは別。
+
 ## STOP / 個別承認が必要な作業
 
 1. **実参加者名の取得**: Campfire API GraphQL、認証、トークン、利用条件および識別子への影響。**STOP、別途GOが必要**。
