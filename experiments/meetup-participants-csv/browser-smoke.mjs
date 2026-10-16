@@ -11,7 +11,7 @@ const dir = dirname(fileURLToPath(import.meta.url));
 
 async function bundledFixtureHtml() {
   let html = await readFile(join(dir, "preview.html"), "utf8");
-  const sourceFiles = ["csv-core.mjs", "export-failure.mjs", "preview.mjs"];
+  const sourceFiles = ["csv-core.mjs", "export-failure.mjs", "csv-permission.mjs", "preview.mjs"];
   let inlineJs = "";
   for (const file of sourceFiles) {
     const source = await readFile(join(dir, file), "utf8");
@@ -23,6 +23,43 @@ async function bundledFixtureHtml() {
   assert.ok(html.includes(marker), "Standalone fixture entrypoint changed");
   assert.ok(!/<script\b/i.test(html.replace(marker, "")), "Unexpected extra script in preview");
   return html.replace(marker, "<script>\n" + inlineJs.replace(/<\/script/gi, "<\\/script") + "\n</script>");
+}
+
+
+async function bundledAdminFixtureHtml() {
+  const html = await readFile(join(dir, "admin-csv-permissions-preview.html"), "utf8");
+  const sources = ["csv-permission.mjs", "admin-csv-permissions-preview.mjs"];
+  let inlineJs = "";
+  for (const file of sources) {
+    inlineJs += "\n" + (await readFile(join(dir, file), "utf8"))
+      .replace(/^import\s+\{[^}]+\}\s+from\s+["'][^"']+["'];?\s*$/gm, "")
+      .replace(/^export\s+(function|class|const)\s+/gm, "$1 ");
+  }
+  const marker = '<script type="module" src="./admin-csv-permissions-preview.mjs"></script>';
+  assert.ok(html.includes(marker));
+  return html.replace(marker, "<script>\n" + inlineJs + "\n</script>");
+}
+
+async function testAdminPermissions(browser) {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const errors = [], requests = [];
+  page.on("pageerror", error => errors.push(error.message));
+  page.on("request", request => requests.push(request.url()));
+  await page.setContent(await bundledAdminFixtureHtml(), { waitUntil: "load" });
+  const cards = page.locator(".account");
+  assert.equal(await cards.count(), 3, "Three fake ADMIN account rows");
+  const first = cards.nth(0);
+  assert.ok((await first.innerText()).includes("CSV権限：なし"), "Initially no CSV grant");
+  await first.locator("button").click();
+  assert.ok((await first.innerText()).includes("CSV権限：あり"), "ADMIN can grant");
+  await first.locator("button").click();
+  assert.ok((await first.innerText()).includes("CSV権限：なし"), "ADMIN can revoke");
+  assert.equal(await cards.nth(2).locator("button").isDisabled(), true,
+    "Pending account cannot receive CSV grant");
+  assert.deepEqual(errors, [], "No ADMIN preview browser errors");
+  assert.deepEqual(requests, [], "ADMIN preview must not make network requests");
+  await page.close();
+  console.log("PASS ADMIN permission smoke: grant, revoke, pending blocked, no network");
 }
 
 async function testBrowser() {
@@ -46,6 +83,17 @@ async function testBrowser() {
     assert.equal(await page.locator(".stat-label").first().innerText(), "参加表明");
     assert.equal(await page.locator(".stat-label").nth(1).innerText(), "チェックイン");
 
+    // Hide the control without a verified user-specific CSV grant.
+    assert.equal(await page.locator(".csv-button").count(), 0, "Default CA must not see CSV");
+    for (const mode of ["pending", "other-community"]) {
+      await page.selectOption("#viewer-mode", mode);
+      assert.equal(await page.locator(".csv-button").count(), 0,
+        "CSV must be hidden for " + mode);
+    }
+    await page.selectOption("#viewer-mode", "granted");
+    assert.equal(await page.locator(".csv-button").count(), 3, "Granted CA sees CSV");
+
+
     for (const width of [320, 375, 390, 430, 768]) {
       await page.setViewportSize({ width, height: 844 });
       const metrics = await page.evaluate(() => {
@@ -63,6 +111,9 @@ async function testBrowser() {
         "CSV tap target too small at " + width + "px");
     }
     await page.setViewportSize({ width: 390, height: 844 });
+    await page.selectOption("#viewer-mode", "admin");
+    assert.equal(await page.locator(".csv-button").count(), 3, "ADMIN sees CSV");
+    await page.selectOption("#viewer-mode", "granted");
 
     // Card-body click opens the original detail action, not CSV.
     await page.locator(".card-primary").first().click();
@@ -126,7 +177,8 @@ async function testBrowser() {
     assert.deepEqual(errors, [], "Uncaught browser errors");
     assert.deepEqual(requests, [], "Preview must not make network requests");
     await page.close();
-    console.log("PASS browser smoke: confirmation/cancel/Escape, 3 cards, details, CSV, 3 failure modes, 5 widths, no network requests");
+    await testAdminPermissions(browser);
+    console.log("PASS browser smoke: default deny, membership gate, confirmation/cancel/Escape, 3 failure modes, 5 widths, no network requests");
   } finally {
     await browser.close();
   }
