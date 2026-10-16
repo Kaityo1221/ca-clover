@@ -19,10 +19,13 @@ function setup({ permissionError=false, operationError=false }={}){
   const grants=new Set(["ca-02"]), calls=[];
   const list={innerHTML:""};
   const status={textContent:"",style:{}};
+  let lastMarkup=null, activeButtons=[];
   const app={
     innerHTML:"",
     querySelectorAll(){
-      return [...list.innerHTML.matchAll(/<button\b([^>]+)>[^<]*<\/button>/g)]
+      if(list.innerHTML===lastMarkup)return activeButtons;
+      lastMarkup=list.innerHTML;
+      activeButtons=[...list.innerHTML.matchAll(/<button\b([^>]+)>[^<]*<\/button>/g)]
         .filter(m=>/data-(?:role|d)=/.test(m[1]))
         .map(m=>{
           const attrs=m[1],attr=k=>attrs.match(new RegExp(k+'="([^"]*)"'))?.[1]??null;
@@ -34,6 +37,7 @@ function setup({ permissionError=false, operationError=false }={}){
             onclick:null,
           };
         });
+      return activeButtons;
     },
   };
   const client={
