@@ -141,6 +141,16 @@ async function testBrowser() {
     assert.equal(downloads.length, 0, "Escape must never download");
 
     await button.click();
+    assert.equal(await page.locator("#confirm-generate").isDisabled(), true,
+      "No purpose: generation must be disabled");
+    await page.selectOption("#purpose-category", "other");
+    assert.equal(await page.locator("#confirm-generate").isDisabled(), true,
+      "Other category requires notes");
+    await page.locator("#purpose-detail").fill("レイド企画の参加者確認");
+    assert.equal(await page.locator("#confirm-generate").isDisabled(), true,
+      "Acknowledgement is mandatory");
+    await page.locator("#purpose-ack").check();
+    assert.equal(await page.locator("#confirm-generate").isDisabled(), false);
     const [download] = await Promise.all([
       page.waitForEvent("download"),
       page.locator("#confirm-generate").click(),
@@ -163,6 +173,9 @@ async function testBrowser() {
       await page.selectOption("#demo-mode", mode);
       await button.click();
       assert.equal(downloads.length, 1, "Confirmation cannot generate on its own");
+      await page.selectOption("#purpose-category", "mini_game");
+      await page.locator("#purpose-ack").check();
+      assert.equal(await page.locator("#confirm-generate").isDisabled(), false);
       await page.locator("#confirm-generate").click();
       await page.waitForFunction(expected => {
         const text = document.querySelector("#feedback")?.textContent ?? "";
