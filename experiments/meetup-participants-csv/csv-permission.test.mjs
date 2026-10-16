@@ -10,6 +10,11 @@ const base = {
   authVerified: true,
 };
 
+test("D is the download permission and S remains separate", () => {
+  assert.equal(CSV_EXPORT_PERMISSION, "D");
+  assert.equal(canShowCsvExport({ ...base, permissionCodes: ["CSV_EXPORT"] }), false);
+});
+
 test("CSV export is hidden unless explicitly granted", () => {
   assert.equal(canShowCsvExport({ ...base, permissionCodes: [] }), false);
   assert.equal(canShowCsvExport({ ...base, permissionCodes: ["S"] }), false);
