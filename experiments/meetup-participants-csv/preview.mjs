@@ -71,7 +71,11 @@ function requestExportConfirmation(item, button) {
   confirmDialog.showModal();
 }
 
-confirmCancel.addEventListener("click", () => confirmDialog.close());
+confirmCancel.addEventListener("click", () => {
+  pendingExport = null;
+  confirmDialog.close();
+});
+confirmDialog.addEventListener("cancel", () => { pendingExport = null; });
 confirmDialog.addEventListener("close", () => { pendingExport = null; });
 confirmGenerate.addEventListener("click", () => {
   if (!pendingExport) return;
