@@ -49,8 +49,10 @@ assert.match(html,/if\(objectUrl\)URL\.revokeObjectURL\(objectUrl\)/,
  "Failed blob URLs must be revoked");
 assert.doesNotMatch(html,/if\(design\?\.thumbnail_path\)\s*\{/,
  "Old eager thumbnail-first path must not return");
-assert.ok(html.includes("const imageScale=.97;"),
- "3D medal icon should be rendered at 97% scale");
+assert.ok(html.includes("const imageScale=options?.gachiMonFaceFit?GACHI_MON_FACE.modal3DScale:.97;"),
+ "3D medal icons must retain the 97% default and the isolated Gachi Mon override");
+assert.ok(html.includes("const faceOffset=options?.gachiMonFaceFit?resolution*GACHI_MON_FACE.offset:0;"),
+ "Gachi Mon 3D medal must use its targeted offset, with zero offset for other medals");
 assert.ok(html.includes("const inset=resolution*(1-imageScale)/2;"),
  "3D inset should be symmetric, leaving the gold rim unchanged");
 assert.ok(html.includes('ctx.filter="saturate(1.12) contrast(1.06)";'),
