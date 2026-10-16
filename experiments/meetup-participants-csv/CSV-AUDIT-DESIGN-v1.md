@@ -42,7 +42,7 @@ My CommunityのMeetup履歴の既存白パネル・lime配色を維持。既存�
 
 - 実行者のIDはサーバーが検証済みのログインセッションから導出。リクエストで任意のCA/他人のIDを指定させない。
 - 対象MeetupはDBの `meetups.id` から取得し、`meetups.community_id` と確実に対応付ける。クライアント指定のCommunity名/IDを権限の根拠にしない。
-- **通常CAは追加権限 `CSV_EXPORT` と `community_memberships` による該当Communityの本人割当の両方が必要**。1st/2nd区分やMeetup主催者かどうかでは決めない。初期状態は権限なし。承認待ちユーザーへの付与は禁止。
+- **通常CAは追加権限 `D` と `community_memberships` による該当Communityの本人割当の両方が必要**。1st/2nd区分やMeetup主催者かどうかでは決めない。初期状態は権限なし。承認待ちユーザーへの付与は禁止。
 - ADMINは既存ロールとして権限付与・解除と監査閲覧を行う。CSV出力自体も既存の管理者全権限方針に基づく例外として扱う想定。ただしサーバー側で本人のADMINロールを検証する。
 - 既存RLSはMeetup一覧の閲覧制御に使われているが、**CSV名簿の持ち出し権限は別途サーバーで検証**する。リストを見られるだけで全件取得を許可しない。
 - 参加者ユーザー名を含むデータの取得は必要最小限・そのリクエスト内のメモリで処理。参加者ID/username/GraphQLレスポンスをDB、監査ログ、運用ログ、Storageに保存しない。
@@ -50,16 +50,16 @@ My CommunityのMeetup履歴の既存白パネル・lime配色を維持。既存�
 ## 2A. CSV専用権限の管理画面（2026-10-16 PO追加指示）
 
 - **全CAには表示しない。権限OFFが初期値**。権限情報の取得失敗・未確定時もCSVボタンは表示しない。
-- ADMIN「**👥 CAアカウント**」(`src/app/admin/accounts/page.tsx`) に、既存の「S」権限とは独立した **「CSV権限」ON/OFF** を並べる。新しい管理メニューを増やさない。
-- 権限の付与/解除はアカウント単位で管理（候補コード `CSV_EXPORT`）。権限があってもMeetupの所属Communityを横断して取得できない。
+- ADMIN「**👥 CAアカウント**」(`src/app/admin/accounts/page.tsx`) に、既存の「S」権限とは独立した **「D権限（CSV）」ON/OFF** を並べる。新しい管理メニューを増やさない。
+- 権限の付与/解除はアカウント単位で管理（確定コード `D`、Downloadの頭文字）。権限があってもMeetupの所属Communityを横断して取得できない。
 - `pending`のアカウントには権限付与不可。ロールをpendingへ戻したときは権限を無効化する（保存状態とサーバー権限判定の両方で安全側）。
 - 付与・解除は **ADMINによる認証済みサーバー操作**。UIのON/OFFやブラウザの`hasPermission`だけでアクセス許可を判定しない。解除後のリクエストは即時拒否する。
 - 権限更新の失敗はUI上で成功と表示しない。必要に応じ、付与・解除の操作者と日時も監査できる設計にする（保存手段は要承認）。
 - 本番実装に想定される依存先（**すべて未変更・事前GOが必要**）:
-  - `src/app/admin/accounts/page.tsx`: 既存Sとは別のCSV権限ボタン
+  - `src/app/admin/accounts/page.tsx`: 既存Sとは別のD権限ボタン
   - `src/lib/use-auth-profile.ts`: 既存の`user_permissions`参照と`hasPermission`の利用可能性を検証。認証ロジック自体は変更を避ける
   - `supabase/functions/admin-manage/index.ts`: 現行`set_permission`は`S`しか受け付けない。新コードを追加する場合は高リスク領域としてSTOP
-  - `user_permissions`の権限コード制約/RLS/運用設定: `supabase/migrations/20260921210000_stamp_rally_permissions_and_collection.sql`の定義では`CSV_EXPORT`形式が許容され、コード追加だけを理由とするDB定義変更は不要と見込まれる。ただし**実配備された本番DBとの一致は未確認**であり、本番DBを照会しない
+  - `user_permissions`の権限コード制約/RLS/運用設定: `supabase/migrations/20260921210000_stamp_rally_permissions_and_collection.sql`の定義では`D`形式が許容され、コード追加だけを理由とするDB定義変更は不要と見込まれる。ただし**実配備された本番DBとの一致は未確認**であり、本番DBを照会しない
   - `src/app/community/[id]/page.tsx`: 許可されたCAの行だけCSVボタンをレンダリング
   - 新規独立のサーバー側CSV出力/監査API: **アクセス権限と対象Communityの照合を必ず再実行**
 
@@ -94,8 +94,8 @@ My CommunityのMeetup履歴の既存白パネル・lime配色を維持。既存�
 ## 4. サーバー処理順序（実装未着手）
 
 1. 本人の明示的な最終確認によるリクエストを受信する。
-2. 認証、**`CSV_EXPORT` 追加権限（通常CA）**、目的カテゴリ/補足情報/同意バージョンをサーバーで検証。既存のS権限はCSV権限の代わりにしない。
-3. `meetups.id` を用いて所属Communityと本人割当をサーバーで検証する。通常CAには`CSV_EXPORT`の現在値も再確認する。拒否・解除済みなら名簿データ取得なし。
+2. 認証、**`D` 追加権限（通常CA）**、目的カテゴリ/補足情報/同意バージョンをサーバーで検証。既存のS権限はCSV権限の代わりにしない。
+3. `meetups.id` を用いて所属Communityと本人割当をサーバーで検証する。通常CAには`D`の現在値も再確認する。拒否・解除済みなら名簿データ取得なし。
 4. サーバーで **監査開始記録** をDBに書く。記録失敗なら名簿取得を行わずSTOP。
 5. Campfire利用許可・GraphQLレスポンス完全性が別ゲートで確認できた場合だけ参加者情報を取得。取得をページ数/時間/対象イベント1件に限定。
 6. CSV完成後に **件数と結果状態** を監査記録へ確定する。監査結果が書き込めなければCSVを送信しない。
