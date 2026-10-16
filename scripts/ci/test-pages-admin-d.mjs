@@ -31,7 +31,7 @@ function setup({ permissionError=false, operationError=false }={}){
           const attrs=m[1],attr=k=>attrs.match(new RegExp(k+'="([^"]*)"'))?.[1]??null;
           return {
             dataset: {role:attr("data-role"),id:attr("data-id"),d:attr("data-d")},
-            disabled:false,
+            disabled:/(?:^|\s)disabled(?:\s|$)/.test(attrs),
             getAttribute:attr,
             hasAttribute:k=>attr(k)!==null,
             onclick:null,
@@ -109,6 +109,17 @@ test("D revoke uses only D permission",async()=>{
  await f.getButtons("d")[1].onclick();
  assert.equal(f.calls[0].enabled,false);
  assert.equal(f.grants.has("ca-02"),false);
+});
+test("A CA with D cannot change role until D is explicitly revoked",async()=>{
+ const f=setup();await f.accounts();
+ const roles=f.getButtons("role").filter(x=>x.dataset.id==="ca-02");
+ assert.ok(roles.find(x=>x.dataset.role==="pending").disabled);
+ assert.ok(roles.find(x=>x.dataset.role==="admin").disabled);
+ assert.ok(f.list.innerHTML.includes("先にD権限を解除してください"));
+ await f.getButtons("d")[1].onclick();
+ const rolesAfter=f.getButtons("role").filter(x=>x.dataset.id==="ca-02");
+ assert.equal(rolesAfter.find(x=>x.dataset.role==="pending").disabled,false);
+ assert.equal(rolesAfter.find(x=>x.dataset.role==="admin").disabled,false);
 });
 test("Permission read failure prevents every mutation",async()=>{
  const f=setup({permissionError:true});await f.accounts();
