@@ -49,11 +49,11 @@ async function testAdminPermissions(browser) {
   const cards = page.locator(".account");
   assert.equal(await cards.count(), 3, "Three fake ADMIN account rows");
   const first = cards.nth(0);
-  assert.ok((await first.innerText()).includes("CSV権限：なし"), "Initially no CSV grant");
+  assert.ok((await first.innerText()).includes("D権限：なし"), "Initially no CSV grant");
   await first.locator("button").click();
-  assert.ok((await first.innerText()).includes("CSV権限：あり"), "ADMIN can grant");
+  assert.ok((await first.innerText()).includes("D権限：あり"), "ADMIN can grant");
   await first.locator("button").click();
-  assert.ok((await first.innerText()).includes("CSV権限：なし"), "ADMIN can revoke");
+  assert.ok((await first.innerText()).includes("D権限：なし"), "ADMIN can revoke");
   assert.equal(await cards.nth(2).locator("button").isDisabled(), true,
     "Pending account cannot receive CSV grant");
   assert.deepEqual(errors, [], "No ADMIN preview browser errors");
