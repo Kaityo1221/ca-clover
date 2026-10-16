@@ -84,6 +84,7 @@ Playwrightを明示的にセットアップしたローカル環境であれば 
 - 監査ログは別途DB/RLSとサーバー側保存が必要。ログを保存できない場合はCSV出力しない設計。
 
 詳しい監査・権限・変更候補は `CSV-AUDIT-DESIGN-v1.md` を参照。
+公開GitHubソースの読み取り専用影響調査は `CSV-PERMISSION-IMPACT-REVIEW-2026-10-16.md` 参照。既存権限テーブルの`CSV_EXPORT`形式は許容される見込み。ただし実DB未確認、ADMIN Edgeの変更はSTOP。
 
 
 ## 独立モックの確認場所と検証状況（2026-10-16）
