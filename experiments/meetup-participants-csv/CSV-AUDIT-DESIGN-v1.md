@@ -79,7 +79,7 @@ My CommunityのMeetup履歴の既存白パネル・lime配色を維持。既存�
 | meetup_id | サーバー側で確定したMeetup内部ID |
 | requested_at | サーバー時計（UTC保存、日本時間表示） |
 | purpose_category | 上記4分類の1つ |
-| purpose_detail | 具体的な利用目的、文字数制限・危険文字対策 |
+| purpose_detail | 補足情報（通常任意、「その他」では必須、最大200文字）。記入された場合は監査対象 |
 | acknowledgement_version | 同意文面の版。チェック有無はサーバー側でも検証 |
 | export_state | `requested`, `rejected`, `generation_failed`, `handoff_started` など |
 | exported_row_count | CSVを組み立てた件数。未生成はnull |
@@ -120,8 +120,8 @@ My CommunityのMeetup履歴の既存白パネル・lime配色を維持。既存�
 
 ## 7. 作業PhaseとPOゲート
 
-- **D1 今回**: この仕様を独立フォルダに記録するのみ。DB/Edge/Auth/Storage/既存UIへの変更なし。
-- **D2 低リスク**: 架空データで目的選択・補足情報・確認・エラー、CSV権限なしのボタン非表示、ADMIN権限付与/解除の独立プレビューを作成してオフライン試験。PR #150のみで実施。
+- **D1 完了**: この設計をCSV専用フォルダに記録。DB/Edge/Auth/Storage/既存UIへの変更なし。
+- **D2 独立試作済み**: 架空データで短い目的選択・任意の補足情報・確認・エラー、CSV権限なしのボタン非表示、ADMIN権限付与/解除を実装。ユニット/模擬DOMは別途検査。iPhone Safari実機と最終ブラウザスモークは未検証。
 - **D3 STOP/要個別GO**: 監査用DBのマイグレーション/RLS権限設計と新サーバーAPI。影響評価、変更許可、隔離試験計画を別途提案。
 - **D4 STOP/要個別GO**: Campfire実通信/参加者データ利用条件/全件性の検証。
 - **D5 STOP/要個別GO**: 既存My Communityの正式統合、ADMIN監査画面、権限回帰/セキュリティ検証、iPhone Safari実機。
