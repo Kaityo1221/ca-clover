@@ -21,7 +21,7 @@
 | 出力フロー | `export-coordinator.mjs` | 認可・取得を模擬したオンデマンド処理。負荷枠は**任意**であり、全体共有制限は初期要件にしない |
 | 利用者向けエラー | `export-failure.mjs` | 個人名やトークンを出さない日本語エラー |
 | UI | `preview.html`、`preview.mjs` | 現行My Communityのlime色・行区切りを再現した独立モック、仮データCSV |
-| テスト | `*.test.mjs`、`browser-smoke.mjs` | 単体47ケース相当、架空データのPlaywright操作試験 |
+| テスト | `*.test.mjs`、`browser-smoke.mjs` | CSVの単体テスト＋権限表示の単体テスト、架空データのPlaywright操作試験 |
 
 ### ローカルテスト手順（Node.js 22）
 
@@ -69,6 +69,21 @@ Playwrightを明示的にセットアップしたローカル環境であれば 
 - 生成中は再押下不可。終了・失敗時にボタンを復帰させる。不完全取得・429・タイムアウト時はダウンロードしない。
 - 確認ダイアログは誤操作防止のUXであり、**アクセス権限の代わりにはならない**。本番では担当CA/許可管理者の認可確認が必須。権限確認実装とCampfire通信は別途STOP/PO承認待ち。
 - 模擬データのUIは `preview.html` と `preview.mjs`、確認・キャンセル・Esc・正常CSV・エラー処理の自動テスト定義は `browser-smoke.mjs`。実ブラウザの再実行とユーザーiPhone Safariでの確認は別途必要。
+
+## ADMINでのCSV権限付与（PO指示・2026-10-16）
+
+**初期状態では、一般CAにCSVボタンを表示しない。**
+
+- 許可条件：明示的な `CSV_EXPORT` 権限 + 自分に割り当てられたCommunityのMeetup。権限未取得時、未割当Community、未承認アカウントは非表示。ADMINは本人確認済みの管理者として扱う。
+- 管理方法：既存のADMIN「👥 CAアカウント」に、S（Stamp Rally）とは独立のCSV権限ON/OFFを設ける。新たな管理メニューは増やさない。
+- `preview.html` では通常CA（非表示）・権限ありCA（表示）・他Community（非表示）・pending（非表示）・ADMIN（表示）を**デモ選択**で確認可能。
+- `admin-csv-permissions-preview.html` は架空のCAだけの管理画面モック。付与・解除を試せるが**DBにも本番権限にも保存しない**。
+- `csv-permission.mjs` は**画面上の表示だけ**を判定する純粋関数。**本番CSV APIではサーバー側で権限と所属Communityを再検証することが必須**。
+- CSV確認画面の目的は「ミニゲーム利用」「出欠確認と照合のため」「イベント運営」「その他」。補足情報は通常任意、「その他」の場合だけ必須。取扱い同意も必要。
+- 本番の権限設定には既存 `supabase/functions/admin-manage/index.ts`（現行Sのみ受理）、`user_permissions`のコード制約確認、`src/app/admin/accounts/page.tsx`の変更が必要。**Phase EルールによりSTOP／個別GO待ち**。
+- 監査ログは別途DB/RLSとサーバー側保存が必要。ログを保存できない場合はCSV出力しない設計。
+
+詳しい監査・権限・変更候補は `CSV-AUDIT-DESIGN-v1.md` を参照。
 
 ## STOP / 個別承認が必要な作業
 
