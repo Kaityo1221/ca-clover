@@ -251,14 +251,18 @@ async function accounts(){
  const dUsers=new Set((permissionsResult.data||[]).map(x=>x.user_id));
  list.innerHTML=(profilesResult.data||[]).map(x=>{
   const id=e(x.id);
-  const roles=["pending","ca","admin"].map(role=>
-   '<button type="button" class="btn '+(x.role===role?"":"line")+'" data-role="'+role+'" data-id="'+id+'" '+(x.role===role?"disabled":"")+'>'+role.toUpperCase()+'</button>'
-  ).join("");
   const granted=dUsers.has(x.id);
+  const roles=["pending","ca","admin"].map(role=>{
+   const blocked=granted&&role!=="ca";
+   return '<button type="button" class="btn '+(x.role===role?"":"line")+'" data-role="'+role+'" data-id="'+id+'" '+(x.role===role||blocked?"disabled":"")+(blocked?' title="ロール変更前にD権限を解除してください"':"")+'>'+role.toUpperCase()+'</button>';
+  }).join("");
   const dButton=x.role==="ca"
    ?'<button type="button" class="btn '+(granted?"":"line")+'" data-d="'+id+'" aria-pressed="'+String(granted)+'" title="D：参加者CSVダウンロード権限">'+(granted?"D ✓":"D")+'</button>'
    :"";
-  return '<section class="claim"><div class="row between wraprow"><div><h3>'+e(x.email||"メール未取得")+'</h3><div class="small muted strong">SCOPELY EXPLORE ID: '+e(x.niantic_id||"未登録")+'</div><div class="tiny muted">登録 '+e(fmt(x.created_at))+'</div></div><div class="actions">'+roles+dButton+'</div></div></section>';
+  const help=granted&&x.role==="ca"
+   ?'<div class="tiny muted section">ロール変更する場合は、先にD権限を解除してください。</div>'
+   :"";
+  return '<section class="claim"><div class="row between wraprow"><div><h3>'+e(x.email||"メール未取得")+'</h3><div class="small muted strong">SCOPELY EXPLORE ID: '+e(x.niantic_id||"未登録")+'</div><div class="tiny muted">登録 '+e(fmt(x.created_at))+'</div></div><div class="actions">'+roles+dButton+'</div></div>'+help+'</section>';
  }).join("");
  let locked=false;
  const buttons=app.querySelectorAll("[data-role],[data-d]");
