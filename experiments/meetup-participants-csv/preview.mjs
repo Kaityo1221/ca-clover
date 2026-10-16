@@ -1,6 +1,7 @@
 import { buildParticipantCsv } from "./csv-core.mjs";
 import { getPublicExportFailure } from "./export-failure.mjs";
 import { canShowCsvExport, CSV_EXPORT_PERMISSION } from "./csv-permission.mjs";
+import { validateCsvPurpose } from "./csv-purpose.mjs";
 
 // FICTIONAL DATA ONLY. This preview makes no network or Supabase requests.
 const fakeEvents = [
@@ -69,12 +70,11 @@ const purposeError = document.querySelector("#purpose-error");
 let pendingExport = null;
 
 function hasValidPurpose() {
-  const category = purposeCategory.value;
-  const detail = purposeDetail.value.trim();
-  return ["mini_game", "attendance", "event_operations", "other"].includes(category) &&
-    (category !== "other" || detail.length > 0) &&
-    detail.length <= 200 &&
-    purposeAck.checked === true;
+  return validateCsvPurpose({
+    category: purposeCategory.value,
+    detail: purposeDetail.value,
+    acknowledged: purposeAck.checked,
+  }).valid;
 }
 function updatePurposeControls() {
   confirmGenerate.disabled = !pendingExport || !hasValidPurpose();
