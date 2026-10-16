@@ -42,7 +42,7 @@ async function openPage(fixture = {}, width = 375) {
       stamp_reunions: fixture.reunions || [],
       stamp_collection_designs: [], stamp_collection_preferences: [],
       user_ca_identities: fixture.identity ?? null,
-      communities: catalog.map(row => ({ id: row.community_id, prefecture: row.prefecture })),
+      communities: fixture.readableCommunities || catalog.map(row => ({ id: row.community_id, prefecture: row.prefecture })),
     };
     window.supabase = { createClient: () => ({
       auth: { getSession: async () => ({ data: { session: fixture.loggedOut ? null : { user: { id: "current-user" } } } }) },
@@ -120,6 +120,31 @@ try {
   await summary({ identity: { ...identity, community_id: "unlisted" } }, ["0枚", "確認中", "0回"]);
   await summary({ identity: { ...identity, community_id: "north" }, collections: [collection("ca-a", "base")] }, ["1枚", "確認中", "0回"]);
   await summary({ identity, collections: [collection("ca-a", "base"), collection("retired-ca", "old-base")], reunions: [{ id: "r1" }, { id: "r2" }] }, ["2枚", "取得済み", "2回"]);
+
+  // General CA can read only their own community through the communities table.
+  // The medal catalog still provides the public prefecture for exchanged medals.
+  for (const role of ["ca", "admin"]) {
+    const mapPage = await openPage({
+      role, identity,
+      catalog: [...catalog, ca("ca-kagawa", "kagawa", "香川県")],
+      collections: [collection("ca-a", "base", "self"), collection("ca-kagawa", "kagawa")],
+      readableCommunities: [{ id: "base", prefecture: "東京都" }],
+    });
+    assert.equal(await mapPage.locator('.mapbox .prefecture[data-code="37"].acquired').count(), 1, role + ": acquired Kagawa must be green");
+    assert.equal(await mapPage.locator('.mapbox .prefecture[data-code="13"].acquired').count(), 1);
+    assert.equal(await mapPage.locator('.mapbox .prefecture[data-code="27"].acquired').count(), 0);
+    assert.match(await mapPage.locator("#mapScore").textContent(), /^2\s*\/ 47$/);
+    assert.equal(await mapPage.evaluate(() => window.testRequests.some(x => x.table === "communities")), false, "map must not replace catalog data with membership-restricted reads");
+    await mapPage.close();
+  }
+  // A previously acquired CA remains on the map even without a current CA link.
+  const historicalMapPage = await openPage({
+    collections: [collection("retired-ca", "no-ca", "admin")],
+    readableCommunities: [],
+  });
+  assert.equal(await historicalMapPage.locator('.mapbox .prefecture[data-code="37"].acquired').count(), 1);
+  assert.equal(await historicalMapPage.locator('.mapbox .prefecture[data-code="13"].acquired').count(), 0);
+  await historicalMapPage.close();
 
   const fixture = {
     role: "admin", identity,
