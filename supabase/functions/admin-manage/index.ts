@@ -28,8 +28,8 @@ Deno.serve(async(req:Request)=>{
       const role=String(body.role??"");
       const userId=String(body.userId??"");
       if(!["pending","ca","admin"].includes(role)||!userId) throw new Error("invalid role request");
-      const {error}=await admin.from("profiles").update({role}).eq("id",userId);
-      if(error) throw error;
+      // Fail closed: revoke feature privileges before marking the user pending.
+      // No DB transaction is claimed here; permission revocation succeeds first.
       if(role==="pending"){
         const {error:permissionError}=await admin
           .from("user_permissions")
@@ -38,6 +38,8 @@ Deno.serve(async(req:Request)=>{
           .in("permission_code",["S","D"]);
         if(permissionError) throw permissionError;
       }
+      const {error}=await admin.from("profiles").update({role}).eq("id",userId);
+      if(error) throw error;
       return new Response(JSON.stringify({ok:true}),{headers:{...corsHeaders,"Content-Type":"application/json"}});
     }
 
