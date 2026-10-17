@@ -80,6 +80,8 @@ try{
  const downloading=f.page.waitForEvent('download');release();const download=await downloading;
  assert.equal(download.suggestedFilename(),'participants-'+meetup+'.csv');
  await f.page.getByText('人数確認済み 29人',{exact:false}).waitFor();
+ assert((await f.page.locator('[data-csv-status]').innerText()).includes('09:00:00'));
+ assert((await f.page.locator('[data-csv-submit]').innerText()).startsWith('再取得まで'));
  const content=readFileSync(await download.path(),'utf8');assert(content.includes('表示名'));assert(content.includes('抽選番号'));assert(!content.includes('raw-person'));
  assert.equal(await f.page.locator('[data-csv-submit]').isDisabled(),true);pass('Safari系でCSVファイル生成、確認人数/時刻、再取得間隔');
  const width=await f.page.evaluate(()=>({viewport:innerWidth,document:document.documentElement.scrollWidth,dialog:document.querySelector('dialog').getBoundingClientRect().width}));

@@ -7,11 +7,19 @@ export function createParticipantPanel({client,getIdentity,fetcher=fetch,documen
   let mounted=[];
   const identity=()=>getIdentity()??{};
   const current=()=>identity().userId===userId&&identity().role==='ca';
-  const setStatus=text=>{if(dialog?.isConnected)dialog.querySelector('[data-csv-status]').textContent=text;};
+  const setStatus=text=>{
+    if(!dialog?.isConnected)return;
+    const target=dialog.querySelector('[data-csv-status]');
+    const verified=/^人数確認済み ([0-9]+)人 \/ (.+)$/.exec(text);
+    if(verified&&Number.isFinite(Date.parse(verified[2]))){
+      const time=new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date(verified[2]));
+      target.replaceChildren(doc.createTextNode('人数確認済み '+verified[1]+'人'),doc.createElement('br'),doc.createTextNode('確認時刻：'+time+'（日本時間）'));
+    }else target.textContent=text;
+  };
   function refresh(){
     const state=api?.getState();
     for(const b of mounted)if(b.isConnected){b.disabled=!current()||pending||state?.canStart===false;b.title=state?.retryAfterMs?`再取得まで${Math.ceil(state.retryAfterMs/1000)}秒`:'';}
-    if(dialog?.isConnected){const submit=dialog.querySelector('[data-csv-submit]');submit.disabled=pending||!current()||state?.canStart===false;dialog.querySelector('[data-csv-close]').disabled=pending;}
+    if(dialog?.isConnected){const submit=dialog.querySelector('[data-csv-submit]');submit.disabled=pending||!current()||state?.canStart===false;submit.textContent=pending?'取得中…':state?.retryAfterMs?'再取得まで'+Math.ceil(state.retryAfterMs/1000)+'秒':'最新の名簿を取得';dialog.querySelector('[data-csv-close]').disabled=pending;}
     clearTimeout(refreshTimer);
     if(!pending&&state?.retryAfterMs>0)refreshTimer=setTimeout(refresh,Math.min(1000,state.retryAfterMs));
   }
