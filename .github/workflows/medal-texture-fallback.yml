@@ -5,6 +5,9 @@ on:
   pull_request:
     paths:
       - docs/stamp-rally.html
+      - docs/medal-render-preset.js
+      - docs/MEDAL-DESIGN-RULES.md
+      - scripts/test-medal-color-fidelity.mjs
       - scripts/test-medal-face-hires.mjs
       - scripts/test-medal-texture-webkit.mjs
       - .github/workflows/medal-texture-fallback.yml
@@ -22,6 +25,7 @@ jobs:
         with:
           node-version: '22'
       - run: node scripts/test-medal-face-hires.mjs
+      - run: node scripts/test-medal-color-fidelity.mjs
       - run: npm ci --prefix scripts/ci/participant-runtime --ignore-scripts --no-audit --no-fund
       - run: node scripts/ci/participant-runtime/node_modules/playwright/cli.js install --with-deps webkit
       - name: Safari CORS failure and 2D fallback
