@@ -1,0 +1,33 @@
+name: Medal texture fallback regression
+on:
+  push:
+    branches: [fix/medal-texture-fallback-20261017]
+  pull_request:
+    paths:
+      - docs/stamp-rally.html
+      - scripts/test-medal-face-hires.mjs
+      - scripts/test-medal-texture-webkit.mjs
+      - .github/workflows/medal-texture-fallback.yml
+permissions:
+  contents: read
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node scripts/test-medal-face-hires.mjs
+      - run: npm ci --prefix scripts/ci/participant-runtime --ignore-scripts --no-audit --no-fund
+      - run: node scripts/ci/participant-runtime/node_modules/playwright/cli.js install --with-deps webkit
+      - name: Safari CORS failure and 2D fallback
+        run: node scripts/test-medal-texture-webkit.mjs
+      - name: Existing medal ownership and mobile layout regression
+        env:
+          PLAYWRIGHT_MODULE: ./ci/participant-runtime/node_modules/playwright
+          BROWSER_ENGINE: webkit
+        run: node scripts/test-stamp-rally-ui.mjs

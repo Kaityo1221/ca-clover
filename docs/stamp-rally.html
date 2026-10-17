@@ -576,6 +576,29 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
    if(textureApplied)break;
   }
 
+  // MEDAL_TEXTURE_FALLBACK_BEGIN
+  function disposePreparedMedal(){
+   controls.dispose();
+   faceTexture?.dispose();
+   engravingOverlayGeometry?.dispose();
+   engravingOverlayMaterial?.dispose();
+   engravingVisualTexture?.dispose();
+   engravingBumpTexture?.dispose();
+   if(faceObjectUrl)URL.revokeObjectURL(faceObjectUrl);
+   if(activeFaceMaterial!==faceMaterial)activeFaceMaterial.dispose();
+   goldMaterial.dispose();faceMaterial.dispose();backMaterial.dispose();brushedMaterial.dispose();pinMaterial.dispose();
+   environment.dispose();pmrem.dispose();renderer.dispose();
+   renderer.domElement.remove();
+  }
+  // A decoded face is required before presenting the 3D model. External
+  // images may work in <img> while CORS forbids their use as WebGL textures.
+  if(!textureApplied||token!==stamp3dToken){
+   disposePreparedMedal();
+   if(token===stamp3dToken)unmountStampMedal3D();
+   return;
+  }
+  // MEDAL_TEXTURE_FALLBACK_END
+
   const box=new THREE.Box3().setFromObject(medal);
   const center=box.getCenter(new THREE.Vector3());
   const size=box.getSize(new THREE.Vector3());
@@ -611,17 +634,7 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
    stopped=true;
    cancelAnimationFrame(frameId);
    observer.disconnect();
-   controls.dispose();
-   faceTexture?.dispose();
-   engravingOverlayGeometry?.dispose();
-   engravingOverlayMaterial?.dispose();
-   engravingVisualTexture?.dispose();
-   engravingBumpTexture?.dispose();
-   if(faceObjectUrl)URL.revokeObjectURL(faceObjectUrl);
-   if(activeFaceMaterial!==faceMaterial)activeFaceMaterial.dispose();
-   goldMaterial.dispose();faceMaterial.dispose();backMaterial.dispose();brushedMaterial.dispose();pinMaterial.dispose();
-   environment.dispose();pmrem.dispose();renderer.dispose();
-   renderer.domElement.remove();
+   disposePreparedMedal();
   };
  }catch(err){
   console.error("3D medal preview failed",err);
