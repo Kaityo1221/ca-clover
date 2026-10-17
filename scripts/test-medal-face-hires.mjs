@@ -73,7 +73,7 @@ function exercise(textureApplied,token=1,currentToken=1){
  const shared=resource('faceMaterial');
  const context={textureApplied,token,stamp3dToken:currentToken,
   controls:resource('controls'),faceTexture:null,engravingOverlayGeometry:null,engravingOverlayMaterial:null,engravingVisualTexture:null,engravingBumpTexture:null,
-  faceObjectUrl:'blob:fixture',faceGloss:null,URL:{revokeObjectURL(){calls.push('blob')}},activeFaceMaterial:resource('activeFaceMaterial'),
+  faceObjectUrl:'blob:fixture',faceGloss:null,faceReflection:null,URL:{revokeObjectURL(){calls.push('blob')}},activeFaceMaterial:resource('activeFaceMaterial'),
   goldMaterial:resource('goldMaterial'),faceMaterial:shared,backMaterial:resource('backMaterial'),brushedMaterial:resource('brushedMaterial'),pinMaterial:resource('pinMaterial'),
   environment:resource('environment'),pmrem:resource('pmrem'),renderer:{...resource('renderer'),domElement:{remove(){calls.push('canvas')}}},
   unmountStampMedal3D(){calls.push('show2D')},
@@ -143,6 +143,7 @@ const cleanupGloss=()=>{
  const ctx={
   textureApplied:false,token:1,stamp3dToken:1,
   faceGloss:{geometry:resource("glossGeometry"),material:resource("glossMaterial")},
+  faceReflection:{geometry:resource("reflectionGeometry"),material:resource("reflectionMaterial")},
   controls:resource("controls"),faceTexture:null,engravingOverlayGeometry:null,engravingOverlayMaterial:null,
   engravingVisualTexture:null,engravingBumpTexture:null,faceObjectUrl:null,URL:{revokeObjectURL(){}},
   activeFaceMaterial:original,faceMaterial:original,goldMaterial:resource("goldMaterial"),
@@ -153,6 +154,7 @@ const cleanupGloss=()=>{
  };
  runInNewContext('(function(){'+fallback+';return "3D"})()',ctx);
  assert(calls.includes("glossGeometry")&&calls.includes("glossMaterial"),"Release both gloss resources");
+ assert(calls.includes("reflectionGeometry")&&calls.includes("reflectionMaterial"),"Release both softbox resources");
  return calls;
 };
 cleanupGloss();

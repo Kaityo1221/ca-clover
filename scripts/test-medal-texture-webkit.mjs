@@ -25,7 +25,7 @@ try{
   const calls=[],resource=()=>({dispose(){calls.push('dispose')}});
   const stamp3dToken=current;
   const controls=resource(),faceTexture=null,engravingOverlayGeometry=null,engravingOverlayMaterial=null,engravingVisualTexture=null,engravingBumpTexture=null;
-  const faceObjectUrl=null,faceGloss=null,faceMaterial=resource(),activeFaceMaterial=resource(),goldMaterial=resource(),backMaterial=resource(),brushedMaterial=resource(),pinMaterial=resource(),environment=resource(),pmrem=resource();
+  const faceObjectUrl=null,faceGloss=null,faceReflection=null,faceMaterial=resource(),activeFaceMaterial=resource(),goldMaterial=resource(),backMaterial=resource(),brushedMaterial=resource(),pinMaterial=resource(),environment=resource(),pmrem=resource();
   const renderer={...resource(),domElement:document.createElement('canvas')};
   function unmountStampMedal3D(){document.querySelector('#stamp3d').classList.remove('show');document.querySelector('#stampZoom2D').classList.remove('hidden');calls.push('2D');}
   const outcome=eval('(function(){'+code+';return "3D"})()');return {calls,outcome};

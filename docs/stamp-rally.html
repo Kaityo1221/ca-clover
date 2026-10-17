@@ -272,11 +272,11 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
  stamp3d.innerHTML='<div style="position:absolute;inset:0;display:grid;place-items:center;font-size:11px;font-weight:900;color:#8a6d51">3Dメダルを準備中... 🪙</div>';
  try{
   const THREE=await import("three");
-  const [{OrbitControls},{RoomEnvironment},{GLTFLoader},{MEDAL_DESIGN_RULES,createMedalFaceMaterial,createMedalFaceGlossMaterial}]=await Promise.all([
+  const [{OrbitControls},{RoomEnvironment},{GLTFLoader},{MEDAL_DESIGN_RULES,createMedalFaceMaterial,createMedalFaceGlossMaterial,createMedalFaceReflectionMaterial}]=await Promise.all([
    import("three/addons/controls/OrbitControls.js"),
    import("three/addons/environments/RoomEnvironment.js"),
    import("three/addons/loaders/GLTFLoader.js"),
-   import("./medal-render-preset.js?v=20261017-soft-gloss-d")
+   import("./medal-render-preset.js?v=20261017-soft-gloss-e-reflection")
   ]);
   if(token!==stamp3dToken)return;
 
@@ -490,6 +490,7 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
   // color-accurate sRGB layer independent of key lights and ACES exposure.
   const activeFaceMaterial=faceMaterial.clone();
   let faceGloss=null;
+  let faceReflection=null;
   // Preserve the original centered square crop for portrait/landscape
   // sources, keeping the default 3% inset except for targeted face corrections.
   // Apply modest colour correction to counter the washed-out 3D preview.
@@ -616,6 +617,8 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
    // The gloss owns its cloned geometry/material, never the original FrontFace geometry.
    faceGloss?.geometry.dispose();
    faceGloss?.material.dispose();
+   faceReflection?.geometry.dispose();
+   faceReflection?.material.dispose();
    if(activeFaceMaterial!==faceMaterial)activeFaceMaterial.dispose();
    goldMaterial.dispose();faceMaterial.dispose();backMaterial.dispose();brushedMaterial.dispose();pinMaterial.dispose();
    environment.dispose();pmrem.dispose();renderer.dispose();
@@ -638,15 +641,21 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
   holder.scale.setScalar(maxDimension>0?1.75/maxDimension:1);
   holder.add(medal);
 
-  // Approved D finish: keep the sRGB artwork unlit and add a separate 16%
-  // physical gloss. This mesh is a child of FrontFace so it follows all
-  // existing transforms without copying world coordinates or moving the art.
+  // E finish: colour-faithful artwork stays unlit. A restrained PBR clearcoat
+  // and a dim virtual softbox make the highlight travel as the medal tilts.
+  // Both are front-face children, with cloned geometry and explicit cleanup.
   if(front instanceof THREE.Mesh){
    faceGloss=new THREE.Mesh(front.geometry.clone(),createMedalFaceGlossMaterial(THREE));
    faceGloss.name="FrontFaceGloss";
    faceGloss.position.z=MEDAL_DESIGN_RULES.faceGloss.zOffset;
    faceGloss.renderOrder=front.renderOrder+1;
    front.add(faceGloss);
+
+   faceReflection=new THREE.Mesh(front.geometry.clone(),createMedalFaceReflectionMaterial(THREE));
+   faceReflection.name="FrontFaceReflection";
+   faceReflection.position.z=MEDAL_DESIGN_RULES.faceReflection.zOffset;
+   faceReflection.renderOrder=front.renderOrder+2;
+   front.add(faceReflection);
   }
 
   stamp3d.innerHTML="";
