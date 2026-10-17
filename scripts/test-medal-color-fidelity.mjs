@@ -9,7 +9,7 @@ const {MEDAL_DESIGN_RULES:rules,createMedalFaceMaterial,createMedalFaceGlossMate
 );
 
 assert(Object.isFrozen(rules)&&Object.isFrozen(rules.lights)&&Object.isFrozen(rules.face));
-assert.equal(rules.version,"2026-10-17-soft-gloss-b");
+assert.equal(rules.version,"2026-10-17-soft-gloss-c");
 assert.deepEqual(
  [rules.lights.hemisphere,rules.lights.key,rules.lights.rim,rules.lights.back],
  [1.2,1.75,.82,.4],
@@ -22,12 +22,12 @@ assert.equal(rules.face.clearcoat,0);
 assert.equal(rules.face.roughness,null);
 assert.equal(rules.face.insetScale,.97);
 assert.equal(rules.gold.color,0xb8922e);
-assert(Object.isFrozen(rules.faceGloss),"B gloss standard is immutable");
+assert(Object.isFrozen(rules.faceGloss),"C gloss standard is immutable");
 assert.deepEqual(
  [rules.faceGloss.opacity,rules.faceGloss.metalness,rules.faceGloss.roughness,rules.faceGloss.reflectivity,
   rules.faceGloss.clearcoat,rules.faceGloss.clearcoatRoughness,rules.faceGloss.zOffset],
- [.09,0,.62,.12,.14,.58,.0006],
- "B gloss standard must not drift"
+ [.12,0,.62,.12,.14,.58,.0006],
+ "C gloss standard must not drift"
 );
 
 
@@ -53,7 +53,7 @@ const gloss=createMedalFaceGlossMaterial({
 assert(gloss instanceof PhysicalMaterialFixture);
 assert.equal(gloss.color,0xffffff);
 assert.equal(gloss.transparent,true);
-assert.equal(gloss.opacity,.09);
+assert.equal(gloss.opacity,.12);
 assert.equal(gloss.roughness,.62);
 assert.equal(gloss.reflectivity,.12);
 assert.equal(gloss.clearcoat,.14);
@@ -65,7 +65,7 @@ assert.equal(gloss.side,333);
 assert.equal(gloss.map,undefined,"Gloss layer must not duplicate or wash out the image");
 
 
-assert.match(html,/import\("\.\/medal-render-preset\.js\?v=20261017-soft-gloss-b"\)/,
+assert.match(html,/import\("\.\/medal-render-preset\.js\?v=20261017-soft-gloss-c"\)/,
  "3D must load common rules explicitly");
 assert.match(html,/const faceMaterial=createMedalFaceMaterial\(THREE\)/);
 assert.match(html,/const activeFaceMaterial=faceMaterial\.clone\(\)/);

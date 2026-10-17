@@ -4,7 +4,7 @@
 
 ## 目的
 
-アイコンの色が3D照明で白く飛ぶ、または二つの白い反射が強く載る問題を防ぐ。B案として、元画像の色を保ちながら薄い艶だけを戻す。
+アイコンの色が3D照明で白く飛ぶ、または二つの白い反射が強く載る問題を防ぐ。C案として、元画像の色を保ちながらB案より少し強い艶を戻す。
 一覧（2D）と3Dのアイコン面が可能な限り同じ色・配置になることを優先する。
 **KOGAの黄色も、がちもんくらぶの青も、個別の色補正ではなく共通処理で再現する。**
 
@@ -22,15 +22,15 @@
 | Communityアイコン面 | 元画像は `MeshBasicMaterial` / `toneMapped: false` / 白ベースで色を正確に保持。ライトによる反射は元画像にはかけない。 |
 | アイコン画像 | `sRGBColorSpace`。2Dと同じ `saturate(1.12) contrast(1.06)` を画像素材に1回だけ適用。 |
 | サイズ・位置 | 標準 `0.97` 倍・中央配置。既存のがちもんくらぶ専用倍率・オフセットは保持。 |
-| 艶レイヤー（B案） | 元画像とは別に `FrontFaceGloss` の薄い `MeshPhysicalMaterial` を載せる。opacity `0.09`、metalness `0`、roughness `0.62`、reflectivity `0.12`、clearcoat `0.14`、clearcoatRoughness `0.58`。透明・深度書き込みなし、前方オフセット `0.0006`。 |
+| 艶レイヤー（C案） | 元画像とは別に `FrontFaceGloss` の薄い `MeshPhysicalMaterial` を載せる。opacity `0.12`、metalness `0`、roughness `0.62`、reflectivity `0.12`、clearcoat `0.14`、clearcoatRoughness `0.58`。透明・深度書き込みなし、前方オフセット `0.0006`。 |
 | 金枠 | `MeshPhysicalMaterial` の金属光沢を維持。色 `0xb8922e`、metalness `0.95`、roughness `0.34`。 |
 | 裏面・ピン | 既存のPBR金属仕上げ、刻印、焼き印演出を維持。 |
 | トーンマッピング | 金属・艶レイヤーにACES Filmicを維持。露出 `0.92`。**アイコン画像自体には適用しない**。 |
 | 3D操作 | 回転、ドラッグ、鈴木専用演出、デザイン履歴、取得・再会の表示を変えない。 |
 
-## 2026-10-17 採用仕様：B案（ソフトグロス）
+## 2026-10-17 採用仕様：C案（ソフトグロス強め）
 
-このB案は全Communityのメダルに適用する。初回メダル画像の元色を保持し、従来より弱い白い光沢が分かる程度の薄い表面レイヤーを追加する。元メッシュのgeometryは変更・破棄せず、重ねたメッシュを終了時に解放する。
+このC案は全Communityのメダルに適用する。B案で実機3D復旧を確認できたため、艶レイヤーのopacityのみ `0.09` → `0.12` に変更した。照明、金枠、色補正、位置、裏面はB案のまま。初回メダル画像の元色を保持し、従来より弱い白い光沢が分かる程度の薄い表面レイヤーを追加する。元メッシュのgeometryは変更・破棄せず、重ねたメッシュを終了時に解放する。
 
 ## 照明の基準値
 
@@ -58,4 +58,4 @@
 4. `node scripts/test-medal-face-hires.mjs` および `node scripts/test-medal-color-fidelity.mjs` とSafari回帰テストを通す。
 5. 色調整によるDB/Storage/Auth/Campfire/API変更は行わない。Phase E凍結資産とCAマスター同期には触れない。
 
-※ `MeshBasicMaterial` にはroughnessの意味がないため、色優先のベース面は無反射とする。B案のroughness `0.62` は**別の薄い艶レイヤーだけ**に適用する。白い強反射が2点強く現れないこととKOGAの黄色保持を実機で確認する。
+※ `MeshBasicMaterial` にはroughnessの意味がないため、色優先のベース面は無反射とする。C案のroughness `0.62` は**別の薄い艶レイヤーだけ**に適用する。白い強反射が2点強く現れないこととKOGAの黄色保持を実機で確認する。
