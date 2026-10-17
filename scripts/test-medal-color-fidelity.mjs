@@ -4,15 +4,15 @@ import {readFileSync} from "node:fs";
 
 const html=readFileSync(new URL("../docs/stamp-rally.html",import.meta.url),"utf8");
 const rulesModule=readFileSync(new URL("../docs/medal-render-preset.js",import.meta.url),"utf8");
-const {MEDAL_DESIGN_RULES:rules,createMedalFaceMaterial}=await import(
+const {MEDAL_DESIGN_RULES:rules,createMedalFaceMaterial,createMedalFaceGlossMaterial}=await import(
  "data:text/javascript,"+encodeURIComponent(rulesModule)
 );
 
 assert(Object.isFrozen(rules)&&Object.isFrozen(rules.lights)&&Object.isFrozen(rules.face));
-assert.equal(rules.version,"2026-10-17-color-fidelity");
+assert.equal(rules.version,"2026-10-17-soft-gloss-b");
 assert.deepEqual(
  [rules.lights.hemisphere,rules.lights.key,rules.lights.rim,rules.lights.back],
- [1.2,1.6,.7,.4],
+ [1.2,1.75,.82,.4],
  "Approved light intensity values must not drift"
 );
 assert.equal(rules.exposure,.92);
@@ -22,6 +22,14 @@ assert.equal(rules.face.clearcoat,0);
 assert.equal(rules.face.roughness,null);
 assert.equal(rules.face.insetScale,.97);
 assert.equal(rules.gold.color,0xb8922e);
+assert(Object.isFrozen(rules.faceGloss),"B gloss standard is immutable");
+assert.deepEqual(
+ [rules.faceGloss.opacity,rules.faceGloss.metalness,rules.faceGloss.roughness,rules.faceGloss.reflectivity,
+  rules.faceGloss.clearcoat,rules.faceGloss.clearcoatRoughness,rules.faceGloss.zOffset],
+ [.09,0,.62,.12,.14,.58,.0006],
+ "B gloss standard must not drift"
+);
+
 
 class BasicMaterialFixture { constructor(options){Object.assign(this,options)} }
 const basic=createMedalFaceMaterial({
@@ -36,10 +44,40 @@ assert.equal(Object.hasOwn(basic,"metalness"),false);
 assert.equal(Object.hasOwn(basic,"roughness"),false);
 assert.equal(Object.hasOwn(basic,"clearcoat"),false);
 
-assert.match(html,/import\("\.\/medal-render-preset\.js\?v=20261017-color-fidelity"\)/,
+// The transparent gloss is independent from the faithful base texture.
+class PhysicalMaterialFixture { constructor(options){Object.assign(this,options)} }
+const gloss=createMedalFaceGlossMaterial({
+ MeshPhysicalMaterial:PhysicalMaterialFixture,
+ FrontSide:333
+});
+assert(gloss instanceof PhysicalMaterialFixture);
+assert.equal(gloss.color,0xffffff);
+assert.equal(gloss.transparent,true);
+assert.equal(gloss.opacity,.09);
+assert.equal(gloss.roughness,.62);
+assert.equal(gloss.reflectivity,.12);
+assert.equal(gloss.clearcoat,.14);
+assert.equal(gloss.clearcoatRoughness,.58);
+assert.equal(gloss.metalness,0);
+assert.equal(gloss.depthWrite,false);
+assert.equal(gloss.polygonOffset,true);
+assert.equal(gloss.side,333);
+assert.equal(gloss.map,undefined,"Gloss layer must not duplicate or wash out the image");
+
+
+assert.match(html,/import\("\.\/medal-render-preset\.js\?v=20261017-soft-gloss-b"\)/,
  "3D must load common rules explicitly");
 assert.match(html,/const faceMaterial=createMedalFaceMaterial\(THREE\)/);
 assert.match(html,/const activeFaceMaterial=faceMaterial\.clone\(\)/);
+assert.match(html,/faceGloss=new THREE\.Mesh\(front\.geometry\.clone\(\),createMedalFaceGlossMaterial\(THREE\)\)/);
+assert.match(html,/faceGloss\.name="FrontFaceGloss"/);
+assert.match(html,/faceGloss\.position\.z=MEDAL_DESIGN_RULES\.faceGloss\.zOffset/);
+assert.match(html,/front\.add\(faceGloss\)/,"Gloss must be child of face, not positioned in scene coordinates");
+assert.match(html,/faceGloss\?\.geometry\.dispose\(\)/,"Release cloned gloss geometry");
+assert.match(html,/faceGloss\?\.material\.dispose\(\)/,"Release gloss material");
+assert(html.indexOf("if(!textureApplied||token!==stamp3dToken)")<html.indexOf("faceGloss=new THREE.Mesh("),
+ "Do not allocate gloss before texture succeeds");
+
 assert.match(html,/activeFaceMaterial\.map=faceTexture/);
 assert.match(html,/front\.material=activeFaceMaterial/);
 assert.doesNotMatch(html,/const sourceFaceMaterial=/,
