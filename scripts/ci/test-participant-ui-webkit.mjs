@@ -11,8 +11,8 @@ const {webkit}=require('playwright');
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const index=readFileSync(join(root,'docs/index.html'),'utf8');
 const origin='https://fixture.invalid',actor='00000000-0000-0000-0000-000000000001',community='00000000-0000-0000-0000-000000000002',meetup='00000000-0000-0000-0000-000000000003';
-const setup=({role='ca',d=true,own=true,permissionFails=false}={})=>String.raw`
-window.__d=${JSON.stringify(d)};window.__own=${JSON.stringify(own)};window.__permissionFails=${JSON.stringify(permissionFails)};window.__calls=[];
+const setup=({role='ca',d=true,own=true,permissionFails=false,metrics=false}={})=>String.raw`
+window.__metrics=${JSON.stringify(metrics)};window.__d=${JSON.stringify(d)};window.__own=${JSON.stringify(own)};window.__permissionFails=${JSON.stringify(permissionFails)};window.__calls=[];
 const id=${JSON.stringify(actor)},community=${JSON.stringify(community)},meetup=${JSON.stringify(meetup)};
 const session={user:{id,email:'synthetic@example.invalid'},access_token:'synthetic-jwt'};
 const profile={role:${JSON.stringify(role)},niantic_id:'synthetic-ca',email:'synthetic@example.invalid'};
@@ -20,7 +20,7 @@ const fixture={
  profiles:[profile],community_memberships:[{community_id:community}],user_permissions:[{permission_code:'D'}],
  communities:[{id:community,name:'合成Community',prefecture:'東京都',member_count:100,coverage:'complete'}],
  community_ca_members:[],ca_members:[],community_member_snapshots:[],community_access_requests:[],
- meetups:[{id:meetup,title:'合成Meetup🍀',starts_at:'2026-10-16T06:00:00Z',ends_at:'2026-10-16T09:00:00Z',location:'合成会場',details:'合成データ',is_ca_meetup:true,rsvp_count:40,checkin_count:22}],
+ meetups:[{id:meetup,fetched_at:'2026-10-03T05:20:19Z',title:'合成Meetup🍀',starts_at:'2026-10-16T06:00:00Z',ends_at:'2026-10-16T09:00:00Z',location:'合成会場',details:'合成データ',is_ca_meetup:true,rsvp_count:40,checkin_count:22}],
 };
 const client={auth:{getSession:async()=>({data:{session},error:null}),onAuthStateChange(cb){window.__authChange=cb;return {data:{subscription:{unsubscribe(){}}}}},signOut:async()=>({error:null})},
  from(table){const filters=[];const q={select(){return q},eq(k,v){filters.push([k,v]);return q},in(){return q},order(){return q},limit(){return q},gte(){return q},lte(){return q},gt(){return q},
@@ -29,7 +29,7 @@ const client={auth:{getSession:async()=>({data:{session},error:null}),onAuthStat
    if(table==='community_memberships')data=window.__own?fixture[table]:[];
    return Promise.resolve({data,error}).then(ok,bad)},
   async maybeSingle(){const r=await q;return {...r,data:r.data[0]??null}}};return q;},
- rpc:async()=>({data:[],error:null}),functions:{invoke:async()=>({data:{},error:null})}};
+ rpc:async(name)=>({data:name==='ca_clover_meetup_latest_metrics'&&window.__metrics?[{meetup_id:meetup,community_id:community,rsvp_count:47,checkin_count:29,observed_at:'2026-10-03T07:35:00Z'}]:[],error:null}),functions:{invoke:async()=>({data:{},error:null})}};
 window.supabase={createClient:()=>client};
 `;
 let groups=0;
@@ -49,7 +49,7 @@ async function fixture(options={}){
    if(u.hostname===origin.slice(8)){
      const path=u.pathname==='/'?'index.html':u.pathname.slice(1);
      if(path==='index.html'){await route.fulfill({contentType:'text/html',body:index});return;}
-     if(/^participant-export(?:-ui\.mjs|\/(client-adapter|csv-click-guard|engine-policy)\.mjs)$/.test(path)){
+     if(path==='meetup-metrics.mjs'||/^participant-export(?:-ui\.mjs|\/(client-adapter|csv-click-guard|engine-policy)\.mjs)$/.test(path)){
        await route.fulfill({contentType:'application/javascript',body:readFileSync(join(root,'docs',path),'utf8')});return;
      }
    }
@@ -65,6 +65,12 @@ try{
    const f=await fixture(opts);await f.page.waitForTimeout(100);assert.equal(await f.page.locator('[data-csv-meetup]').count(),0);
    assert.equal(await f.page.locator('[data-meetup-index]').count(),2);assert.equal(f.calls.length,0);assert.deepEqual(f.errors,[]);await f.context.close();
  }pass('Dなし/権限読込エラーでCSV非表示、既存Meetupカード継続');
+ const counts=await fixture({d:false,metrics:true});
+ await counts.page.locator('[data-meetup-index]').first().getByText('Check-in 29',{exact:true}).waitFor();
+ assert.equal(await counts.page.locator('[data-meetup-index]').first().getByText('RSVP 47',{exact:true}).count(),1);
+ assert.equal(await counts.page.locator('[data-meetup-index]').first().getByText('参加率 61.7%',{exact:true}).count(),1);
+ assert.equal(await counts.page.locator('[data-csv-meetup]').count(),0);assert.equal(counts.calls.length,0);assert.deepEqual(counts.errors,[]);
+ pass('DなしCAも最新履歴RSVP47/Check-in29/61.7%をカードに表示、CSV取得なし');await counts.context.close();
  const administrator=await fixture({role:'admin',d:false,own:false,permissionFails:true});
  await administrator.page.locator('[data-csv-meetup]').first().waitFor();
  assert.equal(administrator.calls.length,0);await administrator.page.locator('[data-csv-meetup]').first().click();

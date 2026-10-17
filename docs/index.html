@@ -76,6 +76,9 @@
     return participantPanel;
   }).catch(function(){return null});
   // PARTICIPANT_CSV_IMPORT_END
+  // CARD_METRICS_IMPORT_BEGIN
+  const cardMetricsReady=import('./meetup-metrics.mjs?v=20261017-card1').catch(function(){return null});
+  // CARD_METRICS_IMPORT_END
   let session=null, profile=null, busy=false, flash=null, communityPeriod=90, meetupHistoryLimit=25, communityFeatureView="home", renderToken=0;
   const COMMUNITY_PERIODS=[["1か月",30],["3か月",90],["6か月",180],["1年",365],["全期間",null]];
   const MEETUP_HISTORY_LIMITS=[25,50,100];
@@ -351,7 +354,9 @@
     const trendBucket=activityBucket(period);
     const nowIso=new Date().toISOString();
     const since=period===null?null:new Date(Date.now()-period*24*60*60*1000).toISOString();
-    const meetupFields="id,title,starts_at,ends_at,location,event_url,details,is_ca_meetup,rsvp_count,checkin_count,campfire_live_event_name";
+    // CARD_METRICS_FIELDS_BEGIN
+    const meetupFields="id,title,starts_at,ends_at,location,event_url,details,is_ca_meetup,rsvp_count,checkin_count,campfire_live_event_name,fetched_at";
+    // CARD_METRICS_FIELDS_END
 
     let meetupQuery=client.from("meetups")
       .select(meetupFields)
@@ -385,6 +390,10 @@
     ]);
     const meetups=results[0].data||[];
     const upcoming=results[1].data||[];
+    // CARD_METRICS_APPLY_BEGIN
+    const cardMetrics=await cardMetricsReady;
+    if(cardMetrics)await cardMetrics.applyLatestMetrics(client,id,meetups.concat(upcoming));
+    // CARD_METRICS_APPLY_END
     const links=results[2].data||[];
     const summary=(results[3].data&&results[3].data[0])||{meetup_count:0,ca_meetup_count:0,rsvp_count:0,checkin_count:0,last_event_at:null};
     const trend=results[4].data||[];
@@ -540,6 +549,10 @@
       }
     }
 
+    // CARD_METRICS_DETAIL_BEGIN
+    const cardMetrics=await cardMetricsReady;
+    if(cardMetrics)detail=cardMetrics.retainCardMetrics(detail,m);
+    // CARD_METRICS_DETAIL_END
     loading.remove();
     const back=document.createElement("div");
     back.id="meetupModal";
