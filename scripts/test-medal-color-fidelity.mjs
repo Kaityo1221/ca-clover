@@ -146,6 +146,18 @@ assert.match(reflection.fragmentShader,/cameraPosition-vWorldPosition/);
 assert.match(reflection.fragmentShader,/vLocalNormalZ<0\.92/);
 assert.match(reflection.fragmentShader,/clamp\(uOpacity\*strip\*facing,0\.0,uOpacity\)/);
 assert.match(reflection.fragmentShader,/smoothstep/);
+// A face normal rotating about Y changes a fixed camera ray's reflection
+// by twice the tilt angle: the softbox hit must *travel*, not stay painted on.
+function reflectedHitAtTilt(tilt){
+ const N=[Math.sin(tilt),0,Math.cos(tilt)], incident=[0,0,-1];
+ const dot=incident[0]*N[0]+incident[2]*N[2];
+ const ray=[incident[0]-2*dot*N[0],0,incident[2]-2*dot*N[2]];
+ return rules.faceReflection.lightZ*ray[0]/ray[2];
+}
+const leftHit=reflectedHitAtTilt(-.15),rightHit=reflectedHitAtTilt(.15);
+assert(leftHit<-.8&&rightHit>.8&&rightHit-leftHit>1.6,
+ "Tilt must move the virtual light's projected reflection in world space");
+
 assert.match(html,/faceReflection=new THREE\.Mesh\(front\.geometry\.clone\(\),createMedalFaceReflectionMaterial\(THREE\)\)/);
 assert.match(html,/faceReflection\.position\.z=MEDAL_DESIGN_RULES\.faceReflection\.zOffset/);
 assert.equal(rules.face.material,"MeshBasicMaterial","Reflected layer cannot tint saved artwork");
