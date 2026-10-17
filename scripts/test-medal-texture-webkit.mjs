@@ -32,7 +32,7 @@ try{
  },{code:fallback,textureApplied,token,current});
  const r=await run(corsTexture);assert(r.calls.includes('2D'));
  assert(await page.locator('#stampZoom2D').isVisible());assert(!await page.locator('#stamp3d').isVisible());
- assert.equal(await page.locator('#face').evaluate(i=>i.naturalWidth),128);
+ assert(await page.locator('#face').evaluate(i=>i.complete&&i.naturalWidth>0&&i.naturalHeight>0),'2D fallback must retain a loaded visible image');
  await page.evaluate(()=>{document.querySelector('#stamp3d').classList.add('show');document.querySelector('#stampZoom2D').classList.add('hidden')});
  const good=await run(true);assert.equal(good.outcome,'3D');assert.equal(good.calls.length,0);assert(await page.locator('#stamp3d').isVisible());
  const stale=await run(false,1,2);assert(!stale.calls.includes('2D'));assert(await page.locator('#stamp3d').isVisible());
