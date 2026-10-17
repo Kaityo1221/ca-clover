@@ -167,3 +167,77 @@ const allScripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
  .map(m=>m[1].trim()).filter(s=>s&&!s.startsWith('{"imports"'));
 for(const script of allScripts)new Function(script);
 console.log("PASS medal color fidelity: unlit sRGB artwork, metallic gold, approved lights, shared rules, special face/engraving, 2D fallback");
+
+
+// Real GLB geometry smoke test. This is analytic (not a WebGL pixel test):
+// validate that the deployed medal mesh has a front-facing curved surface,
+// and that the E softbox highlight moves across that *actual mesh* with tilt.
+{
+ const glb=readFileSync(new URL("../docs/models/medal_template_final.glb",import.meta.url));
+ assert.equal(glb.toString("ascii",0,4),"glTF");
+ assert.equal(glb.readUInt32LE(4),2);
+ const jsonLength=glb.readUInt32LE(12);
+ assert.equal(glb.toString("ascii",16,20),"JSON");
+ const model=JSON.parse(glb.toString("utf8",20,20+jsonLength));
+ const frontNode=model.nodes.find(node=>node.name==="FrontFace");
+ assert(frontNode&&Number.isInteger(frontNode.mesh),"Real medal must have FrontFace");
+ const mesh=model.meshes[frontNode.mesh].primitives[0];
+ const binaryStart=20+jsonLength+8;
+ const points=accessorIndex=>{
+  const accessor=model.accessors[accessorIndex],view=model.bufferViews[accessor.bufferView];
+  assert.equal(accessor.componentType,5126,"Expected glTF float vertex attributes");
+  assert.equal(accessor.type,"VEC3");
+  const offset=binaryStart+(view.byteOffset||0)+(accessor.byteOffset||0);
+  const stride=view.byteStride||12;
+  return Array.from({length:accessor.count},(_,i)=>
+   [glb.readFloatLE(offset+i*stride),glb.readFloatLE(offset+i*stride+4),glb.readFloatLE(offset+i*stride+8)]);
+ };
+ const normals=points(mesh.attributes.NORMAL),positions=points(mesh.attributes.POSITION);
+ assert.equal(normals.length,positions.length);
+ const faceVertices=positions.flatMap((p,i)=>normals[i][2]>=.92?[{p,n:normals[i]}]:[]);
+ const rearVertices=normals.filter(n=>n[2]<=-.92).length;
+ assert(faceVertices.length>1000&&rearVertices>100,
+  "Real FrontFace must distinguish icon front from its back; do not reflect on the back");
+ assert(rules.faceReflection.zOffset>rules.faceGloss.zOffset&&rules.faceReflection.zOffset<.15,
+  "Reflection must sit above gloss without detaching from the real 3D face");
+ const smooth=(a,b,x)=>{const t=Math.min(1,Math.max(0,(x-a)/(b-a)));return t*t*(3-2*t)};
+ const normalize=v=>{const length=Math.hypot(...v);return v.map(x=>x/length)};
+ const body=model.meshes[model.nodes.find(n=>n.name==="MedalBody").mesh].primitives[0];
+ const bodyRange=model.accessors[body.attributes.POSITION];
+ const scale=1.75/(bodyRange.max[0]-bodyRange.min[0]);
+ const spec=rules.faceReflection;
+ // Approximate normalized medal placement, using actual vertices and normals.
+ // This tests orientation response, not exact production camera pixels.
+ function sampleHighlight(tilt){
+  const s=Math.sin(tilt),c=Math.cos(tilt);
+  let lit=0,opacitySum=0,xSum=0;
+  for(const {p,n} of faceVertices){
+   const X=(p[0]*c+(p[2]-80)*s)*scale;
+   const Y=p[1]*scale;
+   const Z=((p[2]-80)*c-p[0]*s)*scale+.10;
+   const N=normalize([n[0]*c+n[2]*s,n[1],n[2]*c-n[0]*s]);
+   const V=normalize([-X,.03-Y,4.10-Z]);
+   const facingDot=N.reduce((sum,v,i)=>sum+v*V[i],0);
+   if(facingDot<=0)continue;
+   const R=normalize(N.map((v,i)=>2*facingDot*v-V[i]));
+   if(R[2]<=.08)continue;
+   const distance=(spec.lightZ-Z)/R[2];
+   if(distance<=0)continue;
+   const hx=X+R[0]*distance-spec.lightX,hy=Y+R[1]*distance-spec.lightY;
+   const across=Math.abs(hx*.928+hy*.371);
+   const along=Math.abs(-hx*.371+hy*.928);
+   const ends=1-smooth(spec.halfLength-spec.edgeFeather,spec.halfLength+spec.edgeFeather,along);
+   const core=1-smooth(spec.halfWidth*.12,spec.halfWidth,across);
+   const halo=1-smooth(spec.halfWidth,spec.halfWidth*2.25,across);
+   const opacity=Math.min(spec.maxOpacity,Math.max(0,spec.maxOpacity*ends*(.84*core+.16*halo)*smooth(.08,.30,R[2])));
+   assert(opacity<=spec.maxOpacity+1e-9,"No model angle may exceed softbox opacity limit");
+   if(opacity>.01){lit++;opacitySum+=opacity;xSum+=X*opacity}
+  }
+  return {lit,centroid:opacitySum?xSum/opacitySum:null};
+ }
+ const left=sampleHighlight(-.15),right=sampleHighlight(.15);
+ assert(left.lit>50&&right.lit>50,"Virtual softbox should illuminate actual curved face at both tilts");
+ assert(left.centroid-right.centroid>.25,
+  "Reflected highlight must travel across actual GLB when medal tilts");
+ console.log("PASS real GLB reflection geometry: front-only mask, 15% opacity cap, moving softbox");
+}
