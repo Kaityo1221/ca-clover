@@ -56,15 +56,25 @@ async function fixture(options={}){
    await route.abort();
  });
  await page.goto(origin+'/#community:'+community,{waitUntil:'domcontentloaded'});
- await page.getByRole('heading',{name:options.own===false?'このCommunityは表示できません':'合成Community'}).waitFor();
+ await page.getByRole('heading',{name:options.own===false&&options.role!=='admin'?'このCommunityは表示できません':'合成Community'}).waitFor();
  return {page,context,calls,errors,setStatus:n=>code=n,hold(){let release;waitForExport=new Promise(r=>{release=r});return ()=>{waitForExport=undefined;release();}}};
 }
 function pass(name){groups++;console.log('PASS '+name)}
 try{
- for(const opts of [{d:false},{role:'admin'},{permissionFails:true}]){
+ for(const opts of [{d:false},{permissionFails:true}]){
    const f=await fixture(opts);await f.page.waitForTimeout(100);assert.equal(await f.page.locator('[data-csv-meetup]').count(),0);
    assert.equal(await f.page.locator('[data-meetup-index]').count(),2);assert.equal(f.calls.length,0);assert.deepEqual(f.errors,[]);await f.context.close();
- }pass('Dなし/ADMIN/権限読込エラーでCSV非表示、既存Meetupカード継続');
+ }pass('Dなし/権限読込エラーでCSV非表示、既存Meetupカード継続');
+ const administrator=await fixture({role:'admin',d:false,own:false,permissionFails:true});
+ await administrator.page.locator('[data-csv-meetup]').first().waitFor();
+ assert.equal(administrator.calls.length,0);await administrator.page.locator('[data-csv-meetup]').first().click();
+ const adminDownload=administrator.page.waitForEvent('download');await administrator.page.locator('[data-csv-submit]').click();
+ assert.equal((await adminDownload).suggestedFilename(),'participants-'+meetup+'.csv');
+ assert.equal(administrator.calls.length,1);await administrator.page.getByText('人数確認済み 29人',{exact:false}).waitFor();
+ assert.deepEqual(administrator.errors,[]);pass('ADMINはDなし・所属外・D照会失敗でも目的申告からCSV保存');
+ await administrator.page.evaluate(()=>window.__authChange('SIGNED_OUT',null));
+ await administrator.page.waitForFunction(()=>!document.querySelector('dialog'));
+ assert.equal(await administrator.page.locator('[data-csv-meetup]').count(),0);pass('ADMINもログアウトでCSV導線とダイアログを破棄');await administrator.context.close();
  const f=await fixture();await f.page.locator('[data-csv-meetup]').first().waitFor();
  assert.equal(await f.page.locator('[data-csv-meetup]').count(),2);assert((await f.page.locator('[data-csv-meetup]').first().boundingBox()).width<=100);assert.equal(f.calls.length,0);pass('D+本人Communityのみボタン、表示だけでは名簿取得しない');
  await f.page.locator('[data-csv-meetup]').first().click();await f.page.locator('dialog').waitFor();

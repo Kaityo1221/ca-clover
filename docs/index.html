@@ -71,7 +71,7 @@
 
   // PARTICIPANT_CSV_IMPORT_BEGIN
   let participantPanel;
-  const participantReady=import('./participant-export-ui.mjs?v=20261017-runtime1').then(function(module){
+  const participantReady=import('./participant-export-ui.mjs?v=20261017-admin2').then(function(module){
     participantPanel=module.createParticipantPanel({client:client,getIdentity:function(){return {userId:session&&session.user.id,role:profile&&profile.role}}});
     return participantPanel;
   }).catch(function(){return null});
@@ -494,7 +494,7 @@
     const csvPanel=await participantReady;
     if(csvPanel&&session){
       void csvPanel.mount({root:app,meetups:cardMeetups,communityId:id,
-        isCurrent:function(){return route()==="community:"+id&&!!session&&profile&&profile.role==="ca"}});
+        isCurrent:function(){return route()==="community:"+id&&!!session&&profile&&(profile.role==="ca"||profile.role==="admin")}});
     }
     // PARTICIPANT_CSV_MOUNT_END
   }
