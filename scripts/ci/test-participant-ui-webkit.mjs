@@ -66,7 +66,7 @@ try{
    assert.equal(await f.page.locator('[data-meetup-index]').count(),2);assert.equal(f.calls.length,0);assert.deepEqual(f.errors,[]);await f.context.close();
  }pass('Dなし/ADMIN/権限読込エラーでCSV非表示、既存Meetupカード継続');
  const f=await fixture();await f.page.locator('[data-csv-meetup]').first().waitFor();
- assert.equal(await f.page.locator('[data-csv-meetup]').count(),2);assert.equal(f.calls.length,0);pass('D+本人Communityのみボタン、表示だけでは名簿取得しない');
+ assert.equal(await f.page.locator('[data-csv-meetup]').count(),2);assert((await f.page.locator('[data-csv-meetup]').first().boundingBox()).width<=100);assert.equal(f.calls.length,0);pass('D+本人Communityのみボタン、表示だけでは名簿取得しない');
  await f.page.locator('[data-csv-meetup]').first().click();await f.page.locator('dialog').waitFor();
  assert.equal(await f.page.locator('select[name=purpose] option').count(),4);assert.equal(await f.page.locator('[data-csv-meetup]').count(),3); // two buttons + dialog heading marker
  await f.page.locator('select[name=purpose]').selectOption('other');assert.equal(await f.page.locator('textarea[name=note]').getAttribute('required'),'');
