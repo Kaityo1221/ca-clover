@@ -86,3 +86,49 @@ const success=exercise(true);assert.equal(success.result,'3D');assert.deepEqual(
 const stale=exercise(false,1,2);assert(!stale.calls.includes('show2D'));assert(stale.calls.includes('renderer'));
 assert(html.indexOf('// MEDAL_TEXTURE_FALLBACK_BEGIN')<html.indexOf('stamp3d.appendChild(renderer.domElement)'),'Blank model must never be mounted');
 console.log('Medal fallback: failed texture restores 2D, success keeps 3D, stale load preserves next medal, resources released PASS');
+
+
+// Remote 3D texture relay regression: only used after all existing safe sources
+// fail. This verifies auth, community-ID-only input, cancellation, and Blob cleanup.
+const relayBody=html.match(/  \/\/ A verified CA can request a CORS-clean copy[\s\S]*?(?=  \/\/ MEDAL_TEXTURE_FALLBACK_BEGIN)/)?.[0];
+assert.ok(relayBody,"missing authenticated relay fallback");
+assert.match(html,/communityId:c\.id/,"pass canonical catalog Community ID, never an arbitrary image URL");
+async function exerciseRelay({authenticated=true,ok=true,validTexture=true,current=true,alreadyLoaded=false}={}){
+ const calls=[];
+ const ctx={
+  textureApplied:alreadyLoaded,
+  faceObjectUrl:null,
+  token:1,stamp3dToken:current?1:2,
+  options:{communityId:"aa381237-4428-4778-bac5-389bc74aee8e"},
+  SUPABASE_URL:"https://fixture.supabase.co",SUPABASE_KEY:"publishable-key",
+  client:{auth:{getSession:async()=>({data:{session:authenticated?{access_token:"test-token"}:null}})}},
+  fetch:async (url,options)=>{
+   calls.push(["fetch",url,JSON.parse(options.body),options.headers.Authorization]);
+   return {ok,headers:{get:()=>"image/png"},blob:async()=>({size:128})};
+  },
+  tryTexture:async url=>{calls.push(["texture",url]);return validTexture},
+  URL:{createObjectURL:()=>{calls.push(["create"]);return "blob:mock";},revokeObjectURL:url=>calls.push(["revoke",url])},
+  AbortController,setTimeout,clearTimeout,
+ };
+ const result=await runInNewContext("(async()=>{"+relayBody+";return {textureApplied,faceObjectUrl};})()",ctx);
+ return {calls,textureApplied:result.textureApplied,faceObjectUrl:result.faceObjectUrl};
+}
+const relayGood=await exerciseRelay();
+assert.equal(relayGood.textureApplied,true);
+assert.equal(relayGood.faceObjectUrl,"blob:mock");
+assert.deepEqual(relayGood.calls[0],[ "fetch","https://fixture.supabase.co/functions/v1/medal-avatar-texture",{community_id:"aa381237-4428-4778-bac5-389bc74aee8e"},"Bearer test-token"]);
+assert.equal(relayGood.calls.some(x=>x[0]==="revoke"),false,"Blob retained until 3D unmount");
+const relayNoAuth=await exerciseRelay({authenticated:false});
+assert.equal(relayNoAuth.textureApplied,false);
+assert.equal(relayNoAuth.calls.length,0);
+const relayDenied=await exerciseRelay({ok:false});
+assert.equal(relayDenied.textureApplied,false);
+assert.equal(relayDenied.calls.some(x=>x[0]==="create"),false);
+const relayInvalid=await exerciseRelay({validTexture:false});
+assert.equal(relayInvalid.textureApplied,false);
+assert.deepEqual(relayInvalid.calls.at(-1),["revoke","blob:mock"],"Failed texture must release Blob");
+const relayStale=await exerciseRelay({current:false});
+assert.equal(relayStale.calls.length,0);
+const relayAlreadyLoaded=await exerciseRelay({alreadyLoaded:true});
+assert.equal(relayAlreadyLoaded.calls.length,0);
+console.log("Remote 3D texture relay regression: auth, approved Community ID, successful texture, denied, stale and Blob cleanup PASS");
