@@ -276,7 +276,7 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
    import("three/addons/controls/OrbitControls.js"),
    import("three/addons/environments/RoomEnvironment.js"),
    import("three/addons/loaders/GLTFLoader.js"),
-   import("./medal-render-preset.js?v=20261017-soft-gloss-c")
+   import("./medal-render-preset.js?v=20261017-soft-gloss-d")
   ]);
   if(token!==stamp3dToken)return;
 
@@ -638,7 +638,7 @@ async function mountStampMedal3D(design,imageUrl,fallbackImageUrl,engravingLines
   holder.scale.setScalar(maxDimension>0?1.75/maxDimension:1);
   holder.add(medal);
 
-  // Approved C finish: keep the sRGB artwork unlit and add a separate 12%
+  // Approved D finish: keep the sRGB artwork unlit and add a separate 16%
   // physical gloss. This mesh is a child of FrontFace so it follows all
   // existing transforms without copying world coordinates or moving the art.
   if(front instanceof THREE.Mesh){

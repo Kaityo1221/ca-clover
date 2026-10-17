@@ -8,7 +8,7 @@
 // 3. Keep the existing per-community crop/offset, rotations and engravings.
 // 4. Never edit saved medal, acquisition, or image version records for styling.
 export const MEDAL_DESIGN_RULES = Object.freeze({
- version:"2026-10-17-soft-gloss-c",
+ version:"2026-10-17-soft-gloss-d",
  exposure:.92,
  holder:Object.freeze({x:-.055,y:.22}),
  lights:Object.freeze({hemisphere:1.20,key:1.75,rim:.82,back:.40}),
@@ -23,8 +23,8 @@ export const MEDAL_DESIGN_RULES = Object.freeze({
   contrast:1.06
  }),
  faceGloss:Object.freeze({
-  opacity:.12,metalness:0,roughness:.62,reflectivity:.12,
-  clearcoat:.14,clearcoatRoughness:.58,
+  opacity:.16,metalness:0,roughness:.55,reflectivity:.16,
+  clearcoat:.20,clearcoatRoughness:.50,
   zOffset:.0006
  }),
  gold:Object.freeze({
