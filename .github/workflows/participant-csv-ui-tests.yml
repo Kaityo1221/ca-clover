@@ -31,3 +31,10 @@ jobs:
           node scripts/ci/test-pages-admin-d-webkit.mjs
       - name: Protected code and public boundary
         run: node --test scripts/ci/test-participant-ui-scope.mjs
+      - name: Preserve synthetic mobile screenshots
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: participant-csv-synthetic-webkit
+          path: test-results/
+          retention-days: 7

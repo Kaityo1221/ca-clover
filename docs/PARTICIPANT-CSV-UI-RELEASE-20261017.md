@@ -1,0 +1,18 @@
+# CA Clover 🍀 参加者CSV画面 接続候補
+
+Branch: `feature/participant-csv-ui-20261017`。本番Pagesは未変更。
+
+- D権限を持つCA本人の所属CommunityにCSVボタンを表示。
+- 利用目的4択と補足（その他は必須）から、最新チェックイン名簿を取得。
+- CSV列は表示名とMeetup内で固定の抽選番号。
+- 連打防止、取得中表示、確認人数/UTC時刻、人数不一致/巻き戻り時の発行停止表示。
+- 画面遷移・ログアウトで中止。名簿やCSVをブラウザstorageに保存しない。
+- 実APIへの送信先は専用Edgeのみ。上流取得処理・サービス資格情報・抽選番号の秘密鍵は公開コードに含めない。
+- indexの既存処理は3つの接続hook以外を保持。既存ADMIN/D付与UI/メダル/CAマスターは変更しない。
+
+検証済み実装commit: `bfe169a440a512bd3d5f82dff02e0c2fffeb6a2e`。
+[合成モバイルWebKit・既存ADMIN回帰・保護検査のCI](https://github.com/Kaityo1221/ca-clover/actions/runs/38984831988) は全step SUCCESS。
+
+Node12件、CSV WebKit11グループ、既存ADMIN WebKit1グループが成功。合成データだけを使用し、本番の名簿/ログインは使用していない。実iPhoneの保存操作は本番反映後に確認する。
+
+公開は専用バックエンド・認可・監査が準備できてから行う。現時点で一般ユーザーがダウンロード可能になったことを意味しない。
