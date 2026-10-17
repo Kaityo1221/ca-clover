@@ -73,7 +73,7 @@ function exercise(textureApplied,token=1,currentToken=1){
  const shared=resource('faceMaterial');
  const context={textureApplied,token,stamp3dToken:currentToken,
   controls:resource('controls'),faceTexture:null,engravingOverlayGeometry:null,engravingOverlayMaterial:null,engravingVisualTexture:null,engravingBumpTexture:null,
-  faceObjectUrl:'blob:fixture',URL:{revokeObjectURL(){calls.push('blob')}},activeFaceMaterial:resource('activeFaceMaterial'),
+  faceObjectUrl:'blob:fixture',faceGloss:null,URL:{revokeObjectURL(){calls.push('blob')}},activeFaceMaterial:resource('activeFaceMaterial'),
   goldMaterial:resource('goldMaterial'),faceMaterial:shared,backMaterial:resource('backMaterial'),brushedMaterial:resource('brushedMaterial'),pinMaterial:resource('pinMaterial'),
   environment:resource('environment'),pmrem:resource('pmrem'),renderer:{...resource('renderer'),domElement:{remove(){calls.push('canvas')}}},
   unmountStampMedal3D(){calls.push('show2D')},
@@ -132,3 +132,28 @@ assert.equal(relayStale.calls.length,0);
 const relayAlreadyLoaded=await exerciseRelay({alreadyLoaded:true});
 assert.equal(relayAlreadyLoaded.calls.length,0);
 console.log("Remote 3D texture relay regression: auth, approved Community ID, successful texture, denied, stale and Blob cleanup PASS");
+
+
+// Confirm that failed 3D texture cleanup also disposes the optional gloss
+// when an early renderer failure leaves it instantiated.
+const cleanupGloss=()=>{
+ const calls=[];
+ const resource=name=>({dispose(){calls.push(name)}});
+ const original=resource("faceMaterial");
+ const ctx={
+  textureApplied:false,token:1,stamp3dToken:1,
+  faceGloss:{geometry:resource("glossGeometry"),material:resource("glossMaterial")},
+  controls:resource("controls"),faceTexture:null,engravingOverlayGeometry:null,engravingOverlayMaterial:null,
+  engravingVisualTexture:null,engravingBumpTexture:null,faceObjectUrl:null,URL:{revokeObjectURL(){}},
+  activeFaceMaterial:original,faceMaterial:original,goldMaterial:resource("goldMaterial"),
+  backMaterial:resource("backMaterial"),brushedMaterial:resource("brushedMaterial"),
+  pinMaterial:resource("pinMaterial"),environment:resource("environment"),pmrem:resource("pmrem"),
+  renderer:{...resource("renderer"),domElement:{remove(){calls.push("canvas")}}},
+  unmountStampMedal3D(){calls.push("show2D")}
+ };
+ runInNewContext('(function(){'+fallback+';return "3D"})()',ctx);
+ assert(calls.includes("glossGeometry")&&calls.includes("glossMaterial"),"Release both gloss resources");
+ return calls;
+};
+cleanupGloss();
+console.log("B gloss: fallback releases geometry and material PASS");
