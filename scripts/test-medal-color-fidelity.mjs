@@ -4,12 +4,12 @@ import {readFileSync} from "node:fs";
 
 const html=readFileSync(new URL("../docs/stamp-rally.html",import.meta.url),"utf8");
 const rulesModule=readFileSync(new URL("../docs/medal-render-preset.js",import.meta.url),"utf8");
-const {MEDAL_DESIGN_RULES:rules,createMedalFaceMaterial,createMedalFaceGlossMaterial}=await import(
+const {MEDAL_DESIGN_RULES:rules,createMedalFaceMaterial,createMedalFaceGlossMaterial,createMedalFaceReflectionMaterial}=await import(
  "data:text/javascript,"+encodeURIComponent(rulesModule)
 );
 
 assert(Object.isFrozen(rules)&&Object.isFrozen(rules.lights)&&Object.isFrozen(rules.face));
-assert.equal(rules.version,"2026-10-17-soft-gloss-d");
+assert.equal(rules.version,"2026-10-17-soft-gloss-e-reflection");
 assert.deepEqual(
  [rules.lights.hemisphere,rules.lights.key,rules.lights.rim,rules.lights.back],
  [1.2,1.75,.82,.4],
@@ -22,12 +22,12 @@ assert.equal(rules.face.clearcoat,0);
 assert.equal(rules.face.roughness,null);
 assert.equal(rules.face.insetScale,.97);
 assert.equal(rules.gold.color,0xb8922e);
-assert(Object.isFrozen(rules.faceGloss),"D gloss standard is immutable");
+assert(Object.isFrozen(rules.faceGloss),"E gloss standard is immutable");
 assert.deepEqual(
  [rules.faceGloss.opacity,rules.faceGloss.metalness,rules.faceGloss.roughness,rules.faceGloss.reflectivity,
   rules.faceGloss.clearcoat,rules.faceGloss.clearcoatRoughness,rules.faceGloss.zOffset],
- [.16,0,.55,.16,.20,.50,.0006],
- "D gloss standard must not drift"
+ [.18,0,.42,.24,.30,.32,.0006],
+ "E gloss standard must not drift"
 );
 
 
@@ -53,11 +53,11 @@ const gloss=createMedalFaceGlossMaterial({
 assert(gloss instanceof PhysicalMaterialFixture);
 assert.equal(gloss.color,0xffffff);
 assert.equal(gloss.transparent,true);
-assert.equal(gloss.opacity,.16);
-assert.equal(gloss.roughness,.55);
-assert.equal(gloss.reflectivity,.16);
-assert.equal(gloss.clearcoat,.20);
-assert.equal(gloss.clearcoatRoughness,.50);
+assert.equal(gloss.opacity,.18);
+assert.equal(gloss.roughness,.42);
+assert.equal(gloss.reflectivity,.24);
+assert.equal(gloss.clearcoat,.30);
+assert.equal(gloss.clearcoatRoughness,.32);
 assert.equal(gloss.metalness,0);
 assert.equal(gloss.depthWrite,false);
 assert.equal(gloss.polygonOffset,true);
@@ -65,7 +65,7 @@ assert.equal(gloss.side,333);
 assert.equal(gloss.map,undefined,"Gloss layer must not duplicate or wash out the image");
 
 
-assert.match(html,/import\("\.\/medal-render-preset\.js\?v=20261017-soft-gloss-d"\)/,
+assert.match(html,/import\("\.\/medal-render-preset\.js\?v=20261017-soft-gloss-e-reflection"\)/,
  "3D must load common rules explicitly");
 assert.match(html,/const faceMaterial=createMedalFaceMaterial\(THREE\)/);
 assert.match(html,/const activeFaceMaterial=faceMaterial\.clone\(\)/);
@@ -75,6 +75,10 @@ assert.match(html,/faceGloss\.position\.z=MEDAL_DESIGN_RULES\.faceGloss\.zOffset
 assert.match(html,/front\.add\(faceGloss\)/,"Gloss must be child of face, not positioned in scene coordinates");
 assert.match(html,/faceGloss\?\.geometry\.dispose\(\)/,"Release cloned gloss geometry");
 assert.match(html,/faceGloss\?\.material\.dispose\(\)/,"Release gloss material");
+assert.match(html,/faceReflection\?\.geometry\.dispose\(\)/,"Release reflection geometry");
+assert.match(html,/faceReflection\?\.material\.dispose\(\)/,"Release reflection material");
+assert.match(html,/front\.add\(faceReflection\)/,"Reflection must follow the artwork transform");
+assert.match(html,/faceReflection\.name="FrontFaceReflection"/);
 assert(html.indexOf("if(!textureApplied||token!==stamp3dToken)")<html.indexOf("faceGloss=new THREE.Mesh("),
  "Do not allocate gloss before texture succeeds");
 
@@ -116,6 +120,37 @@ assert.match(html,/MEDAL_TEXTURE_FALLBACK_BEGIN[\s\S]*?unmountStampMedal3D\(\)[\
  "2D fallback retained on failed texture");
 assert.match(html,/suzukiBurned,gachiMonFaceFit,communityId:c\.id/,
  "Special engraving, per-community positioning and auth relay arguments preserved");
+
+assert(Object.isFrozen(rules.faceReflection),"Reflection should be immutable");
+assert.deepEqual(
+ [rules.faceReflection.maxOpacity,rules.faceReflection.lightX,rules.faceReflection.lightY,
+ rules.faceReflection.lightZ,rules.faceReflection.halfWidth,rules.faceReflection.halfLength,
+ rules.faceReflection.edgeFeather,rules.faceReflection.zOffset],
+ [.15,-.55,.55,2.85,.32,1.65,.26,.08],
+ "Safe reflective softbox must not drift"
+);
+class ShaderMaterialFixture {constructor(options){Object.assign(this,options)}}
+class Vector3Fixture {constructor(x,y,z){this.x=x;this.y=y;this.z=z}}
+const reflection=createMedalFaceReflectionMaterial({
+ ShaderMaterial:ShaderMaterialFixture,Vector3:Vector3Fixture,FrontSide:333
+});
+assert(reflection instanceof ShaderMaterialFixture);
+assert.equal(reflection.transparent,true);
+assert.equal(reflection.depthTest,true);
+assert.equal(reflection.depthWrite,false);
+assert.equal(reflection.side,333);
+assert.equal(reflection.uniforms.uOpacity.value,.15);
+assert.equal(reflection.uniforms.uLightCenter.value.z,2.85);
+assert.match(reflection.fragmentShader,/reflect\(-V,N\)/);
+assert.match(reflection.fragmentShader,/cameraPosition-vWorldPosition/);
+assert.match(reflection.fragmentShader,/vLocalNormalZ<0\.92/);
+assert.match(reflection.fragmentShader,/clamp\(uOpacity\*strip\*facing,0\.0,uOpacity\)/);
+assert.match(reflection.fragmentShader,/smoothstep/);
+assert.match(html,/faceReflection=new THREE\.Mesh\(front\.geometry\.clone\(\),createMedalFaceReflectionMaterial\(THREE\)\)/);
+assert.match(html,/faceReflection\.position\.z=MEDAL_DESIGN_RULES\.faceReflection\.zOffset/);
+assert.equal(rules.face.material,"MeshBasicMaterial","Reflected layer cannot tint saved artwork");
+console.log("PASS medal E reflection: separate view-dependent softbox, opacity cap, facing mask, transform tracking and cleanup");
+
 const allScripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
  .map(m=>m[1].trim()).filter(s=>s&&!s.startsWith('{"imports"'));
 for(const script of allScripts)new Function(script);
