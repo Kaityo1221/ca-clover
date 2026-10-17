@@ -6,7 +6,7 @@ export function createParticipantPanel({client,getIdentity,fetcher=fetch,documen
   let userId,api,dialog,selectedMeetup,lastFocus,pending=false,refreshTimer;
   let mounted=[];
   const identity=()=>getIdentity()??{};
-  const current=()=>identity().userId===userId&&identity().role==='ca';
+  const current=()=>identity().userId===userId&&['ca','admin'].includes(identity().role);
   const setStatus=text=>{
     if(!dialog?.isConnected)return;
     const target=dialog.querySelector('[data-csv-status]');
@@ -74,15 +74,17 @@ export function createParticipantPanel({client,getIdentity,fetcher=fetch,documen
   }
   async function mount({root,meetups,communityId,isCurrent=()=>true}){
     const who=identity();
-    if(who.role!=='ca'||!validId(who.userId)||!validId(communityId))return false;
+    if(!['ca','admin'].includes(who.role)||!validId(who.userId)||!validId(communityId))return false;
     const cards=[...root.querySelectorAll('[data-meetup-index]')];
-    let permission,membership;
-    try{[permission,membership]=await Promise.all([
-      client.from('user_permissions').select('permission_code').eq('user_id',who.userId).eq('permission_code','D').maybeSingle(),
-      client.from('community_memberships').select('community_id').eq('user_id',who.userId).eq('community_id',communityId).maybeSingle(),
-    ]);}catch{return false;}
-    if(permission?.error||membership?.error||permission?.data?.permission_code!=='D'||membership?.data?.community_id!==communityId||
-      identity().userId!==who.userId||identity().role!=='ca'||!isCurrent()||!root.isConnected)return false;
+    if(who.role!=='admin'){
+      let permission,membership;
+      try{[permission,membership]=await Promise.all([
+        client.from('user_permissions').select('permission_code').eq('user_id',who.userId).eq('permission_code','D').maybeSingle(),
+        client.from('community_memberships').select('community_id').eq('user_id',who.userId).eq('community_id',communityId).maybeSingle(),
+      ]);}catch{return false;}
+      if(permission?.error||membership?.error||permission?.data?.permission_code!=='D'||membership?.data?.community_id!==communityId)return false;
+    }
+    if(identity().userId!==who.userId||identity().role!==who.role||!isCurrent()||!root.isConnected)return false;
     ensureApi(who.userId);mounted=[];
     if(!doc.getElementById('participant-csv-style')){
       const style=doc.createElement('style');style.id='participant-csv-style';
