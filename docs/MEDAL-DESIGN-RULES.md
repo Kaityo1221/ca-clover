@@ -1,10 +1,10 @@
 # CA Clover 🍀 メダルデザイン共通ルール
 
-更新：2026-10-17 / 適用対象：CA Medal Rally の通常表示・ADMIN見本帳、全Community共通
+更新：2026-10-17 / E案は検証ブランチ限定・本番D案を維持 / 適用対象：CA Medal Rally の通常表示・ADMIN見本帳、全Community共通
 
 ## 目的
 
-アイコンの色が3D照明で白く飛ぶ、または二つの白い反射が強く載る問題を防ぐ。D案として、元画像の色を保ちながらC案より強い艶を戻す。
+アイコンの色が3D照明で白く飛ぶ、または二つの白い反射が強く載る問題を防ぐ。E案として、元画像の色を保ちながら傾けたときに動く柔らかい反射を加える。
 一覧（2D）と3Dのアイコン面が可能な限り同じ色・配置になることを優先する。
 **KOGAの黄色も、がちもんくらぶの青も、個別の色補正ではなく共通処理で再現する。**
 
@@ -22,15 +22,18 @@
 | Communityアイコン面 | 元画像は `MeshBasicMaterial` / `toneMapped: false` / 白ベースで色を正確に保持。ライトによる反射は元画像にはかけない。 |
 | アイコン画像 | `sRGBColorSpace`。2Dと同じ `saturate(1.12) contrast(1.06)` を画像素材に1回だけ適用。 |
 | サイズ・位置 | 標準 `0.97` 倍・中央配置。既存のがちもんくらぶ専用倍率・オフセットは保持。 |
-| 艶レイヤー（D案） | 元画像とは別に `FrontFaceGloss` の薄い `MeshPhysicalMaterial` を載せる。opacity `0.16`、metalness `0`、roughness `0.55`、reflectivity `0.16`、clearcoat `0.20`、clearcoatRoughness `0.50`。透明・深度書き込みなし、前方オフセット `0.0006`。 |
+| 艶レイヤー（E案） | 元画像とは別に `FrontFaceGloss` の薄い `MeshPhysicalMaterial` を載せる。opacity `0.18`、metalness `0`、roughness `0.42`、reflectivity `0.24`、clearcoat `0.30`、clearcoatRoughness `0.32`。透明・深度書き込みなし、前方オフセット `0.0006`。 |
+| 傾斜連動の反射 | `FrontFaceReflection` に独立した半透明 `ShaderMaterial` を使用。視線と面法線で反射方向を計算し、固定された柔らかい帯状光源との交点から光沢を描く。最大opacity `0.15`。時間ベースの強制移動なし。厚み・側面・裏側には描かない。読み込めない画像は従来通り2Dフォールバック。 |
 | 金枠 | `MeshPhysicalMaterial` の金属光沢を維持。色 `0xb8922e`、metalness `0.95`、roughness `0.34`。 |
 | 裏面・ピン | 既存のPBR金属仕上げ、刻印、焼き印演出を維持。 |
 | トーンマッピング | 金属・艶レイヤーにACES Filmicを維持。露出 `0.92`。**アイコン画像自体には適用しない**。 |
 | 3D操作 | 回転、ドラッグ、鈴木専用演出、デザイン履歴、取得・再会の表示を変えない。 |
 
-## 2026-10-17 採用仕様：D案（ソフトグロス強め）
+## 2026-10-17 試験仕様：E案（自然な反射帯）
 
-このD案は全Communityのメダルに適用する。C案から艶レイヤーのみopacity `0.12` → `0.16`、roughness `0.62` → `0.55`、reflectivity `0.12` → `0.16`、clearcoat `0.14` → `0.20`、clearcoatRoughness `0.58` → `0.50` に変更した。照明、金枠、色補正、位置、裏面はC案のまま。初回メダル画像の元色を保持し、従来より弱い白い光沢が分かる程度の薄い表面レイヤーを追加する。元メッシュのgeometryは変更・破棄せず、重ねたメッシュを終了時に解放する。
+E案はD案の照明・金枠・色補正・画像位置・裏面を維持し、艶レイヤーのroughnessを下げてclearcoatを増加する。さらに反射帯用の薄い別メッシュを追加。GLBのFrontFace geometryを複製し、法線が表側の面にのみ反射を描く。実際のモデル回転・ドラッグに追従するため、時刻・アニメーションで光をスライドさせる加工はしない。双方の複製geometryとmaterialを表示終了時に解放する。KOGAの黄色などアイコンの元画像は無照明のまま。
+
+**適用判断の条件**：KOGA・KOTO KIBA・がちもんくらぶの実機画面で、反射が傾きに連動して動き、色を白く飛ばさず、二点の強い光に戻らないこと。WebGLのスクリーンショット比較・iPhone Safariの最終目視を実施するまで本番マージしない。
 
 ## 照明の基準値
 
@@ -58,4 +61,4 @@
 4. `node scripts/test-medal-face-hires.mjs` および `node scripts/test-medal-color-fidelity.mjs` とSafari回帰テストを通す。
 5. 色調整によるDB/Storage/Auth/Campfire/API変更は行わない。Phase E凍結資産とCAマスター同期には触れない。
 
-※ `MeshBasicMaterial` にはroughnessの意味がないため、色優先のベース面は無反射とする。D案のroughness `0.55` は**別の薄い艶レイヤーだけ**に適用する。白い強反射が2点強く現れないこととKOGAの黄色保持を実機で確認する。
+※ `MeshBasicMaterial` にはroughnessの意味がないため、色優先のベース面は無反射とする。E案のroughness `0.42` は**別の薄い艶レイヤーだけ**に適用する。反射帯も画像素材そのものは変更しない。白い強反射が2点強く現れないこととKOGAの黄色保持を実機で確認する。
