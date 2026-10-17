@@ -3,15 +3,15 @@
 // rendering side effects. Gold rim and engraved back remain PBR materials.
 //
 // Design policy:
-// 1. Community art is an accurate, unlit sRGB image (no glare or bloom).
-// 2. Only metal parts use scene lighting, environment, and ACES tone mapping.
+// 1. Community artwork remains an accurate unlit sRGB base with translucent gloss.
+// 2. Metallic parts and a very light separate gloss use lighting; the artwork does not.
 // 3. Keep the existing per-community crop/offset, rotations and engravings.
 // 4. Never edit saved medal, acquisition, or image version records for styling.
 export const MEDAL_DESIGN_RULES = Object.freeze({
- version:"2026-10-17-color-fidelity",
+ version:"2026-10-17-soft-gloss-b",
  exposure:.92,
  holder:Object.freeze({x:-.055,y:.22}),
- lights:Object.freeze({hemisphere:1.20,key:1.60,rim:.70,back:.40}),
+ lights:Object.freeze({hemisphere:1.20,key:1.75,rim:.82,back:.40}),
  face:Object.freeze({
   material:"MeshBasicMaterial",
   color:0xffffff,
@@ -21,6 +21,11 @@ export const MEDAL_DESIGN_RULES = Object.freeze({
   insetScale:.97,
   saturation:1.12,
   contrast:1.06
+ }),
+ faceGloss:Object.freeze({
+  opacity:.09,metalness:0,roughness:.62,reflectivity:.12,
+  clearcoat:.14,clearcoatRoughness:.58,
+  zOffset:.0006
  }),
  gold:Object.freeze({
   // Preserve the existing gold frame, including its real metallic reflections.
@@ -34,5 +39,26 @@ export function createMedalFaceMaterial(THREE){
   color:MEDAL_DESIGN_RULES.face.color,
   toneMapped:MEDAL_DESIGN_RULES.face.toneMapped,
   side:THREE.FrontSide
+ });
+}
+
+// The gloss mesh is separate from the artwork. Do not put a PBR shader on
+// the Community icon texture itself: the image must keep its accurate color.
+export function createMedalFaceGlossMaterial(THREE){
+ const gloss=MEDAL_DESIGN_RULES.faceGloss;
+ return new THREE.MeshPhysicalMaterial({
+  color:0xffffff,
+  transparent:true,
+  opacity:gloss.opacity,
+  metalness:gloss.metalness,
+  roughness:gloss.roughness,
+  reflectivity:gloss.reflectivity,
+  clearcoat:gloss.clearcoat,
+  clearcoatRoughness:gloss.clearcoatRoughness,
+  side:THREE.FrontSide,
+  depthWrite:false,
+  polygonOffset:true,
+  polygonOffsetFactor:-1,
+  polygonOffsetUnits:-1
  });
 }
