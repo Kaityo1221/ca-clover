@@ -65,3 +65,24 @@ const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
  .map(match=>match[1].trim()).filter(script=>script&&!script.startsWith('{"imports"'));
 for(const script of scripts)new Function(script);
 console.log("3D medal high-resolution source preference: 9 regression checks PASS");
+
+const fallback=html.match(/\/\/ MEDAL_TEXTURE_FALLBACK_BEGIN([\s\S]*?)\/\/ MEDAL_TEXTURE_FALLBACK_END/)?.[1];
+assert.ok(fallback,'Texture failure must be handled before displaying a model');
+function exercise(textureApplied,token=1,currentToken=1){
+ const calls=[];const resource=name=>({dispose(){calls.push(name)}});
+ const shared=resource('faceMaterial');
+ const context={textureApplied,token,stamp3dToken:currentToken,
+  controls:resource('controls'),faceTexture:null,engravingOverlayGeometry:null,engravingOverlayMaterial:null,engravingVisualTexture:null,engravingBumpTexture:null,
+  faceObjectUrl:'blob:fixture',URL:{revokeObjectURL(){calls.push('blob')}},activeFaceMaterial:resource('activeFaceMaterial'),
+  goldMaterial:resource('goldMaterial'),faceMaterial:shared,backMaterial:resource('backMaterial'),brushedMaterial:resource('brushedMaterial'),pinMaterial:resource('pinMaterial'),
+  environment:resource('environment'),pmrem:resource('pmrem'),renderer:{...resource('renderer'),domElement:{remove(){calls.push('canvas')}}},
+  unmountStampMedal3D(){calls.push('show2D')},
+ };
+ const result=runInNewContext('(function(){'+fallback+';return "3D"})()',context);
+ return {calls,result};
+}
+const failed=exercise(false);assert.equal(failed.result,undefined);assert(failed.calls.includes('show2D'));assert(failed.calls.includes('renderer'));assert(failed.calls.includes('blob'));
+const success=exercise(true);assert.equal(success.result,'3D');assert.deepEqual(success.calls,[]);
+const stale=exercise(false,1,2);assert(!stale.calls.includes('show2D'));assert(stale.calls.includes('renderer'));
+assert(html.indexOf('// MEDAL_TEXTURE_FALLBACK_BEGIN')<html.indexOf('stamp3d.appendChild(renderer.domElement)'),'Blank model must never be mounted');
+console.log('Medal fallback: failed texture restores 2D, success keeps 3D, stale load preserves next medal, resources released PASS');
