@@ -49,6 +49,7 @@
         font-weight:800;line-height:1.4;letter-spacing:-.025em;overflow-wrap:anywhere;
       }
       .ca-growth-description{margin:12px 0 0;font-size:13px;line-height:1.85;font-weight:500}
+      .ca-growth-recording-note{margin:12px 0 0;font-size:12px;line-height:1.7;font-weight:600;color:var(--growth-body)}
       .ca-growth-head .periodbar{
         display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;
         width:100%;max-width:520px;margin-top:26px!important;padding:5px;
@@ -129,6 +130,10 @@
     hero.dataset.growthThemeHero="1";
     hero.innerHTML='<div class="ca-growth-eyebrow">GROWTH</div><h2 class="ca-growth-title">コミュニティの成長</h2><p class="ca-growth-description">メンバー数の変化から、Communityの広がりを見える化します。</p>';
     layout.prepend(hero);
+    const note=document.createElement("p");
+    note.className="ca-growth-recording-note";
+    note.textContent="※ CA Cloverで人数の記録を開始した日から集計しています。記録開始前の履歴は含まれません。";
+    layout.appendChild(note);
     decoratedHeads.add(head);
   }
 
@@ -139,6 +144,10 @@
     const chart=panel.querySelector(".trendbox,.notice");
     if(!original||!metrics||!chart)return;
     original.classList.add("ca-growth-original-title");
+    const periodDeltaHelp=metrics.querySelector(".metric:nth-child(3) .tiny");
+    if(periodDeltaHelp&&periodDeltaHelp.textContent.includes("最初の記録から")){
+      periodDeltaHelp.textContent="表示データの最初の記録との差";
+    }
     const title=document.createElement("div");
     title.dataset.growthThemeTrend="1";
     title.innerHTML='<div class="ca-growth-eyebrow">MEMBER TREND</div><h3>メンバー数の推移</h3><p>選択した期間における、Communityメンバー数の推移です。</p>';

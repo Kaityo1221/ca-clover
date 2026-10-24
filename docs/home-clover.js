@@ -12,7 +12,7 @@
   document.head.appendChild(periods);
 
   const growthTheme=document.createElement("script");
-  growthTheme.src="./community-growth-theme.js?v=20261001-growth-quickstart1";
+  growthTheme.src="./community-growth-theme.js?v=20261024-recording-note1";
   growthTheme.async=false;
   document.head.appendChild(growthTheme);
 
