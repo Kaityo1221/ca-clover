@@ -169,7 +169,7 @@
       '<h2 class="reaction2-title"><span class="reaction2-title-emoji">'+esc(meta.emoji)+'</span> '+esc(analysis.type)+'<span class="reaction2-title-suffix">です</span></h2>'+
       '<div class="reaction2-alias">✦ '+esc(meta.alias)+'</div>'+
       '<p class="reaction2-explain">'+esc(describe(analysis,summary))+'</p></div>'+
-      '<div class="reaction2-evidence">'+statHtml("📅 作成に強い曜日",analysis.day,analysis.type)+statHtml("🕘 作成に強い時間帯",analysis.part,analysis.type)+'</div>'+
+      '<div class="reaction2-evidence">'+statHtml("📅 反応が良い曜日",analysis.day,analysis.type)+statHtml("🕘 反応が良い時間帯",analysis.part,analysis.type)+'</div>'+
       '<div class="reaction2-foot"><p>分析対象 '+count.toLocaleString("ja-JP")+'件 · コミュニティ全体の24h RSVP増加中央値 '+esc(fmt(summary.overallMedian24h))+'</p>'+
       '<p>直近12か月の範囲から、'+esc(reliableStart)+'以降の有効な実測で診断（日本時間）</p>'+
       '<p>曜日・時間帯は別々に判定しています。型はRSVP数の保証や予測ではありません。</p></div>'+
