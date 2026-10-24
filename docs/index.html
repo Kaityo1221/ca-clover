@@ -9,17 +9,10 @@
   <script src="./home-clover.js?v=20261009-month-only" defer></script>
   <script src="./community-title-fit.js?v=20261010-bracket2" defer></script>
 <script src="./clover-garden.js?v=20260926-garden-natural1" defer></script>
-  <!-- Reaction: detail timeline -> comparisons -> community reaction analysis -->
-  <script src="./reach-phase7.js?v=20261024-reaction-rename1" defer></script>
-  <script src="./reach-phase7c.js?v=20261010-release1" defer></script>
-  <script src="./reach-phase7d.js?v=20261010-release1" defer></script>
+  <!-- Reaction v2 Phase 1: reuse analytics, replace old visible panels with Community DNA -->
   <script src="./reach-reaction-r1.js?v=20261010-release1" defer></script>
   <script src="./reach-reaction-window12.js?v=20261010-release1" defer></script>
-  <script src="./reach-reaction-r2.js?v=20261010-missions1" defer></script>
-  <script src="./reach-reaction-r3.js?v=20261010-release1" defer></script>
-  <script src="./reach-reaction-r4.js?v=20261010-release1" defer></script>
-  <script src="./reach-reaction-r5.js?v=20261010-missions1" defer></script>
-  <script src="./reach-missions.js?v=20261024-reaction-rename1" defer></script>
+  <script src="./reaction-v2.js?v=20261024-phase1" defer></script>
   <style>
     :root{font-family:Inter,"Noto Sans JP",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1f2937;background:#f7fee7}
     *{box-sizing:border-box}body{margin:0;min-height:100vh;background:linear-gradient(180deg,#f7fee7 0,#fff 28rem)}
@@ -463,7 +456,7 @@
       }else if(communityFeatureView==="insights"){
         html+='<section class="grid g4 section"><div class="metric"><span class="tiny strong muted">🔥 Meetup / '+e(periodLabel)+'</span><b>'+meetupCount.toLocaleString("ja-JP")+'</b></div><div class="metric"><span class="tiny strong muted">🍀 CA Meetup / '+e(periodLabel)+'</span><b>'+caMeetups.toLocaleString("ja-JP")+'</b></div><div class="metric"><span class="tiny strong muted">✅ Check-in / '+e(periodLabel)+'</span><b>'+totalCheckin.toLocaleString("ja-JP")+'</b></div><div class="metric"><span class="tiny strong muted">📊 参加率 / '+e(periodLabel)+'</span><b>'+e(periodRateText)+'</b>'+(periodRate==null?'<div class="tiny muted strong" style="margin-top:5px">RSVP 0のため</div>':'<div class="tiny muted strong" style="margin-top:5px">RSVP → Check-in</div>')+'</div></section>';
       }else if(communityFeatureView==="reach"){
-        html+='<section class="card section"><h2>📣 Reaction</h2><p class="muted strong">RSVPの推移や過去Meetupとの比較、メンバーの反応タイミングを分析します。</p><div class="notice section">Reactionのデータを読み込んでいます...</div></section>';
+        html+='<section class="section" id="reactionV2Panel" aria-live="polite"><div class="notice">🍀 Community DNAを読み込んでいます...</div></section>';
       }
     }
     html+='<div class="version">mirror '+VERSION+'</div>';
