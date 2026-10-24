@@ -78,7 +78,7 @@ function mount(){
   if(!el){el=document.createElement("section");el.id=ROOT_ID;root.parentElement.insertBefore(el,root.parentElement.querySelector("#reachReactionR2")||root);}
   const timing=timingResult&&timingResult.communityId===id?timingResult:null;
   const missions=derive(summaryResult,timing),clear=missions.filter(m=>m.clear).length;
-  el.innerHTML='<details class="reach-missions"'+(opened?' open':'')+'><summary><div><div class="reach-mission-head">🎯 Reach ミッション</div><div class="reach-mission-sub">分析の解放条件を見る　▾</div></div><span class="reach-mission-total">'+clear+' / '+missions.length+' 達成</span></summary>'+
+  el.innerHTML='<details class="reach-missions"'+(opened?' open':'')+'><summary><div><div class="reach-mission-head">🎯 Reaction ミッション</div><div class="reach-mission-sub">分析の解放条件を見る　▾</div></div><span class="reach-mission-total">'+clear+' / '+missions.length+' 達成</span></summary>'+
     '<div class="reach-mission-body"><div class="reach-mission-grid">'+missions.map(card).join('')+'</div>'+
     '<p class="reach-mission-foot">※ 開催総数ではなく、必要な時刻の実際のRSVP観測に基づく件数です。条件を満たしても一部のチェックポイントは未取得の場合があります。</p></div></details>';
 }

@@ -195,7 +195,7 @@
     const sb=getClient();
     const id=communityId();
     if(!sb||!id)return;
-    root.innerHTML='<div class="reach7-empty">Reachデータを読み込み中...</div>';
+    root.innerHTML='<div class="reach7-empty">Reactionデータを読み込み中...</div>';
 
     try{
       const snapshotResult=await sb.from("meetup_metric_snapshots")
@@ -209,7 +209,7 @@
       const snapshots=snapshotResult.data||[];
       const ids=[...new Set(snapshots.map(function(row){return row.meetup_id}).filter(Boolean))];
       if(!ids.length){
-        root.innerHTML='<div class="reach7-empty">まだReach用のRSVP履歴がありません。スナップショットが貯まるとここに表示されます。</div>';
+        root.innerHTML='<div class="reach7-empty">まだReaction用のRSVP履歴がありません。スナップショットが貯まるとここに表示されます。</div>';
         return;
       }
 
@@ -248,7 +248,7 @@
       renderSelected();
     }catch(err){
       console.warn("Reach failed",err);
-      root.innerHTML='<div class="reach7-empty">Reachデータの読み込みに失敗しました。少し時間を置いて再度開いてください。</div>';
+      root.innerHTML='<div class="reach7-empty">Reactionデータの読み込みに失敗しました。少し時間を置いて再度開いてください。</div>';
     }
   }
 
@@ -262,7 +262,7 @@
 
     ensureStyle();
     current.dataset.reachPhase7="1";
-    current.innerHTML='<h2>📣 Reach</h2><p class="muted strong">Meetup作成後のRSVPの伸びを確認します。</p><div id="reach7Root" class="section"></div>';
+    current.innerHTML='<h2>📣 Reaction</h2><p class="muted strong">Meetup作成後のRSVPの伸びを確認します。</p><div id="reach7Root" class="section"></div>';
     const root=current.querySelector("#reach7Root");
     const token=++mountToken;
     void loadReach(root,token);
