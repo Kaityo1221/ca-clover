@@ -1,9 +1,9 @@
 # CA Clover 🍀
 
-Japan Community Activity Dashboard for Pokémon GO Community Ambassadors.
+Japan Community Activity Dashboard for CA.
 
 This public repository contains the public-side application source.
-Its deployed Supabase/Edge Functions backend and Campfire ingestion
+Its deployed Supabase/Edge Functions backend and CF ingestion
 implementation must be maintained in a **private repository**.
 
 - Never commit live credentials, SQL migration sources, internal Edge
