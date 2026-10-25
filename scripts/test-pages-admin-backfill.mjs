@@ -38,4 +38,3 @@ const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].ma
 assert(scripts.length>=1);
 for(const src of scripts)new Function(src); // parse only; don't execute
 process.stdout.write("PASS production pages content preserved byte-for-byte outside 3 additions; inline script syntax valid; save button is gated by future audited backend contract.\n");
-

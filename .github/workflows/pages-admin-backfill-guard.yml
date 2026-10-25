@@ -39,4 +39,3 @@ jobs:
               *) echo "::error::Unexpected file: $path"; exit 1 ;;
             esac
           done </tmp/files.txt
-
