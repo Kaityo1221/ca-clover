@@ -42,7 +42,14 @@ export default function AdminMeetupBackfillPage(){
       const {data,error}=await supabase.functions.invoke("admin-meetup-backfill",{
         body:{action:"preview",url:url.trim()},
       });
-      if(error) throw error;
+      if(error){
+        const context=(error as {context?:unknown}).context;
+        if(context instanceof Response){
+          const failure=await context.json().catch(()=>null);
+          if(typeof failure?.error==="string") throw new Error(failure.error);
+        }
+        throw new Error("照合APIを利用できません。バックエンドの接続状況を確認してください。");
+      }
       if(data?.ok!==true||data?.status!=="preview"||data?.readOnly!==true||data?.canSave!==false){
         throw new Error(typeof data?.error==="string"?data.error:"安全な照合結果を確認できませんでした");
       }
