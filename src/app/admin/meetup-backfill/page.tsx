@@ -63,7 +63,21 @@ export default function AdminMeetupBackfillPage(){
 
   if(loading) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 読み込み中...</main>;
   if(authError) return <main className="mx-auto max-w-xl px-4 py-12 text-sm font-bold text-rose-700">認証情報を確認できませんでした。ログイン状態をご確認ください。</main>;
-  if(!admin) return <main className="mx-auto max-w-xl px-4 py-12 text-center font-black text-lime-950">🔒 ADMIN専用です</main>;
+  if(!admin) return <main className="mx-auto max-w-xl px-4 py-12">
+    <section className="clover-card p-6 text-center">
+      <h1 className="text-2xl font-black text-lime-950">🔒 ADMIN専用です</h1>
+      <p className="mt-4 text-sm font-semibold leading-7 text-slate-600">
+        {user?"このアカウントにはADMIN権限がありません。":"プレビューは本番と別のURLのため、ログイン状態が引き継がれません。"}
+      </p>
+      {!user?<Link href="/login?next=%2Fadmin%2Fmeetup-backfill" className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-lime-400 px-5 py-3.5 text-sm font-black text-lime-950">
+        Googleでログインして確認
+      </Link>:null}
+      <Link href="/preview/meetup-backfill" className="mt-3 inline-flex w-full items-center justify-center rounded-2xl border border-lime-200 bg-white px-5 py-3.5 text-sm font-black text-lime-800">
+        ログイン不要の画面サンプルを見る
+      </Link>
+      <p className="mt-4 text-xs font-semibold leading-5 text-slate-500">画面サンプルはダミーデータのみで、Campfireや本番DBには接続しません。</p>
+    </section>
+  </main>;
 
   return <main className="mx-auto max-w-3xl px-4 py-8 md:px-8">
     <Link href="/admin" className="text-sm font-black text-lime-700">← 管理メニュー</Link>
