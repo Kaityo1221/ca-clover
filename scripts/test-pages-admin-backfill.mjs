@@ -19,6 +19,11 @@ assert.match(added,/typeof data\?\.readOnly!=="boolean"/,"fails closed unless ba
 assert.match(added,/data\.readOnly===false/,"never allow saving from readOnly response");
 assert.match(added,/data\.canSave===true/,"commit button requires explicit save capability");
 assert.match(added,/data\.registrationContract==="atomic-audit-v1"/,"commit button requires approved atomic audit protocol");
+assert.match(added,/previewAge<=600000/,"preview must be no older than ten minutes");
+assert.match(added,/idOK\(event\.clubId\)/,"event must have verified Campfire owner");
+assert.match(added,/idOK\(community\.id\)/,"community must be a validated UUID");
+assert.match(added,/Date\.parse\(event\.createdAt\)/,"event creation time is mandatory before enabling save");
+assert.match(added,/checkedAt:data\.checkedAt/,"commit must send the preview timestamp");
 assert.match(added,/canCommit\?\x27\x27:\x27disabled aria-disabled="true"\x27/,"button disabled by default");
 assert.match(added,/body:\{action:"apply",requestId,url:event.url,expected:/,"commit requires explicit action and idempotency ID");
 assert.match(added,/function meetupBackfill\(\)/);
