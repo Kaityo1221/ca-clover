@@ -450,9 +450,16 @@ async function meetupBackfill(){
    const count=value=>Number.isSafeInteger(value)&&value>=0?value.toLocaleString("ja-JP")+"人":"未取得";
    const status=data.existing==="missing"?"未登録":data.existing==="already_present"?"登録済み":"確認できません";
    if(!["missing","already_present"].includes(data.existing)){output.innerHTML=msg("登録状況を一意に確認できませんでした。","err");return}
+   const idOK=v=>typeof v==="string"&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+   const previewAge=Date.now()-Date.parse(data.checkedAt||"");
    const canCommit=data.canSave===true&&data.readOnly===false&&data.registrationContract==="atomic-audit-v1"&&
       data.existing==="missing"&&event.countsComplete===true&&Number.isSafeInteger(event.rsvpCount)&&
-      Number.isSafeInteger(event.checkinCount);
+      Number.isSafeInteger(event.checkinCount)&&event.rsvpCount>=0&&event.checkinCount>=0&&
+      idOK(event.id)&&idOK(event.clubId)&&idOK(community.id)&&
+      typeof event.title==="string"&&event.title.trim().length>0&&
+      Number.isFinite(previewAge)&&previewAge>=0&&previewAge<=600000&&
+      Number.isFinite(Date.parse(event.startsAt))&&Number.isFinite(Date.parse(event.endsAt))&&
+      Number.isFinite(Date.parse(event.createdAt));
    output.innerHTML='<section class="card">'+
     '<div class="row between wraprow"><h2>'+e(event.title||"名称未取得")+'</h2><span class="pill '+(data.existing==="missing"?"amber":"")+'">'+e(status)+'</span></div>'+
     '<p class="small strong" style="color:#4d7c0f">'+e(community.name||"Community未取得")+'</p>'+
