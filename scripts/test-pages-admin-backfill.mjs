@@ -19,7 +19,7 @@ assert.match(added,/data\?\.readOnly!==true/,"fails closed unless explicit read-
 assert.match(added,/data\?\.canSave!==false/,"fails closed unless save disabled");
 assert.match(added,/function meetupBackfill\(\)/);
 assert.doesNotMatch(added,/\.insert\s*\(|\.update\s*\(|\.upsert\s*\(|\.delete\s*\(|\.rpc\s*\(|auth\.signOut\s*\(/,"new screen must not mutate DB or sessions");
-const restored=html.slice(0,si)+html.slice(ei);
+const restored=html.slice(0,si)+html.slice(ei+1); // remove the extra separator newline introduced with the screen
 const exact=restored.replace(menu,"").replace(route,"");
 if(exact!==base){
  let at=0;while(at<exact.length&&at<base.length&&exact[at]===base[at])at++;
