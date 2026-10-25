@@ -1,0 +1,27 @@
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {execFileSync} from "node:child_process";
+
+const html=readFileSync("docs/admin.html","utf8");
+const base=execFileSync("git",["show","origin/pages:docs/admin.html"],{encoding:"utf8"});
+const menu='\n  ["meetup-backfill","🧩","Meetup履歴補完","取得漏れをURLから照合（保存なし）",0],';
+const route='\n if(r==="meetup-backfill")return meetupBackfill();';
+const start='\nasync function meetupBackfill(){';
+const end='\nasync function render(){';
+
+assert.equal(html.split(menu).length-1,1,"exactly one additive menu item");
+assert.equal(html.split(route).length-1,1,"exactly one additive route");
+const si=html.indexOf(start),ei=html.indexOf(end,si+1);
+assert(si>0&&ei>si,"isolated additive screen function");
+const added=html.slice(si,ei);
+assert.match(added,/body:\{action:"preview",url\}/,"read only preview action");
+assert.match(added,/data\?\.readOnly!==true/,"fails closed unless explicit read-only response");
+assert.match(added,/data\?\.canSave!==false/,"fails closed unless save disabled");
+assert.match(added,/function meetupBackfill\(\)/);
+assert.doesNotMatch(added,/\.insert\s*\(|\.update\s*\(|\.upsert\s*\(|\.delete\s*\(|\.rpc\s*\(|auth\.signOut\s*\(/,"new screen must not mutate DB or sessions");
+const restored=html.slice(0,si)+html.slice(ei);
+assert.equal(restored.replace(menu,"").replace(route,""),base,"entire original pages admin UI is byte-exact unchanged");
+const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(x=>x[1]).filter(x=>x.trim());
+assert(scripts.length>=1);
+for(const src of scripts)new Function(src); // parse only; don't execute
+process.stdout.write("PASS production pages content preserved byte-for-byte outside 3 additions; inline script syntax valid; added screen is read-only.\n");
