@@ -45,6 +45,8 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
 .cname{margin-top:8px;min-height:31px;font-size:10px;line-height:1.42;font-weight:950;color:#4b433c;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .canames{margin-top:5px;display:grid;gap:4px}.caname{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:999px;padding:3px 4px;font-size:8px;font-weight:950}
 .caname.on{background:#e9f3e4;color:#557749}.caname.off{border:1px dashed #d3cec8;background:#f7f5f2;color:#aaa29a}
+/* Acquired CA medals stay green; the selected CA is emphasized separately. */
+.stampca-option{background:#fff;color:#887a6d;border-color:#d9cec2}.stampca-option.acquired{background:#eff7eb;color:#517746;border-color:#b9d3ac}.stampca-option.selected:not(.acquired){background:#fbf0e3;color:#765d40;border-color:#bfaa8b}.stampca-option.acquired.selected{background:#5c854c;color:#fff;border-color:#4f7840;box-shadow:0 3px 10px rgba(75,111,59,.20)}
 .empty{text-align:center;padding:16px 8px;font-size:11px;font-weight:850;color:#a0958a}.loading,.error{margin-top:16px;border-radius:22px;background:#fff;padding:20px;text-align:center;font-size:12px;font-weight:900}.error{background:#fff1f2;color:#be123c;border:1px solid #fecdd3}
 .footer{margin-top:16px;border:1px dashed #d7c5b4;border-radius:21px;background:rgba(255,255,255,.62);padding:13px;text-align:center;font-size:10px;line-height:1.6;font-weight:800;color:#8d7b6b}
 .exchange-card{margin-top:14px;min-height:76px;display:flex;align-items:center;justify-content:space-between;gap:12px;border:2px solid #b4ce9f;border-radius:22px;background:linear-gradient(120deg,#e6f3dc,#f7fcf2);padding:16px 18px;box-shadow:0 8px 22px rgba(75,105,62,.12)}.exchange-card strong{display:block;font-size:18px;color:#36552c}.exchange-card small{display:block;margin-top:5px;font-size:12px;line-height:1.5;font-weight:800;color:#5c704f}.exchange-card .arrow{flex-shrink:0;width:36px;height:36px;border-radius:999px;background:#5c7d4e;display:grid;place-items:center;font-size:22px;font-weight:950;color:#fff}
@@ -997,7 +999,7 @@ async function load(){
     void mountStampMedal3D(selectedDesign,src,c.avatar_url||"",engravingLines,{suzukiBurned,gachiMonFaceFit,communityId:c.id});
    }else unmountStampMedal3D();
 
-  const caButtons=c.cas.map(x=>'<button type="button" class="btn '+(selectedCa&&selectedCa.id===x.id?"":"line")+'" data-modal-ca="'+esc(x.id)+'" style="font-size:10px;padding:8px 10px">'+esc(x.ca_level||"CA")+' ・ '+esc(x.trainer_name)+'</button>').join("");
+  const caButtons=c.cas.map(x=>{const selected=!!(selectedCa&&selectedCa.id===x.id);return '<button type="button" class="btn stampca-option'+(x.acquired?' acquired':'')+(selected?' selected':'')+'" aria-pressed="'+(selected?'true':'false')+'" data-modal-ca="'+esc(x.id)+'" style="font-size:10px;padding:8px 10px">'+esc(x.ca_level||"CA")+' ・ '+esc(x.trainer_name)+'</button>';}).join("");
    let historyHtml="";
    let designHtml="";
 
