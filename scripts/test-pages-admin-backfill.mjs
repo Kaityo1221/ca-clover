@@ -20,7 +20,11 @@ assert.match(added,/data\?\.canSave!==false/,"fails closed unless save disabled"
 assert.match(added,/function meetupBackfill\(\)/);
 assert.doesNotMatch(added,/\.insert\s*\(|\.update\s*\(|\.upsert\s*\(|\.delete\s*\(|\.rpc\s*\(|auth\.signOut\s*\(/,"new screen must not mutate DB or sessions");
 const restored=html.slice(0,si)+html.slice(ei);
-assert.equal(restored.replace(menu,"").replace(route,""),base,"entire original pages admin UI is byte-exact unchanged");
+const exact=restored.replace(menu,"").replace(route,"");
+if(exact!==base){
+ let at=0;while(at<exact.length&&at<base.length&&exact[at]===base[at])at++;
+ throw new Error("ADMIN baseline mismatch at byte "+at+"; actual "+JSON.stringify(exact.slice(Math.max(0,at-50),at+120))+" expected "+JSON.stringify(base.slice(Math.max(0,at-50),at+120)));
+}
 const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(x=>x[1]).filter(x=>x.trim());
 assert(scripts.length>=1);
 for(const src of scripts)new Function(src); // parse only; don't execute
