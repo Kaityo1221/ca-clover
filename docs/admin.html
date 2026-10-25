@@ -476,7 +476,7 @@ async function meetupBackfill(){
        try{
          const applied=await client.functions.invoke("admin-meetup-backfill",{
            body:{action:"apply",requestId,url:event.url,expected:{
-             id:event.id,communityId:community.id,title:event.title,
+             id:event.id,communityId:community.id,clubId:event.clubId,title:event.title,startsAt:event.startsAt,endsAt:event.endsAt,createdAt:event.createdAt,checkedAt:data.checkedAt,
              rsvpCount:event.rsvpCount,checkinCount:event.checkinCount
            }}
          });
