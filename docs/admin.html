@@ -443,13 +443,16 @@ async function meetupBackfill(){
     return;
    }
    const data=result.data;
-   if(data?.ok!==true||data?.status!=="preview"||data?.readOnly!==true||data?.canSave!==false){
+   if(data?.ok!==true||data?.status!=="preview"||typeof data?.readOnly!=="boolean"||typeof data?.canSave!=="boolean"){
     output.innerHTML=msg("安全な照合結果を確認できませんでした。保存しません。","err");return;
    }
    const event=data.event||{},community=data.community||{};
    const count=value=>Number.isSafeInteger(value)&&value>=0?value.toLocaleString("ja-JP")+"人":"未取得";
    const status=data.existing==="missing"?"未登録":data.existing==="already_present"?"登録済み":"確認できません";
    if(!["missing","already_present"].includes(data.existing)){output.innerHTML=msg("登録状況を一意に確認できませんでした。","err");return}
+   const canCommit=data.canSave===true&&data.readOnly===false&&data.registrationContract==="atomic-audit-v1"&&
+      data.existing==="missing"&&event.countsComplete===true&&Number.isSafeInteger(event.rsvpCount)&&
+      Number.isSafeInteger(event.checkinCount);
    output.innerHTML='<section class="card">'+
     '<div class="row between wraprow"><h2>'+e(event.title||"名称未取得")+'</h2><span class="pill '+(data.existing==="missing"?"amber":"")+'">'+e(status)+'</span></div>'+
     '<p class="small strong" style="color:#4d7c0f">'+e(community.name||"Community未取得")+'</p>'+
@@ -458,7 +461,36 @@ async function meetupBackfill(){
     '<div><div class="tiny strong muted">終了日時</div><div class="strong">'+e(fmt(event.endsAt))+'</div></div>'+
     '<div><div class="tiny strong muted">参加表明</div><div class="strong">'+e(count(event.rsvpCount))+'</div></div>'+
     '<div><div class="tiny strong muted">チェックイン</div><div class="strong">'+e(count(event.checkinCount))+'</div></div>'+
-    '</div><div class="notice section">🔒 確認のみです。データの追加・更新は行いません。</div></section>';
+    '</div><div class="notice section">'+(canCommit?'原本確認済み。ADMINが内容確認後に登録できます。':'🔒 保存処理は未公開です。データの追加・更新は行いません。')+'</div>'+
+    '<button id="backfillCommitBtn" class="btn section" '+(canCommit?'':'disabled aria-disabled="true"')+'>確認して登録</button></section>';
+   const commitButton=document.getElementById("backfillCommitBtn");
+   if(canCommit && commitButton){
+     // The request ID must remain stable if the network response is lost.
+     const requestId=crypto.randomUUID();
+     commitButton.onclick=async()=>{
+       if(input.value.trim()!==url){
+         output.innerHTML=msg("URLが変更されました。もう一度照合してください。","err");return;
+       }
+       if(!confirm("Community・開催日時・RSVP・チェックイン人数を確認しました。登録しますか？"))return;
+       commitButton.disabled=true;
+       try{
+         const applied=await client.functions.invoke("admin-meetup-backfill",{
+           body:{action:"apply",requestId,url:event.url,expected:{
+             id:event.id,communityId:community.id,title:event.title,
+             rsvpCount:event.rsvpCount,checkinCount:event.checkinCount
+           }}
+         });
+         if(applied.error)throw applied.error;
+         if(applied.data?.ok!==true||!["created","already_present"].includes(applied.data?.outcome)
+            ||applied.data.audited!==true)throw new Error("監査付き登録の完了を確認できません");
+         output.innerHTML=msg(applied.data.outcome==="created"?
+            "Meetupを登録しました。操作履歴も保存されました。":
+            "同じMeetupは既に登録済みでした。重複登録はしていません。");
+       }catch{
+         output.innerHTML=msg("登録結果を確認できません。二重登録を防ぐため、再度URL照合してください。","err");
+       }
+     };
+   }
   }catch{
    output.innerHTML=msg("照合処理に失敗しました。データは変更していません。","err");
   }finally{button.disabled=false}
