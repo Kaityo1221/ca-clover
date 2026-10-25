@@ -6,6 +6,7 @@ on:
     paths:
       - "docs/admin.html"
       - "scripts/test-pages-admin-backfill.mjs"
+      - "scripts/test-pages-admin-backfill-behavior.mjs"
       - ".github/workflows/pages-admin-backfill-guard.yml"
   workflow_dispatch:
 
@@ -26,13 +27,16 @@ jobs:
       - name: Fetch production reference
         run: git fetch origin pages --no-tags
       - name: Verify only intentional ADMIN additions
-        run: node scripts/test-pages-admin-backfill.mjs
+        run: |
+          node scripts/test-pages-admin-backfill.mjs
+          node scripts/test-pages-admin-backfill-behavior.mjs
       - name: Prevent accidental production/UI edits
         run: |
           git diff --name-only origin/pages...HEAD | tee /tmp/files.txt
           while IFS= read -r path; do
             case "$path" in
-              docs/admin.html|scripts/test-pages-admin-backfill.mjs|.github/workflows/pages-admin-backfill-guard.yml) ;;
+              docs/admin.html|scripts/test-pages-admin-backfill.mjs|scripts/test-pages-admin-backfill-behavior.mjs|.github/workflows/pages-admin-backfill-guard.yml) ;;
               *) echo "::error::Unexpected file: $path"; exit 1 ;;
             esac
           done </tmp/files.txt
+

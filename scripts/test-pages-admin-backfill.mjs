@@ -4,7 +4,7 @@ import {execFileSync} from "node:child_process";
 
 const html=readFileSync("docs/admin.html","utf8");
 const base=execFileSync("git",["show","origin/pages:docs/admin.html"],{encoding:"utf8"});
-const menu='\n  ["meetup-backfill","🧩","Meetup履歴補完","取得漏れをURLから照合（保存なし）",0],';
+const menu='\n  ["meetup-backfill","🧩","Meetup履歴補完","取得漏れをURLから確認",0],';
 const route='\n if(r==="meetup-backfill")return meetupBackfill();';
 const start='\nasync function meetupBackfill(){';
 const end='\nasync function render(){';
@@ -38,3 +38,4 @@ const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].ma
 assert(scripts.length>=1);
 for(const src of scripts)new Function(src); // parse only; don't execute
 process.stdout.write("PASS production pages content preserved byte-for-byte outside 3 additions; inline script syntax valid; save button is gated by future audited backend contract.\n");
+
