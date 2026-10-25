@@ -15,8 +15,12 @@ const si=html.indexOf(start),ei=html.indexOf(end,si+1);
 assert(si>0&&ei>si,"isolated additive screen function");
 const added=html.slice(si,ei);
 assert.match(added,/body:\{action:"preview",url\}/,"read only preview action");
-assert.match(added,/data\?\.readOnly!==true/,"fails closed unless explicit read-only response");
-assert.match(added,/data\?\.canSave!==false/,"fails closed unless save disabled");
+assert.match(added,/typeof data\?\.readOnly!=="boolean"/,"fails closed unless backend explicitly states readOnly");
+assert.match(added,/data\.readOnly===false/,"never allow saving from readOnly response");
+assert.match(added,/data\.canSave===true/,"commit button requires explicit save capability");
+assert.match(added,/data\.registrationContract==="atomic-audit-v1"/,"commit button requires approved atomic audit protocol");
+assert.match(added,/canCommit\?\x27\x27:\x27disabled aria-disabled="true"\x27/,"button disabled by default");
+assert.match(added,/body:\{action:"apply",requestId,url:event.url,expected:/,"commit requires explicit action and idempotency ID");
 assert.match(added,/function meetupBackfill\(\)/);
 assert.doesNotMatch(added,/\.insert\s*\(|\.update\s*\(|\.upsert\s*\(|\.delete\s*\(|\.rpc\s*\(|auth\.signOut\s*\(/,"new screen must not mutate DB or sessions");
 const restored=html.slice(0,si)+html.slice(ei+1); // remove the extra separator newline introduced with the screen
@@ -28,4 +32,4 @@ if(exact!==base){
 const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(x=>x[1]).filter(x=>x.trim());
 assert(scripts.length>=1);
 for(const src of scripts)new Function(src); // parse only; don't execute
-process.stdout.write("PASS production pages content preserved byte-for-byte outside 3 additions; inline script syntax valid; added screen is read-only.\n");
+process.stdout.write("PASS production pages content preserved byte-for-byte outside 3 additions; inline script syntax valid; save button is gated by future audited backend contract.\n");
