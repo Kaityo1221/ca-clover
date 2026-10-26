@@ -166,7 +166,7 @@ export default function Page() {
         </div> : null}
       </section>
 
-      {(profile?.role === "admin" || profile?.role === "ca") && user ? <SendaiMapViewer supabase={supabase} /> : null}
+      {(profile?.role === "admin" || profile?.role === "ca") && user ? <SendaiMapViewer supabase={supabase} isAdmin={profile?.role === "admin"} /> : null}
 
       {!loading && !user ? <section className="clover-card mt-7 p-8 text-center">
         <div className="text-5xl">🍀</div>
