@@ -12,6 +12,15 @@ const protectedHeaders = {
 function response(message: string, status: number) {
   return NextResponse.json({ error: message }, { status, headers: protectedHeaders });
 }
+// Called only after ADMIN authorization. No JWT, keys or request bodies in errors/logs.
+function adminStorageFailure(stage: string, error: unknown) {
+  const reason = error instanceof Error ? error.message : "unknown storage error";
+  console.error("[sendai-map] publish failed", { stage, reason: reason.slice(0, 180) });
+  return NextResponse.json(
+    { error: "非公開の作戦MAP保存に失敗しました。", detail: stage + ": " + reason.slice(0, 180) },
+    { status: 503, headers: protectedHeaders }
+  );
+}
 
 /** Private payload endpoint. No signed URL and no public storage access. */
 export async function GET(request: NextRequest) {
@@ -20,7 +29,13 @@ export async function GET(request: NextRequest) {
   if (!match) return response("CA Cloverのログインが必要です。", 401);
 
   const admin = createSupabaseAdminClient();
-  if (!admin) return response("現在、作戦MAPを利用できません。", 503);
+  if (!admin) {
+    console.error("[sendai-map] missing server credentials (names only)", {
+      publicUrlSet: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      serviceRoleSet: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    });
+    return response("サーバー認証設定の確認が必要です。管理者に連絡してください。", 503);
+  }
   const { data: identity, error: authError } = await admin.auth.getUser(match[1]);
   if (authError || !identity.user) return response("認証情報が無効です。", 401);
 
@@ -34,7 +49,12 @@ export async function GET(request: NextRequest) {
   const objectPath = SENDAI_MAP_OBJECT;
   try {
     const { data: file, error } = await admin.storage.from(bucket).download(objectPath);
-    if (error || !file || file.size > 16_000_000) return response("作戦データを読み込めません。", 503);
+    if (error || !file || file.size > 16_000_000) {
+      const status = typeof error?.message === "string" ? error.message.toLowerCase() : "";
+      if (status.includes("not found") || status.includes("no such")) return response("作戦MAPはまだ登録されていません。ADMINからJSONを公開してください。", 404);
+      console.error("[sendai-map] snapshot read failed", { reason: error?.message?.slice(0, 180) || "missing file" });
+      return response("保存済み作戦MAPを読み込めません。管理者に連絡してください。", 503);
+    }
     const raw = JSON.parse(await file.text()) as Record<string, unknown>;
     if (!raw || typeof raw !== "object" || !raw.plans || typeof raw.plans !== "object" || typeof raw.current !== "string" || !Object.hasOwn(raw.plans,raw.current)) {
       return response("作戦データの形式が不正です。", 503);
@@ -58,7 +78,13 @@ export async function POST(request: NextRequest) {
   const match = /^Bearer ([A-Za-z0-9._~-]+)$/.exec(request.headers.get("authorization") || "");
   if (!match) return response("ログインが必要です。", 401);
   const admin = createSupabaseAdminClient();
-  if (!admin) return response("現在、作戦MAPを利用できません。", 503);
+  if (!admin) {
+    console.error("[sendai-map] missing server credentials (names only)", {
+      publicUrlSet: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      serviceRoleSet: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    });
+    return response("サーバー認証設定の確認が必要です。管理者に連絡してください。", 503);
+  }
   const { data: identity, error: authError } = await admin.auth.getUser(match[1]);
   if (authError || !identity.user) return response("認証情報が無効です。", 401);
   const { data: profile, error: profileError } = await admin
@@ -91,17 +117,17 @@ export async function POST(request: NextRequest) {
         allowedMimeTypes: ["application/json"],
         fileSizeLimit: 4_000_000,
       });
-      if (created.error) return response("非公開保存先を作成できません。", 503);
+      if (created.error) return adminStorageFailure("保存先の新規作成", created.error);
       const readBack = await admin.storage.getBucket(SENDAI_MAP_BUCKET);
       bucket = readBack.data;
     }
-    if (!bucket || bucket.public) return response("非公開保存先の安全性を確認できません。", 503);
+    if (!bucket || bucket.public) return adminStorageFailure("保存先の非公開設定", new Error("private bucket not available"));
     const { error } = await admin.storage.from(SENDAI_MAP_BUCKET).upload(SENDAI_MAP_OBJECT, contents, {
       contentType: "application/json", upsert: true, cacheControl: "0",
     });
-    if (error) return response("公開用作戦データを保存できません。", 503);
+    if (error) return adminStorageFailure("ファイル登録", error);
     return NextResponse.json({ ok: true, bytes: contents.byteLength }, { headers: protectedHeaders });
-  } catch {
-    return response("公開用作戦データを保存できません。", 503);
+  } catch (error) {
+    return adminStorageFailure("予期しない保存エラー", error);
   }
 }
