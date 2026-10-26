@@ -8,7 +8,7 @@ const browser = await chromium.launch({headless:true,args:['--no-sandbox'],...(p
 const workspace = {version:2,current:'B',plans:{B:{squads:[]}}};
 try {
  for (const role of ['admin','ca','pending',null]) {
-  const context=await browser.newContext({viewport:{width:390,height:844}});
+  const context=await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});
   const page=await context.newPage(); const calls=[]; let stored=workspace, reject=false;
   await page.clock.install({time:new Date('2026-10-26T11:00:00Z')});
   await page.route('**/*',async route=>{
@@ -29,13 +29,22 @@ try {
   await page.goto('https://kaityo1221.github.io/ca-clover/'); await page.waitForFunction(()=>window.ready);
   if(role==='pending'||!role){assert.equal(await page.locator('button').count(),0);assert.equal(calls.length,0);await context.close();continue;}
   assert.equal(await page.locator('[data-file]').count(),role==='admin'?1:0);
+  assert.equal(await page.locator('dialog:visible').count(),0);
+  assert.equal(await page.locator('iframe').count(),0);
+  assert.equal(calls.length,0,'No map/API load before icon is pressed');
+  assert.equal((await page.locator('[data-open]').boundingBox()).width,44);
   await page.click('[data-open]');
   try { await page.waitForFunction(()=>document.querySelector('[data-status]').textContent==='作戦MAPを表示しています。'); }
   catch(error) { console.error({role,status:await page.locator('[data-status]').textContent(),calls,frames:page.frames().map(f=>f.url()),received:await page.frames().find(f=>f.url().includes('cloverViewer'))?.evaluate(()=>window.received)}); throw error; }
+  const bounds=await page.locator('dialog').boundingBox();
+  assert.equal(bounds.width,390);assert.equal(bounds.height,844);
+  assert.equal(await page.evaluate(()=>document.body.style.overflow),'hidden');
   const frame=page.frames().find(f=>f.url().includes('cloverViewer'));
   assert.equal(await frame.evaluate(()=>received.workspace.current),'B');
   assert.equal(await page.locator('iframe').getAttribute('sandbox'),'allow-scripts allow-same-origin');
   if(role==='admin'){
+   assert.equal(await page.locator('[data-admin]').isVisible(),false);
+   await page.click('[data-manage]');
    await page.locator('[data-file]').setInputFiles({name:'selected.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({...workspace,caRoster:[{name:'private'}]}))});
    assert.match(await page.locator('[data-file-name]').textContent(),/selected.json/);
    reject=true;await page.click('[data-publish]');await page.waitForFunction(()=>document.querySelector('[data-status]').textContent.startsWith('登録失敗：'));
@@ -43,11 +52,29 @@ try {
    reject=false;await page.click('[data-publish]');await page.waitForFunction(()=>document.querySelector('[data-status]').textContent.includes('登録・読み戻し確認が完了'));
    assert.equal(stored.caRoster,undefined);
   }
+  // Closing destroys the iframe, stops playback and restores focus/scroll.
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('dialog:visible').count(),0);
+  assert.equal(await page.locator('iframe').count(),0);
+  assert.equal(await page.evaluate(()=>document.body.style.overflow),'');
+  assert.equal(await page.locator('[data-open]').evaluate(el=>document.activeElement===el),true);
+  await page.click('[data-open]');
+  await page.waitForFunction(()=>document.querySelector('iframe'));
+  // Short drag snaps back, long downward drag dismisses; iframe gestures never reach this handle.
+  const handle=await page.locator('[data-drag]').boundingBox();
+  await page.mouse.move(handle.x+55,handle.y+20);await page.mouse.down();await page.mouse.move(handle.x+55,handle.y+55);await page.mouse.up();
+  assert.equal(await page.locator('dialog').evaluate(el=>el.open),true);
+  await page.mouse.move(handle.x+55,handle.y+20);await page.mouse.down();await page.mouse.move(handle.x+55,handle.y+155,{steps:5});await page.mouse.up();
+  assert.equal(await page.locator('dialog:visible').count(),0);
+  assert.equal(await page.locator('iframe').count(),0);
+  await page.click('[data-open]');await page.waitForFunction(()=>document.querySelector('iframe'));
   reject=true;await page.clock.fastForward(30_001);await page.waitForFunction(()=>!document.querySelector('iframe'));
   assert.ok(calls.includes('HEAD'));
   await page.evaluate(()=>window.leave());assert.equal(await page.locator('#host *').count(),0);
+  assert.equal(await page.locator('dialog').count(),0);
+  assert.equal(await page.evaluate(()=>document.body.style.overflow),'');
   assert.equal(await page.evaluate(()=>localStorage.length),0);
   await context.close();
  }
- console.log('Pages Sendai browser PASS: admin/ca/pending/anonymous, upload retry/roundtrip, iframe handshake, revocation, cleanup');
+ console.log('Pages Sendai browser PASS: admin/ca/pending/anonymous, upload retry/roundtrip, fullscreen sheet, swipe/Escape/reopen/focus, iframe handshake, revocation, cleanup');
 } finally {await browser.close();}
