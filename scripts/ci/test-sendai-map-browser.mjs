@@ -68,8 +68,22 @@ try {
   assert.equal(await page.locator('dialog:visible').count(),0);
   assert.equal(await page.locator('iframe').count(),0);
   await page.click('[data-open]');await page.waitForFunction(()=>document.querySelector('iframe'));
+  // Publishing elsewhere is detected on the next 30-second poll, but does not
+  // replace the active iframe or rewind ongoing playback.
+  const oldFrame=page.locator('iframe');
+  await oldFrame.evaluate(el=>el.dataset.playbackMarker='still-playing');
+  stored={version:2,current:'B',plans:{B:{squads:[{id:'updated'}]}}};
+  await page.clock.fastForward(30_001);
+  await page.waitForFunction(()=>!document.querySelector('[data-update]').hidden);
+  assert.equal(await oldFrame.evaluate(el=>el.dataset.playbackMarker),'still-playing');
+  assert.equal(await page.locator('iframe').count(),1);
+  assert.equal(await page.locator('[data-apply-update]').isVisible(),true);
+  await page.click('[data-apply-update]');
+  await page.waitForFunction(()=>document.querySelector('[data-update]').hidden);
+  await page.waitForFunction(()=>document.querySelector('iframe')?.contentWindow?.received?.workspace?.plans?.B?.squads?.[0]?.id==='updated');
+  assert.equal(await page.locator('iframe').count(),1);
   reject=true;await page.clock.fastForward(30_001);await page.waitForFunction(()=>!document.querySelector('iframe'));
-  assert.ok(calls.includes('HEAD'));
+  assert.ok(calls.filter(method=>method==='GET').length>=3);
   await page.evaluate(()=>window.leave());assert.equal(await page.locator('#host *').count(),0);
   assert.equal(await page.locator('dialog').count(),0);
   assert.equal(await page.evaluate(()=>document.body.style.overflow),'');
