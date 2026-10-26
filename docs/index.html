@@ -47,7 +47,7 @@
   <header class="top"><div class="topin">
     <div class="logo">🍀</div>
     <div class="brandblock"><div class="brand">CA Clover</div><div class="sub">My Community Management</div></div>
-    <div class="grow"></div><nav id="nav" class="nav"></nav>
+    <div class="grow"></div><nav id="nav" class="nav"></nav><div id="sendaiMapHost" style="flex:none"></div>
   </div></header>
   <main id="app" class="wrap"></main>
 
@@ -70,7 +70,7 @@
   }).catch(function(){return null});
   // PARTICIPANT_CSV_IMPORT_END
   let sendaiMapLeave = null;
-  const sendaiMapReady = import("./sendai-map.mjs?v=20261026-final1").catch(function(){return null});
+  const sendaiMapReady = import("./sendai-map.mjs?v=20261026-sheet1").catch(function(){return null});
   // CARD_METRICS_IMPORT_BEGIN
   const cardMetricsReady=import('./meetup-metrics.mjs?v=20261017-card1').catch(function(){return null});
   // CARD_METRICS_IMPORT_END
@@ -292,7 +292,6 @@
     const heroText=profile.role==="pending"?"CA登録が完了すると、自分に割り当てられたCommunityの活動を確認できます。":"自分に割り当てられたCommunityの活動だけを確認できます。";
     let html='<section class="card hero"><span class="pill">MY COMMUNITY</span><h1 style="margin-top:12px">My Communityへようこそ。🍀</h1><p class="muted strong">'+heroText+'</p>'+(profile.role!=="pending"?'<div class="tags"><span class="pill">✅ 認証済み '+communities.length+' Community</span></div>':'')+'</section>';
     html+=flashHtml();
-    if(profile.role==="admin"||profile.role==="ca")html+='<div id="sendaiMapHost"></div>';
 
     if(profile.role==="pending"){
       html+='<section class="notice section"><div class="tiny strong">初回CA登録</div><h3 style="margin-top:5px;color:#78350f">Campfire URLでCA確認をします</h3><p>SCOPELY EXPLORE IDを登録してから、コミュニティ招待URLまたは自分が主催したミートアップ共有URLを提出してください。会長が承認するとCAアカウント化とCommunity割当が同時に完了します。</p>'+(profile.niantic_id?'<span class="pill amber">SCOPELY EXPLORE ID: '+e(profile.niantic_id)+' ✓</span>':'<button id="toAccount" class="btn line">先にSCOPELY EXPLORE IDを登録 →</button>')+'</section>';
@@ -326,11 +325,6 @@
 
     if(token!=null&&token!==renderToken)return;
     app.innerHTML=html+'<div class="version">mirror '+VERSION+'</div>';
-    const sendaiHost=document.getElementById("sendaiMapHost");
-    if(sendaiHost)sendaiMapReady.then(function(module){
-      if(!module||token!==renderToken||!sendaiHost.isConnected)return;
-      sendaiMapLeave=module.mountSendaiMap({host:sendaiHost,client:client,getIdentity:function(){return {userId:session&&session.user.id,role:profile&&profile.role}}});
-    });
     const toAccount=document.getElementById("toAccount");if(toAccount)toAccount.onclick=function(){go("account")};
     const submit=document.getElementById("submitClaim");
     if(submit)submit.onclick=submitClaim;
@@ -667,6 +661,11 @@
     if(!profile)await loadProfile();
     if(token!==renderToken)return;
     header();
+    const sendaiHost=document.getElementById("sendaiMapHost");
+    if(sendaiHost)sendaiMapReady.then(function(module){
+      if(!module||token!==renderToken||!sendaiHost.isConnected)return;
+      sendaiMapLeave=module.mountSendaiMap({host:sendaiHost,client:client,getIdentity:function(){return {userId:session&&session.user.id,role:profile&&profile.role}}});
+    });
     let v=route();
     if(v==="admin"&&profile.role!=="admin"){v="my";location.hash="my"}
     if(v==="account"){renderAccount();return}
