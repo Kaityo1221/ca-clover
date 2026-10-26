@@ -6,6 +6,7 @@ export const allowed = role => role === 'admin' || role === 'ca';
 export const active = (now = Date.now()) => Number.isFinite(now) && now < EXPIRES_AT;
 export function mountSendaiMap({host, client, getIdentity, fetcher = fetch}) {
   let disposed = false, frame = null, workspace = null, selected = null, uploading = false;
+  let pendingWorkspace = null, pollBusy = false;
   const identity = getIdentity();
   if (!host || !identity.userId || !allowed(identity.role) || !active()) return () => {};
   if (!document.getElementById('sendai-map-sheet-style')) {
@@ -30,6 +31,9 @@ export function mountSendaiMap({host, client, getIdentity, fetcher = fetch}) {
       .sm-admin .section{margin-top:12px}
       .sm-manage{flex:none;border:0;border-radius:10px;background:#ecfccb;color:#365314;font-size:11px;padding:8px;font-weight:800}
       .sm-admin p{line-height:1.5}
+      .sm-update{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:#e8f6e8;border-bottom:1px solid #a7d2ac;font-size:12px;font-weight:700}
+      .sm-update[hidden]{display:none}
+      .sm-update button{background:#166b4c;color:white;border:0;border-radius:9px;padding:9px 12px;font-size:12px;font-weight:800;min-height:38px}
       @media(prefers-reduced-motion:reduce){.sm-sheet{scroll-behavior:auto}}
     `;
     document.head.append(style);
@@ -38,14 +42,15 @@ export function mountSendaiMap({host, client, getIdentity, fetcher = fetch}) {
   const open=host.querySelector('[data-open]');
   const sheet=document.createElement('dialog'); sheet.className='sm-sheet';
   sheet.setAttribute('aria-labelledby','sendai-sheet-title');
-  sheet.innerHTML='<header class="sm-sheet-head" data-drag><div class="sm-grip"></div><div class="sm-title-row"><div><h2 id="sendai-sheet-title">🏴 仙台作戦MAP</h2><div class="sm-hint">下にスワイプで閉じる · 11月9日まで</div></div><div style="display:flex;align-items:center;gap:8px"><button type="button" class="sm-manage" data-manage hidden>JSON登録</button><button type="button" class="sm-close" data-close aria-label="作戦MAPを閉じる">×</button></div></div></header><p class="sm-status" data-status role="status" aria-live="polite"></p><div class="sm-map" data-map><div class="sm-admin" data-admin hidden></div></div>';
+  sheet.innerHTML='<header class="sm-sheet-head" data-drag><div class="sm-grip"></div><div class="sm-title-row"><div><h2 id="sendai-sheet-title">🏴 仙台作戦MAP</h2><div class="sm-hint">下にスワイプで閉じる · 11月9日まで</div></div><div style="display:flex;align-items:center;gap:8px"><button type="button" class="sm-manage" data-manage hidden>JSON登録</button><button type="button" class="sm-close" data-close aria-label="作戦MAPを閉じる">×</button></div></div></header><p class="sm-status" data-status role="status" aria-live="polite"></p><div class="sm-update" data-update hidden><span>新しい作戦が公開されました</span><button type="button" data-apply-update>最新作戦に切り替える</button></div><div class="sm-map" data-map><div class="sm-admin" data-admin hidden></div></div>';
   document.body.append(sheet);
   const status=sheet.querySelector('[data-status]'), map=sheet.querySelector('[data-map]');
   const manage=sheet.querySelector('[data-manage]'), area=sheet.querySelector('[data-admin]');
+  const updateBanner=sheet.querySelector('[data-update]');
   let generation=0, previousOverflow=null, previousFocus=null, motion=null;
   const reduced=()=>window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   function current() { const next = getIdentity(); return !disposed && host.isConnected && next.userId === identity.userId && allowed(next.role) && active(); }
-  function clear() { workspace = null; if (frame) frame.remove(); frame = null; }
+  function clear() { workspace = null; pendingWorkspace = null; updateBanner.hidden = true; if (frame) frame.remove(); frame = null; }
   function animate(frames) { motion?.cancel(); motion=reduced()?null:sheet.animate(frames,{duration:240,easing:'cubic-bezier(.2,.8,.2,1)'}); return motion; }
   function finishClose() {
     generation++; clear(); motion?.cancel(); motion=null;
@@ -106,6 +111,35 @@ export function mountSendaiMap({host, client, getIdentity, fetcher = fetch}) {
     frame.addEventListener('load', () => { if (current() && workspace) frame.contentWindow.postMessage({type:'sendai:load',workspace}, SIMULATOR_ORIGIN); });
     map.append(frame); say('作戦MAPを読み込んでいます…');
   }
+  // Poll the authenticated GET endpoint, not an unauthenticated storage URL.
+  // Keep playback untouched until the viewer explicitly accepts the update.
+  async function checkForUpdate() {
+    if (pollBusy || !current() || !sheet.open || !frame || !workspace) return;
+    pollBusy = true;
+    const ticket = generation, displayed = workspace;
+    try {
+      const result = await request('GET');
+      if (ticket !== generation || !sheet.open || workspace !== displayed || !frame) return;
+      if (!result.workspace?.plans || typeof result.workspace.current !== 'string' ||
+          !Object.hasOwn(result.workspace.plans,result.workspace.current)) return;
+      if (JSON.stringify(result.workspace) !== JSON.stringify(displayed)) {
+        pendingWorkspace = result.workspace;
+        updateBanner.hidden = false;
+      } else {
+        pendingWorkspace = null;
+        updateBanner.hidden = true;
+      }
+    } catch(error) {
+      // request() already clears the iframe if access is revoked.
+      if (ticket === generation && current() && !frame) say(error.message);
+    } finally { pollBusy = false; }
+  }
+  sheet.querySelector('[data-apply-update]').onclick = () => {
+    if (!current() || !sheet.open || !pendingWorkspace) return;
+    const latest = pendingWorkspace;
+    generation++; // invalidate any in-flight checks before changing the iframe
+    show(latest);
+  };
   async function load() {
     const ticket=++generation; say('承認状態と作戦データを確認しています…');
     try { const result = await request('GET'); if(ticket===generation) show(result.workspace); }
@@ -145,6 +179,6 @@ export function mountSendaiMap({host, client, getIdentity, fetcher = fetch}) {
       finally { uploading = false; if (!disposed) { input.disabled = false; publish.disabled = !selected; } }
     };
   }
-  const timer = setInterval(() => { if (!current()) { leave(); return; } if (sheet.open && frame) request('HEAD').catch(error => { clear(); say(error.message); }); }, 30_000);
+  const timer = setInterval(() => { if (!current()) { leave(); return; } if (sheet.open && frame) void checkForUpdate(); }, 30_000);
   return leave;
 }
