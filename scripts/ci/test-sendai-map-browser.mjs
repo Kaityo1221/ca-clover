@@ -29,7 +29,9 @@ try {
   await page.goto('https://kaityo1221.github.io/ca-clover/'); await page.waitForFunction(()=>window.ready);
   if(role==='pending'||!role){assert.equal(await page.locator('button').count(),0);assert.equal(calls.length,0);await context.close();continue;}
   assert.equal(await page.locator('[data-file]').count(),role==='admin'?1:0);
-  await page.click('[data-open]'); await page.waitForFunction(()=>document.querySelector('[data-status]').textContent==='作戦MAPを表示しています。');
+  await page.click('[data-open]');
+  try { await page.waitForFunction(()=>document.querySelector('[data-status]').textContent==='作戦MAPを表示しています。'); }
+  catch(error) { console.error({role,status:await page.locator('[data-status]').textContent(),calls,frames:page.frames().map(f=>f.url()),received:await page.frames().find(f=>f.url().includes('cloverViewer'))?.evaluate(()=>window.received)}); throw error; }
   const frame=page.frames().find(f=>f.url().includes('cloverViewer'));
   assert.equal(await frame.evaluate(()=>received.workspace.current),'B');
   assert.equal(await page.locator('iframe').getAttribute('sandbox'),'allow-scripts allow-same-origin');
