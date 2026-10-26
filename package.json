@@ -6,8 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "npm run test:auth-routing",
-    "test:auth-routing": "node --experimental-strip-types scripts/test-auth-routing.ts"
+    "test": "npm run test:auth-routing && npm run test:sendai-map-policy",
+    "test:auth-routing": "node --experimental-strip-types scripts/test-auth-routing.ts",
+    "test:sendai-map-policy": "node --experimental-strip-types scripts/test-sendai-map-policy.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0",

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
+import { SendaiMapViewer } from "@/components/sendai-map-viewer";
 
 type MenuItem = {
   icon: string;
@@ -164,6 +165,8 @@ export default function Page() {
           {countsError?<span className="rounded-full bg-amber-50 px-3 py-2 text-xs font-black text-amber-700">⚠️ 集計取得エラー</span>:null}
         </div> : null}
       </section>
+
+      {(profile?.role === "admin" || profile?.role === "ca") && user ? <SendaiMapViewer supabase={supabase} isAdmin={profile?.role === "admin"} /> : null}
 
       {!loading && !user ? <section className="clover-card mt-7 p-8 text-center">
         <div className="text-5xl">🍀</div>
