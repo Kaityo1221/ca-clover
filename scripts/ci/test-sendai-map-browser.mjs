@@ -80,7 +80,8 @@ try {
   assert.equal(await page.locator('[data-apply-update]').isVisible(),true);
   await page.click('[data-apply-update]');
   await page.waitForFunction(()=>document.querySelector('[data-update]').hidden);
-  await page.waitForFunction(()=>document.querySelector('iframe')?.contentWindow?.received?.workspace?.plans?.B?.squads?.[0]?.id==='updated');
+  await page.waitForFunction(()=>document.querySelector('iframe') && document.querySelector('iframe').dataset.playbackMarker!=='still-playing');
+  await page.frames().find(frame=>frame.url().includes('cloverViewer')).waitForFunction(()=>window.received?.workspace?.plans?.B?.squads?.[0]?.id==='updated');
   assert.equal(await page.locator('iframe').count(),1);
   reject=true;await page.clock.fastForward(30_001);await page.waitForFunction(()=>!document.querySelector('iframe'));
   assert.ok(calls.filter(method=>method==='GET').length>=3);
