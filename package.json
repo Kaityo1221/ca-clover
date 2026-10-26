@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "npm run test:auth-routing && npm run test:sendai-map-policy",
+    "test": "npm run test:auth-routing && npm run test:sendai-map-policy && node scripts/test-sendai-map-api.cjs",
     "test:auth-routing": "node --experimental-strip-types scripts/test-auth-routing.ts",
     "test:sendai-map-policy": "node --experimental-strip-types scripts/test-sendai-map-policy.ts"
   },
