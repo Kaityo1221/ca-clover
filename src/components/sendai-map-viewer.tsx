@@ -18,6 +18,7 @@ export function SendaiMapViewer({ supabase, isAdmin }: Props) {
   const [publishStatus, setPublishStatus] = useState("");
   const [publishError, setPublishError] = useState("");
   const frame = useRef<HTMLIFrameElement>(null);
+  const publishFileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setActive(sendaiMapIsActive()), 30_000);
@@ -104,6 +105,7 @@ export function SendaiMapViewer({ supabase, isAdmin }: Props) {
       const verified = await confirmed.json() as {workspace?: unknown};
       if (!verified.workspace) throw new Error("保存後の作戦データが空です。");
       setWorkspace(verified.workspace);
+      if (publishFileInput.current) publishFileInput.current.value = "";
       setSelectedFile(null);
       setPublishStatus("公開完了！ 承認済みCAも閲覧できます。");
       setStatus("閲覧専用MAPを開いています…");
@@ -129,7 +131,7 @@ export function SendaiMapViewer({ supabase, isAdmin }: Props) {
     <p className="mt-2 text-sm text-slate-600">3部隊の進軍ルートやタイムラインを確認できます。編集・保存はできません。</p>
     {isAdmin ? <div className="mt-3 rounded-xl border border-dashed border-lime-300 bg-lime-50 p-3">
       <label className="block text-xs font-black text-lime-900" htmlFor="sendaiMapPublish">ADMIN専用：Simulatorから保存した作戦JSONを公開</label>
-      <input id="sendaiMapPublish" aria-label="作戦JSONを公開" type="file" accept=".json,application/json"
+      <input ref={publishFileInput} id="sendaiMapPublish" aria-label="作戦JSONを公開" type="file" accept=".json,application/json"
         disabled={uploading} className="mt-2 block w-full text-xs"
         onChange={event => {
           const file = event.target.files?.[0] ?? null;
