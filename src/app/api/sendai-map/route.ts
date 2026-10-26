@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseAdminClient } from "@/lib/supabase-admin";
+import { createSendaiMapAdminClient } from "@/lib/sendai-map-server";
 import { sendaiMapIsActive, sendaiMapRoleAllowed, SENDAI_MAP_BUCKET, SENDAI_MAP_OBJECT } from "@/lib/sendai-map-policy";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ function response(message: string, status: number, code?: string) {
   );
 }
 function adminClientOrError() {
-  const admin = createSupabaseAdminClient();
+  const admin = createSendaiMapAdminClient();
   if (!admin) {
     // Never print or return the contents of any environment variable.
     console.error("[sendai-map] Server authentication configuration unavailable", {
@@ -28,7 +28,7 @@ function adminClientOrError() {
 }
 
 /** Private payload endpoint. No signed URL and no public storage access. */
-export async function GET(request: NextRequest) {
+async function getMap(request: NextRequest, headOnly = false) {
   if (!sendaiMapIsActive()) return response("公開期間は終了しました。", 410);
   const match = /^Bearer ([A-Za-z0-9._~-]+)$/.exec(request.headers.get("authorization") || "");
   if (!match) return response("CA Cloverのログインが必要です。", 401);
@@ -44,9 +44,12 @@ export async function GET(request: NextRequest) {
   if (profileError) return response("権限を確認できません。", 503);
   if (!sendaiMapRoleAllowed(profile?.role)) return response("承認済みCA専用です。", 403);
 
+  if (headOnly) return new NextResponse(null, { status: 200, headers: protectedHeaders });
   const bucket = SENDAI_MAP_BUCKET;
   const objectPath = SENDAI_MAP_OBJECT;
   try {
+    const bucketInfo = await admin.storage.getBucket(bucket);
+    if (bucketInfo.error || !bucketInfo.data || bucketInfo.data.public) return response("非公開保存先を確認できません。", 503, "MAP_DATA_NOT_FOUND");
     const { data: file, error } = await admin.storage.from(bucket).download(objectPath);
     if (error || !file || file.size > 16_000_000) return response("作戦MAPがまだ登録されていないか、保存先を読み込めません。", 503, "MAP_DATA_NOT_FOUND");
     const raw = JSON.parse(await file.text()) as Record<string, unknown>;
@@ -67,7 +70,7 @@ export async function GET(request: NextRequest) {
  * a JSON export; creates one dedicated private bucket when it does not exist.
  * No changes to existing tables, Cron or public storage buckets.
  */
-export async function POST(request: NextRequest) {
+async function postMap(request: NextRequest) {
   if (!sendaiMapIsActive()) return response("公開期間は終了しました。", 410);
   const match = /^Bearer ([A-Za-z0-9._~-]+)$/.exec(request.headers.get("authorization") || "");
   if (!match) return response("ログインが必要です。", 401);
@@ -122,11 +125,46 @@ export async function POST(request: NextRequest) {
     }
     // A successful upload must also be readable. Never report success early.
     const verified = await admin.storage.from(SENDAI_MAP_BUCKET).download(SENDAI_MAP_OBJECT);
-    if (verified.error || !verified.data || verified.data.size !== contents.byteLength) {
+    if (verified.error || !verified.data || verified.data.size !== contents.byteLength || !Buffer.from(await verified.data.arrayBuffer()).equals(contents)) {
       return response("保存後の読み戻し確認に失敗しました。", 503, "MAP_STORAGE_VERIFY");
     }
     return NextResponse.json({ ok: true, bytes: contents.byteLength }, { headers: protectedHeaders });
   } catch {
     return response("公開用作戦データを保存できません。", 503);
   }
+}
+
+// Pages is the CA entrypoint. Only this origin may read authenticated API responses.
+const PAGES_ORIGIN = "https://kaityo1221.github.io";
+function cors(request: NextRequest, result: NextResponse) {
+  result.headers.set("Vary", "Authorization, Origin");
+  if (request.headers.get("origin") === PAGES_ORIGIN) {
+    result.headers.set("Access-Control-Allow-Origin", PAGES_ORIGIN);
+  }
+  return result;
+}
+function originAllowed(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  return !origin || origin === PAGES_ORIGIN || origin === "https://ca-clover.vercel.app";
+}
+export async function OPTIONS(request: NextRequest) {
+  if (!originAllowed(request)) return cors(request, response("この接続元は許可されていません。", 403));
+  const result = new NextResponse(null, { status: 204, headers: protectedHeaders });
+  result.headers.set("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS");
+  result.headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
+  result.headers.set("Access-Control-Max-Age", "300");
+  return cors(request, result);
+}
+export async function GET(request: NextRequest) {
+  if (!originAllowed(request)) return cors(request, response("この接続元は許可されていません。", 403));
+  return cors(request, await getMap(request));
+}
+export async function POST(request: NextRequest) {
+  if (!originAllowed(request)) return cors(request, response("この接続元は許可されていません。", 403));
+  return cors(request, await postMap(request));
+}
+
+export async function HEAD(request: NextRequest) {
+  if (!originAllowed(request)) return cors(request, response("この接続元は許可されていません。", 403));
+  return cors(request, await getMap(request, true));
 }
