@@ -1,0 +1,77 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { createBrowserSupabaseClient } from "@/lib/supabase";
+import { sendaiMapIsActive } from "@/lib/sendai-map-policy";
+
+const SIMULATOR_ORIGIN = "https://meetup-operations-simulator.vercel.app";
+const SIMULATOR_VIEWER = SIMULATOR_ORIGIN + "/?cloverViewer=1";
+
+type Props = { supabase: ReturnType<typeof createBrowserSupabaseClient> };
+
+export function SendaiMapViewer({ supabase }: Props) {
+  const [active, setActive] = useState(sendaiMapIsActive);
+  const [workspace, setWorkspace] = useState<unknown>(null);
+  const [status, setStatus] = useState("公開用の作戦MAPを確認しています…");
+  const frame = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setActive(sendaiMapIsActive()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!active) return;
+    let cancelled = false;
+    async function load() {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error || !data.session?.access_token) throw new Error("ログインが必要です。");
+        const result = await fetch("/api/sendai-map", {
+          method: "GET",
+          headers: { Authorization: "Bearer " + data.session.access_token },
+          cache: "no-store",
+          credentials: "same-origin",
+        });
+        if (!result.ok) {
+          const detail = await result.json().catch(() => ({})) as {error?: string};
+          throw new Error(detail.error || "作戦MAPを読み込めません。");
+        }
+        const payload = await result.json() as {workspace?: unknown};
+        if (!payload.workspace) throw new Error("公開データがありません。");
+        if (!cancelled) { setWorkspace(payload.workspace); setStatus("閲覧専用MAPを開いています…"); }
+      } catch (error) {
+        if (!cancelled) setStatus(error instanceof Error ? error.message : "作戦MAPを読み込めません。");
+      }
+    }
+    void load();
+    return () => { cancelled = true; };
+  }, [active, supabase]);
+
+  useEffect(() => {
+    const received = (event: MessageEvent) => {
+      if (event.origin !== SIMULATOR_ORIGIN || event.source !== frame.current?.contentWindow) return;
+      if (event.data?.type === "sendai:loaded") setStatus("作戦MAPを表示しています。");
+    };
+    window.addEventListener("message", received);
+    return () => window.removeEventListener("message", received);
+  }, []);
+
+  if (!active) return null;
+  return <section className="clover-card mt-7 overflow-hidden p-4 md:p-6" aria-label="仙台シティミートアップ作戦MAP">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div><div className="text-xs font-black text-lime-700">11月9日（月）まで / 承認済みCA限定</div>
+        <h2 className="mt-1 text-xl font-black text-lime-950">🏴 仙台シティミートアップ2026 作戦MAP</h2></div>
+      <span className="rounded-full bg-lime-100 px-3 py-1 text-xs font-black text-lime-900">閲覧・再生専用</span>
+    </div>
+    <p className="mt-2 text-sm text-slate-600">3部隊の進軍ルートやタイムラインを確認できます。編集・保存はできません。</p>
+    <div className="mt-4 overflow-hidden rounded-2xl border border-lime-100 bg-slate-50">
+      {workspace ? <iframe ref={frame} title="仙台シティミートアップ 作戦再生" src={SIMULATOR_VIEWER}
+        onLoad={() => frame.current?.contentWindow?.postMessage({ type: "sendai:load", workspace }, SIMULATOR_ORIGIN)}
+        className="h-[65vh] min-h-[420px] w-full border-0" loading="lazy"
+        sandbox="allow-scripts allow-same-origin" referrerPolicy="no-referrer"/> :
+        <div className="grid min-h-44 place-items-center px-5 text-center text-sm font-semibold text-slate-600">{status}</div>}
+    </div>
+    <p className="mt-2 text-xs text-slate-500" role="status" aria-live="polite">{status}</p>
+  </section>;
+}
