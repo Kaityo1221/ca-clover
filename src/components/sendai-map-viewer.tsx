@@ -14,6 +14,8 @@ export function SendaiMapViewer({ supabase, isAdmin }: Props) {
   const [workspace, setWorkspace] = useState<unknown>(null);
   const [status, setStatus] = useState("公開用の作戦MAPを確認しています…");
   const [uploading, setUploading] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  const [publishStatus, setPublishStatus] = useState<string | null>(null);
   const frame = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
@@ -35,8 +37,8 @@ export function SendaiMapViewer({ supabase, isAdmin }: Props) {
           credentials: "same-origin",
         });
         if (!result.ok) {
-          const detail = await result.json().catch(() => ({})) as {error?: string};
-          throw new Error(detail.error || "作戦MAPを読み込めません。");
+          const detail = await result.json().catch(() => ({})) as {error?: string; code?: string};
+          throw new Error((detail.error || "作戦MAPを読み込めません。") + (detail.code ? "（" + detail.code + "）" : ""));
         }
         const payload = await result.json() as {workspace?: unknown};
         if (!payload.workspace) throw new Error("公開データがありません。");
@@ -60,8 +62,12 @@ export function SendaiMapViewer({ supabase, isAdmin }: Props) {
 
   async function publishJson(file: File) {
     if (!isAdmin || uploading || !active) return;
-    if (!window.confirm("CA名簿は除外して公開します。運営メモや個人情報が残っていないことを確認しましたか？")) return;
+    if (!window.confirm("CA名簿は除外して公開します。運営メモや個人情報が残っていないことを確認しましたか？")) {
+      setPublishStatus("公開操作をキャンセルしました。");
+      return;
+    }
     setUploading(true);
+    setPublishStatus("登録中：サーバーで保存と読み戻しを確認しています…");
     setStatus("公開用作戦データを登録しています…");
     try {
       if (file.size > 3_500_000) throw new Error("JSONが大きすぎます（上限3.5MB）。");
@@ -84,17 +90,20 @@ export function SendaiMapViewer({ supabase, isAdmin }: Props) {
         cache: "no-store",
       });
       if (!result.ok) {
-        const detail = await result.json().catch(() => ({})) as {error?: string};
-        throw new Error(detail.error || "作戦MAPを保存できません。");
+        const detail = await result.json().catch(() => ({})) as {error?: string; code?: string};
+        throw new Error((detail.error || "作戦MAPを保存できません。") + (detail.code ? "（" + detail.code + "）" : ""));
       }
       setWorkspace(safeWorkspace);
+      setPublishStatus("公開用JSONを登録しました。承認済みCAが閲覧できます。");
       setStatus("新しい作戦MAPを登録しました。閲覧画面へ反映しています…");
       // Recreate iframe to ensure a repeat publish applies the new snapshot.
       if (frame.current?.contentWindow) {
         frame.current.contentWindow.postMessage({ type: "sendai:load", workspace: safeWorkspace }, SIMULATOR_ORIGIN);
       }
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "作戦MAPを保存できません。");
+      const message = error instanceof Error ? error.message : "作戦MAPを保存できません。";
+      setPublishStatus("登録に失敗しました：" + message);
+      setStatus(message);
     } finally {
       setUploading(false);
     }
@@ -114,9 +123,14 @@ export function SendaiMapViewer({ supabase, isAdmin }: Props) {
         disabled={uploading} className="mt-2 block w-full text-xs"
         onChange={event => {
           const file = event.target.files?.[0];
-          event.target.value = "";
-          if (file) void publishJson(file);
+          if (file) {
+            setSelectedFileName(file.name);
+            setPublishStatus("選択したファイル：" + file.name);
+            void publishJson(file);
+          }
         }} />
+      {selectedFileName ? <p className="mt-2 break-all text-xs font-bold text-slate-700">選択中：{selectedFileName}</p> : null}
+      {publishStatus ? <p className="mt-2 break-words rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-800" role="status" aria-live="polite">{publishStatus}</p> : null}
       <p className="mt-1 text-[11px] text-lime-800">公開前に個人情報・内部メモを確認。CSV名簿は自動除外。既存の編集データは変更しません。</p>
     </div> : null}
     <div className="mt-4 overflow-hidden rounded-2xl border border-lime-100 bg-slate-50">
