@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
-import { sendaiMapIsActive, sendaiMapRoleAllowed } from "@/lib/sendai-map-policy";
+import { sendaiMapIsActive, sendaiMapRoleAllowed, SENDAI_MAP_BUCKET, SENDAI_MAP_OBJECT } from "@/lib/sendai-map-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -30,9 +30,8 @@ export async function GET(request: NextRequest) {
   if (profileError) return response("権限を確認できません。", 503);
   if (!sendaiMapRoleAllowed(profile?.role)) return response("承認済みCA専用です。", 403);
 
-  const bucket = process.env.SENDAI_MAP_PRIVATE_BUCKET;
-  const objectPath = process.env.SENDAI_MAP_PRIVATE_OBJECT;
-  if (!bucket || !objectPath) return response("作戦MAPは準備中です。", 503);
+  const bucket = SENDAI_MAP_BUCKET;
+  const objectPath = SENDAI_MAP_OBJECT;
   try {
     const { data: file, error } = await admin.storage.from(bucket).download(objectPath);
     if (error || !file || file.size > 16_000_000) return response("作戦データを読み込めません。", 503);
@@ -46,5 +45,63 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ workspace }, { headers: protectedHeaders });
   } catch {
     return response("作戦データを読み込めません。", 503);
+  }
+}
+
+/**
+ * ADMIN-only manual publish. Called solely when the operator explicitly selects
+ * a JSON export; creates one dedicated private bucket when it does not exist.
+ * No changes to existing tables, Cron or public storage buckets.
+ */
+export async function POST(request: NextRequest) {
+  if (!sendaiMapIsActive()) return response("公開期間は終了しました。", 410);
+  const match = /^Bearer ([A-Za-z0-9._~-]+)$/.exec(request.headers.get("authorization") || "");
+  if (!match) return response("ログインが必要です。", 401);
+  const admin = createSupabaseAdminClient();
+  if (!admin) return response("現在、作戦MAPを利用できません。", 503);
+  const { data: identity, error: authError } = await admin.auth.getUser(match[1]);
+  if (authError || !identity.user) return response("認証情報が無効です。", 401);
+  const { data: profile, error: profileError } = await admin
+    .from("profiles").select("role").eq("id", identity.user.id).maybeSingle();
+  if (profileError) return response("権限を確認できません。", 503);
+  if (profile?.role !== "admin") return response("公開操作はADMIN専用です。", 403);
+  if ((Number(request.headers.get("content-length")) || 0) > 3_500_000) {
+    return response("JSONが大きすぎます（上限3.5MB）。", 413);
+  }
+  let safeWorkspace: Record<string, unknown>;
+  let contents: Buffer;
+  try {
+    const raw = await request.json() as Record<string, unknown>;
+    if (!raw || typeof raw !== "object" || !raw.plans || typeof raw.plans !== "object" ||
+      typeof raw.current !== "string" || !Object.hasOwn(raw.plans, raw.current) ||
+      ![1, 2].includes(Number(raw.version))) return response("作戦JSONの形式が違います。", 400);
+    const { caRoster: _privateRoster, ...safe } = raw;
+    void _privateRoster;
+    safeWorkspace = safe;
+    contents = Buffer.from(JSON.stringify(safeWorkspace), "utf8");
+    if (contents.byteLength > 3_500_000) return response("JSONが大きすぎます（上限3.5MB）。", 413);
+  } catch {
+    return response("JSONを解析できません。", 400);
+  }
+  try {
+    let { data: bucket } = await admin.storage.getBucket(SENDAI_MAP_BUCKET);
+    if (!bucket) {
+      const created = await admin.storage.createBucket(SENDAI_MAP_BUCKET, {
+        public: false,
+        allowedMimeTypes: ["application/json"],
+        fileSizeLimit: 4_000_000,
+      });
+      if (created.error) return response("非公開保存先を作成できません。", 503);
+      const readBack = await admin.storage.getBucket(SENDAI_MAP_BUCKET);
+      bucket = readBack.data;
+    }
+    if (!bucket || bucket.public) return response("非公開保存先の安全性を確認できません。", 503);
+    const { error } = await admin.storage.from(SENDAI_MAP_BUCKET).upload(SENDAI_MAP_OBJECT, contents, {
+      contentType: "application/json", upsert: true, cacheControl: "0",
+    });
+    if (error) return response("公開用作戦データを保存できません。", 503);
+    return NextResponse.json({ ok: true, bytes: contents.byteLength }, { headers: protectedHeaders });
+  } catch {
+    return response("公開用作戦データを保存できません。", 503);
   }
 }
