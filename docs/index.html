@@ -23,7 +23,8 @@
     .brand{font-weight:950;color:#365314}.sub{font-size:11px;font-weight:800;color:#65a30d}.grow{flex:1}
     .nav{display:flex;gap:8px;flex-wrap:wrap}.nav button{border:0;border-radius:999px;padding:9px 13px;background:#f7fee7;color:#4d7c0f;font-weight:900}
     .nav button.on{background:#84cc16;color:#1a2e05}.card{background:#fff;border:1px solid #ecfccb;border-radius:24px;padding:22px;box-shadow:0 14px 40px rgba(77,124,15,.08)}
-    .my-hero-footer{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-top:20px}.my-hero-footer .tags{margin:0}.my-hero-footer #sendaiMapHost{margin-left:auto;max-width:100%}
+    .my-welcome-title{font-size:clamp(24px,5vw,36px);line-height:1.35}.my-welcome-title span{display:block}
+    .my-hero-footer{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px;margin-top:16px}.my-hero-footer .tags{margin:0;min-width:0}.my-hero-footer .pill{font-size:clamp(10px,2.7vw,12px);padding:6px 8px}.my-hero-footer #sendaiMapHost{justify-self:end;max-width:100%}
     .hero{background:linear-gradient(135deg,#ecfccb,#fff,#ecfdf5)}h1,h2,h3{color:#365314;margin:0}h1{font-size:clamp(28px,5vw,44px);letter-spacing:-.03em}h2{font-size:23px}p{line-height:1.7}
     .muted{color:#64748b}.small{font-size:12px}.tiny{font-size:11px}.strong{font-weight:900}.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:6px 10px;background:#ecfccb;color:#4d7c0f;font-size:12px;font-weight:900}
     .pill.amber{background:#fef3c7;color:#92400e}.pill.violet{background:#ede9fe;color:#6d28d9}.pill.blue{background:#e0f2fe;color:#075985}.pill.rose{background:#ffe4e6;color:#be123c}.pill.slate{background:#f1f5f9;color:#475569}
@@ -71,7 +72,7 @@
   }).catch(function(){return null});
   // PARTICIPANT_CSV_IMPORT_END
   let sendaiMapLeave = null;
-  const sendaiMapReady = import("./sendai-map.mjs?v=20261027-hero1").catch(function(){return null});
+  const sendaiMapReady = import("./sendai-map.mjs?v=20261027-hero2").catch(function(){return null});
   // CARD_METRICS_IMPORT_BEGIN
   const cardMetricsReady=import('./meetup-metrics.mjs?v=20261017-card1').catch(function(){return null});
   // CARD_METRICS_IMPORT_END
@@ -276,7 +277,7 @@
     document.getElementById("google").onclick=login;
   }
   async function renderMy(token){
-    app.innerHTML='<section class="card hero"><span class="pill">MY COMMUNITY</span><h1 style="margin-top:12px">My Communityへようこそ。🍀</h1><p class="muted strong">読み込み中...</p></section>';
+    app.innerHTML='<section class="card hero"><span class="pill">MY COMMUNITY</span><h1 class="my-welcome-title" style="margin-top:12px">My Communityへ<span>ようこそ。🍀</span></h1><p class="muted strong">読み込み中...</p></section>';
     const uid=session.user.id;
     const results=await Promise.all([
       client.from("community_memberships").select("community_id").eq("user_id",uid),
@@ -291,7 +292,7 @@
       communities=cr.data||[];
     }
     const heroText=profile.role==="pending"?"CA登録が完了すると、自分に割り当てられたCommunityの活動を確認できます。":"自分に割り当てられたCommunityの活動だけを確認できます。";
-    let html='<section class="card hero"><span class="pill">MY COMMUNITY</span><h1 style="margin-top:12px">My Communityへようこそ。🍀</h1><p class="muted strong">'+heroText+'</p>'+'<div class="my-hero-footer">'+(profile.role!=="pending"?'<div class="tags"><span class="pill">✅ 認証済み '+communities.length+' Community</span></div>':'')+((profile.role==="admin"||profile.role==="ca")?'<div id="sendaiMapHost"></div>':'')+'</div></section>';
+    let html='<section class="card hero"><span class="pill">MY COMMUNITY</span><h1 class="my-welcome-title" style="margin-top:12px">My Communityへ<span>ようこそ。🍀</span></h1><p class="muted strong">'+heroText+'</p>'+'<div class="my-hero-footer">'+(profile.role!=="pending"?'<div class="tags"><span class="pill">✅ 認証済み '+communities.length+' Community</span></div>':'')+((profile.role==="admin"||profile.role==="ca")?'<div id="sendaiMapHost"></div>':'')+'</div></section>';
     html+=flashHtml();
 
     if(profile.role==="pending"){
