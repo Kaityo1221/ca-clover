@@ -14,6 +14,9 @@ export function mountSendaiMap({host, client, getIdentity, fetcher = fetch}) {
     style.textContent=`
       .sm-entry{display:flex;flex-direction:column;align-items:flex-end;gap:5px;width:96px;max-width:100%}
       .sm-launcher-caption{font-size:10px;line-height:1.4;font-weight:800;color:#4d7c0f;text-align:right}.sm-launcher-caption span{display:block}
+      .sm-launcher-caption{animation:sm-caption-glow 5s ease-in-out infinite}
+      @keyframes sm-caption-glow{0%,60%,100%{color:#4d7c0f;text-shadow:none}75%,85%{color:#65a30d;text-shadow:0 0 6px #bef264,0 0 12px #d9f99d}}
+      @media(prefers-reduced-motion:reduce){.sm-launcher-caption{animation:none}}
       .sm-launcher{width:44px;height:44px;display:grid;place-items:center;border:1px solid #c8e997;border-radius:14px;background:linear-gradient(135deg,#f7fee7,#e2f7b9);color:#365314;padding:0;box-shadow:0 3px 10px #3653140d}
       .sm-launcher:hover{border-color:#84cc16;background:#ecfccb}
       .sm-launcher-icon{font-size:23px;line-height:1}
