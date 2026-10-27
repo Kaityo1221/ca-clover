@@ -12,8 +12,8 @@ export function mountSendaiMap({host, client, getIdentity, fetcher = fetch}) {
   if (!document.getElementById('sendai-map-sheet-style')) {
     const style=document.createElement('style'); style.id='sendai-map-sheet-style';
     style.textContent=`
-      .sm-entry{display:flex;flex-direction:column;align-items:center;gap:5px;width:96px;max-width:100%}
-      .sm-launcher-caption{font-size:10px;line-height:1.4;font-weight:800;color:#4d7c0f;text-align:center}.sm-launcher-caption span{display:block}
+      .sm-entry{display:flex;flex-direction:column;align-items:flex-end;gap:5px;width:96px;max-width:100%}
+      .sm-launcher-caption{font-size:10px;line-height:1.4;font-weight:800;color:#4d7c0f;text-align:right}.sm-launcher-caption span{display:block}
       .sm-launcher{width:44px;height:44px;display:grid;place-items:center;border:1px solid #c8e997;border-radius:14px;background:linear-gradient(135deg,#f7fee7,#e2f7b9);color:#365314;padding:0;box-shadow:0 3px 10px #3653140d}
       .sm-launcher:hover{border-color:#84cc16;background:#ecfccb}
       .sm-launcher-icon{font-size:23px;line-height:1}
