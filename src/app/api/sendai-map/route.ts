@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createSendaiMapAdminClient } from "@/lib/sendai-map-server";
 import { sendaiMapIsActive, sendaiMapRoleAllowed, SENDAI_MAP_BUCKET, SENDAI_MAP_OBJECT } from "@/lib/sendai-map-policy";
@@ -50,7 +51,8 @@ async function getMap(request: NextRequest, headOnly = false) {
   try {
     const bucketInfo = await admin.storage.getBucket(bucket);
     if (bucketInfo.error || !bucketInfo.data || bucketInfo.data.public) return response("非公開保存先を確認できません。", 503, "MAP_DATA_NOT_FOUND");
-    const { data: file, error } = await admin.storage.from(bucket).download(objectPath);
+    // A fresh cache key avoids stale edge responses after overwriting this private object.
+    const { data: file, error } = await admin.storage.from(bucket).download(objectPath, { cacheNonce: randomUUID() }, { cache: "no-store" });
     if (error || !file || file.size > 16_000_000) return response("作戦MAPがまだ登録されていないか、保存先を読み込めません。", 503, "MAP_DATA_NOT_FOUND");
     const raw = JSON.parse(await file.text()) as Record<string, unknown>;
     if (!raw || typeof raw !== "object" || !raw.plans || typeof raw.plans !== "object" || typeof raw.current !== "string" || !Object.hasOwn(raw.plans,raw.current)) {
@@ -123,8 +125,8 @@ async function postMap(request: NextRequest) {
       console.error("[sendai-map] Private object upload failed", { code: error.name });
       return response("公開用作戦データを保存できません。", 503, "MAP_STORAGE_WRITE");
     }
-    // A successful upload must also be readable. Never report success early.
-    const verified = await admin.storage.from(SENDAI_MAP_BUCKET).download(SENDAI_MAP_OBJECT);
+    // Read with a fresh cache key; still require an exact byte match before success.
+    const verified = await admin.storage.from(SENDAI_MAP_BUCKET).download(SENDAI_MAP_OBJECT, { cacheNonce: randomUUID() }, { cache: "no-store" });
     if (verified.error || !verified.data || verified.data.size !== contents.byteLength || !Buffer.from(await verified.data.arrayBuffer()).equals(contents)) {
       return response("保存後の読み戻し確認に失敗しました。", 503, "MAP_STORAGE_VERIFY");
     }
