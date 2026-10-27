@@ -32,7 +32,10 @@ try {
   assert.equal(await page.locator('dialog:visible').count(),0);
   assert.equal(await page.locator('iframe').count(),0);
   assert.equal(calls.length,0,'No map/API load before icon is pressed');
-  assert.equal((await page.locator('[data-open]').boundingBox()).width,44);
+  const launcher=await page.locator('[data-open]').boundingBox();
+  assert(launcher.width>=44&&launcher.width<=390&&launcher.height>=44);
+  assert.equal(await page.locator('.sm-launcher-caption').textContent(),'仙台シティミートアップ');
+  assert.match(await page.locator('[data-open]').textContent(),/作戦MAP/);
   await page.click('[data-open]');
   try { await page.waitForFunction(()=>document.querySelector('[data-status]').textContent==='作戦MAPを表示しています。'); }
   catch(error) { console.error({role,status:await page.locator('[data-status]').textContent(),calls,frames:page.frames().map(f=>f.url()),received:await page.frames().find(f=>f.url().includes('cloverViewer'))?.evaluate(()=>window.received)}); throw error; }
