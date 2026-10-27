@@ -12,12 +12,11 @@ export function mountSendaiMap({host, client, getIdentity, fetcher = fetch}) {
   if (!document.getElementById('sendai-map-sheet-style')) {
     const style=document.createElement('style'); style.id='sendai-map-sheet-style';
     style.textContent=`
-      .sm-entry{display:flex;flex-direction:column;align-items:flex-end;gap:7px;max-width:100%}
-      .sm-launcher-caption{font-size:11px;line-height:1.5;letter-spacing:.02em;font-weight:800;color:#4d7c0f}
-      .sm-launcher{min-height:48px;max-width:100%;display:inline-flex;align-items:center;justify-content:center;gap:9px;border:1px solid #c8e997;border-radius:16px;background:linear-gradient(135deg,#f7fee7,#e2f7b9);color:#365314;font-size:14px;font-weight:900;padding:10px 15px;box-shadow:0 4px 14px #36531410}
+      .sm-entry{display:flex;flex-direction:column;align-items:center;gap:5px;width:96px;max-width:100%}
+      .sm-launcher-caption{font-size:10px;line-height:1.4;font-weight:800;color:#4d7c0f;text-align:center}.sm-launcher-caption span{display:block}
+      .sm-launcher{width:44px;height:44px;display:grid;place-items:center;border:1px solid #c8e997;border-radius:14px;background:linear-gradient(135deg,#f7fee7,#e2f7b9);color:#365314;padding:0;box-shadow:0 3px 10px #3653140d}
       .sm-launcher:hover{border-color:#84cc16;background:#ecfccb}
       .sm-launcher-icon{font-size:23px;line-height:1}
-      .sm-launcher-arrow{font-size:16px;color:#65a30d}
       .sm-launcher:focus-visible,.sm-close:focus-visible{outline:3px solid #65a30d;outline-offset:2px}
       dialog.sm-sheet{position:fixed;inset:0;width:100%;max-width:none;height:100vh;height:100dvh;max-height:none;margin:0;padding:0;border:0;background:#f7fee7;color:#1f2937;overflow:hidden;overscroll-behavior:none}
       dialog.sm-sheet[open]{display:flex;flex-direction:column}
@@ -43,7 +42,7 @@ export function mountSendaiMap({host, client, getIdentity, fetcher = fetch}) {
     `;
     document.head.append(style);
   }
-  host.innerHTML='<div class="sm-entry"><span class="sm-launcher-caption">仙台シティミートアップ</span><button type="button" class="sm-launcher" data-open title="仙台シティミートアップの作戦MAP" aria-label="仙台作戦MAPを開く" aria-haspopup="dialog" aria-expanded="false"><span class="sm-launcher-icon" aria-hidden="true">🏴</span><span>作戦MAP</span><span class="sm-launcher-arrow" aria-hidden="true">↗</span></button></div>';
+  host.innerHTML='<div class="sm-entry"><span class="sm-launcher-caption"><span>仙台シティ</span><span>ミートアップ</span></span><button type="button" class="sm-launcher" data-open title="仙台シティミートアップの作戦MAP" aria-label="仙台作戦MAPを開く" aria-haspopup="dialog" aria-expanded="false"><span class="sm-launcher-icon" aria-hidden="true">🏴</span></button></div>';
   const open=host.querySelector('[data-open]');
   const sheet=document.createElement('dialog'); sheet.className='sm-sheet';
   sheet.setAttribute('aria-labelledby','sendai-sheet-title');
