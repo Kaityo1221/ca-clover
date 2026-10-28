@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:net";
-import { createHmac, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
 // Disposable local Supabase CLI (real Auth, signed JWT, PostgREST, RLS).
@@ -87,19 +87,6 @@ async function check(label,base,token,expected){
   }
   console.log("ZOROARK_REAL_AUTH",label,"PASS");
 }
-function expiredJWT(valid,secret){
-  const parts=valid.split(".");
-  assert.equal(parts.length,3);
-  const header=JSON.parse(Buffer.from(parts[0],"base64url").toString());
-  const payload=JSON.parse(Buffer.from(parts[1],"base64url").toString());
-  assert.equal(header.alg,"HS256");
-  const enc=x=>Buffer.from(JSON.stringify(x)).toString("base64url");
-  const h=enc(header),b=enc({...payload,
-    iat:Math.floor(Date.now()/1000)-7200,
-    exp:Math.floor(Date.now()/1000)-3600
-  });
-  return h+"."+b+"."+createHmac("sha256",secret).update(h+"."+b).digest("base64url");
-}
 try {
   console.log("ZOROARK_REAL_AUTH_INIT: disposable local Supabase only");
   cli(["init"],60000);
@@ -107,6 +94,10 @@ try {
   let cfg=readFileSync(file,"utf8");
   cfg=cfg.replace(/^project_id\s*=\s*".*"/m,
     'project_id = "zoroark-real-'+randomBytes(4).toString("hex")+'"');
+  // Use genuine short-lived GoTrue JWTs (ES256 in current local Supabase).
+  const expiry=cfg.match(/^\s*jwt_expiry\s*=\s*\d+/m);
+  if(!expiry)throw Error("Local CLI auth.jwt_expiry setting not found");
+  cfg=cfg.replace(/^\s*jwt_expiry\s*=\s*\d+/m,"jwt_expiry = 60");
   writeFileSync(file,cfg);
   console.log("ZOROARK_REAL_AUTH_START: local Auth / REST / PostgreSQL");
   cli(["start","-x","studio,meta,storage,realtime,imgproxy,inbucket,edge-runtime,analytics,vector,supavisor"],360000);
@@ -191,9 +182,11 @@ try {
   assert.equal(other.error,null,"pending RLS read");
   assert.equal(other.data?.length,1,"pending can only read own row");
   assert.equal(other.data[0].id,people.pending.id,"pending self identity");
-  if(s.JWT_SECRET){
-    await check("signed expired JWT",base,expiredJWT(people.ca.token,s.JWT_SECRET),401);
-  } else console.log("ZOROARK_REAL_AUTH_EXPIRED_JWT_SKIPPED: local CLI did not return JWT_SECRET");
+  // Actual expiration: never forge or re-sign an ES256 JWT.
+  // Wait beyond GoTrue's 60-second local JWT TTL, then call the real Auth API.
+  console.log("ZOROARK_REAL_AUTH_EXPIRY: validating real GoTrue token expiry");
+  await sleep(65000);
+  await check("real expired ES256 JWT",base,people.ca.token,401);
   console.log("ZOROARK_REAL_AUTH_LOCAL_PASS real_gotrue=true jwt=true postgrest=true rls=true remote=false");
 } catch(error) {
   exit=1;
