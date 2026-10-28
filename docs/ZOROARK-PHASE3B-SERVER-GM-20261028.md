@@ -74,3 +74,26 @@ The first attempt failed due to the synthetic test's localhost Origin not matchi
 **Remaining NO-GO criteria:** independent nonproduction Supabase Auth with real signed JWT and PostgREST/RLS (not only a synthetic web mock); verification that current live-role restrictions and column ACLs match what is intended (read-only audit with explicit permission); authenticated Pages-origin iPhone Safari round trip with CA/admin/pending/expired/revoked and failure modes; separate approval to merge/deploy.
 
 No real Supabase resources, backend PRs or production configuration were changed for this phase.
+
+
+## 2026-10-28 Genuine local Supabase Auth / JWT integration evidence
+
+**PASS (real local Auth, ES256 JWT, PostgREST and RLS); production release remains NO-GO.**
+
+- Verified code commit: `4853eede9cc12a689eb0d4d3ed85576c537dd8d0`.
+- CI: <https://github.com/Kaityo1221/ca-clover/actions/runs/40671570480>. The GitHub Actions `npm test` step and `npm run build` both PASS. The concurrent Public/Private Boundary CI must be checked separately.
+- The isolated runner `scripts/test-zoroark-real-auth-local.mjs` starts a new Supabase CLI `v2.122.0` stack in a temporary directory with distinct project ID, local API and DB endpoints only, and a short 60-second JWT expiry. It creates **synthetic accounts**, never uses production credentials or accounts, and calls the actual Next.js `POST /api/zoroark/round`.
+- Real Supabase Auth issued ES256-signed JWTs, validated by actual GoTrue `auth.getUser`; actual PostgREST applied row-level-security to `profiles`. CA/admin received rounds, pending/guest/invalid-signature/forged user metadata and unauthorized self-role changes were rejected. After the synthetic CA role was changed to pending in the disposable DB, the same previously valid signed JWT was denied. After the JWT expired naturally, the API returned HTTP 401. No question payload was present in denied responses.
+- Explicit profile queries using user JWTs confirmed self-only RLS visibility. The test verified `profiles.role` could not be written by the client role.
+- Test cleanup stopped the isolated Supabase stack without a backup. No project was created on the Supabase cloud service, and no existing project, secret, Phase E backup, backend PR or real user record was accessed or modified.
+- The first two CI attempts caught **test harness mistakes**, not verified application vulnerabilities: a profile client missing a bearer token and an assumption of HS256 signing. Both were corrected; the final actual ES256-expiry test passed. Do not count a failed harness attempt as a security pass.
+- To avoid routinely launching many Docker images on every ordinary PR, the slow integration is preserved as explicit `npm run test:zoroark-real-auth-local`, separate from the fast default `npm test`. It is intended to run only in a fresh unlinked Linux GitHub Actions environment. No `.github/workflows` changes were made.
+
+### Remaining release gates
+
+1. Confirm the *actual deployed* Supabase project's profile column ACL / RLS policies match reviewed source, through an authorized read-only inspection. No production SQL write, migrations or role changes.
+2. Run authenticated iPhone Safari in CA Clover's intended entrypoint and verify CA/ADMIN/guest/pending/session expiry and correct game pass-and-play UX.
+3. Explicitly approve rollout. Keep Draft PR #187 and Draft PR #188 unmerged, with no automatic production deployment.
+4. Treat standalone raw.githack prototype as a public demo only; it remains bypassable and not CA-authorized.
+
+**This completes disposable real-auth technical verification, not the production authorization and deployment review.**
