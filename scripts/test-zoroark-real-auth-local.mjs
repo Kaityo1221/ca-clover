@@ -172,16 +172,25 @@ try {
   const meta=await people.pending.client.auth.updateUser({data:{role:"admin"}});
   assert.equal(meta.error,null,"test user metadata editable");
   await check("user_metadata spoof rejected",base,people.pending.token,403);
-  const upgrade=await people.pending.client.from("profiles").update({role:"admin"})
+  // Explicit JWT is essential: auth.persistSession=false does not persist the sign-in session.
+  const userDb=(token)=>createClient(api,anon,{
+    global:{headers:{Authorization:"Bearer "+token}},
+    auth:{persistSession:false,autoRefreshToken:false},
+  });
+  const upgrade=await userDb(people.pending.token).from("profiles").update({role:"admin"})
     .eq("id",people.pending.id).select();
   assert.ok(upgrade.error,"client cannot upgrade own role");
   await check("own role escalation rejected",base,people.pending.token,403);
   sql(db,"UPDATE public.profiles SET role='pending' WHERE id=:'uid'::uuid;",
     [["uid",people.revoked.id]]);
   await check("same signed JWT after role revocation",base,people.revoked.token,403);
-  const mine=await people.ca.client.from("profiles").select("id,role");
+  const mine=await userDb(people.ca.token).from("profiles").select("id,role");
   assert.equal(mine.error,null);assert.equal(mine.data?.length,1);
   assert.equal(mine.data[0].id,people.ca.id);
+  const other=await userDb(people.pending.token).from("profiles").select("id,role");
+  assert.equal(other.error,null,"pending RLS read");
+  assert.equal(other.data?.length,1,"pending can only read own row");
+  assert.equal(other.data[0].id,people.pending.id,"pending self identity");
   if(s.JWT_SECRET){
     await check("signed expired JWT",base,expiredJWT(people.ca.token,s.JWT_SECRET),401);
   } else console.log("ZOROARK_REAL_AUTH_EXPIRED_JWT_SKIPPED: local CLI did not return JWT_SECRET");
