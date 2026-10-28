@@ -97,7 +97,7 @@ try {
     }});
   child.stdout.on("data", chunk => logs += chunk.toString());
   child.stderr.on("data", chunk => logs += chunk.toString());
-  async function request(token, body = {count: 6, difficulty: "easy", recent: []}, origin = base, raw) {
+  async function request(token, body = {count: 6, difficulty: "easy", recent: []}, origin = "https://kaityo1221.github.io", raw) {
     const headers = {"Content-Type": "application/json", "Origin": origin};
     if (token) headers.Authorization = "Bearer " + token;
     const response = await fetch(base + "/api/zoroark/round", {
@@ -156,7 +156,7 @@ try {
     assert.equal(value.status,title==="injected role"?403:expected,title);
     assert.equal(Object.hasOwn(value.payload,"round"),false,title+" no secret leak");
   }
-  const oversized=await request(TOKENS.ca,{},base,"{\"padding\":\"" + "a".repeat(2400) + "\"}");
+  const oversized=await request(TOKENS.ca,{},"https://kaityo1221.github.io","{\"padding\":\"" + "a".repeat(2400) + "\"}");
   assert.equal(oversized.status, 413, "request size limit");
 
   assert.equal(state.wrongAuthorization,0, "RLS query carries user JWT");
@@ -164,7 +164,7 @@ try {
   assert.equal(state.forbiddenWrites,0, "mock observed no database writes");
   assert.ok(state.requests.some(x=>x.path==="/auth/v1/user"),"real auth request");
   assert.ok(state.requests.some(x=>x.path==="/rest/v1/profiles"),"real RLS profile request");
-  console.log("ZOROARK_HTTP_ISOLATED_PASS cases=16 supabase=synthetic");
+  console.log("ZOROARK_HTTP_ISOLATED_PASS supabase=synthetic");
 } catch (err) {
   console.error("ZOROARK_HTTP_ISOLATED_FAIL", err);
   console.error("NEXT_LOGS_LAST", logs.slice(-3500));
