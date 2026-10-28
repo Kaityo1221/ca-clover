@@ -76,7 +76,23 @@
   // CARD_METRICS_IMPORT_BEGIN
   const cardMetricsReady=import('./meetup-metrics.mjs?v=20261017-card1').catch(function(){return null});
   // CARD_METRICS_IMPORT_END
-  let session=null, profile=null, busy=false, flash=null, communityPeriod=90, meetupHistoryLimit=25, communityFeatureView="home", renderToken=0;
+  let session=null, profile=null, busy=false, flash=null, communityPeriod=90, meetupHistoryLimit=25, communityFeatureView="home", renderToken=0, zoroarkLeave=null;
+  // Restricted capability: only a CA-authorized game request crosses this page boundary.
+  // The caller receives the round, never the Supabase access token.
+  const zoroarkGateway={
+    async newRound(input){
+      if(!session?.user?.id || !["ca","admin"].includes(profile?.role))throw Error("CAまたはADMINのみゲームマスターになれます。");
+      const {data,error}=await client.auth.getSession();
+      if(error||!data.session?.access_token||data.session.user.id!==session.user.id)throw Error("再ログインしてください。");
+      const res=await fetch("https://ca-clover.vercel.app/api/zoroark/round",{
+        method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+data.session.access_token},
+        body:JSON.stringify(input),cache:"no-store",credentials:"omit"
+      });
+      const body=await res.json().catch(()=>({}));
+      if(!res.ok)throw Error(body.error||"ゲームを開始できません。");
+      return body;
+    }
+  };
   const COMMUNITY_PERIODS=[["1か月",30],["3か月",90],["6か月",180],["1年",365],["全期間",null]];
   const MEETUP_HISTORY_LIMITS=[25,50,100];
   const app=document.getElementById("app");
@@ -655,6 +671,7 @@
     await renderAdmin();
   }
   async function render(){
+    if(zoroarkLeave){zoroarkLeave();zoroarkLeave=null;}
     if(sendaiMapLeave){sendaiMapLeave();sendaiMapLeave=null;}
     if(participantPanel)participantPanel.leave(); // PARTICIPANT_CSV_LEAVE
     const token=++renderToken;
@@ -665,6 +682,20 @@
     header();
     let v=route();
     if(v==="admin"&&profile.role!=="admin"){v="my";location.hash="my"}
+    if(v==="mini-games"){
+      if(profile?.role!=="ca"&&profile?.role!=="admin"){
+        app.innerHTML='<section class="card"><h2>🔒 CA専用ミニゲーム</h2><p class="muted strong">CAまたはADMINの承認が必要です。</p><button id="gameHome" class="btn section">My Communityへ戻る</button></section>';
+        document.getElementById("gameHome").onclick=function(){go("my")};return;
+      }
+      app.innerHTML='<section class="card"><h2>🦊 ゲームの準備中…</h2></section>';
+      const host=app;
+      try{
+        const module=await import("./zoroark-local.mjs?v=20261029-pages1");
+        if(token!==renderToken||!host.isConnected)return;
+        zoroarkLeave=module.mountZoroark({host,gateway:zoroarkGateway,onBack:function(){go("my")}});
+      }catch(_err){if(token===renderToken)app.innerHTML='<section class="card"><h2>ゲームを起動できません</h2><p>画面を再読み込みしてください。</p><button class="btn section" id="gameBack">戻る</button></section>';const b=document.getElementById("gameBack");if(b)b.onclick=function(){go("my")}}
+      return;
+    }
     if(v==="account"){renderAccount();return}
     if(v==="admin"){await renderAdmin();return}
     if(v.startsWith("community:")){await renderCommunity(decodeURIComponent(v.slice("community:".length)));return}
