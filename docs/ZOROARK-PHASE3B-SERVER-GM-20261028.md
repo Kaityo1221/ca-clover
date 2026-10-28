@@ -55,3 +55,22 @@ Do not use or modify Phase E backups, containers, proofs or production Supabase 
 - No migrations, secrets, deploy configuration, protected backup state, or existing PRs modified.
 
 The first attempt failed due to the synthetic test's localhost Origin not matching Next's inferred request origin. The HTTP harness was corrected to use the known GitHub Pages origin, and the subsequent run passed. This should not be misreported as a real Auth validation failure.
+
+
+## 2026-10-28 Actual disposable PostgreSQL RLS verification
+
+**Result: 10/10 PASS in real PostgreSQL (isolated)**. This does NOT prove production configuration or genuine Supabase Auth.
+
+- Evidence commit: \`c42e6dc0a3d15f2a5f0d30d6f707101832f07aaf\`
+- GitHub Actions CI run \`40665405153\`: **success**; includes \`npm test\` and \`npm run build\`.
+- Public/Private Boundary CI run \`40665405215\`: **success**.
+- Vercel check: **success** (build/deployment status only, no real Safari/JWT authorization claim).
+- Fixture: \`scripts/fixtures/zoroark-rls-isolated.sql\`; runner: \`scripts/test-zoroark-pg-isolated.mjs\`.
+- Runner creates a *new local PostgreSQL instance* under a temporary directory, with \`listen_addresses=''\` and a private Unix socket; deletes the cluster after checking. No production DB connection, real users, JWT signing key, service-role secret, or live data.
+- Role / ACL / policy assertions (10): CA self-read; fake JWT metadata cannot elevate privileges; \`authenticated\` cannot self-update \`profiles.role\`; permitted \`niantic_id\` update; admin read; pending denied; live revocation from \`ca\` to \`pending\` respected without changing the user session claim; other-user profile isolation; anonymous denied; final PASS marker.
+- Fixture is modeled on source migrations \`20260918_harden_rls_and_ca_identity.sql\` and \`20260919_restrict_profile_updates_and_ca_visibility.sql\`. It is deliberately *not* a clone, dump, or perfect reproduction of the live Supabase project.
+- CI also confirms the pre-existing synthetic \`getUser\` + PostgREST HTTP matrix passed and did not call actual Supabase.
+
+**Remaining NO-GO criteria:** independent nonproduction Supabase Auth with real signed JWT and PostgREST/RLS (not only a synthetic web mock); verification that current live-role restrictions and column ACLs match what is intended (read-only audit with explicit permission); authenticated Pages-origin iPhone Safari round trip with CA/admin/pending/expired/revoked and failure modes; separate approval to merge/deploy.
+
+No real Supabase resources, backend PRs or production configuration were changed for this phase.
