@@ -25,6 +25,6 @@ export default function ZoroarkGamePage() {
        🔒 CAまたはADMINのアカウントのみゲームマスター画面を起動できます。
      </div> :
      <ZoroarkLocalGame />}
-    <p className="mt-7 text-center text-xs font-semibold leading-5 text-slate-500">開発中の画面統合試作。未マージ・未配備。サーバー側認可は別工程です。</p>
+    <p className="mt-7 text-center text-xs font-semibold leading-5 text-slate-500">新しいゲームの開始時にサーバーでCA権限を再確認します。端末を渡す前にお題を隠してください。</p>
   </main>;
 }
