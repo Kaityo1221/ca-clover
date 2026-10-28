@@ -1,0 +1,32 @@
+name: Zoroark Canonical Pages UI (No Deploy)
+
+on:
+  pull_request:
+    paths:
+      - "docs/index.html"
+      - "docs/home-clover.js"
+      - "docs/community-minigames-placeholder.js"
+      - "docs/zoroark-local.mjs"
+      - "scripts/ci/test-zoroark-pages.mjs"
+      - ".github/workflows/zoroark-pages-ui.yml"
+  push:
+    branches: [feat/zoroark-pages-ui-20261029]
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: JS syntax and bridge check
+        run: |
+          node --check docs/zoroark-local.mjs
+          node --check docs/community-minigames-placeholder.js
+          node --check docs/home-clover.js
+          node scripts/ci/test-zoroark-pages.mjs
