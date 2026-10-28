@@ -42,3 +42,16 @@ The Phase 3A UI-only PR remains draft and is not modified.
 **No-go for production** until: isolated CI passes, independent AUTH / JWT / RLS integration tests run against an approved disposable environment, CA/ADMIN/guest/pending/revoked/expired roles are verified, Safari is tested from real CA Clover origin, and the owner explicitly approves merging / deployment.
 
 Do not use or modify Phase E backups, containers, proofs or production Supabase data. Do not change the existing ADMIN/backend PRs or deploy any migrations, Edge Functions or secrets. Never output access tokens to logs.
+
+## 2026-10-28 Synthetic HTTP verification evidence
+
+- Tested commit: `d27e3abaf2dcd671038014d3564e009b84c6059d` (before this report-only change).
+- GitHub Actions CI run: `40656811707` **SUCCESS**, `npm test` (including policy and isolated HTTP checks) **PASS**, `npm run build` **PASS**.
+- Public/Private Boundary run: `40656811842` **SUCCESS**.
+- Production user data: **not read**. All Auth and REST responses came from a locally spawned synthetic HTTP service using fake identity `00000000-0000-4000-8000-000000000001` and fake tokens.
+- Actual `Next.js` API route `POST /api/zoroark/round` was exercised end to end with synthetic Supabase. Test confirms: absent JWT and invalid JWT => 401; CA and ADMIN => 200; pending/revoked/missing role => 403; Auth failure => 401; database failure => 503; forbidden Origin => 403; malformed size/difficulty and oversized body => 400/413; attempted role injection is denied; no secret round included on failures.
+- Verified mock received a bearer JWT for authenticated profile reads, queried only the authenticated user's profile, and observed zero database writes.
+- This is **not** a real Supabase Auth/RLS/PostgreSQL environment. The real JWT, policy, user revocation, CORS from deployed origin and real iPhone Safari integration have **not been proved**. Final release remains **NO-GO**.
+- No migrations, secrets, deploy configuration, protected backup state, or existing PRs modified.
+
+The first attempt failed due to the synthetic test's localhost Origin not matching Next's inferred request origin. The HTTP harness was corrected to use the known GitHub Pages origin, and the subsequent run passed. This should not be misreported as a real Auth validation failure.
