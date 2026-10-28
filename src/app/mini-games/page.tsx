@@ -26,11 +26,11 @@ export default function MiniGamesPage() {
        <p className="mt-2 text-sm font-semibold text-slate-600">CAまたはADMINと確認されたアカウントのみGM画面を使えます。</p>
      </div> :
      <div className="mt-7 rounded-[24px] border border-lime-200 bg-white p-6 shadow-sm">
-       <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-900">開発中・未公開</span>
+       <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-900">認証付き現地版</span>
        <h2 className="mt-4 text-2xl font-black text-lime-950">🦊 ゾロアークを探せ！</h2>
        <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">6〜8名推奨。GMのスマホを回して秘密のお題を確認し、会話と指差し投票で少数派を探します。</p>
        <Link href="/mini-games/zoroark" className="mt-5 inline-flex rounded-2xl bg-lime-400 px-5 py-3 text-base font-black text-lime-950">現地版を開く →</Link>
      </div>}
-    <p className="mt-6 text-xs font-semibold leading-5 text-slate-500">このブランチは権限ゲートのUI試作です。CA限定の本番利用には、サーバー側の認可検証が別途必要です。</p>
+    <p className="mt-6 text-xs font-semibold leading-5 text-slate-500">ゲーム開始時にサーバーでCA権限を確認します。現地参加者のログインは不要です。</p>
   </main>;
 }

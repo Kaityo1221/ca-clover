@@ -48,6 +48,7 @@ const adminSections = [
     items: [
       { icon: "🍀", title: "My Community", description: "自分のCommunity活動を見る", href: "/my", access: "一般" },
       { icon: "👤", title: "アカウント", description: "Niantic IDとログイン設定", href: "/account", access: "一般" },
+      { icon: "🎮", title: "ミニゲーム", description: "ゾロアークを探せ！ 現地用GMゲーム", href: "/mini-games" },
     ],
   },
 ] satisfies { title: string; subtitle: string; items: MenuItem[] }[];
@@ -59,6 +60,7 @@ const caSections = [
     items: [
       { icon: "🍀", title: "My Community", description: "自分のCommunity活動を見る", href: "/my" },
       { icon: "👤", title: "アカウント", description: "Niantic IDとログイン設定", href: "/account" },
+      { icon: "🎮", title: "ミニゲーム", description: "ゾロアークを探せ！ 現地用GMゲーム", href: "/mini-games" },
     ],
   },
 ] satisfies { title: string; subtitle: string; items: MenuItem[] }[];
