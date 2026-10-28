@@ -61,8 +61,9 @@ function itemHtml(item){
 function renderList(kind){
  const games=kind==="games",items=games?GAME_ITEMS:TOOL_ITEMS;
  const app=document.getElementById("app");if(!app)return;
- app.innerHTML='<div class="ca-minigames-view"><section class="card hero"><div class="ca-minigames-head"><button type="button" class="ca-minigames-back">← ミニゲーム集</button><div><span class="pill">'+(games?'GAME LIST':'TOOLS')+'</span><h1 style="margin-top:10px">'+(games?'🎮 ミニゲーム一覧':'🧰 ツール')+'</h1><p class="ca-minigames-lead">'+(games?'すぐ使えるゲームの候補です。':'ゲームづくりに使える道具の候補です。')+'</p></div></div></section><div class="ca-minigames-list">'+items.map(itemHtml).join("")+'</div></div>';
+ app.innerHTML='<div class="ca-minigames-view"><section class="card hero"><div class="ca-minigames-head"><button type="button" class="ca-minigames-back">← ミニゲーム集</button><div><span class="pill">'+(games?'GAME LIST':'TOOLS')+'</span><h1 style="margin-top:10px">'+(games?'🎮 ミニゲーム一覧':'🧰 ツール')+'</h1><p class="ca-minigames-lead">'+(games?'すぐ使えるゲームの候補です。':'ゲームづくりに使える道具の候補です。')+'</p></div></div></section><div class="ca-minigames-list">'+(games?'<button type="button" class="ca-minigames-item" data-open-zoroark style="border:2px solid #84cc16;background:linear-gradient(135deg,#f7fee7,#fff);cursor:pointer"><span class="ca-minigames-item-icon">🦊</span><span><span class="ca-minigames-item-title">ゾロアークを探せ！</span><span class="ca-minigames-item-desc">CA専用GM・42組のお題・現地プレイ</span><span class="ca-minigames-soon" style="background:#d9f99d;color:#365314">ゲームを開始</span></span></button>':'')+items.map(itemHtml).join("")+'</div></div>';
  app.querySelector(".ca-minigames-back").onclick=function(){renderHub()};
+ if(games){const game=app.querySelector("[data-open-zoroark]");if(game)game.onclick=function(){location.hash="mini-games"}};
  window.scrollTo({top:0,behavior:"auto"});
 }
 function renderHub(){
