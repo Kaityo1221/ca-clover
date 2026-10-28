@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createBrowserSupabaseClient } from "@/lib/supabase";
 import {
-  makeRound, PAIRS, pickPair, randomIndex, sanitizeRecentIds, TALK_TOPICS, winner,
-  type DifficultyChoice, type Round,
+  TALK_TOPICS, winner, type DifficultyChoice, type Round,
 } from "@/lib/zoroark-game";
 
 type Phase = "setup" | "pass" | "talk" | "vote" | "result";
@@ -34,12 +34,18 @@ export function ZoroarkLocalGame() {
   const [voted, setVoted] = useState<number | null>(null);
   const [reveal, setReveal] = useState(false);
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const requestInFlight = useRef(false);
   const deadline = useRef(0);
   const history = useRef<string[]>([]);
 
   useEffect(() => {
-    try { history.current = sanitizeRecentIds(JSON.parse(sessionStorage.getItem("clover-zoroark-pairs-v1") || "[]")); }
-    catch { history.current = []; }
+    try {
+      const data: unknown = JSON.parse(sessionStorage.getItem("clover-zoroark-pairs-v1") || "[]");
+      history.current = Array.isArray(data)
+        ? [...new Set(data.filter((v): v is string => typeof v === "string" && /^[a-z][0-9]{2}$/.test(v)))].slice(-6)
+        : [];
+    } catch { history.current = []; }
   }, []);
 
   useEffect(() => {
@@ -60,26 +66,58 @@ export function ZoroarkLocalGame() {
     return () => window.clearInterval(timer);
   }, [duration, phase, running]);
 
-  function begin() {
+  async function begin() {
+    if (requestInFlight.current) return;
+    requestInFlight.current = true;
+    setBusy(true);
+    setError("");
+    setVisible(false);
+    setRound(null);
     try {
-      const choice = pickPair(level, history.current, randomIndex);
-      const newRound = makeRound(count, choice, randomIndex);
-      history.current = [...history.current, choice.id].slice(-6);
+      const supabase = createBrowserSupabaseClient();
+      const {data, error: sessionError} = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (sessionError || !token) throw new Error("ログイン状態を再確認してください。");
+      // GitHub Pages is a static entrypoint, not the Next.js API host.
+      const api = window.location.origin === "https://kaityo1221.github.io"
+        ? "https://ca-clover.vercel.app/api/zoroark/round"
+        : "/api/zoroark/round";
+      const result = await fetch(api, {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({count, difficulty: level, recent: history.current}),
+        cache: "no-store",
+        credentials: "omit",
+      });
+      const payload = await result.json().catch(() => ({})) as {round?: Round; error?: string};
+      if (!result.ok) throw new Error(payload.error || "ゲームを開始できません。");
+      const newRound = payload.round;
+      if (!newRound || !Array.isArray(newRound.prompts) || newRound.prompts.length !== count ||
+          !Number.isInteger(newRound.wolf) || newRound.wolf < 0 || newRound.wolf >= count) {
+        throw new Error("お題の配布内容を検証できませんでした。");
+      }
+      history.current = [...history.current, newRound.pair.id].slice(-6);
       try { sessionStorage.setItem("clover-zoroark-pairs-v1", JSON.stringify(history.current)); } catch {}
       setRound(newRound);
       setRoundNumber(n => n + 1);
       setPlayerIndex(0);
-      setVisible(false);
       setRemaining(duration);
       setRunning(false);
       setTalkRound(1);
-      setTopicIndex(randomIndex(TALK_TOPICS.length));
+      setTopicIndex((previous) => (previous + 1) % TALK_TOPICS.length);
       setVoted(null);
       setReveal(false);
-      setError("");
       setPhase("pass");
-    } catch {
-      setError("ゲームを開始できません。安全な乱数の利用が必要です。HTTPSでお試しください。");
+    } catch (cause) {
+      setRound(null);
+      setPhase("setup");
+      setError(cause instanceof Error ? cause.message : "お題を取得できませんでした。");
+    } finally {
+      requestInFlight.current = false;
+      setBusy(false);
     }
   }
 
@@ -141,7 +179,7 @@ export function ZoroarkLocalGame() {
         <p className="mt-1 text-center text-xs font-bold text-slate-500">推奨6〜8人・3〜12人対応</p>
         <label htmlFor="zoroark-difficulty" className="mt-5 block text-sm font-black text-slate-700">お題の難易度</label>
         <select id="zoroark-difficulty" value={level} onChange={e => setLevel(e.target.value as DifficultyChoice)} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base font-semibold text-slate-900">
-          <option value="all">おまかせ（全{PAIRS.length}組）</option>
+          <option value="all">おまかせ（全42組）</option>
           <option value="easy">初級（12組）</option>
           <option value="normal">中級（15組）</option>
           <option value="hard">上級（15組）</option>
@@ -156,7 +194,7 @@ export function ZoroarkLocalGame() {
         </select>
         <p className="mt-5 rounded-xl bg-lime-50 p-3 text-sm font-semibold leading-6 text-lime-950">🎭 ポケモンの名前は言わない。嘘やブラフはOK！</p>
         {error ? <p role="alert" className="mt-3 text-sm font-bold text-rose-700">{error}</p> : null}
-        <button className={mainButton + " mt-5"} onClick={begin}>ゲームを開始する</button>
+        <button className={mainButton + " mt-5"} onClick={() => void begin()} disabled={busy}>{busy ? "CA権限を確認しています…" : "ゲームを開始する"}</button>
       </>}
 
       {phase === "pass" && round && <>
@@ -229,7 +267,7 @@ export function ZoroarkLocalGame() {
           <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold leading-7 text-slate-700">
             共通点：{round.pair.common}<br />違い：{round.pair.difference}
           </div>
-          <button className={mainButton + " mt-5"} onClick={begin}>次のゲームへ</button>
+          <button className={mainButton + " mt-5"} onClick={() => void begin()} disabled={busy}>{busy ? "準備中…" : "次のゲームへ"}</button>
           <button className={secondaryButton + " mt-3"} onClick={reset}>人数設定へ戻る</button>
         </> : <>
           <div className="mt-4 rounded-2xl bg-slate-900 p-10 text-center text-6xl text-white">🎭</div>
