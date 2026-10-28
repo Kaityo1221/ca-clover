@@ -97,3 +97,26 @@ No real Supabase resources, backend PRs or production configuration were changed
 4. Treat standalone raw.githack prototype as a public demo only; it remains bypassable and not CA-authorized.
 
 **This completes disposable real-auth technical verification, not the production authorization and deployment review.**
+
+
+## 2026-10-29 production catalog-only audit (read-only)
+
+**No data rows, private user records, credentials, DDL or DML were requested or modified.**
+
+Read-only inspection of live CA Clover project `wgiittrvgtiosogyhfcl` found:
+
+- `public.profiles` RLS = enabled, FORCE RLS = false.
+- SELECT policy `profiles self or admin read` is scoped to authenticated and allows `auth.uid() = id` or `private.is_admin()`.
+- UPDATE policy `profiles self update` is scoped to authenticated and constrains row identity in both USING and WITH CHECK.
+- `authenticated`: table-wide UPDATE = false; column UPDATE of `role` = false; column UPDATE of `niantic_id` = true.
+- **Least-privilege review finding:** `anon` has table-level SELECT and UPDATE grants and a column-level `role` UPDATE grant, although no RLS policies shown authorize anonymous SELECT or UPDATE. This is a wider ACL than necessary, but the policy check has not established exploitability. Do not equate the grant alone with data leakage or authorization bypass.
+- This audit does not exercise live JWTs or simulate user activity against production and does not certify every inheritance, function, view or indirect access path. A separate review of role inheritance, ownership, RPCs and policy coverage is appropriate before any permission changes.
+
+**Safety decision:** no changes to live ACL/RLS/policies or existing backed-up databases; do not revoke grants as part of this Zoroark PR. Handle least-privilege findings in a standalone reviewed database security change after authorization. This is not a blocker to completing isolated app functionality but **production rollout remains NO-GO** until sign-off and actual iPhone authentication path verification.
+
+### Mobile acceptance criteria, not yet verified
+
+1. The new `/mini-games/zoroark` route exists only on Draft PR branches and is **not yet deployed to the CA Clover production entrypoint**.
+2. Verify guest => login request; pending => refusal; CA/ADMIN => GM screen; session expiry and revocation => subsequent new round rejected.
+3. Validate mobile handoff hides prior player's topic, voting, tie re-vote, reveal animation, second round and accessibility.
+4. Authenticated preview on Vercel may require deployment access and a real CA session; **no iPhone Safari verification can be claimed from server-side CI alone**.
