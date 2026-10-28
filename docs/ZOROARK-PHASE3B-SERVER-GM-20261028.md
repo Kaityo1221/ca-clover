@@ -35,7 +35,7 @@ The Phase 3A UI-only PR remains draft and is not modified.
 - Smoke test: game cannot start if API missing or unreachable; successive rounds still work for CA; local voting and reveal remain correct.
 - Build: `npm run build`, `npm test`.
 - Unit: `node --experimental-strip-types scripts/test-zoroark-engine.ts`.
-- The current PR CI does **not** automatically execute the new unit script. Run separately when available.
+- The existing `npm test` chain now executes `scripts/test-zoroark-engine.ts` as part of PR CI; verify its result before final PASS.
 
 ## No-go and next approval gate
 
