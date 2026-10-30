@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createSendaiMapAdminClient } from "@/lib/sendai-map-server";
+import { verifyLiveMapRole } from "@/lib/p1-live-map-role";
 import { sendaiMapIsActive, sendaiMapRoleAllowed, SENDAI_MAP_BUCKET, SENDAI_MAP_OBJECT } from "@/lib/sendai-map-policy";
 
 export const dynamic = "force-dynamic";
@@ -36,14 +37,10 @@ async function getMap(request: NextRequest, headOnly = false) {
 
   const admin = adminClientOrError();
   if (!admin) return response("作戦MAPのサーバー接続設定を確認してください。", 503, "MAP_AUTH_CONFIG");
-  const { data: identity, error: authError } = await admin.auth.getUser(match[1]);
-  if (authError || !identity.user) return response("認証情報が無効です。", 401);
-
-  // Permissions must come from the trusted database, not user-editable JWT metadata.
-  const { data: profile, error: profileError } = await admin
-    .from("profiles").select("role").eq("id", identity.user.id).maybeSingle();
-  if (profileError) return response("権限を確認できません。", 503);
-  if (!sendaiMapRoleAllowed(profile?.role)) return response("承認済みCA専用です。", 403);
+  const current = await verifyLiveMapRole(admin, match[1]);
+  if (!current.ok) return response("有効なセッションを確認できません。",
+    current.code === "AUTH_UNAVAILABLE" ? 503 : 403);
+  if (!sendaiMapRoleAllowed(current.role)) return response("承認済みCA専用です。", 403);
 
   if (headOnly) return new NextResponse(null, { status: 200, headers: protectedHeaders });
   const bucket = SENDAI_MAP_BUCKET;
@@ -61,6 +58,10 @@ async function getMap(request: NextRequest, headOnly = false) {
     // Strip personal roster data even if it was included in the original export.
     const { caRoster: _privateRoster, ...workspace } = raw;
     void _privateRoster;
+    // A logout/demotion during the Storage fetch must not release the payload.
+    const last = await verifyLiveMapRole(admin, match[1]);
+    if (!last.ok || !sendaiMapRoleAllowed(last.role))
+      return response("セッションが無効になりました。", last.code==="AUTH_UNAVAILABLE"?503:403);
     return NextResponse.json({ workspace }, { headers: protectedHeaders });
   } catch {
     return response("作戦データを読み込めません。", 503);
@@ -78,12 +79,10 @@ async function postMap(request: NextRequest) {
   if (!match) return response("ログインが必要です。", 401);
   const admin = adminClientOrError();
   if (!admin) return response("作戦MAPのサーバー接続設定を確認してください。", 503, "MAP_AUTH_CONFIG");
-  const { data: identity, error: authError } = await admin.auth.getUser(match[1]);
-  if (authError || !identity.user) return response("認証情報が無効です。", 401);
-  const { data: profile, error: profileError } = await admin
-    .from("profiles").select("role").eq("id", identity.user.id).maybeSingle();
-  if (profileError) return response("権限を確認できません。", 503);
-  if (profile?.role !== "admin") return response("公開操作はADMIN専用です。", 403);
+  const current = await verifyLiveMapRole(admin, match[1]);
+  if (!current.ok) return response("有効なセッションを確認できません。",
+    current.code === "AUTH_UNAVAILABLE" ? 503 : 403);
+  if (current.role !== "admin") return response("公開操作はADMIN専用です。", 403);
   if ((Number(request.headers.get("content-length")) || 0) > 3_500_000) {
     return response("JSONが大きすぎます（上限3.5MB）。", 413);
   }
@@ -103,6 +102,10 @@ async function postMap(request: NextRequest) {
     return response("JSONを解析できません。", 400);
   }
   try {
+    // Recheck after asynchronous input parsing, before ANY privileged Storage write.
+    const beforeWrite=await verifyLiveMapRole(admin,match[1]);
+    if (!beforeWrite.ok || beforeWrite.role!=="admin")
+      return response("セッションが無効になりました。", beforeWrite.code==="AUTH_UNAVAILABLE"?503:403);
     let { data: bucket } = await admin.storage.getBucket(SENDAI_MAP_BUCKET);
     if (!bucket) {
       const created = await admin.storage.createBucket(SENDAI_MAP_BUCKET, {
@@ -118,6 +121,9 @@ async function postMap(request: NextRequest) {
       bucket = readBack.data;
     }
     if (!bucket || bucket.public) return response("非公開保存先の安全性を確認できません。", 503);
+    const beforeUpload=await verifyLiveMapRole(admin,match[1]);
+    if (!beforeUpload.ok || beforeUpload.role!=="admin")
+      return response("セッションが無効になりました。",beforeUpload.code==="AUTH_UNAVAILABLE"?503:403);
     const { error } = await admin.storage.from(SENDAI_MAP_BUCKET).upload(SENDAI_MAP_OBJECT, contents, {
       contentType: "application/json", upsert: true, cacheControl: "0",
     });
