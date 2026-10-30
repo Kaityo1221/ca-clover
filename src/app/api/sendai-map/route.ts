@@ -39,7 +39,7 @@ async function getMap(request: NextRequest, headOnly = false) {
   if (!admin) return response("作戦MAPのサーバー接続設定を確認してください。", 503, "MAP_AUTH_CONFIG");
   const current = await verifyLiveMapRole(admin, match[1]);
   if (!current.ok) return response("有効なセッションを確認できません。",
-    current.code === "AUTH_UNAVAILABLE" ? 503 : 403);
+    current.code === "AUTH_UNAVAILABLE" ? 503 : current.code === "INVALID_SESSION" ? 401 : 403);
   if (!sendaiMapRoleAllowed(current.role)) return response("承認済みCA専用です。", 403);
 
   if (headOnly) return new NextResponse(null, { status: 200, headers: protectedHeaders });
@@ -61,7 +61,7 @@ async function getMap(request: NextRequest, headOnly = false) {
     // A logout/demotion during the Storage fetch must not release the payload.
     const last = await verifyLiveMapRole(admin, match[1]);
     if (!last.ok)
-      return response("セッションが無効になりました。", last.code==="AUTH_UNAVAILABLE"?503:403);
+      return response("セッションが無効になりました。", last.code==="AUTH_UNAVAILABLE"?503:last.code==="INVALID_SESSION"?401:403);
     if (!sendaiMapRoleAllowed(last.role))return response("承認済みCA専用です。",403);
     return NextResponse.json({ workspace }, { headers: protectedHeaders });
   } catch {
@@ -82,7 +82,7 @@ async function postMap(request: NextRequest) {
   if (!admin) return response("作戦MAPのサーバー接続設定を確認してください。", 503, "MAP_AUTH_CONFIG");
   const current = await verifyLiveMapRole(admin, match[1]);
   if (!current.ok) return response("有効なセッションを確認できません。",
-    current.code === "AUTH_UNAVAILABLE" ? 503 : 403);
+    current.code === "AUTH_UNAVAILABLE" ? 503 : current.code === "INVALID_SESSION" ? 401 : 403);
   if (current.role !== "admin") return response("公開操作はADMIN専用です。", 403);
   if ((Number(request.headers.get("content-length")) || 0) > 3_500_000) {
     return response("JSONが大きすぎます（上限3.5MB）。", 413);
@@ -106,7 +106,7 @@ async function postMap(request: NextRequest) {
     // Recheck after asynchronous input parsing, before ANY privileged Storage write.
     const beforeWrite=await verifyLiveMapRole(admin,match[1]);
     if (!beforeWrite.ok)
-      return response("セッションが無効になりました。", beforeWrite.code==="AUTH_UNAVAILABLE"?503:403);
+      return response("セッションが無効になりました。", beforeWrite.code==="AUTH_UNAVAILABLE"?503:beforeWrite.code==="INVALID_SESSION"?401:403);
     if (beforeWrite.role!=="admin")return response("公開操作はADMIN専用です。",403);
     let { data: bucket } = await admin.storage.getBucket(SENDAI_MAP_BUCKET);
     if (!bucket) {
@@ -125,7 +125,7 @@ async function postMap(request: NextRequest) {
     if (!bucket || bucket.public) return response("非公開保存先の安全性を確認できません。", 503);
     const beforeUpload=await verifyLiveMapRole(admin,match[1]);
     if (!beforeUpload.ok)
-      return response("セッションが無効になりました。",beforeUpload.code==="AUTH_UNAVAILABLE"?503:403);
+      return response("セッションが無効になりました。",beforeUpload.code==="AUTH_UNAVAILABLE"?503:beforeUpload.code==="INVALID_SESSION"?401:403);
     if (beforeUpload.role!=="admin")return response("公開操作はADMIN専用です。",403);
     const { error } = await admin.storage.from(SENDAI_MAP_BUCKET).upload(SENDAI_MAP_OBJECT, contents, {
       contentType: "application/json", upsert: true, cacheControl: "0",
