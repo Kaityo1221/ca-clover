@@ -60,8 +60,9 @@ async function getMap(request: NextRequest, headOnly = false) {
     void _privateRoster;
     // A logout/demotion during the Storage fetch must not release the payload.
     const last = await verifyLiveMapRole(admin, match[1]);
-    if (!last.ok || !sendaiMapRoleAllowed(last.role))
+    if (!last.ok)
       return response("セッションが無効になりました。", last.code==="AUTH_UNAVAILABLE"?503:403);
+    if (!sendaiMapRoleAllowed(last.role))return response("承認済みCA専用です。",403);
     return NextResponse.json({ workspace }, { headers: protectedHeaders });
   } catch {
     return response("作戦データを読み込めません。", 503);
@@ -104,8 +105,9 @@ async function postMap(request: NextRequest) {
   try {
     // Recheck after asynchronous input parsing, before ANY privileged Storage write.
     const beforeWrite=await verifyLiveMapRole(admin,match[1]);
-    if (!beforeWrite.ok || beforeWrite.role!=="admin")
+    if (!beforeWrite.ok)
       return response("セッションが無効になりました。", beforeWrite.code==="AUTH_UNAVAILABLE"?503:403);
+    if (beforeWrite.role!=="admin")return response("公開操作はADMIN専用です。",403);
     let { data: bucket } = await admin.storage.getBucket(SENDAI_MAP_BUCKET);
     if (!bucket) {
       const created = await admin.storage.createBucket(SENDAI_MAP_BUCKET, {
@@ -122,8 +124,9 @@ async function postMap(request: NextRequest) {
     }
     if (!bucket || bucket.public) return response("非公開保存先の安全性を確認できません。", 503);
     const beforeUpload=await verifyLiveMapRole(admin,match[1]);
-    if (!beforeUpload.ok || beforeUpload.role!=="admin")
+    if (!beforeUpload.ok)
       return response("セッションが無効になりました。",beforeUpload.code==="AUTH_UNAVAILABLE"?503:403);
+    if (beforeUpload.role!=="admin")return response("公開操作はADMIN専用です。",403);
     const { error } = await admin.storage.from(SENDAI_MAP_BUCKET).upload(SENDAI_MAP_OBJECT, contents, {
       contentType: "application/json", upsert: true, cacheControl: "0",
     });
