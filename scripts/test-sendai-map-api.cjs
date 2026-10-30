@@ -14,7 +14,7 @@ const config = compile('src/lib/sendai-map-server.ts',{'@supabase/supabase-js':{
 check(config.sendaiMapServerConfig({NEXT_PUBLIC_SUPABASE_URL:' ',SUPABASE_SERVICE_ROLE_KEY:' server-secret '}).url,'https://wgiittrvgtiosogyhfcl.supabase.co');
 check(config.sendaiMapServerConfig({}).key,'');
 check(config.sendaiMapServerConfig({SUPABASE_SERVICE_ROLE_KEY:' server-secret '}).key,'server-secret');
-let active = true, configured = true, role = 'admin', invalid = false, bucketPublic = false, corrupt = false, writeError = false, body, reads = 0;
+let active = true, configured = true, role = 'admin', invalid = false, revoked = false, unavailable = false, revokeOnDownload = false, bucketPublic = false, corrupt = false, writeError = false, body, reads = 0;
 const nonces = new Set();
 const workspace = {version:2,current:'B',plans:{B:{squads:[]}},caRoster:[{private:'excluded'}]};
 const admin = {
@@ -27,13 +27,19 @@ const admin = {
     assert.equal(nonces.has(options.cacheNonce),false,'Each read must avoid prior cached responses');
     nonces.add(options.cacheNonce);
     assert.equal(parameters?.cache,'no-store');
-    reads++;return {data:body?new Blob([corrupt?Buffer.from('x'.repeat(body.length)):body]):null,error:null}}})}
+    reads++;if(revokeOnDownload)role='pending';return {data:body?new Blob([corrupt?Buffer.from('x'.repeat(body.length)):body]):null,error:null}}})}
 };
 class NextResponse extends Response {static json(value,init){return new NextResponse(JSON.stringify(value),{...init,headers:{'content-type':'application/json',...init?.headers}})}}
 const api=compile('src/app/api/sendai-map/route.ts',{
  'node:crypto':require('node:crypto'),
  'next/server':{NextResponse},
  '@/lib/sendai-map-server':{createSendaiMapAdminClient:()=>configured?admin:null},
+ '@/lib/p1-live-map-role':{verifyLiveMapRole:async(_admin,token)=>{
+  if(unavailable)return {ok:false,code:'AUTH_UNAVAILABLE'};
+  if(invalid||token!=='valid')return {ok:false,code:'INVALID_SESSION'};
+  if(revoked||!['admin','ca'].includes(role))return {ok:false,code:'ROLE_DENIED'};
+  return {ok:true,role,userId:'user'};
+ }},
  '@/lib/sendai-map-policy':{sendaiMapIsActive:()=>active,sendaiMapRoleAllowed:r=>r==='ca'||r==='admin',SENDAI_MAP_BUCKET:'private',SENDAI_MAP_OBJECT:'snapshot.json'}
 });
 function request(method,token='valid',origin='https://kaityo1221.github.io',payload=workspace){return new Request('https://ca-clover.vercel.app/api/sendai-map',{method,headers:{...(token?{authorization:'Bearer '+token}:{}),...(origin?{origin}:{}),'content-type':'application/json'},...(method==='POST'?{body:JSON.stringify(payload)}:{})})}
@@ -67,7 +73,16 @@ function request(method,token='valid',origin='https://kaityo1221.github.io',payl
  check(got.headers.get('access-control-allow-origin'),'https://kaityo1221.github.io');check(got.headers.get('cache-control').includes('no-store'),true);
  let before=reads;check((await api.HEAD(request('HEAD'))).status,200);check(reads,before);
  role='pending';check((await api.HEAD(request('HEAD'))).status,403);
- role='admin';bucketPublic=true;check((await api.GET(request('GET'))).status,503);check((await api.POST(request('POST'))).status,503);bucketPublic=false;
+ role='admin';revoked=true;
+ check((await api.GET(request('GET'))).status,403);
+ check((await api.POST(request('POST'))).status,403);
+ revoked=false;unavailable=true;
+ check((await api.GET(request('GET'))).status,503);
+ check((await api.POST(request('POST'))).status,503);
+ unavailable=false;
+ revokeOnDownload=true;
+ check((await api.GET(request('GET'))).status,403);
+ revokeOnDownload=false;role='admin';bucketPublic=true;check((await api.GET(request('GET'))).status,503);check((await api.POST(request('POST'))).status,503);bucketPublic=false;
  corrupt=true;check((await api.POST(request('POST'))).status,503);corrupt=false;
  writeError=true;check((await api.POST(request('POST'))).status,503);writeError=false;
  check((await api.POST(request('POST','valid',undefined,{version:2,current:'no',plans:{}}))).status,400);
