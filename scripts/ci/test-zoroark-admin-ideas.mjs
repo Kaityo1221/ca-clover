@@ -20,4 +20,6 @@ assert.ok(module.includes('data-search'));
 assert.ok(module.includes('const onKey='));
 assert.ok(!module.includes('addEventListener("input",onInput)'));
 assert.ok(html.includes('zoroark-ideas.mjs?v=20261031-explicit3'));
+assert.ok(module.includes('if(search){search.value="";search.blur()}'));
+assert.ok(html.includes("zoroark-ideas.mjs?v=20261031-gen-reset4"));
 console.log("ZOROARK_ADMIN_IDEA_UI_PASS");
