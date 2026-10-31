@@ -45,8 +45,15 @@ export function mountIdeaMemo({host,role,onBack}){
   const g=e.target.closest("[data-gen]");if(g){term="";void changeGen(Number(g.dataset.gen));return}
   const b=e.target.closest("[data-id]");if(b){const x=all.find(p=>p.no===b.dataset.id);if(x){chosen[which]=x;dialog.close();draw()}}
  };
- const onInput=e=>{if(!e.target.matches(".zim-top input"))return;term=e.target.value;renderChoices()};
- host.addEventListener("click",onClick);dialog.addEventListener("click",onDialog);dialog.addEventListener("input",onInput);
- function destroy(){destroyed=true;host.removeEventListener("click",onClick);dialog.removeEventListener("click",onDialog);dialog.removeEventListener("input",onInput);dialog.close();dialog.remove();style.remove()}
+ let composing=false;
+ const onCompositionStart=e=>{if(e.target.matches(".zim-top input"))composing=true};
+ const onCompositionEnd=e=>{if(!e.target.matches(".zim-top input"))return;composing=false;term=e.target.value;renderChoices()};
+ const onInput=e=>{
+  if(!e.target.matches(".zim-top input"))return;
+  if(composing||e.isComposing||e.inputType==="insertCompositionText")return;
+  term=e.target.value;renderChoices();
+ };
+ host.addEventListener("click",onClick);dialog.addEventListener("click",onDialog);dialog.addEventListener("input",onInput);dialog.addEventListener("compositionstart",onCompositionStart);dialog.addEventListener("compositionend",onCompositionEnd);
+ function destroy(){destroyed=true;host.removeEventListener("click",onClick);dialog.removeEventListener("click",onDialog);dialog.removeEventListener("input",onInput);dialog.removeEventListener("compositionstart",onCompositionStart);dialog.removeEventListener("compositionend",onCompositionEnd);dialog.close();dialog.remove();style.remove()}
  draw();return destroy;
 }
