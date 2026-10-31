@@ -22,7 +22,7 @@ export function mountIdeaMemo({host,role,onBack}){
   renderChoices();
  }
  async function changeGen(n){
-  gen=n;all=[];const requestId=++loadId;dialog.querySelectorAll("[data-gen]").forEach(b=>b.setAttribute("aria-selected",String(Number(b.dataset.gen)===n)));renderChoices();
+  gen=n;term="";const search=dialog.querySelector(".zim-top input");if(search){search.value="";search.blur()}all=[];const requestId=++loadId;dialog.querySelectorAll("[data-gen]").forEach(b=>b.setAttribute("aria-selected",String(Number(b.dataset.gen)===n)));renderChoices();
   try{const r=await fetch(URL_ROOT+"gen"+n+".json");if(!r.ok)throw Error();const v=await r.json();if(!destroyed&&requestId===loadId){all=v.filter(x=>x&&typeof x.jp==="string"&&typeof x.no==="string");renderChoices()}}
   catch{if(!destroyed&&requestId===loadId)dialog.querySelector(".zim-list").textContent="一覧を取得できませんでした。通信を確認してください。"}
  }
@@ -43,7 +43,7 @@ export function mountIdeaMemo({host,role,onBack}){
  const onDialog=e=>{
   if(e.target.closest("[data-close]")){dialog.close();return}
   if(e.target.closest("[data-search]")){term=dialog.querySelector(".zim-top input")?.value||"";renderChoices();dialog.querySelector(".zim-top input")?.blur();return}
-  const g=e.target.closest("[data-gen]");if(g){term="";void changeGen(Number(g.dataset.gen));return}
+  const g=e.target.closest("[data-gen]");if(g){void changeGen(Number(g.dataset.gen));return}
   const b=e.target.closest("[data-id]");if(b){const x=all.find(p=>p.no===b.dataset.id);if(x){chosen[which]=x;dialog.close();draw()}}
  };
  // Do not modify search UI during Japanese IME composition.
