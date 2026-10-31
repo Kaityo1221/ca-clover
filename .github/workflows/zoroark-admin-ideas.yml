@@ -1,0 +1,21 @@
+name: Zoroark ADMIN Idea UI (No Deploy)
+on:
+  pull_request:
+    paths:
+      - "docs/zoroark-ideas.mjs"
+      - "docs/index.html"
+      - "scripts/ci/test-zoroark-admin-ideas.mjs"
+      - ".github/workflows/zoroark-admin-ideas.yml"
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --check docs/zoroark-ideas.mjs
+      - run: node scripts/ci/test-zoroark-admin-ideas.mjs
