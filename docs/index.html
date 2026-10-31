@@ -76,7 +76,7 @@
   // CARD_METRICS_IMPORT_BEGIN
   const cardMetricsReady=import('./meetup-metrics.mjs?v=20261017-card1').catch(function(){return null});
   // CARD_METRICS_IMPORT_END
-  let session=null, profile=null, busy=false, flash=null, communityPeriod=90, meetupHistoryLimit=25, communityFeatureView="home", renderToken=0, zoroarkLeave=null;
+  let session=null, profile=null, busy=false, flash=null, communityPeriod=90, meetupHistoryLimit=25, communityFeatureView="home", renderToken=0, zoroarkLeave=null, ideasLeave=null;
   // Restricted capability: only a CA-authorized game request crosses this page boundary.
   // The caller receives the round, never the Supabase access token.
   const zoroarkGateway={
@@ -253,6 +253,7 @@
       return;
     }
     const items=[["my","My Community"],["account","アカウント"]];
+    if(profile?.role==="admin")items.push(["zoroark-ideas","🦊 お題メモ"]);
     nav.innerHTML=items.map(function(x){
       return '<button data-go="'+x[0]+'" class="'+(route()===x[0]?"on":"")+'">'+x[1]+'</button>'
     }).join("")+(profile&&profile.role==="admin"?'<a href="./admin.html?v=20260921-1815" style="border:0;border-radius:999px;padding:9px 13px;background:#ede9fe;color:#6d28d9;font-weight:900;text-decoration:none">管理画面</a>':"");
@@ -672,6 +673,7 @@
   }
   async function render(){
     if(zoroarkLeave){zoroarkLeave();zoroarkLeave=null;}
+    if(ideasLeave){ideasLeave();ideasLeave=null;}
     if(sendaiMapLeave){sendaiMapLeave();sendaiMapLeave=null;}
     if(participantPanel)participantPanel.leave(); // PARTICIPANT_CSV_LEAVE
     const token=++renderToken;
@@ -682,6 +684,13 @@
     header();
     let v=route();
     if(v==="admin"&&profile.role!=="admin"){v="my";location.hash="my"}
+    if(v==="zoroark-ideas"){
+      if(profile?.role!=="admin"){app.innerHTML='<section class="card"><h2>🔒 ADMIN専用</h2><p>この画面は管理者だけが利用できます。</p></section>';return}
+      app.innerHTML='<section class="card">お題メモを読み込み中...</section>';
+      try{const module=await import("./zoroark-ideas.mjs?v=20261031-admin1");if(token!==renderToken)return;ideasLeave=module.mountIdeaMemo({host:app,role:profile.role,onBack:function(){go("my")}})}
+      catch(err){if(token===renderToken)app.innerHTML='<section class="card"><h2>読み込みに失敗しました</h2><p>再読み込みをお試しください。</p></section>'}
+      return;
+    }
     if(v==="mini-games"){
       if(profile?.role!=="ca"&&profile?.role!=="admin"){
         app.innerHTML='<section class="card"><h2>🔒 CA専用ミニゲーム</h2><p class="muted strong">CAまたはADMINの承認が必要です。</p><button id="gameHome" class="btn section">My Communityへ戻る</button></section>';
