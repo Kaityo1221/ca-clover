@@ -16,7 +16,7 @@ export function mountIdeaMemo({host,role,onBack}){
  function renderChoices(){
   const choices=all.filter(x=>!term||x.jp.includes(term)||(x.en||"").toLowerCase().includes(term.toLowerCase())||x.no.includes(term)).slice(0,200);
   const list=dialog.querySelector(".zim-list");
-  if(list)list.innerHTML=choices.map(x=>'<button data-id="'+clean(x.no)+'">'+clean(x.jp)+'<small>No.'+clean(x.no)+' / '+clean(x.en)+'</small></button>').join("")||'<p>候補がありません</p>';
+  if(list)list.innerHTML=choices.map(x=>'<button data-id="'+clean(x.no)+'">'+clean(x.jp)+'<small>No.'+clean(x.no)+' / Gen '+clean(x.gen)+' / '+clean(x.en)+'</small></button>').join("")||'<p>候補がありません</p>';
  }
  function showPicker(){
   dialog.innerHTML='<div class="zim-top"><div style="display:flex;justify-content:space-between"><b>ポケモン'+(which?'B':'A')+'を選択</b><button data-close class="zim-act">閉じる</button></div><input aria-label="名前検索" placeholder="名前・図鑑番号を入力" autocomplete="off" value="'+clean(term)+'"><button type="button" class="zim-act" data-search style="display:block;width:100%;margin-top:8px">🔎 検索する</button></div><div class="zim-tabs">'+Array.from({length:9},(_,i)=>'<button data-gen="'+(i+1)+'" aria-selected="'+(gen===i+1)+'">Gen '+(i+1)+'</button>').join("")+'</div><div class="zim-list"></div>';
@@ -48,6 +48,9 @@ export function mountIdeaMemo({host,role,onBack}){
   if(destroyed||requestId!==loadId)return;
   all=results.filter(x=>x.status==="fulfilled").flatMap(x=>x.value);
   if(results.every(x=>x.status==="rejected")){if(list)list.textContent="一覧を取得できませんでした。通信を確認してください。";return}
+  const first=all.find(x=>x.jp.includes(value)||(x.en||"").toLowerCase().includes(value.toLowerCase())||x.no.includes(value));
+  if(first){gen=Number(first.gen)||gen}
+  dialog.querySelectorAll("[data-gen]").forEach(b=>b.setAttribute("aria-selected",String(!!first&&Number(b.dataset.gen)===gen)));
   renderChoices();
  }
  function save(){
@@ -68,7 +71,7 @@ export function mountIdeaMemo({host,role,onBack}){
   if(e.target.closest("[data-close]")){dialog.close();return}
   if(e.target.closest("[data-search]")){void searchAll();return}
   const g=e.target.closest("[data-gen]");if(g){void changeGen(Number(g.dataset.gen));return}
-  const b=e.target.closest("[data-id]");if(b){const x=all.find(p=>p.no===b.dataset.id);if(x){chosen[which]=x;dialog.close();draw()}}
+  const b=e.target.closest("[data-id]");if(b){const x=all.find(p=>p.no===b.dataset.id);if(x){chosen[which]=x;gen=Number(x.gen)||gen;dialog.close();draw()}}
  };
  // Do not modify search UI during Japanese IME composition.
  const onKey=e=>{if(e.target.matches(".zim-top input")&&e.key==="Enter"&&!e.isComposing){e.preventDefault();void searchAll()}};
