@@ -687,7 +687,7 @@
     if(v==="zoroark-ideas"){
       if(profile?.role!=="admin"){app.innerHTML='<section class="card"><h2>🔒 ADMIN専用</h2><p>この画面は管理者だけが利用できます。</p></section>';return}
       app.innerHTML='<section class="card">お題メモを読み込み中...</section>';
-      try{const module=await import("./zoroark-ideas.mjs?v=20261031-explicit3");if(token!==renderToken)return;ideasLeave=module.mountIdeaMemo({host:app,role:profile.role,onBack:function(){go("my")}})}
+      try{const module=await import("./zoroark-ideas.mjs?v=20261031-gen-reset4");if(token!==renderToken)return;ideasLeave=module.mountIdeaMemo({host:app,role:profile.role,onBack:function(){go("my")}})}
       catch(err){if(token===renderToken)app.innerHTML='<section class="card"><h2>読み込みに失敗しました</h2><p>再読み込みをお試しください。</p></section>'}
       return;
     }
