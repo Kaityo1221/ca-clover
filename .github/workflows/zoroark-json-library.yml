@@ -1,0 +1,22 @@
+name: Zoroark JSON Library (No Deploy)
+on:
+  pull_request:
+    paths:
+      - "docs/zoroark-idea-library.mjs"
+      - "docs/zoroark-ideas.mjs"
+      - "scripts/ci/test-zoroark-json-library.mjs"
+      - ".github/workflows/zoroark-json-library.yml"
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --check docs/zoroark-idea-library.mjs
+      - run: node --check docs/zoroark-ideas.mjs
+      - run: node scripts/ci/test-zoroark-json-library.mjs

@@ -1,3 +1,4 @@
+import {pairKey,normalizeEntry,mergeEntries,parseImport,exportDocument} from "./zoroark-idea-library.mjs";
 const URL_ROOT="https://raw.githubusercontent.com/Kaityo1221/Global-EN-Trainer/main/data/";
 const KEY="ca-zoroark-admin-ideas-v1";
 const clean=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -9,9 +10,10 @@ export function mountIdeaMemo({host,role,onBack}){
  const dialog=document.createElement("dialog");dialog.className="zim-dlg";document.body.append(dialog);
  let chosen=[null,null],which=0,gen=1,all=[],term="",error="",destroyed=false,loadId=0,searchMode=false;
  const genCache=new Map();
- let entries=[];try{const x=JSON.parse(localStorage.getItem(KEY)||"[]");if(Array.isArray(x))entries=x.slice(0,200)}catch{}
+ let editIndex=-1,editNote="";
+ let entries=[];try{const x=JSON.parse(localStorage.getItem(KEY)||"[]");if(Array.isArray(x))entries=x.slice(0,500).map(normalizeEntry)}catch{}
  function draw(){
-  host.innerHTML='<main class="zim"><section class="card hero"><button data-back class="zim-act">← 戻る</button><h1>🦊 お題ひらめきメモ</h1><p>ADMIN専用：2匹を選んで特徴をメモ</p><p class="small muted">この段階では端末内に保存します。CA共有・端末間同期は未対応です。</p></section><section class="card section"><div class="zim-pair">'+chosen.map((p,i)=>'<button class="zim-poke" data-choose="'+i+'"><small>ポケモン'+(i?'B':'A')+'</small>'+clean(p?.jp||"選択する")+'</button>').join('<b style="text-align:center;font-size:23px">×</b>')+'</div><label for="zim-note">似てる部分</label><textarea id="zim-note" class="zim-note" placeholder="例：人気ポケモン"></textarea><div class="zim-actions"><button class="zim-act" data-save>下書き保存</button><button class="zim-act" data-export>JSONバックアップ</button></div><p role="status">'+clean(error)+'</p></section><section class="card section"><h2>記録 '+entries.length+'件</h2>'+entries.slice().reverse().map(x=>'<div class="zim-entry"><b>'+clean(x.a)+' × '+clean(x.b)+'</b><div>'+clean(x.note)+'</div></div>').join("")+'</section></main>';
+  host.innerHTML='<main class="zim"><section class="card hero"><button data-back class="zim-act">← 戻る</button><h1>🦊 お題ひらめきメモ</h1><p>ADMIN専用：2匹を選んで特徴をメモ</p><p class="small muted">この段階では端末内に保存します。CA共有・端末間同期は未対応です。</p></section><section class="card section"><div class="zim-pair">'+chosen.map((p,i)=>'<button class="zim-poke" data-choose="'+i+'"><small>ポケモン'+(i?'B':'A')+'</small>'+clean(p?.jp||"選択する")+'</button>').join('<b style="text-align:center;font-size:23px">×</b>')+'</div><label for="zim-note">似てる部分</label><textarea id="zim-note" class="zim-note" placeholder="例：人気ポケモン">'+clean(editNote)+'</textarea><div class="zim-actions"><button class="zim-act" data-save>'+(editIndex>=0?'編集を保存':'下書き保存')+'</button><button class="zim-act" data-export>JSONバックアップ</button><label class="zim-act">JSON読み込み<input data-import type="file" accept=".json,application/json" style="max-width:120px;font-size:12px"></label></div><p role="status">'+clean(error)+'</p></section><section class="card section"><h2>記録 '+entries.length+'件</h2>'+entries.slice().reverse().map((x,i)=>'<div class="zim-entry"><b>'+clean(x.a)+' × '+clean(x.b)+'</b><div>'+clean(x.note)+'</div><small>'+(x.status==='adopted'?'✅ 採用済み':'📝 下書き')+'</small><div class="zim-actions"><button class="zim-act" data-edit="'+(entries.length-1-i)+'">編集</button><button class="zim-act" data-adopt="'+(entries.length-1-i)+'">'+(x.status==='adopted'?'採用を解除':'採用する')+'</button></div></div>').join("")+'</section></main>';
  }
  function renderChoices(){
   const choices=all.filter(x=>!term||x.jp.includes(term)||(x.en||"").toLowerCase().includes(term.toLowerCase())||x.no.includes(term)).slice(0,200);
@@ -53,18 +55,43 @@ export function mountIdeaMemo({host,role,onBack}){
   dialog.querySelectorAll("[data-gen]").forEach(b=>b.setAttribute("aria-selected",String(!!first&&Number(b.dataset.gen)===gen)));
   renderChoices();
  }
+ function persist(next){
+  const normalized=next.map(normalizeEntry);
+  if(normalized.length>500)throw Error("登録上限500件です");
+  localStorage.setItem(KEY,JSON.stringify(normalized));entries=normalized;
+ }
  function save(){
   const note=host.querySelector("#zim-note").value.trim();
-  if(!chosen[0]||!chosen[1]||chosen[0].no===chosen[1].no){error="異なる2匹を選択してください";draw();return}
-  entries.push({a:chosen[0].jp,b:chosen[1].jp,aNo:chosen[0].no,bNo:chosen[1].no,note,at:new Date().toISOString()});
-  try{localStorage.setItem(KEY,JSON.stringify(entries));error="端末内に保存しました"}catch{error="保存できません。バックアップをご利用ください"}
+  if(!chosen[0]||!chosen[1]){error="2匹を選択してください";editNote=note;draw();return}
+  let candidate;
+  try{candidate=normalizeEntry({a:chosen[0].jp,b:chosen[1].jp,aNo:chosen[0].no,bNo:chosen[1].no,note,at:new Date().toISOString(),status:editIndex>=0?entries[editIndex].status:"draft"})}
+  catch(e){error=e.message;editNote=note;draw();return}
+  if(entries.some((item,i)=>i!==editIndex&&pairKey(item)===pairKey(candidate))){error="この組み合わせは登録済みです";editNote=note;draw();return}
+  const next=[...entries];if(editIndex>=0)next[editIndex]=candidate;else next.push(candidate);
+  try{persist(next);error="端末内に保存しました";editIndex=-1;editNote="";chosen=[null,null]}catch(e){error="保存できません："+e.message;editNote=note}
   draw();
  }
- function exportData(){const blob=new Blob([JSON.stringify(entries,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="zoroark-ideas.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+ function exportData(){
+  const blob=new Blob([JSON.stringify(exportDocument(entries),null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="zoroark-questions-backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ }
+ async function importData(file){
+  if(!file)return;
+  try{
+   if(file.size>2000000)throw Error("JSONは2MB以内にしてください");
+   const incoming=parseImport(await file.text());
+   const merged=mergeEntries(entries,incoming);
+   if(!window.confirm("新規"+merged.added+"件を追加、重複"+merged.skipped+"件を除外します。実行しますか？"))return;
+   persist(merged.entries);error="追加"+merged.added+"件、重複"+merged.skipped+"件";
+  }catch(e){error="読み込み失敗："+e.message}
+  draw();
+ }
  const onClick=e=>{
   if(e.target.closest("[data-back]")){destroy();onBack();return}
   const c=e.target.closest("[data-choose]");if(c){which=Number(c.dataset.choose);term="";showPicker();dialog.showModal();void changeGen(gen)}
   if(e.target.closest("[data-save]"))save();
+  const ed=e.target.closest("[data-edit]");if(ed){editIndex=Number(ed.dataset.edit);const x=entries[editIndex];chosen=[{jp:x.a,no:x.aNo},{jp:x.b,no:x.bNo}];editNote=x.note;error="編集中";draw();window.scrollTo(0,0);return}
+  const ad=e.target.closest("[data-adopt]");if(ad){const i=Number(ad.dataset.adopt);const next=entries.map((x,j)=>j===i?{...x,status:x.status==="adopted"?"draft":"adopted"}:x);try{persist(next);error="採用状態を変更しました"}catch{error="保存に失敗しました"}draw();return}
   if(e.target.closest("[data-export]"))exportData();
  };
  const onDialog=e=>{
@@ -75,7 +102,9 @@ export function mountIdeaMemo({host,role,onBack}){
  };
  // Do not modify search UI during Japanese IME composition.
  const onKey=e=>{if(e.target.matches(".zim-top input")&&e.key==="Enter"&&!e.isComposing){e.preventDefault();void searchAll()}};
+ const onImport=e=>{if(e.target.matches("[data-import]"))void importData(e.target.files?.[0])};
+ host.addEventListener("change",onImport);
  host.addEventListener("click",onClick);dialog.addEventListener("click",onDialog);dialog.addEventListener("keydown",onKey);
- function destroy(){destroyed=true;host.removeEventListener("click",onClick);dialog.removeEventListener("click",onDialog);dialog.removeEventListener("keydown",onKey);dialog.close();dialog.remove();style.remove()}
+ function destroy(){destroyed=true;host.removeEventListener("click",onClick);host.removeEventListener("change",onImport);dialog.removeEventListener("click",onDialog);dialog.removeEventListener("keydown",onKey);dialog.close();dialog.remove();style.remove()}
  draw();return destroy;
 }
