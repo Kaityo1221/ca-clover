@@ -9,7 +9,7 @@ assert.ok(html.includes('if(profile?.role!=="admin")'));
 assert.ok(html.includes('ideasLeave()'));
 assert.ok(html.includes('if(profile?.role==="admin")items.push'));
 assert.ok(module.includes('if(role!=="admin")throw Error'));
-assert.ok(module.includes('Gen '+(i+1)));
+assert.ok(module.includes('data-gen'));
 assert.ok(module.includes('data-choose'));
 assert.ok(module.includes('data-save'));
 assert.ok(module.includes('JSON.stringify(entries)'));
