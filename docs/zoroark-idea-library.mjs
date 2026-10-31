@@ -4,8 +4,8 @@ const validString=(x,max=200)=>typeof x==="string"&&x.length<=max;
 export function normalizeEntry(x){
  if(!x||typeof x!=="object"||Array.isArray(x)||!validString(x.a,80)||!validString(x.b,80)||!x.a.trim()||!x.b.trim())throw Error("名前の形式が正しくありません");
  const aNo=String(x.aNo||"").trim(),bNo=String(x.bNo||"").trim();
- if(aNo&&!/^\\d{1,4}$/.test(aNo))throw Error("図鑑番号が不正です");
- if(bNo&&!/^\\d{1,4}$/.test(bNo))throw Error("図鑑番号が不正です");
+ if(aNo&&!/^\d{1,4}$/.test(aNo))throw Error("図鑑番号が不正です");
+ if(bNo&&!/^\d{1,4}$/.test(bNo))throw Error("図鑑番号が不正です");
  if(x.a===x.b||(aNo&&bNo&&Number(aNo)===Number(bNo)))throw Error("同じポケモンは登録できません");
  if(x.note!=null&&!validString(x.note,2000))throw Error("メモが長すぎます");
  return {a:x.a.trim(),b:x.b.trim(),aNo,bNo,note:(x.note||"").trim(),at:validString(x.at,60)?x.at:"",status:x.status==="adopted"?"adopted":"draft"};
