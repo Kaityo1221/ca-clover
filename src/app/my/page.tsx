@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
+import { MeetupDeltaStatus } from "@/components/meetup-delta-status";
 
 type MembershipRow = { community_id: string };
 type CommunityRow = {
@@ -174,6 +175,12 @@ export default function Page() {
     <span className="mt-4 block w-fit rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900">MY COMMUNITY</span>
     <h1 className="mt-3 text-3xl font-black text-lime-950">🍀 自分のCommunity</h1>
     <p className="mt-2 text-sm font-semibold text-slate-500">{dataLoading ? "読み込み中..." : dataError ? "⚠️ データ取得エラー" : communities.length ? "✅ 認証済み " + communities.length + " Community" : "0 Community"}</p>
+
+    {profile?.role === "ca" || profile?.role === "admin" ? <section className="mt-5 rounded-2xl border border-lime-200 bg-white p-4">
+      <h2 className="text-sm font-black text-lime-950">Meetup更新確認（準備中）</h2>
+      <MeetupDeltaStatus status="idle" />
+      <p className="mt-1 text-xs font-semibold text-slate-500">差分同期のAPI接続前です。現在のMeetup情報の再読み込みとは別の機能です。</p>
+    </section> : null}
 
     {dataError ? <section className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5">
       <div className="text-xs font-black text-amber-700">データ取得エラー</div>
