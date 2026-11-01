@@ -189,11 +189,12 @@ export default function Page() {
     setClaimBusy(false);
   }
 
-  const visibleCommunities = loadedUserId === user?.id ? communities : [];
+  const accountCanViewMeetups = profile?.role === "ca" || profile?.role === "admin";
+  const visibleCommunities = loadedUserId === user?.id && accountCanViewMeetups ? communities : [];
   const visibleClaims = loadedUserId === user?.id ? claims : [];
   const metrics = useMemo(() => {
     const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const recent = loadedUserId === user?.id
+    const recent = loadedUserId === user?.id && accountCanViewMeetups
       ? meetups.filter(m => m.starts_at && new Date(m.starts_at).getTime() >= since)
       : [];
     return {
@@ -201,7 +202,7 @@ export default function Page() {
       rsvp: recent.reduce((sum, m) => sum + (m.rsvp_count ?? 0), 0),
       checkin: recent.reduce((sum, m) => sum + (m.checkin_count ?? 0), 0),
     };
-  }, [loadedUserId, meetups, user?.id]);
+  }, [accountCanViewMeetups, loadedUserId, meetups, user?.id]);
 
   if (loading) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 読み込み中...</main>;
   if (authError) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div className="max-w-md"><div className="text-5xl">⚠️</div><h1 className="mt-3 text-2xl font-black text-lime-950">ログイン情報を確認できませんでした</h1><p className="mt-3 text-sm font-semibold leading-6 text-slate-500">{authError}</p><button onClick={retryAuth} className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black text-lime-950">もう一度確認する</button></div></main>;
