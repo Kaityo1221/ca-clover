@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
 import { MeetupDeltaStatus } from "@/components/meetup-delta-status";
+import { assertMeetupSnapshotRows, compareMeetupSnapshot, type MeetupSnapshotRow } from "@/lib/my-community-meetup-snapshot";
+import type { DeltaStatus } from "@/lib/meetup-delta-display";
 
 type MembershipRow = { community_id: string };
 type CommunityRow = {
@@ -14,12 +16,7 @@ type CommunityRow = {
   avatar_url: string | null;
   coverage: "complete" | "partial" | "missing";
 };
-type MeetupRow = {
-  community_id: string | null;
-  starts_at: string | null;
-  rsvp_count: number | null;
-  checkin_count: number | null;
-};
+type MeetupRow = MeetupSnapshotRow;
 type ClaimRow = {
   id:string;
   meetup_title:string|null;
@@ -57,6 +54,14 @@ export default function Page() {
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
   const [dataReloadKey, setDataReloadKey] = useState(0);
+  // In-memory only: keyed by authenticated user, never persisted across accounts.
+  const [observed, setObserved] = useState<{
+    userId: string;
+    rows: MeetupRow[];
+    status: DeltaStatus;
+    added: number;
+    updated: number;
+  } | null>(null);
 
   async function loadClaims(){
     if(!user) return false;
@@ -101,12 +106,13 @@ export default function Page() {
         if (!ids.length) {
           setCommunities([]);
           setMeetups([]);
+          setObserved({ userId, rows: [], status: "idle", added: 0, updated: 0 });
           return;
         }
 
         const [communityResult, meetupResult] = await Promise.all([
           supabase.from("communities").select("id,name,prefecture,member_count,avatar_url,coverage").in("id", ids).order("name"),
-          supabase.from("meetups").select("community_id,starts_at,rsvp_count,checkin_count").in("community_id", ids).order("starts_at", { ascending: false }),
+          supabase.from("meetups").select("id,community_id,title,starts_at,rsvp_count,checkin_count").in("community_id", ids).order("starts_at", { ascending: false }),
         ]);
 
         if (!alive) return;
@@ -114,8 +120,31 @@ export default function Page() {
           setDataError("Community詳細またはMeetup情報を取得できませんでした。表示中のデータは消さず、再取得を待っています。");
           return;
         }
+        const nextRows = ((meetupResult.data as MeetupRow[] | null) ?? []);
+        try {
+          assertMeetupSnapshotRows(nextRows, new Set(ids));
+        } catch {
+          setDataError("Meetupの取得結果に不正な所属・重複がありました。表示中の情報を保持します。");
+          return;
+        }
         setCommunities((communityResult.data as CommunityRow[]) ?? []);
-        setMeetups((meetupResult.data as MeetupRow[]) ?? []);
+        setMeetups(nextRows);
+        setObserved(previous => {
+          const sameAccount = previous?.userId === userId ? previous : null;
+          if (!sameAccount || sameAccount.status === "idle") {
+            return { userId, rows: nextRows, status: "baseline", added: 0, updated: 0 };
+          }
+          // Revoked memberships are never compared or displayed as retained data.
+          const authorizedPrevious = sameAccount.rows.filter(row =>
+            row.community_id !== null && ids.includes(row.community_id)
+          );
+          const change = compareMeetupSnapshot(authorizedPrevious, nextRows, new Set(ids));
+          return {
+            userId, rows: nextRows,
+            status: change.added || change.updated ? "updated" : "unchanged",
+            added: change.added, updated: change.updated,
+          };
+        });
       } catch {
         if(!alive) return;
         setDataError("データの読み込み中にエラーが発生しました。もう一度読み込んでください。");
@@ -177,9 +206,17 @@ export default function Page() {
     <p className="mt-2 text-sm font-semibold text-slate-500">{dataLoading ? "読み込み中..." : dataError ? "⚠️ データ取得エラー" : communities.length ? "✅ 認証済み " + communities.length + " Community" : "0 Community"}</p>
 
     {profile?.role === "ca" || profile?.role === "admin" ? <section className="mt-5 rounded-2xl border border-lime-200 bg-white p-4">
-      <h2 className="text-sm font-black text-lime-950">Meetup更新確認（準備中）</h2>
-      <MeetupDeltaStatus status="idle" />
-      <p className="mt-1 text-xs font-semibold text-slate-500">差分同期のAPI接続前です。現在のMeetup情報の再読み込みとは別の機能です。</p>
+      <h2 className="text-sm font-black text-lime-950">Meetup再読み込み比較（試験版）</h2>
+      <MeetupDeltaStatus
+        status={dataError ? "error" : dataLoading ? "loading" : observed?.userId === user.id ? observed.status : "idle"}
+        added={observed?.userId === user.id ? observed.added : 0}
+        updated={observed?.userId === user.id ? observed.updated : 0}
+      />
+      <p className="mt-1 text-xs font-semibold text-slate-500">この画面で取得したMeetupだけを、同じログイン中に再読み込みした結果と比較します。Campfire直接同期は未接続です。画面を閉じると比較基準は消えます。</p>
+      <button onClick={() => setDataReloadKey(value => value + 1)} disabled={dataLoading}
+        className="mt-3 inline-flex rounded-full bg-lime-100 px-4 py-2 text-xs font-black text-lime-900 disabled:opacity-50">
+        {dataLoading ? "確認中..." : "読み込み結果を比較"}
+      </button>
     </section> : null}
 
     {dataError ? <section className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5">
