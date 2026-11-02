@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
 import { MeetupDeltaStatus } from "@/components/meetup-delta-status";
+import { AuthorizedMeetupDeltaPanel } from "@/components/authorized-meetup-delta-panel";
 import { assertMeetupSnapshotRows, compareMeetupSnapshot, type MeetupSnapshotRow } from "@/lib/my-community-meetup-snapshot";
 import type { DeltaStatus } from "@/lib/meetup-delta-display";
 
@@ -226,6 +227,12 @@ export default function Page() {
         {dataLoading ? "確認中..." : "読み込み結果を比較"}
       </button>
     </section> : null}
+
+    {process.env.NEXT_PUBLIC_CA_MEETUP_DELTA_READONLY === "enabled" &&
+      accountCanViewMeetups && loadedUserId === user.id && !dataLoading && !dataError
+        ? <AuthorizedMeetupDeltaPanel supabase={supabase} userId={user.id}
+            communityIds={visibleCommunities.map(community=>community.id)} />
+        : null}
 
     {dataError ? <section className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5">
       <div className="text-xs font-black text-amber-700">データ取得エラー</div>
