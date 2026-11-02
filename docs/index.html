@@ -275,6 +275,7 @@
     const got=await client.auth.getSession();
     session=got.data.session||null;
     if(session)await loadProfile();
+    if(session&&new URLSearchParams(location.search).has("code"))await completeDiscordVerification();
     client.auth.onAuthStateChange(async function(event,newSession){
       const previousUserId=session&&session.user?session.user.id:null;
       const nextSession=newSession||null;
@@ -317,7 +318,7 @@
     }
 
     if(profile.role==="pending"){
-      html+='<section class="card section"><div class="row"><div style="font-size:30px">🔥</div><div><h2>Campfire URLからCommunityを申請</h2><p class="muted small strong">コミュニティ招待URL、または自分が主催したミートアップ共有URLを貼り付けてください。SCOPELY EXPLORE ID、Community、日本CA地図の1st/2ndを照合します。ミートアップ共有URLでは紫色CAバッジも確認します。</p></div></div><input id="claimUrl" class="input section" placeholder="コミュニティ招待URL / ミートアップ共有URL"><button id="submitClaim" class="btn section" '+((profile.role==="pending"&&!profile.niantic_id)?"disabled":"")+'>Communityを確認して申請</button><div id="claimResult"></div></section>';
+      html+='<section class="card section"><div class="row"><div style="font-size:30px">🔥</div><div><h2>Campfire URLからCommunityを申請</h2><p class="muted small strong">コミュニティ招待URL、または自分が主催したミートアップ共有URLを貼り付けてください。SCOPELY EXPLORE ID、Community、日本CA地図の1st/2ndを照合します。ミートアップ共有URLでは紫色CAバッジも確認します。</p></div></div><div class="notice section">新規CA登録はDiscord公式APAC CAロールで確認します。既存CAはこれまでどおり利用できます。</div><button id="verifyDiscordCA" class="btn line section" type="button">DiscordでAPAC CAロールを確認</button><div id="discordCAResult" class="small muted"></div><label class="tiny strong muted" style="display:block;margin-top:15px">Pokémon GOトレーナー名</label><input id="trainerName" class="input" placeholder="例：banbe53"><p class="tiny muted">新規申請ではトレーナー名とMeetup URLを入力してください。Discord認証と本人確認が完了するまでは承認されません。</p><input id="claimUrl" class="input section" placeholder="コミュニティ招待URL / ミートアップ共有URL"><button id="submitClaim" class="btn section" '+""+'>Communityを確認して申請</button><div id="claimResult"></div></section>';
     }
 
     if(profile.role==="ca"&&!communities.length){
@@ -347,6 +348,7 @@
     const toAccount=document.getElementById("toAccount");if(toAccount)toAccount.onclick=function(){go("account")};
     const submit=document.getElementById("submitClaim");
     if(submit)submit.onclick=submitClaim;
+    const discordButton=document.getElementById("verifyDiscordCA");if(discordButton)discordButton.onclick=startDiscordVerification;
     app.querySelectorAll("[data-community]").forEach(function(b){
       b.onclick=function(){communityFeatureView="home";meetupHistoryLimit=25;go("community:"+encodeURIComponent(b.dataset.community))}
     });
@@ -602,13 +604,32 @@
     };
   }
 
+  async function startDiscordVerification(){
+    const out=document.getElementById("discordCAResult");
+    if(out)out.textContent="Discord認証画面へ移動しています...";
+    const r=await client.functions.invoke("discord-ca-verify",{body:{action:"start"}});
+    const url=r.data&&r.data.authorizeUrl;
+    if(r.error||!url||!url.startsWith("https://discord.com/oauth2/authorize?")){if(out)out.textContent="Discord認証を開始できません。管理者による設定を確認してください。";return;}
+    location.assign(url);
+  }
+  async function completeDiscordVerification(){
+    const query=new URLSearchParams(location.search);
+    if(!query.has("code")&&!query.has("error"))return;
+    const code=query.get("code"),state=query.get("state");
+    history.replaceState(null,"",location.pathname+location.hash);
+    if(!code||!state){setFlash("Discord認証がキャンセルされました","err");return;}
+    const r=await client.functions.invoke("discord-ca-verify",{body:{action:"complete",code,state}});
+    if(r.error||!r.data?.verified){setFlash("Discord APAC CAロールを確認できませんでした","err");return;}
+    setFlash("Discord APAC CAロールを確認できました 🍀","ok");
+  }
   async function submitClaim(){
     const input=document.getElementById("claimUrl");
     const out=document.getElementById("claimResult");
     const value=input.value.trim();if(!value)return;
+    const trainerName=document.getElementById("trainerName")?.value.trim()||"";
     busy=true;input.disabled=true;document.getElementById("submitClaim").disabled=true;
     out.innerHTML='<div class="notice section">Communityを確認中...</div>';
-    const r=await client.functions.invoke("community-claim",{body:{action:"submit",url:value}});
+    const r=await client.functions.invoke("community-claim",{body:{action:"submit",url:value,trainerName}});
     busy=false;
     if(r.error){
       let msg="申請に失敗しました。コミュニティ招待URL / ミートアップ共有URLを確認してください。";
