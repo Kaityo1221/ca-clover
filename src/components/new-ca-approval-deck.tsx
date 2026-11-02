@@ -100,6 +100,9 @@ export default function NewCaApprovalDeck({ applications }: Props) {
               : null}
           </div>
           <p className="mt-10 text-sm font-bold text-lime-700">{current.cloverLinked ? "🍀 CA Clover Google照合（隔離）完了" : "🍀 APAC CA資格確認 → 会長の本人照合へ"}</p>
+          {current.sameGoogleAsViewer && !current.cloverLinked
+            ? <p className="mt-2 text-xs font-bold text-sky-700">表示中のGoogleアカウントと一致（読み取り確認のみ）</p>
+            : null}
           <button type="button" onClick={() => setFlipped(true)}
             className="mt-auto rounded-2xl bg-lime-400 px-5 py-4 font-black text-lime-950">
             カードをめくって確認 ↻
