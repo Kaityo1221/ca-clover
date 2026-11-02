@@ -25,8 +25,8 @@ check("wrong preview branch forbidden",isIsolatedBridgeReady({...isolated,VERCEL
 check("different database forbidden",isIsolatedBridgeReady({...isolated,NEW_CA_LAB_DATABASE_URL:isolated.NEW_CA_LAB_DATABASE_URL.replace("ca_clover_test","production")}),false);
 check("foreign hostname forbidden",isIsolatedBridgeReady({...isolated,NEW_CA_LAB_DATABASE_URL:"postgresql://u:p@evil.example/ca_clover_test"}),false);
 check("Google provider ID accepted",verifiedGoogleProviderSubject({identities:[{provider:"google",provider_id:"synthetic-google-sub-01",identity_data:{sub:"synthetic-google-sub-01"}}]}),"synthetic-google-sub-01");
-check("GoTrue id alias accepted",verifiedGoogleProviderSubject({identities:[{provider:"google",id:"synthetic-google-sub-02",identity_data:{sub:"synthetic-google-sub-02"}}]}),"synthetic-google-sub-02");
-check("conflicting GoTrue aliases refused",verifiedGoogleProviderSubject({identities:[{provider:"google",id:"a",provider_id:"b"}]}),null);
+check("Supabase identity UUID is not Google subject",verifiedGoogleProviderSubject({identities:[{provider:"google",id:"synthetic-identity-uuid",identity_data:{sub:"synthetic-google-sub-02"}}]}),null);
+check("identity row UUID does not override provider ID",verifiedGoogleProviderSubject({identities:[{provider:"google",id:"internal-id",provider_id:"real-google-sub",identity_data:{sub:"real-google-sub"}}]}),"real-google-sub");
 check("Google account mismatch refused",verifiedGoogleProviderSubject({identities:[{provider:"google",provider_id:"a",identity_data:{sub:"b"}}]}),null);
 check("untrusted email identity refused",verifiedGoogleProviderSubject({identities:[{provider:"email",provider_id:"synthetic"}]}),null);
 check("ambiguous Google identities refused",verifiedGoogleProviderSubject({identities:[{provider:"google",provider_id:"a"},{provider:"google",provider_id:"b"}]}),null);
