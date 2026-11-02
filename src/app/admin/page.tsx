@@ -54,6 +54,7 @@ export default function Page(){
     ["🖼️","アイコン一覧","アイコン一覧とCommunity詳細","/admin/icons"],
     ["🔍","要確認Meetup",watchCount?watchCount+"件の未確認があります":"未確認はありません","/admin/meetup-watch"],
     ["🛎️","Community申請",pendingClaims?pendingClaims+"件の承認待ちがあります":"承認待ちはありません","/admin/claims"],
+    ["🪪","新規CA承認（プレビュー）","Discord本人照合・カード式承認画面の準備","/admin/new-ca"],
     ["🔐","Campfire接続","ADMIN tokenと接続状態を管理","/admin/campfire"],
     ["🔄","データ同期","Campfire Activityを全国更新","/admin/sync"],
     ["🔗","Community権限調整","CA Cloverユーザーへの閲覧権限を手動補正","/admin/assignments"],
