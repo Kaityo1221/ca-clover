@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import NewCaApprovalDeck, { type NewCaReviewCard } from "@/components/new-ca-approval-deck";
 import { useAuthProfile } from "@/lib/use-auth-profile";
 
@@ -44,7 +45,35 @@ const PREVIEW: NewCaReviewCard[] = [
 ];
 
 export default function NewCaApprovalPreviewPage() {
-  const { user, profile, loading, error, retry } = useAuthProfile();
+  const { supabase, user, profile, loading, error, retry } = useAuthProfile();
+  const [liveQueue, setLiveQueue] = useState<NewCaReviewCard[] | null>(null);
+  const [connectionState, setConnectionState] = useState<"checking" | "isolated" | "disabled">("checking");
+
+  useEffect(() => {
+    if (loading || !user || profile?.role !== "admin" || error) return;
+    let alive = true;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) { if (alive) setConnectionState("disabled"); return; }
+      try {
+        const response = await fetch("/api/new-ca/bridge", {
+          cache: "no-store",
+          headers: { Authorization: "Bearer " + session.access_token },
+        });
+        if (!response.ok) throw Error("disabled");
+        const data = await response.json();
+        if (!data.isolated || data.productionActivated !== false ||
+            !Array.isArray(data.applications)) throw Error("invalid");
+        if (alive) {
+          setLiveQueue(data.applications as NewCaReviewCard[]);
+          setConnectionState("isolated");
+        }
+      } catch {
+        if (alive) { setLiveQueue(null); setConnectionState("disabled"); }
+      }
+    })();
+    return () => { alive = false; };
+  }, [loading, user, profile?.role, error, supabase]);
 
   if (loading) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">
     🍀 認証を確認中…
@@ -82,6 +111,13 @@ export default function NewCaApprovalPreviewPage() {
       この画面の3件はテスト用サンプルです。実際の審査待ち人数ではありません。
       既存CAのGoogleログイン、メダル、Meetup履歴、所属Communityには影響しません。
     </div>
-    <div className="mt-7"><NewCaApprovalDeck applications={PREVIEW}/></div>
+    <div className="mt-5 text-sm font-black text-slate-600" aria-live="polite">
+      {connectionState === "isolated"
+        ? "🧪 隔離Neonの申請 " + (liveQueue?.length ?? 0) + "件を読み込みました。実承認は無効です。"
+        : connectionState === "checking"
+          ? "隔離申請との接続を確認中…"
+          : "隔離申請接続はOFFです。以下は架空のデザイン確認用カードです。"}
+    </div>
+    <div className="mt-7"><NewCaApprovalDeck applications={liveQueue ?? PREVIEW}/></div>
   </main>;
 }
