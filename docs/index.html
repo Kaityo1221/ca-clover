@@ -317,7 +317,7 @@
     }
 
     if(profile.role==="pending"){
-      html+='<section class="card section"><div class="row"><div style="font-size:30px">🔥</div><div><h2>Campfire URLからCommunityを申請</h2><p class="muted small strong">コミュニティ招待URL、または自分が主催したミートアップ共有URLを貼り付けてください。SCOPELY EXPLORE ID、Community、日本CA地図の1st/2ndを照合します。ミートアップ共有URLでは紫色CAバッジも確認します。</p></div></div><input id="claimUrl" class="input section" placeholder="コミュニティ招待URL / ミートアップ共有URL"><button id="submitClaim" class="btn section" '+((profile.role==="pending"&&!profile.niantic_id)?"disabled":"")+'>Communityを確認して申請</button><div id="claimResult"></div></section>';
+      html+='<section class="card section"><div class="row"><div style="font-size:30px">🔥</div><div><h2>Campfire URLからCommunityを申請</h2><p class="muted small strong">コミュニティ招待URL、または自分が主催したミートアップ共有URLを貼り付けてください。SCOPELY EXPLORE ID、Community、日本CA地図の1st/2ndを照合します。ミートアップ共有URLでは紫色CAバッジも確認します。</p></div></div><label class="tiny strong muted" style="display:block;margin-top:15px">Pokémon GOトレーナー名（Scopely IDと異なる場合も正確に入力）</label><input id="trainerName" class="input" placeholder="例：banbe53"><p class="tiny muted">Scopely IDはアカウント設定で登録します。異なる場合は、本人主催のCAバッジ付きMeetup共有URLが必要です。</p><input id="claimUrl" class="input section" placeholder="コミュニティ招待URL / ミートアップ共有URL"><button id="submitClaim" class="btn section" '+((profile.role==="pending"&&!profile.niantic_id)?"disabled":"")+'>Communityを確認して申請</button><div id="claimResult"></div></section>';
     }
 
     if(profile.role==="ca"&&!communities.length){
@@ -606,9 +606,10 @@
     const input=document.getElementById("claimUrl");
     const out=document.getElementById("claimResult");
     const value=input.value.trim();if(!value)return;
+    const trainerName=document.getElementById("trainerName")?.value.trim()||"";
     busy=true;input.disabled=true;document.getElementById("submitClaim").disabled=true;
     out.innerHTML='<div class="notice section">Communityを確認中...</div>';
-    const r=await client.functions.invoke("community-claim",{body:{action:"submit",url:value}});
+    const r=await client.functions.invoke("community-claim",{body:{action:"submit",url:value,trainerName}});
     busy=false;
     if(r.error){
       let msg="申請に失敗しました。コミュニティ招待URL / ミートアップ共有URLを確認してください。";
