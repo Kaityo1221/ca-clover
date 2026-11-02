@@ -78,7 +78,7 @@ FROM ca_onboarding_lab.requests AS r
 JOIN neon_auth.account AS a
   ON a."userId"::text=r.google_subject AND a."providerId"='google'
 LEFT JOIN ca_onboarding_lab.clover_identity_links AS l ON l.request_id=r.id
-WHERE r.status IN ('pending_admin','held')
+WHERE r.status IN ('pending_admin','held','ready_to_activate')
 ORDER BY r.created_at DESC LIMIT 100
 `;
 
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
        FROM ca_onboarding_lab.requests r
        JOIN neon_auth.account a ON a."userId"::text=r.google_subject
          AND a."providerId"='google' AND a."accountId"=$1
-       WHERE r.id=$2::uuid AND r.status='pending_admin'
+       WHERE r.id=$2::uuid AND r.status IN ('pending_admin','ready_to_activate')
        FOR UPDATE OF r`,
       [auth.googleSubject, body.requestId],
     );
