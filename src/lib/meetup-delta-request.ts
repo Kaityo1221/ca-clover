@@ -1,4 +1,4 @@
-import {parseAuthorizedMeetupDelta} from "./meetup-delta-api-contract";
+import {parseAuthorizedMeetupDelta} from "./meetup-delta-api-contract.ts";
 
 export type AuthorizedDeltaTotals = {
   added: number;
