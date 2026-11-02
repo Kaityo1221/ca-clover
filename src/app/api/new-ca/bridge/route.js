@@ -11,6 +11,10 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Same public Supabase project and publishable key as the existing browser client.
+// Public keys are not secrets; keep the exact project URL pinned.
+const SUPABASE_URL = "https://wgiittrvgtiosogyhfcl.supabase.co";
+const PUBLIC_KEY_FALLBACK = "sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
 const NO_STORE = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
 const reply = (status, data) => NextResponse.json(data, { status, headers: NO_STORE });
 
@@ -21,9 +25,9 @@ function ready() {
 async function authenticate(request) {
   const bearer = request.headers.get("authorization") ?? "";
   if (!/^Bearer [\w.-]+$/.test(bearer) || bearer.length > 8192) return null;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (url !== "https://wgiittrvgtiosogyhfcl.supabase.co" || !key) return null;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || PUBLIC_KEY_FALLBACK;
+  if (url !== SUPABASE_URL) return null;
   const supabase = createClient(url, key, {
     global: { headers: { Authorization: bearer } },
     auth: { persistSession: false, autoRefreshToken: false },
