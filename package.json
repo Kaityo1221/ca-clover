@@ -9,7 +9,9 @@
     "test": "npm run test:auth-routing && npm run test:sendai-map-policy && node scripts/test-sendai-map-api.cjs && node --experimental-strip-types scripts/test-zoroark-engine.ts && node scripts/test-zoroark-http-isolated.mjs && node scripts/test-zoroark-pg-isolated.mjs",
     "test:auth-routing": "node --experimental-strip-types scripts/test-auth-routing.ts",
     "test:sendai-map-policy": "node --experimental-strip-types scripts/test-sendai-map-policy.ts",
-    "test:zoroark-real-auth-local": "node scripts/test-zoroark-real-auth-local.mjs"
+    "test:zoroark-real-auth-local": "node scripts/test-zoroark-real-auth-local.mjs",
+    "test:new-ca-bridge": "node --experimental-strip-types scripts/test-new-ca-bridge-policy.ts && node scripts/test-new-ca-bridge-http-mock.cjs",
+    "test:new-ca-approval": "node --experimental-strip-types scripts/test-new-ca-approval-policy.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0",
