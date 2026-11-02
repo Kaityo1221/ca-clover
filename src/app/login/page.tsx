@@ -11,6 +11,7 @@ export default function Page(){
   const [error, setError] = useState<string | null>(null);
   const [nextPath, setNextPath] = useState("/my");
   const [isOnboardingPreview, setIsOnboardingPreview] = useState(false);
+  const [diagnostic, setDiagnostic] = useState<string | null>(null);
   const previewOAuthEnabled = process.env.NEXT_PUBLIC_NEW_CA_PREVIEW_OAUTH_READY === "true";
 
   useEffect(()=>{
@@ -18,6 +19,29 @@ export default function Page(){
     setNextPath(sanitizeNextPath(params.get("next"),"/my"));
     setIsOnboardingPreview(window.location.hostname.endsWith(".vercel.app") && (params.get("next") === "/admin/new-ca" || params.get("next") === "/new-ca/link"));
   },[]);
+
+  async function checkRedirect() {
+    const supabase = createBrowserSupabaseClient();
+    setDiagnostic("確認中…");
+    const requested = window.location.origin + nextPath;
+    const { data, error: authError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: requested, skipBrowserRedirect: true },
+    });
+    if (authError || !data?.url) {
+      setDiagnostic("認証リクエストを確認できませんでした。");
+      return;
+    }
+    try {
+      const url = new URL(data.url);
+      const sent = url.searchParams.get("redirect_to");
+      setDiagnostic(sent === requested
+        ? "検査PASS：プレビューの戻り先を正しく送信しています。"
+        : "検査FAIL：指定した戻り先と送信値が一致しません。");
+    } catch {
+      setDiagnostic("認証リクエストの解析に失敗しました。");
+    }
+  }
 
   async function login(){
     if (isOnboardingPreview && !previewOAuthEnabled) {
@@ -60,6 +84,12 @@ export default function Page(){
         <button onClick={login} className="mt-8 w-full rounded-2xl bg-lime-400 px-5 py-3.5 text-sm font-black text-lime-950">G　Googleでログイン</button>
       )}
 
+      {isOnboardingPreview && previewOAuthEnabled ? (
+        <div className="mt-4 space-y-2">
+          <button type="button" onClick={checkRedirect} className="w-full rounded-xl border border-lime-200 px-4 py-3 text-sm font-bold text-lime-900">認証の戻り先を検査（ログインせず確認）</button>
+          {diagnostic ? <p role="status" className="rounded-xl bg-lime-50 p-3 text-left text-sm font-semibold text-lime-900">{diagnostic}</p> : null}
+        </div>
+      ) : null}
       {error ? <p className="mt-4 text-xs font-bold text-rose-600">{error}</p> : null}
       <p className="mt-4 text-xs font-semibold leading-5 text-slate-400">初回ログイン後にNiantic IDを登録し、自分が主催したMeetupを提出してください。承認されるとCAアカウントとCommunityが同時に有効になります。</p>
     </section>
