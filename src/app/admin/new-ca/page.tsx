@@ -108,7 +108,9 @@ export default function NewCaApprovalPreviewPage() {
       表裏の切り替えとスワイプは操作できますが、申請取得・承認・アカウント変更は行いません。
     </p>
     <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-6 text-amber-900">
-      この画面の3件はテスト用サンプルです。実際の審査待ち人数ではありません。
+      {connectionState === "isolated"
+        ? "表示中の申請は隔離Neonのテストデータです。本番CAの承認待ち人数ではありません。"
+        : "この画面の3件は架空のデザイン確認用サンプルです。実際の審査待ち人数ではありません。"}
       既存CAのGoogleログイン、メダル、Meetup履歴、所属Communityには影響しません。
     </div>
     <div className="mt-5 text-sm font-black text-slate-600" aria-live="polite">
