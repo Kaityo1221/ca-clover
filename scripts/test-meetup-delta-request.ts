@@ -21,7 +21,7 @@ await assert.rejects(requestAuthorizedMeetupDeltas(ids,async id=>({
 })),(err:unknown)=>err instanceof MeetupDeltaRequestError && err.category==="invalid-response");
 await assert.rejects(requestAuthorizedMeetupDeltas(["own-1","own-1"],successful),/INVALID_RESPONSE/);
 await assert.rejects(requestAuthorizedMeetupDeltas([],successful),/INVALID_RESPONSE/);
-await assert.rejects(requestAuthorizedMeetupDeltas(["own-1"],async()=>({
- data:{ok:true,communityId:"own-1",added:Number.MAX_SAFE_INTEGER,updated:1,unchanged:0}
+await assert.rejects(requestAuthorizedMeetupDeltas(["own-1","own-2"],async id=>({
+ data:{ok:true,communityId:id,added:id==="own-1"?Number.MAX_SAFE_INTEGER:1,updated:0,unchanged:0}
 })),/INVALID_RESPONSE/);
 console.log("authorized multi-community delta client contract: PASS");
