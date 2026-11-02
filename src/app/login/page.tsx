@@ -11,6 +11,7 @@ export default function Page(){
   const [error, setError] = useState<string | null>(null);
   const [nextPath, setNextPath] = useState("/my");
   const [isOnboardingPreview, setIsOnboardingPreview] = useState(false);
+  const previewOAuthEnabled = process.env.NEXT_PUBLIC_NEW_CA_PREVIEW_OAUTH_READY === "true";
 
   useEffect(()=>{
     const params=new URLSearchParams(window.location.search);
@@ -19,7 +20,7 @@ export default function Page(){
   },[]);
 
   async function login(){
-    if (isOnboardingPreview) {
+    if (isOnboardingPreview && !previewOAuthEnabled) {
       setError("この検証環境のGoogleログインは本番へ移動するため停止しています。下の隔離テストサイトから認証してください。");
       return;
     }
@@ -40,10 +41,10 @@ export default function Page(){
       <h1 className="mt-5 text-3xl font-black text-lime-950">CA Clover</h1>
       <p className="mt-2 text-sm font-semibold text-slate-500">Japan Community Activity Dashboard</p>
 
-      {isOnboardingPreview ? (
+      {isOnboardingPreview && !previewOAuthEnabled ? (
         <div className="mt-7 space-y-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-left text-sm font-bold leading-6 text-amber-900">
-          <p>⚠️ 新規CA承認の検証用プレビューでは、本番サイトへリダイレクトされるGoogleログインを使用しません。</p>
-          <p>本番認証設定を変更せずに確認できるよう、動作確認済みの隔離サイトを利用してください。</p>
+          <p>⚠️ 新規CA承認の検証用プレビューでは、Googleログインの戻り先が許可されるまで認証を停止しています。</p>
+          <p>プレビュー専用URLがSupabase AuthのRedirect URLsに登録された後、安全確認してログインを有効にします。</p>
           <a href="https://ca-clover-discord-oauth.vercel.app/admin-preview.html" className="block rounded-xl bg-lime-400 px-4 py-3 text-center font-black text-lime-950">🍀 隔離CA承認テストを開く</a>
           <p className="text-xs font-semibold">CA Clover本番の権限やログイン設定は変更しません。</p>
         </div>
