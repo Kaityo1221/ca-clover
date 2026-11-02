@@ -23,15 +23,17 @@ export function isIsolatedBridgeReady(env: Record<string, string | undefined>): 
 type Identity = {
   provider?: string;
   provider_id?: string;
+  id?: string; // GoTrue backward-compatible JSON alias for provider_id
   identity_data?: { sub?: unknown };
 };
 
 export function verifiedGoogleProviderSubject(user: { identities?: Identity[] } | null): string | null {
   const google = (user?.identities ?? []).filter(identity => identity.provider === "google");
   if (google.length !== 1) return null;
-  const providerId = google[0].provider_id;
+  const providerId = google[0].provider_id ?? google[0].id;
   const metadataSub = google[0].identity_data?.sub;
   if (typeof providerId !== "string" || !providerId.trim() ||
+      (google[0].provider_id && google[0].id && google[0].provider_id !== google[0].id) ||
       (metadataSub != null && metadataSub !== providerId)) return null;
   return providerId;
 }
