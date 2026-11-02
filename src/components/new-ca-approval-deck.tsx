@@ -11,7 +11,9 @@ export type NewCaReviewCard = {
   discordUserId: string | null;
   displayNameSource: "discord_oauth" | "user_screenshot" | "not_verified";
   campfireUrl: string | null;
-  status: "pending_admin" | "held";
+  status: "pending_admin" | "held" | "ready_to_activate";
+  cloverLinked?: boolean;
+  sameGoogleAsViewer?: boolean;
 };
 
 type Props = {
@@ -81,7 +83,7 @@ export default function NewCaApprovalDeck({ applications }: Props) {
           <div className="flex items-start justify-between gap-3">
             <span className="text-xs font-black tracking-widest text-lime-800">CA CLOVER</span>
             <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-800">
-              {current.status === "held" ? "保留中" : "確認待ち"}
+              {current.status === "held" ? "保留中" : current.status === "ready_to_activate" ? "隔離承認済み" : "確認待ち"}
             </span>
           </div>
           <div className="mt-14">
@@ -97,7 +99,7 @@ export default function NewCaApprovalDeck({ applications }: Props) {
               ? <p className="mt-2 text-xs font-bold text-amber-700">画像から転記。OAuth本人確認ではありません。</p>
               : null}
           </div>
-          <p className="mt-10 text-sm font-bold text-lime-700">🍀 APAC CA資格確認 → 会長の本人照合へ</p>
+          <p className="mt-10 text-sm font-bold text-lime-700">{current.cloverLinked ? "🍀 CA Clover Google照合（隔離）完了" : "🍀 APAC CA資格確認 → 会長の本人照合へ"}</p>
           <button type="button" onClick={() => setFlipped(true)}
             className="mt-auto rounded-2xl bg-lime-400 px-5 py-4 font-black text-lime-950">
             カードをめくって確認 ↻
