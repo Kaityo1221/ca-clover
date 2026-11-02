@@ -76,7 +76,7 @@ SELECT r.id, r.trainer_name, r.discord_user_id, r.discord_display_name,
        (a."accountId"=$1) AS same_google_as_viewer
 FROM ca_onboarding_lab.requests AS r
 JOIN neon_auth.account AS a
-  ON a."userId"=r.google_subject AND a."providerId"='google'
+  ON a."userId"::text=r.google_subject AND a."providerId"='google'
 LEFT JOIN ca_onboarding_lab.clover_identity_links AS l ON l.request_id=r.id
 WHERE r.status IN ('pending_admin','held')
 ORDER BY r.created_at DESC LIMIT 100
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
     const matches = await db.query(
       `SELECT r.id
        FROM ca_onboarding_lab.requests r
-       JOIN neon_auth.account a ON a."userId"=r.google_subject
+       JOIN neon_auth.account a ON a."userId"::text=r.google_subject
          AND a."providerId"='google' AND a."accountId"=$1
        WHERE r.id=$2::uuid AND r.status='pending_admin'
        FOR UPDATE OF r`,
