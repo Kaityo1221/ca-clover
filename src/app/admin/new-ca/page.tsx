@@ -48,6 +48,7 @@ export default function NewCaApprovalPreviewPage() {
   const { supabase, user, profile, loading, error, retry } = useAuthProfile();
   const [liveQueue, setLiveQueue] = useState<NewCaReviewCard[] | null>(null);
   const [connectionState, setConnectionState] = useState<"checking" | "isolated" | "disabled">("checking");
+  const [connectionIssue, setConnectionIssue] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading || !user || profile?.role !== "admin" || error) return;
@@ -60,16 +61,21 @@ export default function NewCaApprovalPreviewPage() {
           cache: "no-store",
           headers: { Authorization: "Bearer " + session.access_token },
         });
-        if (!response.ok) throw Error("disabled");
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          const safe = ["preview_bridge_disabled", "ca_clover_login_required", "isolated_bridge_unavailable", "google_identity_required"];
+          throw Error(safe.includes(body?.error) ? body.error : "isolated_bridge_unavailable");
+        }
         const data = await response.json();
         if (!data.isolated || data.productionActivated !== false ||
             !Array.isArray(data.applications)) throw Error("invalid");
         if (alive) {
           setLiveQueue(data.applications as NewCaReviewCard[]);
           setConnectionState("isolated");
+          setConnectionIssue(null);
         }
-      } catch {
-        if (alive) { setLiveQueue(null); setConnectionState("disabled"); }
+      } catch (cause) {
+        if (alive) { setLiveQueue(null); setConnectionState("disabled"); setConnectionIssue(cause instanceof Error ? cause.message : "isolated_bridge_unavailable"); }
       }
     })();
     return () => { alive = false; };
@@ -118,7 +124,7 @@ export default function NewCaApprovalPreviewPage() {
         ? "🧪 隔離Neonの申請 " + (liveQueue?.length ?? 0) + "件を読み込みました。実承認は無効です。"
         : connectionState === "checking"
           ? "隔離申請との接続を確認中…"
-          : "隔離申請接続はOFFです。以下は架空のデザイン確認用カードです。"}
+          : "隔離申請接続はOFFです。以下は架空のデザイン確認用カードです。" + (connectionIssue ? " 診断コード: " + connectionIssue : "")}
     </div>
     <div className="mt-7"><NewCaApprovalDeck applications={liveQueue ?? PREVIEW}/></div>
   </main>;
