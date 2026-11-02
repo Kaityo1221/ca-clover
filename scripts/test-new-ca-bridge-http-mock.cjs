@@ -14,7 +14,7 @@ const env = {
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_synthetic",
   NEW_CA_LAB_DATABASE_URL: "postgresql://test@localhost/synthetic",
 };
-const state = { enabled: true, role: "admin", token: "synthetic-session", googleSubject: "synthetic-google-provider", existingLinks: 0, writes: 0 };
+const state = { enabled: true, role: "admin", token: "synthetic-session", googleSubject: "synthetic-google-provider", existingLinks: 0, writes: 0, googleMatches: true };
 const NextResponse = { json: (body, { status }) => ({ status, body }) };
 const application = {
   id: "00000000-0000-4000-8000-000000000111",
@@ -50,8 +50,8 @@ class Client {
   async end() {}
   async query(sql) {
     if (sql.includes("environment_guard")) return { rowCount: 1, rows: [{ marker: "guard" }] };
-    if (sql.includes("SELECT r.id, r.trainer_name")) return { rowCount: 1, rows: [application] };
-    if (sql.includes("FOR UPDATE OF r")) return { rowCount: 1, rows: [{ id: application.id }] };
+    if (sql.includes("SELECT r.id, r.trainer_name")) return { rowCount: 1, rows: [{ ...application, same_google_as_viewer: state.googleMatches }] };
+    if (sql.includes("FOR UPDATE OF r")) return state.googleMatches ? { rowCount: 1, rows: [{ id: application.id }] } : { rowCount: 0, rows: [] };
     if (sql.includes("INSERT INTO ca_onboarding_lab.clover_identity_links")) {
       const first = state.writes++ === 0;
       return { rowCount: first ? 1 : 0, rows: first ? [{ request_id: application.id }] : [] };
@@ -102,6 +102,17 @@ const assertStatus = (name, value, expected) => {
   const own = await api.GET(request("GET"));
   assertStatus("applicant only sees Google-owned application", own, 200);
   assert.equal(own.body.applications.length, 1);
+
+  state.googleMatches = false;
+  const foreign = await api.GET(request("GET"));
+  assertStatus("different Google identity may request queue safely", foreign, 200);
+  assert.equal(foreign.body.applications.length, 0, "foreign user's Discord/CA data not disclosed");
+  const foreignPost = await api.POST(request("POST",state.token,"https://isolated.example",{
+    action: "bind", requestId: application.id,
+  }));
+  assertStatus("foreign Google provider subject cannot bind another applicant", foreignPost, 409);
+  assert.equal(state.writes, 0, "no link may be inserted for foreign Google identity");
+  state.googleMatches = true;
 
   state.role = "ca";
   assertStatus("existing CA may not bind", await api.POST(request("POST")), 403);
