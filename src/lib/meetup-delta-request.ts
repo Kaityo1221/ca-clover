@@ -9,8 +9,10 @@ export type AuthorizedDeltaTotals = {
 type ApiResult = {data: unknown; error?: unknown; status?: number};
 export type InvokeReadOnlyDelta = (communityId: string) => Promise<ApiResult>;
 export class MeetupDeltaRequestError extends Error {
-  constructor(public readonly category: "unauthorized"|"unavailable"|"invalid-response") {
+  readonly category: "unauthorized"|"unavailable"|"invalid-response";
+  constructor(category: "unauthorized"|"unavailable"|"invalid-response") {
     super("MEETUP_DELTA_" + category.toUpperCase().replace("-", "_"));
+    this.category = category;
   }
 }
 
