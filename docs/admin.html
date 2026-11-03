@@ -401,7 +401,7 @@ async function assignments(){
   document.getElementById("accountCount").textContent=rows.length+"人中 "+visible.length+"人を表示";
   document.getElementById("accountList").innerHTML=visible.length?visible.map(x=>{
    const ca=verifiedCaOf(x.id),name=ca?.trainer_name||"トレーナー名未確認",role=ca?(ca.ca_level||"CA")+" CA":x.role;
-   const flag=userUnassigned(x)?"本人未照合":hasDuplicateExplore(x)?"ID重複注意":"割当済み";
+   const flag=!primaryOf(x.id)?"本人未照合":communitiesOf(x.id).length===0?"Community未割当":hasDuplicateExplore(x)?"ID重複注意":"割当済み";
    return '<button type="button" data-select-account="'+e(x.id)+'" class="card section" style="display:block;width:100%;padding:15px;text-align:left;border-color:'+(sel.value===x.id?"#65a30d":"#e0e8dd")+'"><div class="row between wraprow"><div class="strong">'+e(name)+'</div><span class="pill">'+flag+'</span></div><div class="tiny muted section">'+e(role+" / EXPLORE ID: "+(x.niantic_id||"未登録"))+'</div><div class="small muted section">Community：'+e(communitiesOf(x.id).join(" / ")||"未割当")+'</div>'+(hasDuplicateExplore(x)?'<div class="tiny strong section" style="color:#92400e">⚠ 同じEXPLORE IDのアカウントがあります</div>':'')+'</button>';
   }).join(""):'<p class="small muted section">該当するアカウントはありません。</p>';
   document.getElementById("accountMore").hidden=accountShown>=rows.length;
