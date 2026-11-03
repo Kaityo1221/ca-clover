@@ -45,11 +45,20 @@ function request(body=valid, origin="https://isolated.example", token="synthetic
   assert.equal(r.body.code, "SYNTHETIC_ACTIVATION_GATE_CLOSED");
   assert.equal(r.body.productionActivated, false);
   assert.equal(state.discordCalls, 1);
+  processMock.env.NEW_CA_SYNTHETIC_ACTIVATION_ENABLED = "true";
+  r = await POST(request(valid, "https://attacker.invalid"));
+  assert.equal(r.status, 403, "origin guard still applies when synthetic gate is enabled");
+  r = await POST(request({ ...valid, unexpected: "write" }));
+  assert.equal(r.status, 400, "extra input rejected before any DB connection");
+  processMock.env.NEW_CA_SYNTHETIC_ACTIVATION_ENABLED = "false";
+  r = await POST(request());
+  assert.equal(r.body.code, "SYNTHETIC_ACTIVATION_GATE_CLOSED");
+  assert.equal(r.body.productionActivated, false);
   // A closed synthetic activation gate must prevent all DB writes.
   assert.match(source, /NEW_CA_SYNTHETIC_ACTIVATION_ENABLED/);
   assert.match(source, /BEGIN/);
   assert.match(source, /ROLLBACK/);
   assert.match(source, /synthetic_community_memberships/);
   assert.doesNotMatch(source, /supabase\.from\([^)]*\)\.(insert|update|upsert|delete)/);
-  console.log("PASS 4 isolated approval fail-closed checks; productionActivated=false");
+  console.log("PASS 7 isolated approval fail-closed checks; productionActivated=false");
 })().catch(e => { console.error(e); process.exitCode = 1; });
