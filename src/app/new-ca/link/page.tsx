@@ -33,7 +33,10 @@ export default function NewCaGoogleLinkPage() {
         headers: { Authorization: "Bearer " + session.access_token },
       });
       const d = await r.json();
-      if (!r.ok || !d.isolated || d.productionActivated !== false) throw Error("隔離接続が準備中です");
+      if (!r.ok || !d.isolated || d.productionActivated !== false) {
+        const code = typeof d?.error === "string" ? d.error : "unexpected_response";
+        throw Error("隔離API診断：" + code + "（HTTP " + r.status + "）");
+      }
       const own = (d.applications as LinkedApplication[]).filter(x => x.sameGoogleAsViewer);
       setApplications(own);
       if (own.length === 1 && own[0].cloverLinkedByViewer && profile.role === "pending") {
@@ -46,9 +49,10 @@ export default function NewCaGoogleLinkPage() {
         setState("blocked");
         setMessage(own.length ? "この申請は別のユーザーに連携済み、または既存CA・ADMIN保護の対象です。" : "このGoogleアカウントに一致する隔離申請はありません。");
       }
-    } catch {
+    } catch (err) {
       setState("blocked");
-      setMessage("隔離テストの接続は現在利用できません。既存のCA Cloverデータは変更していません。");
+      const safeCode = err instanceof Error && /^隔離API診断：[a-z_]+（HTTP [0-9]{3}）$/.test(err.message) ? err.message : "隔離API診断：network_or_parse_error";
+      setMessage(safeCode + "。既存のCA Cloverデータは変更していません。");
     }
   }, [profile, supabase, user]);
 
