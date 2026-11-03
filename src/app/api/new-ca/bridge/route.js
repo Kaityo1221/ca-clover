@@ -77,6 +77,7 @@ JOIN neon_auth.account AS a
   ON a."userId"::text=r.google_subject AND a."providerId"='google'
 LEFT JOIN ca_onboarding_lab.clover_identity_links AS l ON l.request_id=r.id
 WHERE r.status IN ('pending_admin','held','ready_to_activate')
+  AND ($3::boolean OR a.\"accountId\"=$1)
 ORDER BY r.created_at DESC LIMIT 100
 `;
 
@@ -93,7 +94,7 @@ export async function GET(request) {
     await db.query("BEGIN READ ONLY");
     await db.query("SET LOCAL statement_timeout = '5s'");
     await confirmIsolation(db);
-    const query = await db.query(listSql, [auth.googleSubject, auth.userId]);
+    const query = await db.query(listSql, [auth.googleSubject, auth.userId, auth.role === "admin"]);
     await db.query("COMMIT");
     const rows = auth.role === "admin"
       ? query.rows
