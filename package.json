@@ -9,14 +9,21 @@
     "test": "npm run test:auth-routing && npm run test:sendai-map-policy && node scripts/test-sendai-map-api.cjs && node --experimental-strip-types scripts/test-zoroark-engine.ts && node scripts/test-zoroark-http-isolated.mjs && node scripts/test-zoroark-pg-isolated.mjs",
     "test:auth-routing": "node --experimental-strip-types scripts/test-auth-routing.ts",
     "test:sendai-map-policy": "node --experimental-strip-types scripts/test-sendai-map-policy.ts",
-    "test:zoroark-real-auth-local": "node scripts/test-zoroark-real-auth-local.mjs"
+    "test:zoroark-real-auth-local": "node scripts/test-zoroark-real-auth-local.mjs",
+    "test:new-ca-bridge": "node --experimental-strip-types scripts/test-new-ca-bridge-policy.ts && node scripts/test-new-ca-bridge-http-mock.cjs",
+    "test:new-ca-approval": "node --experimental-strip-types scripts/test-new-ca-approval-policy.ts",
+    "test:ca-master-diff": "node scripts/test-ca-master-diff.cjs",
+    "test:new-ca-approve": "node scripts/test-new-ca-approve-fail-closed.cjs",
+    "test:new-ca-diagnostic": "node scripts/test-new-ca-identity-diagnostic.cjs",
+    "test:new-ca-enroll": "node scripts/test-new-ca-isolated-enroll.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0",
     "next": "16.3.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "three": "^0.180.0"
+    "three": "^0.180.0",
+    "pg": "8.23.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",
@@ -25,6 +32,7 @@
     "@types/react-dom": "^19.0.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.9.0",
-    "@types/three": "^0.180.0"
+    "@types/three": "^0.180.0",
+    "@types/pg": "8.23.1"
   }
 }

@@ -1,0 +1,33 @@
+name: New CA synthetic demo (GitHub Pages)
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: new-ca-synthetic-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/feature/new-ca-approval-admin-preview-20261103'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify demo is static and isolated
+        shell: bash
+        run: |
+          test -f docs/new-ca-test/index.html
+          ! grep -Eiq 'supabase\.co|neon\.tech|api/new-ca|fetch\(|XMLHttpRequest|localStorage|sessionStorage' docs/new-ca-test/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/new-ca-test
+      - id: deployment
+        uses: actions/deploy-pages@v4
