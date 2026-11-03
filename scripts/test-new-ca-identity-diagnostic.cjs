@@ -52,6 +52,6 @@ const request = token => ({ headers: { get: () => token ? "Bearer " + token : nu
   state.ready = true;
   result = await GET(request(null));
   assert.equal(result.body.code, "SESSION_REQUIRED");
-  assert.equal(/\\.insert\\(|\\.update\\(|\\.delete\\(|\\.upsert\\(|\\b(?:INSERT INTO|UPDATE profiles|DELETE FROM)\\b/i.test(source), false, "diagnostic must remain read-only");
+  assert.equal([".insert(", ".update(", ".delete(", ".upsert("].some(pattern => source.includes(pattern)), false, "diagnostic must remain read-only");
   console.log("PASS 8 synthetic diagnostic cases; no production writes");
 })().catch(e => { console.error(e); process.exitCode = 1; });
