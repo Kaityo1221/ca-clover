@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const source = fs.readFileSync(path.join(__dirname, "../src/app/api/new-ca/isolated-enroll/route.js"), "utf8")
-  .replace(/^import .*;$/gm, "")
+  .replace(/import[\\s\\S]*?from\\s+"[^"]+";/g, "")
   .replace(/export const /g, "const ")
   .replace(/export async function /g, "async function ");
 const state = { ready: true, user: true, google: true, role: null, identities: 0, labRole: null, writes: 0, guard: true };
