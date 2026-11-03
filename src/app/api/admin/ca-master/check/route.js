@@ -18,7 +18,7 @@ export async function POST(request){
   if(request.headers.get("origin")!==new URL(request.url).origin)
     return reply(403,{code:"ORIGIN_MISMATCH"});
   const authorization=request.headers.get("authorization")||"";
-  if(!/^Bearer [\\w.-]{16,8192}$/.test(authorization))return reply(401,{code:"AUTH_REQUIRED"});
+  if(!/^Bearer [\w.-]{16,8192}$/.test(authorization))return reply(401,{code:"AUTH_REQUIRED"});
   // Strictly no client-selected spreadsheet, URL, table, or raw SQL.
   if(request.headers.get("content-length") && Number(request.headers.get("content-length"))>2)
     return reply(400,{code:"BODY_NOT_ALLOWED"});
