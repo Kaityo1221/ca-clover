@@ -10,6 +10,7 @@ type LinkedApplication = {
   discordDisplayName: string | null;
   status: string;
   cloverLinked: boolean;
+  cloverLinkedByViewer: boolean;
   sameGoogleAsViewer: boolean;
 };
 
@@ -34,15 +35,15 @@ export default function NewCaGoogleLinkPage() {
       if (!r.ok || !d.isolated || d.productionActivated !== false) throw Error("隔離接続が準備中です");
       const own = (d.applications as LinkedApplication[]).filter(x => x.sameGoogleAsViewer);
       setApplications(own);
-      if (own.some(x => x.cloverLinked)) {
+      if (own.length === 1 && own[0].cloverLinkedByViewer && profile.role === "pending") {
         setState("done");
         setMessage("隔離環境でGoogle本人照合が記録されています。本番権限は変更されていません。");
-      } else if (own.length === 1 && profile.role === "pending") {
+      } else if (own.length === 1 && !own[0].cloverLinked && profile.role === "pending") {
         setState("ready");
         setMessage("同じGoogleアカウントによるDiscord申請が1件見つかりました。");
       } else {
         setState("blocked");
-        setMessage(own.length ? "既存CA・ADMINの連携は保護されています。新規CA限定です。" : "このGoogleアカウントに一致する隔離申請はありません。");
+        setMessage(own.length ? "この申請は別のユーザーに連携済み、または既存CA・ADMIN保護の対象です。" : "このGoogleアカウントに一致する隔離申請はありません。");
       }
     } catch {
       setState("blocked");
