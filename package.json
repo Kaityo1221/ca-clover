@@ -11,7 +11,8 @@
     "test:sendai-map-policy": "node --experimental-strip-types scripts/test-sendai-map-policy.ts",
     "test:zoroark-real-auth-local": "node scripts/test-zoroark-real-auth-local.mjs",
     "test:new-ca-bridge": "node --experimental-strip-types scripts/test-new-ca-bridge-policy.ts && node scripts/test-new-ca-bridge-http-mock.cjs",
-    "test:new-ca-approval": "node --experimental-strip-types scripts/test-new-ca-approval-policy.ts"
+    "test:new-ca-approval": "node --experimental-strip-types scripts/test-new-ca-approval-policy.ts",
+    "test:ca-master-diff": "node scripts/test-ca-master-diff.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0",
