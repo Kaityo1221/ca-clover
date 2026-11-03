@@ -66,37 +66,68 @@ export async function POST(request) {
     const guard = await db.query("SELECT marker FROM ca_onboarding_lab.environment_guard WHERE marker=$1", [BRIDGE_GUARD_MARKER]);
     if (guard.rowCount !== 1) throw new Error("missing isolation marker");
     const result = await db.query(`
-      SELECT r.id,r.status,r.discord_user_id,r.trainer_name,r.campfire_url,
-             (l.clover_user_id IS NOT NULL) AS linked,
-             (f.request_id IS NOT NULL) AS finalized,
-             m.is_synthetic
+      SELECT r.id, r.status, r.discord_user_id,
+             r.admin_verified_discord_id, r.reviewed_at,
+             r.guild_id, r.apac_role_id, r.role_verified_at,
+             EXISTS(
+               SELECT 1 FROM ca_onboarding_lab.clover_identity_links l
+               WHERE l.request_id=r.id
+             ) AS linked,
+             EXISTS(
+               SELECT 1 FROM ca_onboarding_lab.finalized_approvals f
+               WHERE f.request_id=r.id
+             ) AS finalized,
+             EXISTS(
+               SELECT 1 FROM neon_auth.account a
+               WHERE a."userId"::text=r.google_subject AND a."providerId"='google'
+                 AND a."accountId" IS NOT NULL
+             ) AS neon_google_linked,
+             EXISTS(
+               SELECT 1 FROM ca_onboarding_lab.master_snapshot m
+               WHERE lower(m.trainer_name)=lower(r.trainer_name)
+                 AND m.campfire_url=r.campfire_url
+                 AND m.community_key=r.community_key
+                 AND m.is_synthetic=true AND m.status='active'
+                 AND m.ca_level IN ('1st','2nd')
+                 AND m.already_linked_user IS NULL
+             ) AS synthetic_master_valid
       FROM ca_onboarding_lab.requests r
-      LEFT JOIN ca_onboarding_lab.clover_identity_links l ON l.request_id=r.id
-      LEFT JOIN ca_onboarding_lab.finalized_approvals f ON f.request_id=r.id
-      LEFT JOIN ca_onboarding_lab.master_snapshot m
-        ON lower(m.trainer_name)=lower(r.trainer_name)
-        AND m.campfire_url=r.campfire_url
-      WHERE r.id=$1::uuid LIMIT 2`, [body.requestId]);
+      WHERE r.id=$1::uuid`, [body.requestId]);
     await db.query("COMMIT");
     if (result.rows.length !== 1) return reply(404, { code: "APPLICATION_NOT_FOUND_OR_AMBIGUOUS", productionActivated: false });
     const row = result.rows[0];
     if (row.discord_user_id !== body.confirmedDiscordId)
       return reply(409, { code: "DISCORD_ID_MISMATCH", productionActivated: false });
-    // The trust adapters and final approval RPC do not yet exist. Never present as GO.
+    const recordedDiscordRole = row.guild_id === "1463804285681926373" &&
+      row.apac_role_id === "1506624152541466685" &&
+      !!row.role_verified_at && Date.parse(row.role_verified_at) <= Date.now() &&
+      Date.now() - Date.parse(row.role_verified_at) <= 24 * 60 * 60 * 1000;
+    const adminReviewed = row.status === "ready_to_activate" &&
+      row.admin_verified_discord_id === row.discord_user_id && !!row.reviewed_at;
+    const checks = {
+      discordRolePreviouslyVerified: recordedDiscordRole,
+      adminDiscordIdReviewed: adminReviewed,
+      neonGoogleProviderLinked: row.neon_google_linked === true,
+      syntheticCaMasterMatched: row.synthetic_master_valid === true,
+      cloverUserIdentityLinked: row.linked === true,
+      isolatedApprovalFinalized: row.finalized === true,
+    };
     const missing = [
+      ...(!checks.discordRolePreviouslyVerified ? ["RECORDED_DISCORD_ROLE_STALE_OR_MISSING"] : []),
+      ...(!checks.adminDiscordIdReviewed ? ["ADMIN_DISCORD_REVIEW_MISSING"] : []),
+      ...(!checks.neonGoogleProviderLinked ? ["NEON_GOOGLE_PROVIDER_MISSING"] : []),
+      ...(!checks.syntheticCaMasterMatched ? ["SYNTHETIC_MASTER_MISMATCH"] : []),
+      ...(!checks.cloverUserIdentityLinked ? ["CLOVER_NEW_USER_LINK_REQUIRED"] : []),
+      ...(!checks.isolatedApprovalFinalized ? ["ISOLATED_APPROVAL_NOT_FINALIZED"] : []),
       "LIVE_DISCORD_ROLE_RECHECK",
       "TRUSTED_CAMPFIRE_RESOLUTION",
       "NEW_PENDING_USER_GOOGLE_LINK",
-      "REVIEWED_ADMIN_EVIDENCE",
       "PRODUCTION_SCHEMA_RPC_E2E",
     ];
     return reply(200, {
-      code: "PREFLIGHT_READ_ONLY",
-      productionActivated: false, readyToActivate: false,
-      isolated: true, requestStatus: row.status,
-      labLinked: row.linked, labFinalized: row.finalized,
-      syntheticMaster: row.is_synthetic === true,
-      missing,
+      code: "PREFLIGHT_READ_ONLY", productionActivated: false,
+      readyToActivate: false, isolated: true,
+      requestStatus: row.status, checks, missing,
     });
   } catch {
     if (db) await db.query("ROLLBACK").catch(() => {});
