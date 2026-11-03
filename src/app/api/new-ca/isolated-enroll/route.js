@@ -19,7 +19,7 @@ export async function POST(request) {
   if (!isIsolatedBridgeReady(process.env)) return respond(503, "PREVIEW_ONLY");
   if (request.headers.get("origin") !== new URL(request.url).origin) return respond(403, "ORIGIN_MISMATCH");
   const bearer = request.headers.get("authorization") || "";
-  if (!/^Bearer [\\w.-]{16,8192}$/.test(bearer)) return respond(401, "SESSION_REQUIRED");
+  if (!/^Bearer [\w.-]{16,8192}$/.test(bearer)) return respond(401, "SESSION_REQUIRED");
   if (request.headers.get("content-length") && Number(request.headers.get("content-length")) > 0)
     return respond(400, "BODY_NOT_ALLOWED");
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || AUTH_URL;
