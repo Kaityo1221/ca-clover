@@ -14,6 +14,8 @@ const createClient = () => ({
   from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { role: "admin" }, error: null }) }) }) }),
 });
 const checkDiscordCurrentRole = async () => { state.discordCalls++; return true; };
+class Client { constructor() { throw Error("DB must not be reached while synthetic gate is closed"); } }
+const BRIDGE_GUARD_MARKER = "ca-onboarding-neon-auth-branch-20261103";
 const processMock = { env: {
   NEXT_PUBLIC_SUPABASE_URL: "https://wgiittrvgtiosogyhfcl.supabase.co",
   NEW_CA_ISOLATED_APPROVAL_ENABLED: "true",
@@ -21,8 +23,8 @@ const processMock = { env: {
   NEW_CA_PENDING_USER_VALIDATOR_READY: "true",
 } };
 const { POST } = new Function("NextResponse", "createClient", "isIsolatedBridgeReady",
-  "checkDiscordCurrentRole", "process", route + "\nreturn { POST };")(
-    NextResponse, createClient, () => state.ready, checkDiscordCurrentRole, processMock);
+  "checkDiscordCurrentRole", "Client", "BRIDGE_GUARD_MARKER", "process", route + "\nreturn { POST };")(
+    NextResponse, createClient, () => state.ready, checkDiscordCurrentRole, Client, BRIDGE_GUARD_MARKER, processMock);
 const valid = { requestId: "00000000-0000-4000-8000-000000000001", confirmedDiscordId: "837092365658619934" };
 function request(body=valid, origin="https://isolated.example", token="synthetic-token-123456") {
   return { url: "https://isolated.example/api/new-ca/approve",
@@ -40,10 +42,14 @@ function request(body=valid, origin="https://isolated.example", token="synthetic
   assert.equal(r.status, 400); assert.equal(state.authCalls, 0);
   r = await POST(request());
   assert.equal(r.status, 503);
-  assert.equal(r.body.code, "ATOMIC_FINALIZER_NOT_CONNECTED");
+  assert.equal(r.body.code, "SYNTHETIC_ACTIVATION_GATE_CLOSED");
   assert.equal(r.body.productionActivated, false);
   assert.equal(state.discordCalls, 1);
-  // Enabling every feature flag must not activate a CA or invoke a writer.
-  assert.doesNotMatch(source, /(?:\.rpc\s*\(|finalize_isolated_approval\s*\()/);
+  // A closed synthetic activation gate must prevent all DB writes.
+  assert.match(source, /NEW_CA_SYNTHETIC_ACTIVATION_ENABLED/);
+  assert.match(source, /BEGIN/);
+  assert.match(source, /ROLLBACK/);
+  assert.match(source, /synthetic_community_memberships/);
+  assert.doesNotMatch(source, /supabase\.from\([^)]*\)\.(insert|update|upsert|delete)/);
   console.log("PASS 4 isolated approval fail-closed checks; productionActivated=false");
 })().catch(e => { console.error(e); process.exitCode = 1; });
