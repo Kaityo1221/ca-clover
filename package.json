@@ -14,7 +14,8 @@
     "test:new-ca-approval": "node --experimental-strip-types scripts/test-new-ca-approval-policy.ts",
     "test:ca-master-diff": "node scripts/test-ca-master-diff.cjs",
     "test:new-ca-approve": "node scripts/test-new-ca-approve-fail-closed.cjs",
-    "test:new-ca-diagnostic": "node scripts/test-new-ca-identity-diagnostic.cjs"
+    "test:new-ca-diagnostic": "node scripts/test-new-ca-identity-diagnostic.cjs",
+    "test:new-ca-enroll": "node scripts/test-new-ca-isolated-enroll.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0",
