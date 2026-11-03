@@ -38,10 +38,10 @@ async function authenticate(request) {
   const user = userResponse.user;
   const { data: profile, error } = await supabase.from("profiles")
     .select("role").eq("id", user.id).maybeSingle();
-  if (error || !profile || !["pending", "ca", "admin"].includes(profile.role)) return null;
+  if (error || (profile && !["pending", "ca", "admin"].includes(profile.role))) return null;
   return {
     userId: user.id,
-    role: profile.role,
+    role: profile?.role ?? "unregistered",
     googleSubject: verifiedGoogleProviderSubject(user),
     supabase,
   };
@@ -92,6 +92,13 @@ export async function GET(request) {
   try {
     db = await connectLab();
     await db.query("BEGIN READ ONLY");
+    if (auth.role === "unregistered") {
+      const enrolled = await db.query("SELECT role FROM ca_onboarding_lab.synthetic_profiles WHERE user_id=$1::uuid", [auth.userId]);
+      if (enrolled.rowCount !== 1 || enrolled.rows[0].role !== "pending") {
+        await db.query("ROLLBACK");
+        return reply(403, { error: "isolated_pending_enrollment_required" });
+      }
+    }
     await db.query("SET LOCAL statement_timeout = '5s'");
     await confirmIsolation(db);
     const query = await db.query(listSql, [auth.googleSubject, auth.userId, auth.role === "admin"]);
@@ -139,7 +146,7 @@ export async function POST(request) {
 
   const auth = await authenticate(request);
   if (!auth) return reply(401, { error: "ca_clover_login_required" });
-  if (auth.role !== "pending" || !auth.googleSubject) {
+  if (!["pending", "unregistered"].includes(auth.role) || !auth.googleSubject) {
     return reply(403, { error: "only_new_pending_google_users_may_link" });
   }
   const { count, error } = await auth.supabase.from("user_ca_identities")
@@ -163,6 +170,13 @@ export async function POST(request) {
     await db.query("BEGIN");
     await db.query("SET LOCAL statement_timeout = '5s'");
     await confirmIsolation(db);
+    if (auth.role === "unregistered") {
+      const enrolled = await db.query("SELECT role FROM ca_onboarding_lab.synthetic_profiles WHERE user_id=$1::uuid FOR UPDATE", [auth.userId]);
+      if (enrolled.rowCount !== 1 || enrolled.rows[0].role !== "pending") {
+        await db.query("ROLLBACK");
+        return reply(403, { error: "isolated_pending_enrollment_required" });
+      }
+    }
     const matches = await db.query(
       `SELECT r.id, l.clover_user_id
        FROM ca_onboarding_lab.requests r
@@ -173,7 +187,7 @@ export async function POST(request) {
        FOR UPDATE OF r`,
       [auth.googleSubject, body.requestId],
     );
-    if (!allowedToBindPreview(auth.role, count, matches.rowCount ?? 0)) {
+    if (!allowedToBindPreview(auth.role === "unregistered" ? "pending" : auth.role, count, matches.rowCount ?? 0)) {
       await db.query("ROLLBACK");
       return reply(409, { error: "application_not_owned_or_not_eligible" });
     }
