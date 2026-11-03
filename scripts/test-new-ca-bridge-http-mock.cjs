@@ -14,7 +14,7 @@ const env = {
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_synthetic",
   NEW_CA_LAB_DATABASE_URL: "postgresql://test@localhost/synthetic",
 };
-const state = { enabled: true, role: "admin", token: "synthetic-session", googleSubject: "synthetic-google-provider", existingLinks: 0, writes: 0, googleMatches: true };
+const state = { enabled: true, role: "admin", token: "synthetic-session", googleSubject: "synthetic-google-provider", existingLinks: 0, writes: 0, googleMatches: true, linkOwner: null };
 const NextResponse = { json: (body, { status }) => ({ status, body }) };
 const application = {
   id: "00000000-0000-4000-8000-000000000111",
@@ -27,6 +27,7 @@ const application = {
   campfire_url: "https://campfire.scopely.com/discover/club/synthetic",
   status: "ready_to_activate",
   clover_linked: false,
+  linked_to_viewer: false,
   same_google_as_viewer: true,
 };
 const supabase = () => ({
@@ -50,10 +51,11 @@ class Client {
   async end() {}
   async query(sql) {
     if (sql.includes("environment_guard")) return { rowCount: 1, rows: [{ marker: "guard" }] };
-    if (sql.includes("SELECT r.id, r.trainer_name")) return { rowCount: 1, rows: [{ ...application, same_google_as_viewer: state.googleMatches }] };
-    if (sql.includes("FOR UPDATE OF r")) return state.googleMatches ? { rowCount: 1, rows: [{ id: application.id }] } : { rowCount: 0, rows: [] };
+    if (sql.includes("SELECT r.id, r.trainer_name")) return { rowCount: 1, rows: [{ ...application, clover_linked: state.linkOwner !== null, linked_to_viewer: state.linkOwner === "00000000-0000-4000-8000-000000000222", same_google_as_viewer: state.googleMatches }] };
+    if (sql.includes("FOR UPDATE OF r")) return state.googleMatches ? { rowCount: 1, rows: [{ id: application.id, clover_user_id: state.linkOwner }] } : { rowCount: 0, rows: [] };
     if (sql.includes("INSERT INTO ca_onboarding_lab.clover_identity_links")) {
-      const first = state.writes++ === 0;
+      const first = state.linkOwner === null;
+      if (first) { state.writes++; state.linkOwner = "00000000-0000-4000-8000-000000000222"; }
       return { rowCount: first ? 1 : 0, rows: first ? [{ request_id: application.id }] : [] };
     }
     return { rowCount: 0, rows: [] };
@@ -129,6 +131,11 @@ const assertStatus = (name, value, expected) => {
   assertStatus("pending verified Google binding writes only isolated Neon", bound, 200);
   assert.equal(bound.body.productionActivated, false);
   const replay = await api.POST(post);
-  assertStatus("binding replay blocked by unique insert", replay, 409);
+  assertStatus("same owner binding replay is idempotent", replay, 200);
+  assert.equal(replay.body.alreadyLinked, true);
+  assert.equal(state.writes, 1, "replay must not write twice");
+  const linkedList = await api.GET(request("GET"));
+  assertStatus("applicant sees owned link", linkedList, 200);
+  assert.equal(linkedList.body.applications[0].cloverLinkedByViewer, true);
   console.log("ALL SYNTHETIC BRIDGE TESTS PASS; no CA Clover production mutations");
 })().catch(e => { console.error(e); process.exitCode = 1; });
