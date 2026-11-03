@@ -20,6 +20,7 @@ export default function NewCaGoogleLinkPage() {
   const [state, setState] = useState<"checking" | "ready" | "blocked" | "done">("checking");
   const [message, setMessage] = useState("Googleアカウントの照合を確認しています…");
   const [busy, setBusy] = useState(false);
+  const [identityDiagnostic, setIdentityDiagnostic] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!user || !profile) return;
@@ -53,6 +54,25 @@ export default function NewCaGoogleLinkPage() {
 
   useEffect(() => { if (!loading && user && profile && !error) { void refresh(); } }, [loading, user, profile, error, refresh]);
 
+  useEffect(() => {
+    if (loading || !user || profile) return;
+    let active = true;
+    void (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+        const response = await fetch("/api/new-ca/identity-diagnostic", {
+          cache: "no-store", headers: { Authorization: "Bearer " + session.access_token },
+        });
+        const result = await response.json();
+        if (active) setIdentityDiagnostic(typeof result.code === "string" ? result.code : "UNKNOWN");
+      } catch {
+        if (active) setIdentityDiagnostic("DIAGNOSTIC_UNAVAILABLE");
+      }
+    })();
+    return () => { active = false; };
+  }, [loading, user, profile, supabase]);
+
   async function bind() {
     if (busy || state !== "ready" || applications.length !== 1 || profile?.role !== "pending") return;
     setBusy(true);
@@ -78,7 +98,7 @@ export default function NewCaGoogleLinkPage() {
     <p className="font-black text-lime-950">CA CloverのGoogleログインが必要です。</p>
     <Link href="/login?next=%2Fnew-ca%2Flink" className="mt-5 inline-block rounded-full bg-lime-400 px-5 py-3 font-black">Googleログイン</Link>
   </main>;
-  if (error || !profile) return <main className="mx-auto max-w-xl p-8 text-center"><h1 className="text-xl font-black text-lime-950">🍀 Google認証後の登録状態を確認</h1><p className="mt-4 font-semibold leading-7 text-amber-800">Googleログイン後のCA Cloverプロフィールを確認できません。初回利用でpending登録がまだない可能性があります。隔離Neonの接続障害と断定できません。</p><p className="mt-4 text-sm text-slate-600">既存のCA権限は変更していません。管理者が新規ユーザー登録経路を確認するまで、再ログインや本人紐付けを繰り返す必要はありません。</p></main>;
+  if (error || !profile) return <main className="mx-auto max-w-xl p-8 text-center"><h1 className="text-xl font-black text-lime-950">🍀 Google認証後の登録状態を確認</h1><p className="mt-4 font-semibold leading-7 text-amber-800">Googleログイン後のCA Cloverプロフィールを確認できません。初回利用でpending登録がまだない可能性があります。隔離Neonの接続障害と断定できません。</p><p className="mt-3 text-sm font-bold text-slate-700" role="status">診断結果：{identityDiagnostic ?? "確認中"}</p><p className="mt-4 text-sm text-slate-600">既存のCA権限は変更していません。管理者が新規ユーザー登録経路を確認するまで、再ログインや本人紐付けを繰り返す必要はありません。</p></main>;
 
   return <main className="mx-auto max-w-xl px-4 py-9">
     <Link href="/" className="text-sm font-black text-lime-700">← CA Cloverへ</Link>
