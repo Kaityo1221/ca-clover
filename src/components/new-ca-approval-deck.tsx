@@ -24,12 +24,13 @@ type Props = {
 export default function NewCaApprovalDeck({ applications }: Props) {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  const [copied, setCopied] = useState(false);
   const touch = useRef<{ x: number; y: number } | null>(null);
   const unique = [...new Map(applications.map((row) => [row.id, row])).values()];
   const safeIndex = Math.min(index, Math.max(0, unique.length - 1));
   const current = unique[safeIndex] ?? null;
 
-  useEffect(() => { setFlipped(false); }, [safeIndex]);
+  useEffect(() => { setFlipped(false); setCopied(false); }, [safeIndex]);
 
   function move(direction: number) {
     setIndex((value) => Math.max(0, Math.min(unique.length - 1, value + direction)));
@@ -122,20 +123,17 @@ export default function NewCaApprovalDeck({ applications }: Props) {
             <Info label="Discord表示名" value={current.discordDisplayName ?? "未取得"}/>
             <Info label="Discordユーザー名" value={current.discordUsername ? "@" + current.discordUsername : "未取得"}/>
             <Info label="サーバー内ニックネーム" value={current.discordNickname ?? "設定なし"}/>
-            <Info label="本人照合用Discord固定ID" value={current.discordUserId ?? "本番接続待ち"}/>
+            <Info label="本人照合用Discord固定ID" value={current.discordUserId ?? "未取得"}/>
+            {current.discordUserId && <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(current.discordUserId!); setCopied(true); } catch { setCopied(false); } }} className="rounded-xl border border-lime-300 px-3 py-2 text-xs font-black text-lime-900">{copied ? "コピーしました" : "Discord固定IDをコピー"}</button>}
             <details className="rounded-xl bg-lime-50 p-3 text-sm">
               <summary className="cursor-pointer font-black text-lime-900">Campfireコミュニティ</summary>
               <p className="mt-2 break-all text-xs text-slate-600">{current.campfireUrl ?? "確認待ち"}</p>
             </details>
           </div>
-          <div className="mt-6 border-t border-lime-100 pt-5">
-            <p className="text-sm font-black text-slate-700">本人照合・承認</p>
-            <p className="mt-1 text-xs font-semibold text-slate-500">正式連携前のため、操作は無効です。Discord固定IDの照合を実装後に有効化します。</p>
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              <button type="button" disabled className="rounded-xl bg-lime-400 px-1 py-3 text-xs font-black text-lime-950 disabled:opacity-40">承認</button>
-              <button type="button" disabled className="rounded-xl border border-lime-200 px-1 py-3 text-xs font-black text-lime-800 disabled:opacity-40">保留</button>
-              <button type="button" disabled className="rounded-xl border border-rose-200 px-1 py-3 text-xs font-black text-rose-700 disabled:opacity-40">却下</button>
-            </div>
+          <div className="mt-6 border-t border-lime-100 pt-5" role="status">
+            <p className="text-sm font-black text-amber-900">🔒 正式承認は停止中</p>
+            <p className="mt-2 text-xs font-semibold leading-6 text-slate-600">このカードは確認専用です。Google本人照合とCampfire公式資格確認、隔離総合試験が完了するまで、本番CA権限は付与しません。</p>
+            <p className="mt-2 text-xs font-bold text-lime-800">承認前の詳細チェックは下の「承認前チェック」から実行できます。</p>
           </div>
         </section>
       </div>
