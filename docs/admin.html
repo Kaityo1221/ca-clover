@@ -375,7 +375,7 @@ async function accountAudit(){
     (requestDetail?'<div class="section"><div class="tiny strong">申請の記録</div>'+requestDetail+'</div>':'')+
     '</article>';
   }).join("");
-  cards.querySelectorAll("[data-delete-precheck]").forEach(button=>button.onclick=()=>{
+  cards.querySelectorAll("[data-delete-precheck]").forEach(button=>button.onclick=async()=>{
    const target=list.find(p=>p.id===button.dataset.deletePrecheck);
    if(!target)return;
    const uid=target.id;
@@ -388,7 +388,8 @@ async function accountAudit(){
    };
    const labels={membership:"Community割当",caIdentity:"本人紐付け",medals:"メダル",claims:"申請",exchanges:"交換履歴"};
    const label=Object.entries(history).map(([key,n])=>labels[key]+": "+n+"件").join(" / ");
-   const blockers=Object.values(history).some(n=>n>0);
+   const protectedAccount=String(target.niantic_id||"").trim().toLowerCase()==="00kanonpapa39"||target.role==="admin";
+   const blockers=Object.values(history).some(n=>n>0)||protectedAccount;
    const el=document.getElementById("deletePrecheck-"+uid);
    el.hidden=false;
    el.innerHTML='<div class="notice section" style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412">'+
@@ -400,6 +401,64 @@ async function accountAudit(){
        :'この画面で0件でも、月次データやログイン情報など確認できない履歴があります。削除はできません。')+'</p>'+
     '<p class="tiny section">最終削除には、サーバー側の全履歴検査・本人照合・監査記録・明示承認が必要です。この画面からはデータを書き換えません。</p>'+
     '<button type="button" class="btn line section" disabled aria-disabled="true">最終削除（安全確認完了まで無効）</button></div>';
+   if(blockers)return;
+   const lockedMessage=el.querySelector("p:last-of-type");
+   button.disabled=true;
+   let preflight;
+   try {
+     preflight=await client.functions.invoke("admin-account-deletion",{
+       body:{action:"preflight",userId:uid}
+     });
+   }catch{
+     button.disabled=false;
+     el.insertAdjacentHTML("beforeend",'<p class="small section">サーバーに接続できません。削除は停止中です。</p>');
+     return;
+   }
+   button.disabled=false;
+   if(preflight.error||preflight.data?.ok!==true||preflight.data?.status!=="eligible"){
+     el.insertAdjacentHTML("beforeend",'<p class="small section">サーバー検査が未完了のため、削除できません。</p>');
+     return;
+   }
+   if(preflight.data.delete_enabled!==true){
+     el.insertAdjacentHTML("beforeend",'<p class="small section">サーバー検査は通りましたが、削除ゲートはOFFです。</p>');
+     return;
+   }
+   const ticket=String(preflight.data.ticket_id||"");
+   const phrase=String(preflight.data.confirmation||"");
+   if(!/^[0-9a-f-]{36}$/i.test(ticket)||!phrase.startsWith("DELETE "))return;
+   el.querySelector("button[disabled]")?.remove();
+   const confirmationPanel=document.createElement("div");
+   confirmationPanel.className="section";
+   confirmationPanel.innerHTML='<p class="small strong">この文字列を正確に入力すると削除の最終確認へ進めます。</p>'+
+      '<div class="small strong" style="overflow-wrap:anywhere">'+e(phrase)+'</div>'+
+      '<input class="input section" type="text" autocomplete="off" spellcheck="false" aria-label="削除確認文字列">'+
+      '<button class="btn rose section" type="button" disabled>この登録を削除する</button>'+
+      '<div class="tiny muted section" role="status" aria-live="polite"></div>';
+   el.appendChild(confirmationPanel);
+   const input=confirmationPanel.querySelector("input");
+   const finalButton=confirmationPanel.querySelector("button");
+   const report=confirmationPanel.querySelector('[role="status"]');
+   input.oninput=()=>{finalButton.disabled=input.value!==phrase;};
+   finalButton.onclick=async()=>{
+     if(input.value!==phrase)return;
+     if(!window.confirm("選択したアカウントを削除します。最終確認を続けますか？"))return;
+     input.disabled=true;finalButton.disabled=true;report.textContent="最終確認中…";
+     let outcome;
+     try {
+       outcome=await client.functions.invoke("admin-account-deletion",{
+         body:{action:"delete",userId:uid,ticketId:ticket,confirmation:phrase}
+       });
+     }catch{
+       report.textContent="結果不明。監査記録を確認し、再試行しないでください。";
+       return;
+     }
+     if(outcome.error||outcome.data?.status!=="deleted"){
+       report.textContent="削除は未確認です。監査を確認してください。";
+       return;
+     }
+     report.textContent="削除完了";
+     await accountAudit();
+   };
   });
  }
  document.getElementById("auditSearch").oninput=renderGroups;
