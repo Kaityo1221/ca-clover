@@ -70,6 +70,7 @@ SELECT r.id, r.trainer_name, r.discord_user_id, r.discord_display_name,
        r.discord_username, r.discord_nickname, r.discord_display_name_source,
        r.campfire_url, r.status, r.created_at,
        (l.clover_user_id IS NOT NULL) AS clover_linked,
+       (l.clover_user_id=$2::uuid) AS linked_to_viewer,
        (a."accountId"=$1) AS same_google_as_viewer
 FROM ca_onboarding_lab.requests AS r
 JOIN neon_auth.account AS a
@@ -92,7 +93,7 @@ export async function GET(request) {
     await db.query("BEGIN READ ONLY");
     await db.query("SET LOCAL statement_timeout = '5s'");
     await confirmIsolation(db);
-    const query = await db.query(listSql, [auth.googleSubject]);
+    const query = await db.query(listSql, [auth.googleSubject, auth.userId]);
     await db.query("COMMIT");
     const rows = auth.role === "admin"
       ? query.rows
@@ -109,6 +110,7 @@ export async function GET(request) {
       campfireUrl: row.campfire_url,
       status: row.status,
       cloverLinked: row.clover_linked,
+      cloverLinkedByViewer: row.linked_to_viewer === true,
       // This is ONLY a Google-identity match, not a completed registration.
       sameGoogleAsViewer: row.same_google_as_viewer,
     }));
@@ -147,7 +149,9 @@ export async function POST(request) {
   }
   let body;
   try { body = await request.json(); } catch { return reply(400, { error: "invalid_json" }); }
-  if (body.action !== "bind" || typeof body.requestId !== "string" ||
+  if (!body || typeof body !== "object" || Array.isArray(body) ||
+      Object.keys(body).sort().join(",") !== "action,requestId" ||
+      body.action !== "bind" || typeof body.requestId !== "string" ||
       !/^[0-9a-f-]{36}$/i.test(body.requestId)) {
     return reply(400, { error: "invalid_request" });
   }
@@ -159,10 +163,11 @@ export async function POST(request) {
     await db.query("SET LOCAL statement_timeout = '5s'");
     await confirmIsolation(db);
     const matches = await db.query(
-      `SELECT r.id
+      `SELECT r.id, l.clover_user_id
        FROM ca_onboarding_lab.requests r
        JOIN neon_auth.account a ON a."userId"::text=r.google_subject
          AND a."providerId"='google' AND a."accountId"=$1
+       LEFT JOIN ca_onboarding_lab.clover_identity_links l ON l.request_id=r.id
        WHERE r.id=$2::uuid AND r.status IN ('pending_admin','ready_to_activate')
        FOR UPDATE OF r`,
       [auth.googleSubject, body.requestId],
@@ -170,6 +175,14 @@ export async function POST(request) {
     if (!allowedToBindPreview(auth.role, count, matches.rowCount ?? 0)) {
       await db.query("ROLLBACK");
       return reply(409, { error: "application_not_owned_or_not_eligible" });
+    }
+    if (matches.rows[0]?.clover_user_id === auth.userId) {
+      await db.query("COMMIT");
+      return reply(200, { ok: true, isolatedLinked: true, alreadyLinked: true, productionActivated: false });
+    }
+    if (matches.rows[0]?.clover_user_id) {
+      await db.query("ROLLBACK");
+      return reply(409, { error: "identity_already_linked" });
     }
     const linked = await db.query(
       `INSERT INTO ca_onboarding_lab.clover_identity_links(request_id,clover_user_id)
