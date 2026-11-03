@@ -59,7 +59,7 @@ export default function NewCaGoogleLinkPage() {
       if (own.length === 1 && own[0].cloverLinkedByViewer && (profile?.role === "pending" || enrollResult === "ISOLATED_PENDING_READY")) {
         setState("done");
         setMessage("隔離環境でGoogle本人照合が記録されています。本番権限は変更されていません。");
-      } else if (own.length === 1 && !own[0].cloverLinked && profile.role === "pending") {
+      } else if (own.length === 1 && !own[0].cloverLinked && (profile?.role === "pending" || enrollResult === "ISOLATED_PENDING_READY")) {
         setState("ready");
         setMessage("同じGoogleアカウントによるDiscord申請が1件見つかりました。");
       } else {
