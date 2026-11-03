@@ -9,6 +9,9 @@ const route = fs.readFileSync(path.join(__dirname, "../src/app/api/new-ca/bridge
   .replace(/export const /g, "const ")
   .replace(/export async function /g, "async function ");
 
+assert.match(route, /AND \(\$3::boolean OR a\."accountId"=\$1\)/, "Google ownership SQL must use a correctly quoted Neon column");
+assert.doesNotMatch(route, /a\.\\\\+"accountId/, "escaped SQL identifier must not reach PostgreSQL");
+
 const env = {
   NEXT_PUBLIC_SUPABASE_URL: "https://wgiittrvgtiosogyhfcl.supabase.co",
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_synthetic",
