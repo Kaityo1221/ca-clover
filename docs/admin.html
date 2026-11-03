@@ -291,7 +291,7 @@ async function accounts(){
 }
 
 async function accountAudit(){
- app.innerHTML=title("home","READ ONLY","🔎 重複アカウント比較","同じEXPLORE IDで登録されたアカウントの保存情報を比較します。削除・統合・権限変更はできません。")
+ app.innerHTML=title("home","READ ONLY","🔎 重複アカウント比較","同じEXPLORE IDで登録されたアカウントの保存情報を比較し、削除前の安全確認ができます。実削除はまだ停止中です。")
   +'<section class="card section"><span class="pill slate">閲覧専用</span><p class="small muted section">メールアドレスは管理者にだけ表示します。登録順序は確認できますが、現在使っているアドレスは本人に確認してください。</p><label class="tiny strong muted section" for="auditSearch">EXPLORE IDで検索</label><input id="auditSearch" class="input section" type="search" placeholder="例：00Kanonpapa39"><div id="auditGroups" class="section"></div></section>'
   +'<div id="auditStatus" class="tiny strong muted section" role="status" aria-live="polite"></div><div id="auditCards" class="grid g2 section"></div>'
   +'<section class="card section"><div class="tiny strong muted">閲覧範囲について</div><p class="small muted section">この画面で確認できるのはアカウント登録情報、CA本人の紐付け、Community、獲得メダル、Community申請、メダル交換履歴です。本人専用の月次活動情報やGoogle認証の内部記録は表示しません。</p></section>';
@@ -370,8 +370,35 @@ async function accountAudit(){
     '<div class="grid g2 section">'+compact("獲得メダル",owned.length+"枚")+compact("メダル交換",transactions.length+"件")+compact("Community申請",requests.length+"件")+'</div>'+
     (medalDetail?'<div class="section"><div class="tiny strong">獲得したメダル</div>'+medalDetail+'</div>':'')+
     (requestDetail?'<div class="section"><div class="tiny strong">申請の記録</div>'+requestDetail+'</div>':'')+
-    '<p class="tiny muted section">登録の統合・削除・紐付け変更は、この画面では行えません。</p></article>';
+    '<div class="section" style="border-top:1px solid #e5eed7;padding-top:14px">'+
+    '<button type="button" class="btn line" data-delete-precheck="'+e(p.id)+'">🗑️ この登録の削除前チェック</button>'+
+    '<div id="deletePrecheck-'+e(p.id)+'" class="tiny muted section" role="status" aria-live="polite">削除は実行されません。</div></div></article>';
   }).join("");
+  cards.querySelectorAll("[data-delete-precheck]").forEach(button=>button.onclick=()=>{
+   const target=list.find(p=>p.id===button.dataset.deletePrecheck);
+   if(!target)return;
+   const uid=target.id;
+   const history={
+    membership:memberships.filter(r=>r.user_id===uid).length,
+    caIdentity:identities.filter(r=>r.user_id===uid).length,
+    medals:medals.filter(r=>r.owner_user_id===uid).length,
+    claims:claims.filter(r=>r.user_id===uid).length,
+    exchanges:exchanges.filter(r=>r.user_a_id===uid||r.user_b_id===uid).length
+   };
+   const labels={membership:"Community割当",caIdentity:"本人紐付け",medals:"メダル",claims:"申請",exchanges:"交換履歴"};
+   const label=Object.entries(history).map(([key,n])=>labels[key]+": "+n+"件").join(" / ");
+   const blockers=Object.values(history).some(n=>n>0);
+   const el=document.getElementById("deletePrecheck-"+uid);
+   el.innerHTML='<div class="notice section" style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412">'+
+    '<div class="strong">🔒 削除実行は停止中</div>'+
+    '<p class="small section">対象：'+e(target.email||"未登録")+'（登録 '+e(fmt(target.created_at))+'）</p>'+
+    '<p class="tiny section">'+e(label)+'</p>'+
+    '<p class="small section">'+(blockers
+       ?'この登録に紐付く情報があります。履歴を保護するため削除できません。'
+       :'この画面で0件でも、月次データやログイン情報など確認できない履歴があります。削除はできません。')+'</p>'+
+    '<p class="tiny section">最終削除には、サーバー側の全履歴検査・本人照合・監査記録・明示承認が必要です。この画面からはデータを書き換えません。</p>'+
+    '<button type="button" class="btn line section" disabled aria-disabled="true">最終削除（安全確認完了まで無効）</button></div>';
+  });
  }
  document.getElementById("auditSearch").oninput=renderGroups;
  renderGroups();
