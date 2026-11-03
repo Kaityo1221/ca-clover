@@ -40,7 +40,7 @@ export default function NewCaGoogleLinkPage() {
   }
 
   const refresh = useCallback(async () => {
-    if (!user || !profile) return;
+    if (!user || (!profile && enrollResult !== "ISOLATED_PENDING_READY")) return;
     setState("checking");
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -56,7 +56,7 @@ export default function NewCaGoogleLinkPage() {
       }
       const own = (d.applications as LinkedApplication[]).filter(x => x.sameGoogleAsViewer);
       setApplications(own);
-      if (own.length === 1 && own[0].cloverLinkedByViewer && profile.role === "pending") {
+      if (own.length === 1 && own[0].cloverLinkedByViewer && (profile?.role === "pending" || enrollResult === "ISOLATED_PENDING_READY")) {
         setState("done");
         setMessage("隔離環境でGoogle本人照合が記録されています。本番権限は変更されていません。");
       } else if (own.length === 1 && !own[0].cloverLinked && profile.role === "pending") {
@@ -71,9 +71,9 @@ export default function NewCaGoogleLinkPage() {
       const safeCode = err instanceof Error && /^隔離API診断：[a-z_]+（HTTP [0-9]{3}）$/.test(err.message) ? err.message : "隔離API診断：network_or_parse_error";
       setMessage(safeCode + "。既存のCA Cloverデータは変更していません。");
     }
-  }, [profile, supabase, user]);
+  }, [profile, supabase, user, enrollResult]);
 
-  useEffect(() => { if (!loading && user && profile && !error) { void refresh(); } }, [loading, user, profile, error, refresh]);
+  useEffect(() => { if (!loading && user && ((profile && !error) || enrollResult === "ISOLATED_PENDING_READY")) { void refresh(); } }, [loading, user, profile, error, refresh, enrollResult]);
 
   useEffect(() => {
     if (loading || !user || profile) return;
@@ -95,7 +95,7 @@ export default function NewCaGoogleLinkPage() {
   }, [loading, user, profile, supabase]);
 
   async function bind() {
-    if (busy || state !== "ready" || applications.length !== 1 || profile?.role !== "pending") return;
+    if (busy || state !== "ready" || applications.length !== 1 || (profile?.role !== "pending" && enrollResult !== "ISOLATED_PENDING_READY")) return;
     setBusy(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -119,7 +119,7 @@ export default function NewCaGoogleLinkPage() {
     <p className="font-black text-lime-950">CA CloverのGoogleログインが必要です。</p>
     <Link href="/login?next=%2Fnew-ca%2Flink" className="mt-5 inline-block rounded-full bg-lime-400 px-5 py-3 font-black">Googleログイン</Link>
   </main>;
-  if (error || !profile) return <main className="mx-auto max-w-xl p-8 text-center"><h1 className="text-xl font-black text-lime-950">🍀 Google認証後の登録状態を確認</h1><p className="mt-4 font-semibold leading-7 text-amber-800">Googleログイン後のCA Cloverプロフィールを確認できません。初回利用でpending登録がまだない可能性があります。隔離Neonの接続障害と断定できません。</p><p className="mt-3 text-sm font-bold text-slate-700" role="status">診断結果：{identityDiagnostic ?? "確認中"}</p><p className="mt-4 text-sm text-slate-600">既存のCA権限は変更していません。隔離仮登録はNeonのテストDBだけに保存され、本番のプロフィールやCA権限は作成しません。</p>{identityDiagnostic === "PROFILE_MISSING" ? <button type="button" disabled={enrollBusy || enrollResult === "ISOLATED_PENDING_READY"} onClick={enrollIsolatedPending} className="mt-5 rounded-xl bg-lime-400 px-5 py-3 font-black disabled:opacity-50">{enrollBusy ? "隔離登録中…" : "隔離環境でpending仮登録"}</button> : null}{enrollResult ? <p className="mt-3 text-sm font-bold" role="status">隔離登録結果：{enrollResult}</p> : null}</main>;
+  if ((error || !profile) && enrollResult !== "ISOLATED_PENDING_READY") return <main className="mx-auto max-w-xl p-8 text-center"><h1 className="text-xl font-black text-lime-950">🍀 Google認証後の登録状態を確認</h1><p className="mt-4 font-semibold leading-7 text-amber-800">Googleログイン後のCA Cloverプロフィールを確認できません。初回利用でpending登録がまだない可能性があります。隔離Neonの接続障害と断定できません。</p><p className="mt-3 text-sm font-bold text-slate-700" role="status">診断結果：{identityDiagnostic ?? "確認中"}</p><p className="mt-4 text-sm text-slate-600">既存のCA権限は変更していません。隔離仮登録はNeonのテストDBだけに保存され、本番のプロフィールやCA権限は作成しません。</p>{identityDiagnostic === "PROFILE_MISSING" ? <button type="button" disabled={enrollBusy || enrollResult === "ISOLATED_PENDING_READY"} onClick={enrollIsolatedPending} className="mt-5 rounded-xl bg-lime-400 px-5 py-3 font-black disabled:opacity-50">{enrollBusy ? "隔離登録中…" : "隔離環境でpending仮登録"}</button> : null}{enrollResult ? <p className="mt-3 text-sm font-bold" role="status">隔離登録結果：{enrollResult}</p> : null}</main>;
 
   return <main className="mx-auto max-w-xl px-4 py-9">
     <Link href="/" className="text-sm font-black text-lime-700">← CA Cloverへ</Link>
