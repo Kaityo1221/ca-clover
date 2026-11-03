@@ -55,6 +55,7 @@ export default function NewCaPreflightPanel({ applications }: { applications: Ne
         <p className="font-bold">隔離環境の確認結果</p>
         {Object.entries({
           discordRolePreviouslyVerified: "Discordロールの記録（現在の資格保証ではありません）",
+          discordRoleCurrentlyVerified: "Discordの現在のAPAC CAロール（サーバー照会）",
           adminDiscordIdReviewed: "管理者による固定IDの確認履歴",
           neonGoogleProviderLinked: "Neon Googleアカウント",
           syntheticCaMasterMatched: "隔離用CAマスター",
