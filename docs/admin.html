@@ -293,7 +293,7 @@ async function accounts(){
 async function accountAudit(){
  app.innerHTML=title("home","READ ONLY","🔎 重複アカウント比較","同じEXPLORE IDで登録されたアカウントの保存情報を比較し、削除前の安全確認ができます。実削除はまだ停止中です。")
   +'<section class="card section"><span class="pill slate">閲覧専用</span><p class="small muted section">メールアドレスは管理者にだけ表示します。登録順序は確認できますが、現在使っているアドレスは本人に確認してください。</p><label class="tiny strong muted section" for="auditSearch">EXPLORE IDで検索</label><input id="auditSearch" class="input section" type="search" placeholder="例：00Kanonpapa39"><div id="auditGroups" class="section"></div></section>'
-  +'<div id="auditStatus" class="tiny strong muted section" role="status" aria-live="polite"></div><p class="small strong section">各アカウントの上部に「🗑️ 削除前チェック」ボタンがあります。押しても削除は実行されません。</p><div id="auditCards" class="grid g2 section"></div>'
+  +'<div id="auditStatus" class="tiny strong muted section" role="status" aria-live="polite"></div><p class="small strong section">各登録の右上に小さな「🗑️ 削除前確認」があります。削除は実行されません。</p><div id="auditCards" class="grid g2 section"></div>'
   +'<section class="card section"><div class="tiny strong muted">閲覧範囲について</div><p class="small muted section">この画面で確認できるのはアカウント登録情報、CA本人の紐付け、Community、獲得メダル、Community申請、メダル交換履歴です。本人専用の月次活動情報やGoogle認証の内部記録は表示しません。</p></section>';
  const [profilesRes,communityRes,caRes]=await Promise.all([
   client.from("profiles").select("id,email,niantic_id,role,created_at").order("created_at",{ascending:true}),
@@ -361,12 +361,11 @@ async function accountAudit(){
    const caLink=linked.filter(x=>x.is_primary).map(x=>caNames.get(x.ca_member_id)||"CA情報未取得");
    const medalDetail=owned.slice(0,8).map(x=>'<div class="tiny muted section">・'+e(caNames.get(x.stamp_ca_member_id)||"CA情報未取得")+' ('+e(x.acquisition_source||"取得方法未記録")+')</div>').join("");
    const requestDetail=requests.slice(0,5).map(x=>'<div class="tiny muted section">・'+e(x.community_name_snapshot||"Community名未取得")+' / '+e(x.status||"状態未記録")+'</div>').join("");
-   return '<article class="card"><span class="pill '+(caLink.length?"":"slate")+'">'+e(index===0?"先に作られた登録":"登録 "+(index+1))+'</span>'+
+   return '<article class="card"><div class="row between wraprow" style="gap:8px">'+
+    '<span class="pill '+(caLink.length?"":"slate")+'">'+e(index===0?"先に作られた登録":"登録 "+(index+1))+'</span>'+
+    '<button type="button" class="btn line" style="padding:7px 10px;border-radius:999px;font-size:12px;min-height:36px;white-space:nowrap;border-color:#e2e8f0;color:#475569" data-delete-precheck="'+e(p.id)+'" title="保存情報を確認。削除は実行されません">🗑️ 削除前確認</button></div>'+
     '<h3 class="section" style="overflow-wrap:anywhere">'+e(p.niantic_id||"EXPLORE ID未登録")+'</h3>'+
-    '<div class="section" style="border:1px solid #e5eed7;background:#f7fee7;border-radius:14px;padding:14px">'+
-    '<div class="tiny strong">削除する前に保存情報を確認</div>'+
-    '<button type="button" class="btn line section" data-delete-precheck="'+e(p.id)+'">🗑️ 削除前チェック（閲覧のみ）</button>'+
-    '<div id="deletePrecheck-'+e(p.id)+'" class="tiny muted section" role="status" aria-live="polite">押しても削除は実行されません。</div></div>'+
+    '<div id="deletePrecheck-'+e(p.id)+'" class="tiny muted section" role="status" aria-live="polite" hidden></div>'+
     section("登録メールアドレス",p.email||"未取得")+
     '<div class="grid g2 section">'+compact("CA Clover権限",p.role||"未取得")+compact("登録日時",fmt(p.created_at))+'</div>'+
     section("CA本人の正式な紐付け",caLink.join(" / ")||"なし（本人未照合）")+
@@ -391,6 +390,7 @@ async function accountAudit(){
    const label=Object.entries(history).map(([key,n])=>labels[key]+": "+n+"件").join(" / ");
    const blockers=Object.values(history).some(n=>n>0);
    const el=document.getElementById("deletePrecheck-"+uid);
+   el.hidden=false;
    el.innerHTML='<div class="notice section" style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412">'+
     '<div class="strong">🔒 削除実行は停止中</div>'+
     '<p class="small section">対象：'+e(target.email||"未登録")+'（登録 '+e(fmt(target.created_at))+'）</p>'+
