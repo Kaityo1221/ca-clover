@@ -299,8 +299,18 @@ async function assignments(){
   client.from("community_ca_members").select("community_id,ca_member_id"),
   client.from("user_ca_identities").select("user_id,ca_member_id,community_id,is_primary")
  ]);
+ if([p,c,m,ca,links,ids].some(result=>result.error)){
+  document.getElementById("assnMeta").textContent="CA登録情報を取得できませんでした。再読み込みしてください。";
+  return;
+ }
  const profiles=p.data||[],communities=c.data||[],memberships=m.data||[],caRows=ca.data||[],caLinks=links.data||[],identities=ids.data||[];
  const caMap=new Map(caRows.map(x=>[x.id,x]));
+ const sameExploreCounts=new Map();
+ profiles.forEach(x=>{
+  const k=String(x.niantic_id||"").trim().toLowerCase();
+  if(k)sameExploreCounts.set(k,(sameExploreCounts.get(k)||0)+1);
+ });
+ const hasDuplicateExplore=x=>!!x?.niantic_id&&(sameExploreCounts.get(String(x.niantic_id).trim().toLowerCase())||0)>1;
  const sel=document.getElementById("userSel");
  function updateAccountOptions(){
   const selectedId=sel.value;
@@ -308,10 +318,11 @@ async function assignments(){
     const count=memberships.filter(m=>m.user_id===x.id).length;
     const identity=identities.find(i=>i.user_id===x.id&&i.is_primary);
     const ca=identity?caMap.get(identity.ca_member_id):null;
-    const trainerName=ca?.trainer_name||x.niantic_id||"トレーナー名未登録";
-    const caLabel=ca?(ca.ca_level||"CA")+" CA":x.role;
+    const trainerName=ca?.trainer_name||"トレーナー名未確認";
+    const caLabel=ca?(ca.ca_level||"CA")+" CA":"CA本人の紐付け未確認";
     const explore=x.niantic_id||"未登録";
-    return '<option value="'+e(x.id)+'">'+(count?'✅ ':'')+e(trainerName)+' ('+e(caLabel)+') / EXPLORE ID: '+e(explore)+'</option>';
+    const duplicate=hasDuplicateExplore(x)?" ⚠ 同じEXPLORE IDの登録あり":"";
+    return '<option value="'+e(x.id)+'">'+(count?'✅ ':'')+e(trainerName)+' ('+e(caLabel)+') / EXPLORE ID: '+e(explore)+duplicate+'</option>';
   }).join("");
   if(selectedId&&profiles.some(x=>x.id===selectedId))sel.value=selectedId;
  }
@@ -322,13 +333,13 @@ async function assignments(){
   const currentId=[...assigned][0]||null,currentCommunity=currentId?communities.find(x=>x.id===currentId):null;
   const primary=identities.find(i=>i.user_id===uid&&i.is_primary),primaryCa=primary?caMap.get(primary.ca_member_id):null;
   const selectedAccount=profiles.find(x=>x.id===uid);
-  document.getElementById("assnMeta").innerHTML='<div class="tiny strong muted">トレーナー名</div><div class="strong" style="margin-top:5px;font-size:1.2rem">'+e(primaryCa?(primaryCa.trainer_name+" / "+(primaryCa.ca_level||"CA")):selectedAccount?.niantic_id||"未登録")+'</div><div class="tiny strong muted section">SCOPELY EXPLORE ID（補足）</div><div class="strong" style="margin-top:5px">'+e(selectedAccount?.niantic_id||"未登録")+'</div><div class="tiny strong muted section">現在の認証済みCommunity</div><div class="strong" style="margin-top:5px">'+e(currentCommunity?currentCommunity.name:"未設定")+'</div>'+(assigned.size>1?'<div class="tiny strong" style="margin-top:7px;color:#92400e">⚠ 複数設定を検出しました。次回変更時に1つへ整理されます。</div>':'');
+  document.getElementById("assnMeta").innerHTML='<div class="tiny strong muted">トレーナー名</div><div class="strong" style="margin-top:5px;font-size:1.2rem">'+e(primaryCa?(primaryCa.trainer_name+" / "+(primaryCa.ca_level||"CA")):"未確認（CA本人の紐付けなし）")+'</div><div class="tiny strong muted section">SCOPELY EXPLORE ID（補足）</div><div class="strong" style="margin-top:5px">'+e(selectedAccount?.niantic_id||"未登録")+'</div><div class="tiny strong muted section">現在の認証済みCommunity</div><div class="strong" style="margin-top:5px">'+e(currentCommunity?currentCommunity.name:"未設定")+'</div>'+(primaryCa?'':'<div class="notice section">⚠ CA権限はありますが、CA本人との紐付けを確認できません。EXPLORE IDだけで本人と判断しないでください。</div>')+(hasDuplicateExplore(selectedAccount)?'<div class="notice section">⚠ 同じEXPLORE IDを使うCAアカウントが複数あります。統合・再割当の前に本人確認が必要です。</div>':'')+(assigned.size>1?'<div class="tiny strong" style="margin-top:7px;color:#92400e">⚠ 複数設定を検出しました。次回変更時に1つへ整理されます。</div>':'');
   const filtered=communities.filter(x=>!q||(x.name+" "+(x.prefecture||"")).toLowerCase().includes(q));
   document.getElementById("assnList").innerHTML=filtered.map(x=>{
     const on=assigned.has(x.id);
     const candidates=caLinks.filter(l=>l.community_id===x.id).map(l=>caMap.get(l.ca_member_id)).filter(Boolean);
     const owners=profiles.filter(p=>memberships.some(m=>m.community_id===x.id&&m.user_id===p.id));
-    const ownerLabel=owners.map(p=>{const i=identities.find(i=>i.user_id===p.id&&i.is_primary);const ca=i?caMap.get(i.ca_member_id):null;return ca?.trainer_name||p.niantic_id||"認証済みCA"}).join(" / ");
+    const ownerLabel=owners.map(p=>{const i=identities.find(i=>i.user_id===p.id&&i.is_primary);const ca=i?caMap.get(i.ca_member_id):null;return ca?.trainer_name||(p.niantic_id?"要照合（EXPLORE ID: "+p.niantic_id+"）":"CA本人未確認")}).join(" / ");
     const style=on?"border-color:#84cc16;background:#f7fee7":owners.length?"border-color:#bae6fd;background:#f0f9ff":"";
     const badge=on?'<span class="pill">✅ 現在のCommunity</span>':owners.length?'<span class="pill blue">✅ 他CAが認証済み</span>':'<span class="pill slate">割り当て先</span>';
     const choices=candidates.length?'<div class="section"><div class="tiny strong muted">CA本人を選択</div><div class="actions section">'+candidates.map(ca=>'<button class="btn '+(ca.ca_level==="2nd"?"line":"")+'" data-assign-ca="'+e(ca.id)+'" data-cid="'+e(x.id)+'">'+e(ca.trainer_name)+' · '+e(ca.ca_level||"CA")+'</button>').join("")+'</div></div>':'<div class="notice section">このCommunityにCAマスターの紐付けがありません。CA本人Identityは作成できません。</div>';
