@@ -1,0 +1,36 @@
+name: New CA isolated demo Pages
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: ca-clover-new-ca-demo-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy-demo:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout isolated demo branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/new-ca-approval-admin-preview-20261103
+          persist-credentials: false
+      - name: Validate isolated static demo
+        shell: bash
+        run: |
+          test -f docs/new-ca-test/index.html
+          ! grep -Eiq 'supabase\.co|neon\.tech|api/new-ca|fetch\(|XMLHttpRequest|localStorage|sessionStorage' docs/new-ca-test/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/new-ca-test
+      - id: deployment
+        uses: actions/deploy-pages@v4
