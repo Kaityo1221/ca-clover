@@ -52,7 +52,7 @@ export default function Page(){
     setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider:"google",
-      options:{redirectTo:window.location.origin+nextPath}
+      options:{redirectTo:window.location.origin+nextPath, ...(isOnboardingPreview ? { queryParams: { prompt: "select_account" } } : {})}
     });
     if (error) setError(error.message);
   }
