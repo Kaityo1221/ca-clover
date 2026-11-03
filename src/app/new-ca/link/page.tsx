@@ -21,6 +21,23 @@ export default function NewCaGoogleLinkPage() {
   const [message, setMessage] = useState("Googleアカウントの照合を確認しています…");
   const [busy, setBusy] = useState(false);
   const [identityDiagnostic, setIdentityDiagnostic] = useState<string | null>(null);
+  const [enrollBusy, setEnrollBusy] = useState(false);
+  const [enrollResult, setEnrollResult] = useState<string | null>(null);
+
+  async function enrollIsolatedPending() {
+    if (enrollBusy || identityDiagnostic !== "PROFILE_MISSING") return;
+    setEnrollBusy(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw Error("SESSION_REQUIRED");
+      const response = await fetch("/api/new-ca/isolated-enroll", {
+        method: "POST", headers: { Authorization: "Bearer " + session.access_token },
+      });
+      const result = await response.json();
+      setEnrollResult(typeof result.code === "string" ? result.code : "UNKNOWN");
+    } catch { setEnrollResult("ISOLATED_ENROLLMENT_UNAVAILABLE"); }
+    finally { setEnrollBusy(false); }
+  }
 
   const refresh = useCallback(async () => {
     if (!user || !profile) return;
@@ -102,7 +119,7 @@ export default function NewCaGoogleLinkPage() {
     <p className="font-black text-lime-950">CA CloverのGoogleログインが必要です。</p>
     <Link href="/login?next=%2Fnew-ca%2Flink" className="mt-5 inline-block rounded-full bg-lime-400 px-5 py-3 font-black">Googleログイン</Link>
   </main>;
-  if (error || !profile) return <main className="mx-auto max-w-xl p-8 text-center"><h1 className="text-xl font-black text-lime-950">🍀 Google認証後の登録状態を確認</h1><p className="mt-4 font-semibold leading-7 text-amber-800">Googleログイン後のCA Cloverプロフィールを確認できません。初回利用でpending登録がまだない可能性があります。隔離Neonの接続障害と断定できません。</p><p className="mt-3 text-sm font-bold text-slate-700" role="status">診断結果：{identityDiagnostic ?? "確認中"}</p><p className="mt-4 text-sm text-slate-600">既存のCA権限は変更していません。管理者が新規ユーザー登録経路を確認するまで、再ログインや本人紐付けを繰り返す必要はありません。</p></main>;
+  if (error || !profile) return <main className="mx-auto max-w-xl p-8 text-center"><h1 className="text-xl font-black text-lime-950">🍀 Google認証後の登録状態を確認</h1><p className="mt-4 font-semibold leading-7 text-amber-800">Googleログイン後のCA Cloverプロフィールを確認できません。初回利用でpending登録がまだない可能性があります。隔離Neonの接続障害と断定できません。</p><p className="mt-3 text-sm font-bold text-slate-700" role="status">診断結果：{identityDiagnostic ?? "確認中"}</p><p className="mt-4 text-sm text-slate-600">既存のCA権限は変更していません。隔離仮登録はNeonのテストDBだけに保存され、本番のプロフィールやCA権限は作成しません。</p>{identityDiagnostic === "PROFILE_MISSING" ? <button type="button" disabled={enrollBusy || enrollResult === "ISOLATED_PENDING_READY"} onClick={enrollIsolatedPending} className="mt-5 rounded-xl bg-lime-400 px-5 py-3 font-black disabled:opacity-50">{enrollBusy ? "隔離登録中…" : "隔離環境でpending仮登録"}</button> : null}{enrollResult ? <p className="mt-3 text-sm font-bold" role="status">隔離登録結果：{enrollResult}</p> : null}</main>;
 
   return <main className="mx-auto max-w-xl px-4 py-9">
     <Link href="/" className="text-sm font-black text-lime-700">← CA Cloverへ</Link>
