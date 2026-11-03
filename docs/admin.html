@@ -117,6 +117,7 @@ async function dashboard(){
   ["ca","🏕️","CA一覧",(caCount.count||0)+" CA / 1st・2nd切替",0],
   ["campfire","📚","過去履歴接続","過去履歴補完用tokenを管理",0],
   ["sync","🔄","データ同期","CAマスター・公開Meetup・過去履歴",0],
+  ["meetup-backfill","🧩","Meetup履歴補完","取得漏れをURLから確認",0],
   ["assignments","🔗","Community権限調整","通常は自動割当 / 手動補正用",unassignedCount],
   ["preview","👀","一般ユーザーページ","一般ユーザーUIを確認",0],
   ["accounts","👥","CAアカウント","pending / CA / ADMINを管理",0],
@@ -405,6 +406,113 @@ async function preview(){
  sel.onchange=draw;document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{mode=b.dataset.mode;document.querySelectorAll("[data-mode]").forEach(x=>x.classList.toggle("on",x.dataset.mode===mode));draw()});document.querySelectorAll("[data-width]").forEach(b=>b.onclick=()=>{width=b.dataset.width;document.getElementById("previewDevice").className="device "+width});await draw();
 }
 
+
+async function meetupBackfill(){
+ app.innerHTML=title("home","PREVIEW ONLY","🧩 Meetup履歴補完","取得漏れしたMeetupを共有URLから照合します。登録にはADMINの確認とサーバー側の許可が必要です。")+
+ '<section class="card section"><label class="tiny strong muted" for="backfillUrl">Meetup共有URL</label>'+
+ '<input id="backfillUrl" class="input section" type="url" maxlength="2048" autocomplete="off" placeholder="https://cmpf.re/… または https://campfire.scopely.com/discover/meetup/…">'+
+ '<p class="small muted strong">短縮URLにも対応しています。結果はCampfireから取得できた場合のみ表示します。画像だけで人数を登録することはありません。</p>'+
+ '<button class="btn section" id="backfillPreviewBtn">URLから照合する</button>'+
+ '</section><div id="backfillResult" class="section"><div class="notice">🔒 保存機能は未公開です。確認専用の試作です。</div></div>';
+ const input=document.getElementById("backfillUrl");
+ const button=document.getElementById("backfillPreviewBtn");
+ const output=document.getElementById("backfillResult");
+ button.onclick=async()=>{
+  const url=input.value.trim();
+  if(!url){output.innerHTML=msg("Meetupの共有URLを入力してください。","err");return}
+  try{
+   const parsed=new URL(url);
+   if(parsed.protocol!=="https:"||!["cmpf.re","campfire.onelink.me","campfire.scopely.com"].includes(parsed.hostname.toLowerCase()))throw new Error("CampfireのHTTPS共有URLを入力してください");
+  }catch(error){
+   output.innerHTML=msg(error instanceof Error?error.message:"URLの形式が正しくありません","err");return;
+  }
+  button.disabled=true;
+  output.innerHTML=msg("Meetup IDとCommunity IDを確認しています…");
+  try{
+   const result=await client.functions.invoke("admin-meetup-backfill",{body:{action:"preview",url}});
+   if(result.error){
+    let reason="URL照合APIはまだ本番未公開、または取得処理に失敗しました。";
+    try{
+     const response=result.error.context;
+     if(response instanceof Response){
+      const details=await response.json();
+      if(typeof details?.error==="string")reason=details.error;
+     }
+    }catch{}
+    output.innerHTML=msg(reason,"err");
+    return;
+   }
+   const data=result.data;
+   if(data?.ok!==true||data?.status!=="preview"||typeof data?.readOnly!=="boolean"||typeof data?.canSave!=="boolean"){
+    output.innerHTML=msg("安全な照合結果を確認できませんでした。保存しません。","err");return;
+   }
+   const event=data.event||{},community=data.community||{};
+   const count=value=>Number.isSafeInteger(value)&&value>=0?value.toLocaleString("ja-JP")+"人":"未取得";
+   const status=data.existing==="missing"?"未登録":data.existing==="already_present"?"登録済み":"確認できません";
+   if(!["missing","already_present"].includes(data.existing)){output.innerHTML=msg("登録状況を一意に確認できませんでした。","err");return}
+   const idOK=v=>typeof v==="string"&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+   const previewAge=Date.now()-Date.parse(data.checkedAt||"");
+   const canCommit=data.canSave===true&&data.readOnly===false&&data.registrationContract==="atomic-audit-v1"&&
+      data.existing==="missing"&&event.countsComplete===true&&Number.isSafeInteger(event.rsvpCount)&&
+      Number.isSafeInteger(event.checkinCount)&&event.rsvpCount>=0&&event.checkinCount>=0&&
+      idOK(event.id)&&idOK(event.clubId)&&idOK(community.id)&&
+      typeof event.title==="string"&&event.title.trim().length>0&&
+      Number.isFinite(previewAge)&&previewAge>=0&&previewAge<=600000&&
+      Number.isFinite(Date.parse(event.startsAt))&&Number.isFinite(Date.parse(event.endsAt))&&
+      Number.isFinite(Date.parse(event.createdAt));
+   output.innerHTML='<section class="card">'+
+    '<div class="row between wraprow"><h2>'+e(event.title||"名称未取得")+'</h2><span class="pill '+(data.existing==="missing"?"amber":"")+'">'+e(status)+'</span></div>'+
+    '<p class="small strong" style="color:#4d7c0f">'+e(community.name||"Community未取得")+'</p>'+
+    '<div class="grid g2 section">'+
+    '<div><div class="tiny strong muted">開始日時</div><div class="strong">'+e(fmt(event.startsAt))+'</div></div>'+
+    '<div><div class="tiny strong muted">終了日時</div><div class="strong">'+e(fmt(event.endsAt))+'</div></div>'+
+    '<div><div class="tiny strong muted">参加表明</div><div class="strong">'+e(count(event.rsvpCount))+'</div></div>'+
+    '<div><div class="tiny strong muted">チェックイン</div><div class="strong">'+e(count(event.checkinCount))+'</div></div>'+
+    '</div><div class="notice section">'+(canCommit?'原本確認済み。ADMINが内容確認後に登録できます。':'🔒 保存処理は未公開です。データの追加・更新は行いません。')+'</div>'+
+    '<button id="backfillCommitBtn" class="btn section" '+(canCommit?'':'disabled aria-disabled="true"')+'>確認して登録</button></section>';
+   const commitButton=document.getElementById("backfillCommitBtn");
+   if(canCommit && commitButton){
+     // The request ID must remain stable if the network response is lost.
+     const requestId=crypto.randomUUID();
+     let applying=false;
+     commitButton.onclick=async()=>{
+       if(applying)return;
+       if(input.value.trim()!==url){
+         output.innerHTML=msg("URLが変更されました。もう一度照合してください。","err");return;
+       }
+       if(!confirm("Community・開催日時・RSVP・チェックイン人数を確認しました。登録しますか？"))return;
+       applying=true;
+       commitButton.disabled=true;
+       button.disabled=true;
+       input.disabled=true;
+       try{
+         const applied=await client.functions.invoke("admin-meetup-backfill",{
+           body:{action:"apply",requestId,url:event.url,expected:{
+             id:event.id,communityId:community.id,clubId:event.clubId,title:event.title,startsAt:event.startsAt,endsAt:event.endsAt,createdAt:event.createdAt,checkedAt:data.checkedAt,
+             rsvpCount:event.rsvpCount,checkinCount:event.checkinCount
+           }}
+         });
+         if(applied.error)throw applied.error;
+         if(applied.data?.ok!==true||!["created","already_present"].includes(applied.data?.outcome)
+            ||applied.data.audited!==true||applied.data.registrationContract!=="atomic-audit-v1"
+            ||applied.data.eventId!==event.id||applied.data.communityId!==community.id
+            ||!idOK(applied.data.meetupId))throw new Error("監査付き登録の完了を確認できません");
+         output.innerHTML=msg(applied.data.outcome==="created"?
+            "Meetupを登録しました。操作履歴も保存されました。":
+            "同じMeetupは既に登録済みでした。重複登録はしていません。");
+       }catch{
+         output.innerHTML=msg("登録結果を確認できません。同じ要求IDで再試行するか、URLを再照合してください。","err")+
+          '<button class="btn section" id="backfillRetryBtn">同じ内容で再試行</button>';
+         document.getElementById("backfillRetryBtn").onclick=commitButton.onclick;
+       }finally{applying=false;button.disabled=false;input.disabled=false}
+     };
+   }
+  }catch{
+   output.innerHTML=msg("照合処理に失敗しました。データは変更していません。","err");
+  }finally{button.disabled=false}
+ };
+}
+
 async function render(){
  if(!(await guard()))return;
  const r=route();
@@ -416,6 +524,7 @@ async function render(){
  if(r==="assignments")return assignments();
  if(r==="campfire")return campfire();
  if(r==="sync")return syncPage();
+ if(r==="meetup-backfill")return meetupBackfill();
  if(r==="sync-runs")return syncRuns();
  if(r==="coverage")return coverage();
  if(r==="watch")return watch();
