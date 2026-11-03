@@ -8,7 +8,7 @@ export default function NewCaPreflightPanel({ applications }: { applications: Ne
   const [requestId, setRequestId] = useState("");
   const [confirmedDiscordId, setConfirmedDiscordId] = useState("");
   const [working, setWorking] = useState(false);
-  const [report, setReport] = useState<{ code: string; requestStatus?: string; missing?: string[]; productionActivated?: boolean } | null>(null);
+  const [report, setReport] = useState<{ code: string; requestStatus?: string; missing?: string[]; checks?: Record<string, boolean>; productionActivated?: boolean } | null>(null);
   const selected = applications.find(a => a.id === requestId);
   async function inspect() {
     setReport(null);
@@ -28,6 +28,7 @@ export default function NewCaPreflightPanel({ applications }: { applications: Ne
       setReport({ code: result.code || "PREFLIGHT_UNAVAILABLE",
         requestStatus: result.requestStatus,
         missing: Array.isArray(result.missing) ? result.missing : [],
+        checks: result.checks && typeof result.checks === "object" ? result.checks : undefined,
         productionActivated: result.productionActivated });
     } catch {
       setReport({ code: "PREFLIGHT_UNAVAILABLE" });
@@ -50,7 +51,18 @@ export default function NewCaPreflightPanel({ applications }: { applications: Ne
     {report && <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm" role="status">
       <div className="font-black text-slate-900">結果：{report.code}</div>
       {report.requestStatus && <p className="mt-1">隔離申請状態：{report.requestStatus}</p>}
-      {report.missing && report.missing.length > 0 && <p className="mt-2 break-words">正式承認に必要な未検証条件：{report.missing.join(" / ")}</p>}
+      {report.checks && <div className="mt-3 space-y-1">
+        <p className="font-bold">隔離環境の確認結果</p>
+        {Object.entries({
+          discordRolePreviouslyVerified: "Discordロールの記録（現在の資格保証ではありません）",
+          adminDiscordIdReviewed: "管理者による固定IDの確認履歴",
+          neonGoogleProviderLinked: "Neon Googleアカウント",
+          syntheticCaMasterMatched: "隔離用CAマスター",
+          cloverUserIdentityLinked: "CA Clover本人紐付け",
+          isolatedApprovalFinalized: "隔離承認の確定記録",
+        }).map(([key,label]) => <p key={key}>{report.checks?.[key] ? "✅" : "⬜"} {label}</p>)}
+      </div>}
+      {report.missing && report.missing.length > 0 && <p className="mt-3 break-words">残りの確認項目：{report.missing.join(" / ")}</p>}
       <p className="mt-2 font-bold text-amber-800">本番CA権限は付与されていません。</p>
     </div>}
   </section>;
