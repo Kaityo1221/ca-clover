@@ -5,7 +5,7 @@ import { isIsolatedBridgeReady, BRIDGE_GUARD_MARKER } from "@/lib/new-ca-bridge-
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const URL = "https://wgiittrvgtiosogyhfcl.supabase.co";
+const SUPABASE_ORIGIN = "https://wgiittrvgtiosogyhfcl.supabase.co";
 const KEY = "sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
 const reply = (status, value) => NextResponse.json(value, {
   status, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" },
@@ -37,8 +37,8 @@ export async function POST(request) {
       !/^[0-9a-f-]{36}$/i.test(body.requestId) || !/^\d{15,22}$/.test(body.confirmedDiscordId))
     return reply(400, { code: "INVALID_REQUEST", productionActivated: false });
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || URL;
-  if (url !== URL) return reply(503, { code: "AUTH_CONFIG_MISMATCH", productionActivated: false });
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || SUPABASE_ORIGIN;
+  if (url !== SUPABASE_ORIGIN) return reply(503, { code: "AUTH_CONFIG_MISMATCH", productionActivated: false });
   const supabase = createClient(url, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || KEY, {
     global: { headers: { Authorization: bearer } },
     auth: { persistSession: false, autoRefreshToken: false },
