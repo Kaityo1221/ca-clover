@@ -41,7 +41,7 @@ export function parseMasterRows(rows) {
     const line=rows[n];const name=String(line[positions["pgo trainer name"]]||"").trim();
     if(!name)continue;
     const key=normalizeKey(name);
-    if(!/^[\\p{L}\\p{N}_.-]{2,80}$/u.test(name)){issues.push("INVALID_NAME_ROW");continue;}
+    if(!/^[\p{L}\p{N}_.-]{2,80}$/u.test(name)){issues.push("INVALID_NAME_ROW");continue;}
     if(seen.has(key)){issues.push("DUPLICATE_NAME");continue;}seen.add(key);
     const flag=String(line[positions["status"]]||"").trim();
     const inactive=/inactive|retired|suspended|休止|停止|卒業|退任|終了/i.test(flag);
@@ -50,7 +50,7 @@ export function parseMasterRows(rows) {
     const community=String(line[positions["campfire group name"]]||"").trim();
     const campfireUrl=String(line[positions["campfire url"]]||"").trim();
     const city=String(line[positions["primary city"]]||"").trim();
-    if(!community||!city||!/^https:\\/\\/(?:campfire\\.onelink\\.me|campfire\\.scopely\\.com)\\//i.test(campfireUrl))
+    if(!community||!city||!/^https:\/\/(?:campfire\.onelink\.me|campfire\.scopely\.com)\//i.test(campfireUrl))
       issues.push("INCOMPLETE_ROW");
     result.push({key,name,level,status:inactive?"inactive":"active",statusRaw:flag,community,city,discordName:String(line[positions["discord name"]]||"").trim(),joinDate:String(line[positions["ca join date"]]||"").trim()});
   }
