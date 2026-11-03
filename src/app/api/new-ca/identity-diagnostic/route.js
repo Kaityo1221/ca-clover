@@ -16,7 +16,7 @@ export async function GET(request) {
   if (!isIsolatedBridgeReady(process.env))
     return respond(503, "PREVIEW_ONLY");
   const bearer = request.headers.get("authorization") || "";
-  if (!/^Bearer [\\w.-]{16,8192}$/.test(bearer))
+  if (!/^Bearer [\w.-]{16,8192}$/.test(bearer))
     return respond(401, "SESSION_REQUIRED");
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || URL_PIN;
   if (url !== URL_PIN) return respond(503, "AUTH_CONFIG_MISMATCH");
