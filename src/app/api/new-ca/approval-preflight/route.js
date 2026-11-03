@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Client } from "pg";
 import { isIsolatedBridgeReady, BRIDGE_GUARD_MARKER } from "@/lib/new-ca-bridge-policy";
+import { checkDiscordCurrentRole } from "@/lib/new-ca-discord-live";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -112,14 +113,16 @@ export async function POST(request) {
       cloverUserIdentityLinked: row.linked === true,
       isolatedApprovalFinalized: row.finalized === true,
     };
+    const liveDiscordRole = await checkDiscordCurrentRole(row.discord_user_id, process.env.NEW_CA_DISCORD_BOT_TOKEN);
+    checks.discordRoleCurrentlyVerified = liveDiscordRole;
     const missing = [
+      ...(!liveDiscordRole ? ["LIVE_DISCORD_ROLE_RECHECK"] : []),
       ...(!checks.discordRolePreviouslyVerified ? ["RECORDED_DISCORD_ROLE_STALE_OR_MISSING"] : []),
       ...(!checks.adminDiscordIdReviewed ? ["ADMIN_DISCORD_REVIEW_MISSING"] : []),
       ...(!checks.neonGoogleProviderLinked ? ["NEON_GOOGLE_PROVIDER_MISSING"] : []),
       ...(!checks.syntheticCaMasterMatched ? ["SYNTHETIC_MASTER_MISMATCH"] : []),
       ...(!checks.cloverUserIdentityLinked ? ["CLOVER_NEW_USER_LINK_REQUIRED"] : []),
       ...(!checks.isolatedApprovalFinalized ? ["ISOLATED_APPROVAL_NOT_FINALIZED"] : []),
-      "LIVE_DISCORD_ROLE_RECHECK",
       "TRUSTED_CAMPFIRE_RESOLUTION",
       "NEW_PENDING_USER_GOOGLE_LINK",
       "PRODUCTION_SCHEMA_RPC_E2E",
