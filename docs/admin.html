@@ -290,7 +290,13 @@ async function accounts(){
 }
 
 async function assignments(){
- app.innerHTML=title("home","ASSIGNMENTS","🛠️ CA割り当て","CA本人のトレーナー名を中心に管理します。SCOPELY EXPLORE IDは補足情報として表示します。")+'<section class="card section"><label class="tiny strong muted">対象CAアカウント</label><select id="userSel" class="input section"></select><div id="assnMeta" class="small muted strong section"></div></section><section class="card section"><div class="strong">🍀 新規CA承認（テスト）</div><p class="small muted section">Discord・Googleで申請した新規CAの承認画面を開きます。現在は隔離テスト版で、本番CA権限は変更しません。</p><a class="btn line section" href="https://ca-clover-discord-oauth.vercel.app/admin-preview.html" target="_blank" rel="noopener noreferrer">新規CA承認画面を開く ↗</a></section><div class="tiny strong muted section">変更先Communityを検索</div><input id="assnSearch" class="input section" placeholder="Community名・都道府県で検索"><div id="assnList" class="grid g3 section"></div>';
+ app.innerHTML=title("home","ASSIGNMENTS","🛠️ CA割り当て・本人確認","CA名簿とGoogleログイン済みアカウントを別々に検索・確認できます。")
+ +'<section class="card section"><h2>📊 CA登録状況</h2><div id="caStats" class="grid g3 section"></div><p class="small muted section">「未連携」はCA名簿とCloverのアカウントが結び付いていない状態です。承認待ちとは限りません。</p></section>'
+ +'<section class="card section"><h2>🔎 CA名簿から探す</h2><p class="small muted section">未連携のCAを最初に表示。名簿の名前やCommunity名で探せます。</p><input id="caSearch" type="search" class="input section" placeholder="トレーナー名・Community・都道府県"><div id="caTabs" class="actions section"></div><div id="caCount" class="small muted section" aria-live="polite"></div><div id="caList" class="section"></div><button type="button" id="caMore" class="btn line section">さらに12人を表示</button></section>'
+ +'<section class="card section"><h2>👤 CA Cloverアカウントから選ぶ</h2><p class="small muted section">未割当・本人未照合のユーザーを先に表示。対象者をタップして選択します。</p><input id="accountSearch" type="search" class="input section" placeholder="トレーナー名・EXPLORE ID・Community"><div id="accountTabs" class="actions section"></div><div id="accountCount" class="small muted section" aria-live="polite"></div><div id="accountList" class="section"></div><button type="button" id="accountMore" class="btn line section">さらに12人を表示</button></section>'
+ +'<section id="selectedAccountPanel" class="card section"><h2>✅ 選択中のCA</h2><select id="userSel" hidden aria-label="選択中のCAアカウント"></select><div id="assnMeta" class="small muted strong section">上の一覧から選択してください。</div></section>'
+ +'<section class="card section"><div class="strong">🍀 新規CA承認（テスト）</div><p class="small muted section">Discord・Googleで申請した新規CAの承認画面を開きます。隔離テスト版で、本番CA権限は変更しません。</p><a class="btn line section" href="https://ca-clover-discord-oauth.vercel.app/admin-preview.html" target="_blank" rel="noopener noreferrer">新規CA承認画面を開く ↗</a></section>'
+ +'<section id="assnCommunityPanel" class="card section" hidden><h2>🗺️ 変更先Communityを検索</h2><input id="assnSearch" type="search" class="input section" placeholder="Community名・都道府県で検索"><div id="assnCommunityCount" class="small muted section" aria-live="polite"></div><div id="assnList" class="grid g3 section"></div><button type="button" id="assnMore" class="btn line section">さらに12件表示</button></section>';
  const [p,c,m,ca,links,ids]=await Promise.all([
   client.from("profiles").select("id,niantic_id,role").neq("role","pending").order("niantic_id"),
   client.from("communities").select("id,name,prefecture").order("prefecture").order("name"),
@@ -305,6 +311,18 @@ async function assignments(){
  }
  const profiles=p.data||[],communities=c.data||[],memberships=m.data||[],caRows=ca.data||[],caLinks=links.data||[],identities=ids.data||[];
  const caMap=new Map(caRows.map(x=>[x.id,x]));
+ const communityMap=new Map(communities.map(x=>[x.id,x]));
+ const caUsers=new Map();
+ identities.forEach(i=>{const list=caUsers.get(i.ca_member_id)||[];list.push(i.user_id);caUsers.set(i.ca_member_id,list);});
+ const masterUnlinked=c=>!(caUsers.get(c.id)||[]).length;
+ const linkedCount=caRows.filter(c=>!masterUnlinked(c)).length;
+ const unlinkedCount=caRows.length-linkedCount;
+ const activeUnlinked=caRows.filter(c=>c.status==="active"&&masterUnlinked(c)).length;
+ const primaryOf=uid=>identities.find(i=>i.user_id===uid&&i.is_primary);
+ const verifiedCaOf=uid=>{const id=primaryOf(uid);return id?caMap.get(id.ca_member_id):null;};
+ const communitiesOf=uid=>memberships.filter(m=>m.user_id===uid).map(m=>communityMap.get(m.community_id)?.name).filter(Boolean);
+ const userUnassigned=x=>!primaryOf(x.id)||!memberships.some(m=>m.user_id===x.id);
+ const unassignedCount=profiles.filter(userUnassigned).length;
  const sameExploreCounts=new Map();
  profiles.forEach(x=>{
   const k=String(x.niantic_id||"").trim().toLowerCase();
@@ -314,7 +332,7 @@ async function assignments(){
  const sel=document.getElementById("userSel");
  function updateAccountOptions(){
   const selectedId=sel.value;
-  sel.innerHTML=profiles.map(x=>{
+  sel.innerHTML='<option value="">アカウントを選択</option>'+profiles.map(x=>{
     const count=memberships.filter(m=>m.user_id===x.id).length;
     const identity=identities.find(i=>i.user_id===x.id&&i.is_primary);
     const ca=identity?caMap.get(identity.ca_member_id):null;
@@ -324,18 +342,89 @@ async function assignments(){
     const duplicate=hasDuplicateExplore(x)?" ⚠ 同じEXPLORE IDの登録あり":"";
     return '<option value="'+e(x.id)+'">'+(count?'✅ ':'')+e(trainerName)+' ('+e(caLabel)+') / EXPLORE ID: '+e(explore)+duplicate+'</option>';
   }).join("");
-  if(selectedId&&profiles.some(x=>x.id===selectedId))sel.value=selectedId;
+  sel.value=selectedId&&profiles.some(x=>x.id===selectedId)?selectedId:"";
  }
  updateAccountOptions();
+
+ // All list actions are read-only until an authenticated account is explicitly selected.
+ let caFilter="unlinked",caShown=12,accountFilter=unassignedCount?"unassigned":"all",accountShown=12,communityShown=12;
+ const duplicatedCount=profiles.filter(hasDuplicateExplore).length;
+ document.getElementById("caStats").innerHTML=[
+  ["CA名簿",caRows.length+"人","有効 "+caRows.filter(x=>x.status==="active").length+"人"],
+  ["ユーザー連携済み",linkedCount+"人","名簿と紐付け済み"],
+  ["ユーザー未連携",unlinkedCount+"人","有効 "+activeUnlinked+"人"]
+ ].map(x=>'<div class="card" style="padding:12px"><div class="tiny muted strong">'+x[0]+'</div><div style="font-size:25px;font-weight:900;margin-top:5px">'+x[1]+'</div><div class="tiny muted">'+x[2]+'</div></div>').join("");
+ function chooseAccount(id){
+  if(!profiles.some(x=>x.id===id))return;
+  sel.value=id;
+  renderAccounts();
+  draw();
+  document.getElementById("selectedAccountPanel").scrollIntoView({behavior:"smooth",block:"start"});
+ }
+ function renderCaList(){
+  const q=document.getElementById("caSearch").value.trim().toLowerCase();
+  const tabs=document.getElementById("caTabs");
+  tabs.innerHTML=[["unlinked","未連携 "+unlinkedCount],["linked","連携済 "+linkedCount],["all","全員 "+caRows.length]].map(x=>'<button type="button" class="btn '+(caFilter===x[0]?"":"line")+'" data-ca-filter="'+x[0]+'" aria-pressed="'+(caFilter===x[0])+'">'+x[1]+'</button>').join("");
+  tabs.querySelectorAll("[data-ca-filter]").forEach(b=>b.onclick=()=>{caFilter=b.dataset.caFilter;caShown=12;renderCaList();});
+  const rows=caRows.filter(c=>{
+   if(caFilter==="unlinked"&&!masterUnlinked(c))return false;
+   if(caFilter==="linked"&&masterUnlinked(c))return false;
+   const linkedCommunities=caLinks.filter(l=>l.ca_member_id===c.id).map(l=>communityMap.get(l.community_id)?.name||"").join(" ");
+   return !q||(c.trainer_name+" "+(c.prefecture||"")+" "+linkedCommunities).toLowerCase().includes(q);
+  }).sort((a,b)=>Number(b.status==="active")-Number(a.status==="active")||a.trainer_name.localeCompare(b.trainer_name,"ja"));
+  const visible=rows.slice(0,caShown);
+  document.getElementById("caCount").textContent=rows.length+"人中 "+visible.length+"人を表示";
+  document.getElementById("caList").innerHTML=visible.length?visible.map(c=>{
+   const linksForCa=caLinks.filter(l=>l.ca_member_id===c.id).map(l=>communityMap.get(l.community_id)?.name).filter(Boolean);
+   const associated=(caUsers.get(c.id)||[]).filter(id=>profiles.some(p=>p.id===id));
+   const status=masterUnlinked(c)?"未連携":"連携済み";
+   const label=(c.ca_level||"CA")+" / "+(c.prefecture||"都道府県未登録")+" / "+(c.status==="active"?"有効":"無効");
+   return '<div class="claim section" style="padding:14px"><div class="row between wraprow"><div><div class="strong">'+e(c.trainer_name)+'</div><div class="tiny muted section">'+e(label)+'</div></div><span class="pill">'+status+'</span></div>'+
+    '<div class="tiny muted section">Community：'+e(linksForCa.join(" / ")||"未登録")+'</div>'+
+    (associated.length===1?'<button class="btn line section" type="button" data-select-account="'+e(associated[0])+'">連携アカウントを選ぶ</button>':associated.length>1?'<div class="tiny strong section">⚠ 複数アカウントが紐付けられています。本人を確認してください。</div>':'<div class="tiny muted section">Cloverアカウント未連携。氏名の一致だけでは割り当てません。</div>')+'</div>';
+  }).join(""):'<p class="small muted section">一致するCAはありません。</p>';
+  document.getElementById("caMore").hidden=caShown>=rows.length;
+  document.querySelectorAll("#caList [data-select-account]").forEach(b=>b.onclick=()=>chooseAccount(b.dataset.selectAccount));
+ }
+ function renderAccounts(){
+  const q=document.getElementById("accountSearch").value.trim().toLowerCase();
+  const tabs=document.getElementById("accountTabs");
+  tabs.innerHTML=[["unassigned","未割当・未照合 "+unassignedCount],["duplicates","ID重複 "+duplicatedCount],["all","全員 "+profiles.length]].map(x=>'<button type="button" class="btn '+(accountFilter===x[0]?"":"line")+'" data-account-filter="'+x[0]+'" aria-pressed="'+(accountFilter===x[0])+'">'+x[1]+'</button>').join("");
+  tabs.querySelectorAll("[data-account-filter]").forEach(b=>b.onclick=()=>{accountFilter=b.dataset.accountFilter;accountShown=12;renderAccounts();});
+  const rows=profiles.filter(x=>{
+   if(accountFilter==="unassigned"&&!userUnassigned(x))return false;
+   if(accountFilter==="duplicates"&&!hasDuplicateExplore(x))return false;
+   const ca=verifiedCaOf(x.id);
+   return !q||((ca?.trainer_name||"")+" "+(x.niantic_id||"")+" "+communitiesOf(x.id).join(" ")).toLowerCase().includes(q);
+  }).sort((a,b)=>Number(userUnassigned(b))-Number(userUnassigned(a))||(verifiedCaOf(a.id)?.trainer_name||a.niantic_id||"").localeCompare(verifiedCaOf(b.id)?.trainer_name||b.niantic_id||"","ja"));
+  const visible=rows.slice(0,accountShown);
+  document.getElementById("accountCount").textContent=rows.length+"人中 "+visible.length+"人を表示";
+  document.getElementById("accountList").innerHTML=visible.length?visible.map(x=>{
+   const ca=verifiedCaOf(x.id),name=ca?.trainer_name||"トレーナー名未確認",role=ca?(ca.ca_level||"CA")+" CA":x.role;
+   const flag=userUnassigned(x)?"本人未照合":hasDuplicateExplore(x)?"ID重複注意":"割当済み";
+   return '<button type="button" data-select-account="'+e(x.id)+'" class="card section" style="display:block;width:100%;padding:15px;text-align:left;border-color:'+(sel.value===x.id?"#65a30d":"#e0e8dd")+'"><div class="row between wraprow"><div class="strong">'+e(name)+'</div><span class="pill">'+flag+'</span></div><div class="tiny muted section">'+e(role+" / EXPLORE ID: "+(x.niantic_id||"未登録"))+'</div><div class="small muted section">Community：'+e(communitiesOf(x.id).join(" / ")||"未割当")+'</div>'+(hasDuplicateExplore(x)?'<div class="tiny strong section" style="color:#92400e">⚠ 同じEXPLORE IDのアカウントがあります</div>':'')+'</button>';
+  }).join(""):'<p class="small muted section">該当するアカウントはありません。</p>';
+  document.getElementById("accountMore").hidden=accountShown>=rows.length;
+  document.querySelectorAll("#accountList [data-select-account]").forEach(b=>b.onclick=()=>chooseAccount(b.dataset.selectAccount));
+ }
  function draw(){
-  const uid=sel.value,q=document.getElementById("assnSearch").value.trim().toLowerCase();
+  const uid=sel.value;
+  if(!uid){
+   document.getElementById("assnMeta").textContent="上の一覧からCA Cloverアカウントを選択してください。";
+   document.getElementById("assnCommunityPanel").hidden=true;
+   return;
+  }
+  document.getElementById("assnCommunityPanel").hidden=false;
+  const q=document.getElementById("assnSearch").value.trim().toLowerCase();
   const assigned=new Set(memberships.filter(x=>x.user_id===uid).map(x=>x.community_id));
   const currentId=[...assigned][0]||null,currentCommunity=currentId?communities.find(x=>x.id===currentId):null;
   const primary=identities.find(i=>i.user_id===uid&&i.is_primary),primaryCa=primary?caMap.get(primary.ca_member_id):null;
   const selectedAccount=profiles.find(x=>x.id===uid);
   document.getElementById("assnMeta").innerHTML='<div class="tiny strong muted">トレーナー名</div><div class="strong" style="margin-top:5px;font-size:1.2rem">'+e(primaryCa?(primaryCa.trainer_name+" / "+(primaryCa.ca_level||"CA")):"未確認（CA本人の紐付けなし）")+'</div><div class="tiny strong muted section">SCOPELY EXPLORE ID（補足）</div><div class="strong" style="margin-top:5px">'+e(selectedAccount?.niantic_id||"未登録")+'</div><div class="tiny strong muted section">現在の認証済みCommunity</div><div class="strong" style="margin-top:5px">'+e(currentCommunity?currentCommunity.name:"未設定")+'</div>'+(primaryCa?'':'<div class="notice section">⚠ CA権限はありますが、CA本人との紐付けを確認できません。EXPLORE IDだけで本人と判断しないでください。</div>')+(hasDuplicateExplore(selectedAccount)?'<div class="notice section">⚠ 同じEXPLORE IDを使うCAアカウントが複数あります。統合・再割当の前に本人確認が必要です。</div>':'')+(assigned.size>1?'<div class="tiny strong" style="margin-top:7px;color:#92400e">⚠ 複数設定を検出しました。次回変更時に1つへ整理されます。</div>':'');
-  const filtered=communities.filter(x=>!q||(x.name+" "+(x.prefecture||"")).toLowerCase().includes(q));
-  document.getElementById("assnList").innerHTML=filtered.map(x=>{
+  const filtered=communities.filter(x=>!q||(x.name+" "+(x.prefecture||"")).toLowerCase().includes(q)).sort((a,b)=>Number(assigned.has(b.id))-Number(assigned.has(a.id))||a.name.localeCompare(b.name,"ja"));
+  document.getElementById("assnCommunityCount").textContent=filtered.length+"件中 "+Math.min(filtered.length,communityShown)+"件を表示";
+  document.getElementById("assnMore").hidden=filtered.length<=communityShown;
+  document.getElementById("assnList").innerHTML=filtered.slice(0,communityShown).map(x=>{
     const on=assigned.has(x.id);
     const candidates=caLinks.filter(l=>l.community_id===x.id).map(l=>caMap.get(l.ca_member_id)).filter(Boolean);
     const owners=profiles.filter(p=>memberships.some(m=>m.community_id===x.id&&m.user_id===p.id));
@@ -345,9 +434,15 @@ async function assignments(){
     const choices=candidates.length?'<div class="section"><div class="tiny strong muted">CA本人を選択</div><div class="actions section">'+candidates.map(ca=>'<button class="btn '+(ca.ca_level==="2nd"?"line":"")+'" data-assign-ca="'+e(ca.id)+'" data-cid="'+e(x.id)+'">'+e(ca.trainer_name)+' · '+e(ca.ca_level||"CA")+'</button>').join("")+'</div></div>':'<div class="notice section">このCommunityにCAマスターの紐付けがありません。CA本人Identityは作成できません。</div>';
     return '<section class="card" style="'+style+'">'+badge+'<h3 class="section">'+e(x.name)+'</h3><div class="small muted strong">'+e(x.prefecture||"—")+'</div>'+(owners.length?'<div class="tiny muted strong section">CA Clover: '+e(ownerLabel)+'</div>':'')+choices+'</section>';
   }).join("");
-  document.querySelectorAll("[data-assign-ca]").forEach(b=>b.onclick=async()=>{const cid=b.dataset.cid,caMemberId=b.dataset.assignCa;b.disabled=true;const currentIds=[...assigned];for(const currentId of currentIds){if(currentId===cid)continue;const rr=await client.functions.invoke("admin-manage",{body:{action:"set_membership",userId:uid,communityId:currentId,assigned:false}});if(rr.error){alert(rr.error.message);b.disabled=false;return}}const r=await client.functions.invoke("admin-manage",{body:{action:"set_membership",userId:uid,communityId:cid,caMemberId,assigned:true}});if(r.error){alert(r.error.message);b.disabled=false;return}for(let i=memberships.length-1;i>=0;i--){if(memberships[i].user_id===uid)memberships.splice(i,1)}memberships.push({user_id:uid,community_id:cid});for(let i=identities.length-1;i>=0;i--){if(identities[i].user_id===uid)identities.splice(i,1)}identities.push({user_id:uid,ca_member_id:caMemberId,community_id:cid,is_primary:true});updateAccountOptions();draw()});
+  document.querySelectorAll("[data-assign-ca]").forEach(b=>b.onclick=async()=>{const cid=b.dataset.cid,caMemberId=b.dataset.assignCa;b.disabled=true;const currentIds=[...assigned];for(const currentId of currentIds){if(currentId===cid)continue;const rr=await client.functions.invoke("admin-manage",{body:{action:"set_membership",userId:uid,communityId:currentId,assigned:false}});if(rr.error){alert(rr.error.message);b.disabled=false;return}}const r=await client.functions.invoke("admin-manage",{body:{action:"set_membership",userId:uid,communityId:cid,caMemberId,assigned:true}});if(r.error){alert(r.error.message);b.disabled=false;return}for(let i=memberships.length-1;i>=0;i--){if(memberships[i].user_id===uid)memberships.splice(i,1)}memberships.push({user_id:uid,community_id:cid});for(let i=identities.length-1;i>=0;i--){if(identities[i].user_id===uid)identities.splice(i,1)}identities.push({user_id:uid,ca_member_id:caMemberId,community_id:cid,is_primary:true});updateAccountOptions();renderAccounts();renderCaList();draw()});
  }
- sel.onchange=draw;document.getElementById("assnSearch").oninput=draw;draw();
+ document.getElementById("caSearch").oninput=()=>{caShown=12;renderCaList();};
+ document.getElementById("accountSearch").oninput=()=>{accountShown=12;renderAccounts();};
+ document.getElementById("assnSearch").oninput=()=>{communityShown=12;draw();};
+ document.getElementById("caMore").onclick=()=>{caShown+=12;renderCaList();};
+ document.getElementById("accountMore").onclick=()=>{accountShown+=12;renderAccounts();};
+ document.getElementById("assnMore").onclick=()=>{communityShown+=12;draw();};
+ renderCaList();renderAccounts();draw();
 }
 async function campfire(){
  app.innerHTML=title("home","HISTORY BACKFILL","📚 過去履歴接続","activeFeed / archivedFeedを使った過去履歴の補完用tokenを管理します。通常同期には不要です。")+'<div id="cfState" class="section">'+msg("読み込み中...")+'</div><section class="card section"><span class="pill slate">任意接続</span><h2 class="section">過去履歴用Tokenを登録・更新</h2><p class="small muted strong">生tokenはSupabase Vaultへ保存され、画面には再表示しません。期限切れでも公開Meetup・Community人数・Check-in・アイコンなどの通常同期は継続します。</p><textarea id="token" class="input section" style="min-height:120px" placeholder="eyJ..."></textarea><div class="actions section"><button id="saveToken" class="btn">保存</button><button id="testToken" class="btn line">接続テスト</button><button id="clearToken" class="btn rose">削除</button></div><div id="cfMsg"></div></section>';
