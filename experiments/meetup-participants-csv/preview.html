@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CA Clover Meetup CSV | 独立モック</title>
+<style>
+  /* Visual tokens taken from main/src/app/globals.css.
+     The compact rows mirror main/src/app/community/[id]/page.tsx. */
+  :root {
+    color-scheme:light;
+    --clover-50:#f7fee7;
+    --clover-100:#ecfccb;
+    --clover-200:#d9f99d;
+    --clover-300:#bef264;
+    --clover-400:#a3e635;
+    --clover-700:#4d7c0f;
+    --ink:#213018;
+    --line:#e5eed7;
+    --bg:#f8fce9;
+    color:var(--ink);
+    background:var(--bg);
+    font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0;
+    padding:16px 14px 40px;
+    background:radial-gradient(circle at 0 0,rgba(190,242,100,.30),transparent 30rem),
+      linear-gradient(180deg,#fbfff4 0%,var(--bg) 100%);
+  }
+  .frame { max-width:460px; margin:0 auto; }
+  .top { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 1px 14px; }
+  h1 { font-size:22px; letter-spacing:-.02em; font-weight:900; margin:0; color:#365314; }
+  .clover { color:var(--clover-700); }
+  .tag { color:#365314; background:var(--clover-100); border:1px solid var(--clover-200);
+    border-radius:999px; padding:7px 10px; font-size:11px; font-weight:900; white-space:nowrap; }
+  .section { margin:18px 1px 0; display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+  .section h2 { margin:0; font-size:17px; font-weight:900; color:#365314; }
+  .hint { color:#94a3b8; font-size:11px; font-weight:700; white-space:nowrap; }
+  .notice { background:rgba(255,255,255,.94); border:1px solid var(--line);
+    padding:13px 15px; border-radius:20px; font-size:12px; line-height:1.7;
+    box-shadow:0 9px 22px rgba(77,124,15,.05); }
+  .meetups { margin-top:10px; background:rgba(255,255,255,.96);
+    border:1px solid var(--line); border-radius:24px; overflow:hidden;
+    box-shadow:0 14px 40px rgba(77,124,15,.08); }
+  .meetup-card { position:relative; background:transparent; padding:13px 15px 12px; }
+  .meetup-card + .meetup-card { border-top:1px solid var(--clover-50); }
+  .card-primary { appearance:none; display:block; width:100%;
+    padding:0 98px 9px 0; margin:0; border:0; border-radius:6px;
+    background:none; font:inherit; text-align:left; color:inherit; cursor:pointer; }
+  .card-primary:focus-visible,.csv-button:focus-visible,#close-detail:focus-visible,.demo-control select:focus-visible {
+    outline:3px solid #84cc16; outline-offset:2px;
+  }
+  .date { color:var(--clover-700); font-size:11px; font-weight:900; line-height:1.5; }
+  .title { color:#365314; font-size:14px; font-weight:900; margin-top:5px; line-height:1.45;
+    overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+  .card-primary::after { content:"概要を見る →"; position:absolute; right:15px; top:43px;
+    color:var(--clover-700); font-size:11px; font-weight:900; }
+  .status { position:absolute; right:15px; top:13px; background:var(--clover-200);
+    color:#365314; padding:4px 8px; border-radius:999px; font-size:10px; font-weight:900; }
+  .card-footer { display:flex; justify-content:space-between; align-items:center;
+    padding-top:7px; gap:8px; }
+  .stats { display:flex; gap:18px; min-width:0; }
+  .stat { display:flex; flex-direction:column; gap:3px; }
+  .stat-label { color:#64748b; font-size:11px; font-weight:700; white-space:nowrap; }
+  .stat-value { color:#475569; font-size:16px; font-weight:900;
+    font-variant-numeric:tabular-nums; line-height:1.25; }
+  .stat-value.green { color:var(--clover-700); }
+  .csv-button { border:1px solid var(--clover-200); background:#fff; color:var(--clover-700);
+    font-size:12px; font-weight:900; border-radius:14px; min-width:82px; min-height:44px;
+    padding:8px 12px; cursor:pointer; }
+  .csv-button:hover { background:var(--clover-50); }
+  .csv-button:disabled { opacity:.55; cursor:wait; }
+  .demo-control { display:flex; align-items:center; justify-content:space-between;
+    gap:10px; padding:12px 1px 4px; margin:0; font-size:12px; }
+  .demo-control select { min-height:44px; border:1px solid var(--clover-200);
+    border-radius:14px; padding:7px 10px; background:white; color:#365314;
+    font:inherit; font-weight:700; max-width:61%; }
+  .footnote,#feedback { color:#64748b; font-size:12px; line-height:1.7; }
+  #feedback { min-height:24px; margin-top:12px; }
+  .footnote { margin-top:14px; }
+  dialog { border:1px solid var(--clover-100); border-radius:28px;
+    max-width:380px; width:calc(100vw - 36px); padding:22px;
+    box-shadow:0 16px 45px rgba(0,0,0,.15); }
+  dialog::backdrop { background:rgba(15,23,42,.45); }
+  dialog h2 { font-size:18px; font-weight:900; color:#365314; margin:4px 0 12px; }
+  #detail-text { white-space:pre-wrap; line-height:1.7; }
+  #close-detail { background:var(--clover-300); color:#365314; border:0;
+    border-radius:14px; padding:10px 24px; font:inherit; font-weight:900; min-height:44px; }
+  @media(max-width:360px) {
+    h1 { font-size:19px; }
+    .card-primary { padding-right:95px; }
+    .stats { gap:11px; }
+    .stat-value { font-size:15px; }
+    .csv-button { min-width:78px; padding:8px 10px; }
+  }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="top">
+    <h1><span class="clover">🍀</span> My Community</h1>
+    <span class="tag">独立モック</span>
+  </header>
+  <div class="notice">
+    <strong>独立モック（本番未接続）</strong><br>
+    この画面に表示されるMeetup名・参加者・人数はすべて架空のサンプルです。CSVボタンはローカルの模擬データからダウンロードを試せます。
+  </div>
+  <div class="section"><h2>🔥 Meetup履歴 / 1か月</h2><span class="hint">最新順</span></div>
+  <div class="demo-control"><label for="demo-mode"><strong>動作シミュレーション</strong></label><select id="demo-mode" aria-label="CSV操作の模擬状態"><option value="normal">正常取得</option><option value="busy">混雑時（429）</option><option value="incomplete">一部取得失敗</option><option value="timeout">タイムアウト</option></select></div>
+  <section id="cards" class="meetups" aria-label="Meetupカード一覧"></section>
+  <p id="feedback" role="status" aria-live="polite"></p>
+  <p class="footnote">カードのタイトルで模擬詳細、CSVボタンで試作ダウンロード。動作シミュレーションで混雑・取得漏れ・タイムアウトを確認できます。サーバー全体の同時実行制限は未実装です。Campfire API通信・Supabase通信・実データ保存はありません。</p>
+</main>
+<dialog id="detail" aria-label="Meetup詳細">
+  <h2>Meetup詳細（試作）</h2>
+  <p id="detail-text"></p>
+  <button id="close-detail" type="button">閉じる</button>
+</dialog>
+<script type="module" src="./preview.mjs"></script>
+</body>
+</html>
