@@ -121,6 +121,7 @@ async function dashboard(){
   ["new-ca-review","🍀","新規CA承認（テスト）","Discord・Google申請を確認（本番権限の変更なし）",0],
   ["preview","👀","一般ユーザーページ","一般ユーザーUIを確認",0],
   ["accounts","👥","CAアカウント","pending / CA / ADMINを管理",0],
+  ["account-audit","🔎","重複アカウント比較","同じEXPLORE IDの登録履歴を照合（閲覧のみ）",0],
   ["sync-runs","🧾","同期履歴","最新100件の同期結果",0],
   ["coverage","📊","Data Coverage","全国取得状態・未解決CAを確認",0],
   ["windows","🕐","イベント時間マスター","公式イベント時間窓",0],
@@ -289,6 +290,93 @@ async function accounts(){
  });
 }
 
+async function accountAudit(){
+ app.innerHTML=title("home","READ ONLY","🔎 重複アカウント比較","同じEXPLORE IDで登録されたアカウントの保存情報を比較します。削除・統合・権限変更はできません。")
+  +'<section class="card section"><span class="pill slate">閲覧専用</span><p class="small muted section">メールアドレスは管理者にだけ表示します。登録順序は確認できますが、現在使っているアドレスは本人に確認してください。</p><label class="tiny strong muted section" for="auditSearch">EXPLORE IDで検索</label><input id="auditSearch" class="input section" type="search" placeholder="例：00Kanonpapa39"><div id="auditGroups" class="section"></div></section>'
+  +'<div id="auditStatus" class="tiny strong muted section" role="status" aria-live="polite"></div><div id="auditCards" class="grid g2 section"></div>'
+  +'<section class="card section"><div class="tiny strong muted">閲覧範囲について</div><p class="small muted section">この画面で確認できるのはアカウント登録情報、CA本人の紐付け、Community、獲得メダル、Community申請、メダル交換履歴です。本人専用の月次活動情報やGoogle認証の内部記録は表示しません。</p></section>';
+ const [profilesRes,communityRes,caRes]=await Promise.all([
+  client.from("profiles").select("id,email,niantic_id,role,created_at").order("created_at",{ascending:true}),
+  client.from("communities").select("id,name"),
+  client.from("ca_members").select("id,trainer_name,ca_level")
+ ]);
+ const status=document.getElementById("auditStatus"), cards=document.getElementById("auditCards");
+ if(profilesRes.error||communityRes.error||caRes.error){
+  status.textContent="データを読み込めませんでした。再読み込みしてください。";
+  return;
+ }
+ const profiles=profilesRes.data||[];
+ const communityNames=new Map((communityRes.data||[]).map(c=>[c.id,c.name]));
+ const caNames=new Map((caRes.data||[]).map(c=>[c.id,(c.trainer_name||"未登録")+" / "+(c.ca_level||"CA")]));
+ const groups=new Map();
+ profiles.forEach(p=>{
+  const key=String(p.niantic_id||"").trim().toLowerCase();
+  if(!key)return;
+  const list=groups.get(key)||[];list.push(p);groups.set(key,list);
+ });
+ const duplicates=[...groups.entries()].filter(([,list])=>list.length>1).sort((a,b)=>a[0].localeCompare(b[0],"ja"));
+ let requestCounter=0;
+ const compact=(label,value)=>'<div><div class="tiny muted strong">'+e(label)+'</div><div class="strong" style="margin-top:4px;overflow-wrap:anywhere">'+e(value)+'</div></div>';
+ const section=(label,details)=>'<div class="section"><div class="tiny muted strong">'+e(label)+'</div><div class="strong" style="margin-top:5px;overflow-wrap:anywhere">'+e(details)+'</div></div>';
+ function renderGroups(){
+  const q=document.getElementById("auditSearch").value.trim().toLowerCase();
+  const filtered=duplicates.filter(([key,list])=>!q||key.includes(q)||list.some(p=>(p.email||"").toLowerCase().includes(q)));
+  document.getElementById("auditGroups").innerHTML=filtered.length?
+    filtered.map(([key,list])=>'<button class="btn line section" type="button" data-audit-key="'+e(key)+'">'+e(list[0].niantic_id)+'（'+list.length+'アカウント）</button>').join(""):
+    '<p class="small muted section">該当する重複登録はありません。</p>';
+  document.querySelectorAll("[data-audit-key]").forEach(b=>b.onclick=()=>showGroup(b.dataset.auditKey));
+ }
+ async function showGroup(key){
+  const list=groups.get(key)||[];
+  if(list.length<2)return;
+  const stamp=++requestCounter;
+  cards.innerHTML="";
+  status.textContent="登録履歴を確認しています…";
+  const ids=list.map(p=>p.id);
+  const [membershipRes,identityRes,medalRes,claimRes,exchangeA,exchangeB]=await Promise.all([
+   client.from("community_memberships").select("user_id,community_id").in("user_id",ids),
+   client.from("user_ca_identities").select("user_id,ca_member_id,is_primary").in("user_id",ids),
+   client.from("stamp_collections").select("owner_user_id,stamp_ca_member_id,acquisition_source,first_acquired_at").in("owner_user_id",ids),
+   client.from("community_access_requests").select("user_id,status,community_name_snapshot,requested_at").in("user_id",ids),
+   client.from("stamp_exchange_transactions").select("exchange_key,user_a_id,user_b_id,status,created_at").in("user_a_id",ids),
+   client.from("stamp_exchange_transactions").select("exchange_key,user_a_id,user_b_id,status,created_at").in("user_b_id",ids)
+  ]);
+  if(stamp!==requestCounter)return;
+  const responses=[membershipRes,identityRes,medalRes,claimRes,exchangeA,exchangeB];
+  if(responses.some(r=>r.error)){
+   status.textContent="一部の履歴を確認できませんでした。人数を0件と誤表示しないため、比較表示を停止しました。";
+   return;
+  }
+  const memberships=membershipRes.data||[],identities=identityRes.data||[],medals=medalRes.data||[],claims=claimRes.data||[];
+  const exchangeMap=new Map();
+  [...(exchangeA.data||[]),...(exchangeB.data||[])].forEach(tx=>exchangeMap.set(tx.exchange_key,tx));
+  const exchanges=[...exchangeMap.values()];
+  status.textContent=e(list[0].niantic_id)+" の登録 "+list.length+"件を表示（閲覧専用）";
+  cards.innerHTML=list.map((p,index)=>{
+   const owned=medals.filter(x=>x.owner_user_id===p.id);
+   const linked=identities.filter(x=>x.user_id===p.id);
+   const communities=memberships.filter(x=>x.user_id===p.id).map(x=>communityNames.get(x.community_id)||"Community名未取得");
+   const requests=claims.filter(x=>x.user_id===p.id);
+   const transactions=exchanges.filter(x=>x.user_a_id===p.id||x.user_b_id===p.id);
+   const caLink=linked.filter(x=>x.is_primary).map(x=>caNames.get(x.ca_member_id)||"CA情報未取得");
+   const medalDetail=owned.slice(0,8).map(x=>'<div class="tiny muted section">・'+e(caNames.get(x.stamp_ca_member_id)||"CA情報未取得")+' ('+e(x.acquisition_source||"取得方法未記録")+')</div>').join("");
+   const requestDetail=requests.slice(0,5).map(x=>'<div class="tiny muted section">・'+e(x.community_name_snapshot||"Community名未取得")+' / '+e(x.status||"状態未記録")+'</div>').join("");
+   return '<article class="card"><span class="pill '+(caLink.length?"":"slate")+'">'+e(index===0?"先に作られた登録":"登録 "+(index+1))+'</span>'+
+    '<h3 class="section" style="overflow-wrap:anywhere">'+e(p.niantic_id||"EXPLORE ID未登録")+'</h3>'+
+    section("登録メールアドレス",p.email||"未取得")+
+    '<div class="grid g2 section">'+compact("CA Clover権限",p.role||"未取得")+compact("登録日時",fmt(p.created_at))+'</div>'+
+    section("CA本人の正式な紐付け",caLink.join(" / ")||"なし（本人未照合）")+
+    section("Community割り当て "+communities.length+"件",communities.join(" / ")||"なし")+
+    '<div class="grid g2 section">'+compact("獲得メダル",owned.length+"枚")+compact("メダル交換",transactions.length+"件")+compact("Community申請",requests.length+"件")+'</div>'+
+    (medalDetail?'<div class="section"><div class="tiny strong">獲得したメダル</div>'+medalDetail+'</div>':'')+
+    (requestDetail?'<div class="section"><div class="tiny strong">申請の記録</div>'+requestDetail+'</div>':'')+
+    '<p class="tiny muted section">登録の統合・削除・紐付け変更は、この画面では行えません。</p></article>';
+  }).join("");
+ }
+ document.getElementById("auditSearch").oninput=renderGroups;
+ renderGroups();
+ if(duplicates.length===1)await showGroup(duplicates[0][0]);
+}
 async function assignments(){
  app.innerHTML=title("home","ASSIGNMENTS","🛠️ CA割り当て・本人確認","CA名簿とGoogleログイン済みアカウントを別々に検索・確認できます。")
  +'<section class="card section"><h2>📊 CA登録状況</h2><div id="caStats" class="grid g3 section"></div><p class="small muted section">「未連携」はCA名簿とCloverのアカウントが結び付いていない状態です。承認待ちとは限りません。</p></section>'
@@ -534,6 +622,7 @@ async function render(){
  if(r==="icons")return icons();
  if(r==="ca")return caList();
  if(r==="accounts")return accounts();
+ if(r==="account-audit")return accountAudit();
  if(r==="assignments")return assignments();
  if(r==="campfire")return campfire();
  if(r==="sync")return syncPage();
