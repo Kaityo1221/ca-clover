@@ -125,8 +125,8 @@ async function dashboard(){
   ["windows","🕐","イベント時間マスター","公式イベント時間窓",0],
   ["stamp-events","🎪","イベント管理","メダルラリーイベント・日替わりミッション",0],
   ["general","🏠","ホームへ","カテゴリホームに戻る",0],
-  ["stamp-rally","🍀","CA Medal Rally","自分が実際に獲得したメダルを確認",0],
-  ["medal-showcase","🪙","メダル見本帳","ADMIN限定：全国のメダルを3Dで確認（獲得扱いになりません）",0],
+  ["medal-showcase","🪙","全メダル見本帳【管理者用】","未取得も含めて全国のメダルを3Dで見る。取得扱いにはしません",0],
+  ["stamp-rally","🍀","自分のメダル帳","実際に集めたメダルだけを表示。未取得は「？」",0],
  ];
  app.innerHTML+='<div class="menu section">'+items.map(x=>'<button class="card menucard '+((x[0]==="watch"||x[0]==="claims"||x[0]==="icons")&&x[4]?'attention':'')+'" data-route="'+x[0]+'"><div class="icon">'+x[1]+'</div><h3 class="section">'+x[2]+'</h3><p class="small muted strong">'+x[3]+'</p>'+(x[4]?'<span class="pill '+(x[0]==="assignments"?'slate':'amber')+' count">'+(x[0]==="assignments"?'未割当 ':x[0]==="icons"?'要確認 ':'')+x[4]+'</span>':'')+'</button>').join("")+'</div>';
  app.innerHTML+='<div class="section center"><a href="./changelog.html" class="tiny muted strong">更新履歴</a></div>';
