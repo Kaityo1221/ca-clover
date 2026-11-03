@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import NewCaApprovalDeck, { type NewCaReviewCard } from "@/components/new-ca-approval-deck";
+import NewCaPreflightPanel from "@/components/new-ca-preflight-panel";
 import { useAuthProfile } from "@/lib/use-auth-profile";
 
 // Synthetic UI fixtures only. No real CA identifiers, Discord IDs, or write endpoints.
@@ -105,13 +106,13 @@ export default function NewCaApprovalPreviewPage() {
   return <main className="mx-auto max-w-5xl px-4 py-7 md:px-8">
     <Link href="/admin" className="text-sm font-black text-lime-700">← 管理メニュー</Link>
     <div className="mt-5 flex flex-wrap items-center gap-3">
-      <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">開発プレビュー / 申請データは架空</span>
+      <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">開発プレビュー / 隔離Neon接続</span>
       <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">実承認は無効</span>
     </div>
     <h1 className="mt-4 text-3xl font-black text-lime-950">🪪 新規CA承認</h1>
     <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
-      Discord認証から会長承認までの管理画面をCA Cloverに統合するためのデザイン確認用です。
-      表裏の切り替えとスワイプは操作できますが、申請取得・承認・アカウント変更は行いません。
+      隔離Neonのテスト申請と管理者向け承認前チェックを確認するプレビューです。
+      カード操作と承認前の読み取り検査はできますが、正式承認・アカウント変更は行いません。
     </p>
     <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-6 text-amber-900">
       {connectionState === "isolated"
@@ -127,5 +128,6 @@ export default function NewCaApprovalPreviewPage() {
           : "隔離申請接続はOFFです。以下は架空のデザイン確認用カードです。" + (connectionIssue ? " 診断コード: " + connectionIssue : "")}
     </div>
     <div className="mt-7"><NewCaApprovalDeck applications={liveQueue ?? PREVIEW}/></div>
+    {connectionState === "isolated" && liveQueue && liveQueue.length > 0 && <NewCaPreflightPanel applications={liveQueue}/> }
   </main>;
 }
