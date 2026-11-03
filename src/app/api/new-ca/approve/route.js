@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { isIsolatedBridgeReady } from "@/lib/new-ca-bridge-policy";
+import { Client } from "pg";
+import { isIsolatedBridgeReady, BRIDGE_GUARD_MARKER } from "@/lib/new-ca-bridge-policy";
 import { checkDiscordCurrentRole } from "@/lib/new-ca-discord-live";
 
 export const runtime = "nodejs";
@@ -53,15 +54,31 @@ export async function POST(request) {
   if (!await checkDiscordCurrentRole(body.confirmedDiscordId,process.env.NEW_CA_DISCORD_BOT_TOKEN))
     return result(409, "DISCORD_LIVE_ROLE_UNVERIFIED");
 
-  // A trusted Campfire URL-to-ID resolver and a fresh pending-user role verification
-  // are mandatory. Until both adapters are independently implemented and tested,
-  // intentionally stop BEFORE opening a write transaction.
-  if (process.env.NEW_CA_STEP2_TRUSTED_RESOLVER_READY !== "true" ||
-      process.env.NEW_CA_PENDING_USER_VALIDATOR_READY !== "true")
-    return result(409, "TRUSTED_EVIDENCE_NOT_READY");
-
-  // Deliberately no call to finalize_isolated_approval here:
-  // these flags alone are not proof. Only after real verified evidence
-  // adapters are integrated can finalization be safely wired.
-  return result(503, "ATOMIC_FINALIZER_NOT_CONNECTED");
+  let db;
+  try {
+    db = new Client({connectionString:process.env.NEW_CA_LAB_DATABASE_URL,
+      connectionTimeoutMillis:5000,ssl:{rejectUnauthorized:true}});
+    await db.connect();
+    await db.query("BEGIN READ ONLY");
+    await db.query("SET LOCAL statement_timeout='5s'");
+    const guard = await db.query("SELECT marker FROM ca_onboarding_lab.environment_guard WHERE marker=$1", [BRIDGE_GUARD_MARKER]);
+    if (guard.rowCount!==1) throw Error("guard_missing");
+    const evidence = await db.query(
+      "SELECT r.status,r.discord_user_id,r.admin_verified_discord_id,r.reviewed_at,l.clover_user_id,sp.role AS lab_role FROM ca_onboarding_lab.requests r LEFT JOIN ca_onboarding_lab.clover_identity_links l ON l.request_id=r.id LEFT JOIN ca_onboarding_lab.synthetic_profiles sp ON sp.user_id=l.clover_user_id WHERE r.id=$1::uuid",
+      [body.requestId]);
+    await db.query("COMMIT");
+    if (evidence.rowCount!==1) return result(404,"APPLICATION_NOT_FOUND");
+    const row=evidence.rows[0];
+    if (row.status!=="ready_to_activate" || row.discord_user_id!==body.confirmedDiscordId ||
+        row.admin_verified_discord_id!==body.confirmedDiscordId || !row.reviewed_at)
+      return result(409,"REVIEW_EVIDENCE_MISSING");
+    if (!row.clover_user_id || row.lab_role!=="pending")
+      return result(409,"ISOLATED_PENDING_LINK_REQUIRED");
+    return result(409,"TRUSTED_CAMPFIRE_RESOLVER_REQUIRED", {isolatedEvidenceChecked:true});
+  } catch {
+    if (db) await db.query("ROLLBACK").catch(()=>{});
+    return result(503,"ISOLATED_EVIDENCE_UNAVAILABLE");
+  } finally {
+    if (db) await db.end().catch(()=>{});
+  }
 }
