@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { Client } from "pg";
-import { BRIDGE_GUARD_MARKER, isIsolatedBridgeReady } from "@/lib/new-ca-bridge-policy";
+import { isIsolatedBridgeReady } from "@/lib/new-ca-bridge-policy";
 import { checkDiscordCurrentRole } from "@/lib/new-ca-discord-live";
 
 export const runtime = "nodejs";
@@ -25,7 +24,7 @@ export async function POST(request) {
   if (!(request.headers.get("content-type") || "").startsWith("application/json"))
     return result(415, "JSON_REQUIRED");
   const bearer=request.headers.get("authorization") || "";
-  if (!/^Bearer [\\w.-]{16,8192}$/.test(bearer))
+  if (!/^Bearer [\w.-]{16,8192}$/.test(bearer))
     return result(401, "AUTH_REQUIRED");
   let body;
   try { body=await request.json(); } catch { return result(400, "BAD_JSON"); }
@@ -34,7 +33,7 @@ export async function POST(request) {
       typeof body.requestId !== "string" ||
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.requestId) ||
       typeof body.confirmedDiscordId !== "string" ||
-      !/^\\d{15,22}$/.test(body.confirmedDiscordId))
+      !/^\d{15,22}$/.test(body.confirmedDiscordId))
     return result(400, "BAD_REQUEST");
 
   const url=process.env.NEXT_PUBLIC_SUPABASE_URL || AUTH_URL;
