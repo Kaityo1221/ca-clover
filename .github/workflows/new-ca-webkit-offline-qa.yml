@@ -1,0 +1,53 @@
+name: New CA WebKit Synthetic QA (No Deploy)
+on:
+  push:
+    branches:
+      - qa/newca-webkit-validation-20261105
+    paths:
+      - '.github/workflows/new-ca-webkit-offline-qa.yml'
+      - 'scripts/test-new-ca-card-webkit.cjs'
+      - 'scripts/fixtures/new-ca-card-browser.tsx'
+      - 'src/components/new-ca-approval-deck.tsx'
+      - 'src/app/api/new-ca/approval-preflight/route.js'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: new-ca-webkit-qa-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  webkit-synthetic:
+    if: github.repository == 'Kaityo1221/ca-clover'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NO_PRODUCTION_WRITE: 'true'
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install app packages
+        run: npm install --no-audit --no-fund
+      - name: Install isolated browser QA tooling
+        run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright@1.58.2 esbuild@0.25.12
+      - name: Install Playwright WebKit
+        run: npx playwright install --with-deps webkit
+      - name: Build static CSS and typecheck
+        run: npm run build
+      - name: Bundle synthetic-only approval card
+        run: |
+          mkdir -p .qa
+          npx esbuild scripts/fixtures/new-ca-card-browser.tsx --bundle --platform=browser --format=iife --jsx=automatic --outfile=.qa/new-ca-card-bundle.js
+      - name: Test card interactions at 390, 375 and 320px in WebKit
+        run: node scripts/test-new-ca-card-webkit.cjs
+      - name: Upload synthetic WebKit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: new-ca-webkit-synthetic-results
+          path: .qa/card-webkit-results.json
+          if-no-files-found: ignore
