@@ -14,7 +14,6 @@ export type NewCaReviewCard = {
   status: "pending_admin" | "held" | "ready_to_activate";
   cloverLinked?: boolean;
   sameGoogleAsViewer?: boolean;
-  exploreId?: string | null;
   caLevel?: string | null;
   masterResult?: string | null;
   communityName?: string | null;
@@ -138,7 +137,6 @@ export default function NewCaApprovalDeck({ applications, onRevalidate }: Props)
             <Info label="Discordユーザー名" value={current.discordUsername ? "@" + current.discordUsername : "未取得"}/>
             <Info label="サーバー内ニックネーム" value={current.discordNickname ?? "設定なし"}/>
             <Info label="本人照合用Discord固定ID" value={current.discordUserId ?? "未取得"}/>
-            <Info label="SCOPELY EXPLORE ID" value={current.exploreId ?? "正本による照合待ち"}/>
             <Info label="CA区分" value={current.caLevel ?? "未確認"}/>
             <Info label="CAマスター照合結果" value={current.masterResult ?? "未確認"}/>
             <Info label="Community名" value={current.communityName ?? "未確認"}/>
@@ -176,7 +174,7 @@ export default function NewCaApprovalDeck({ applications, onRevalidate }: Props)
           </div>
           <div className="mt-6 border-t border-lime-100 pt-5" role="status">
             <p className="text-sm font-black text-amber-900">🔒 正式承認は停止中</p>
-            <p className="mt-2 text-xs font-semibold leading-6 text-slate-600">このカードは確認専用です。Google本人照合とCampfire公式資格確認、隔離総合試験が完了するまで、本番CA権限は付与しません。</p>
+            <p className="mt-2 text-xs font-semibold leading-6 text-slate-600">このカードは確認専用です。Google・Discord本人照合、既存CAマスターのトレーナー名とCommunity確認、隔離総合試験が完了するまで、本番CA権限は付与しません。</p>
             <p className="mt-2 text-xs font-bold text-lime-800">承認前の詳細チェックは下の「承認前チェック」から実行できます。</p>
           </div>
         </section>
