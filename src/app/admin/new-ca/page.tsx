@@ -128,6 +128,17 @@ export default function NewCaApprovalPreviewPage() {
           : "隔離申請接続はOFFです。以下は架空のデザイン確認用カードです。" + (connectionIssue ? " 診断コード: " + connectionIssue : "")}
     </div>
     <div className="mt-7"><NewCaApprovalDeck applications={liveQueue ?? PREVIEW}
+      onPreviewDecision={connectionState === "disabled" ? async (application, action, reason) => {
+        if (!PREVIEW.some(p => p.id === application.id) || !application.id.startsWith("synthetic-")) {
+          throw Error("SYNTHETIC_ONLY");
+        }
+        if ((action === "hold" || action === "reject") && (reason.trim().length < 3 || reason.length > 500)) {
+          throw Error("REASON_REQUIRED");
+        }
+        // No HTTP call, no database write and no change to the displayed request state.
+        return "練習結果：" + (action === "approve" ? "承認" : action === "hold" ? "保留" : "却下") +
+          "の入力を確認しました。実際の申請や権限は変更されていません。";
+      } : undefined}
       onRevalidate={connectionState === "isolated" ? async application => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.access_token || !application.discordUserId) throw Error("session_required");

@@ -10,8 +10,22 @@ for(const width of [390,375,320]){
 const context=await browser.newContext({viewport:{width,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
 await page.setContent('<!doctype html><html lang="ja"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div></body></html>');await page.addStyleTag({path:path.join(chunkDir,css)});await page.addScriptTag({path:process.env.NEW_CA_BROWSER_BUNDLE || path.join(root,'.qa/new-ca-card-bundle.js')});await page.getByRole('button',{name:'カードをめくって確認 ↻'}).waitFor();
 await check(width+'px no horizontal overflow',async()=>assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)));
-await check(width+'px flip',async()=>{await page.getByRole('button',{name:'カードをめくって確認 ↻'}).click();await page.waitForTimeout(550);await page.getByText('SCOPELY EXPLORE ID',{exact:true}).waitFor();});
-await check(width+'px five review operations remain safe',async()=>{assert.equal(await page.getByRole('button',{name:'承認',exact:true}).isDisabled(),true);assert.equal(await page.getByRole('button',{name:'保留',exact:true}).isDisabled(),true);assert.equal(await page.getByRole('button',{name:'却下',exact:true}).isDisabled(),true);});
+await check(width+'px flip',async()=>{await page.getByRole('button',{name:'カードをめくって確認 ↻'}).click();await page.waitForTimeout(550);await page.getByText('CAマスター照合結果',{exact:true}).waitFor();assert.equal(await page.getByText('SCOPELY EXPLORE ID',{exact:true}).count(),0);});
+await check(width+'px rehearsal actions are explicitly labeled',async()=>{for (const label of ['承認（練習）','保留（練習）','却下（練習）']) assert.equal(await page.getByRole('button',{name:label}).isEnabled(),true);});
+await check(width+'px synthetic approval rehearsal',async()=>{
+  await page.getByRole('button',{name:'承認（練習）'}).click();
+  await page.getByRole('button',{name:'練習を実行（保存なし）'}).click();
+  await page.getByText('練習：承認、保存なし',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'キャンセル'}).click();
+});
+await check(width+'px reject needs reason',async()=>{
+  await page.getByRole('button',{name:'却下（練習）'}).click();
+  assert.equal(await page.getByRole('button',{name:'練習を実行（保存なし）'}).isDisabled(),true);
+  await page.getByLabel('理由（3文字以上、500文字以内）').fill('確認資料が不足');
+  await page.getByRole('button',{name:'練習を実行（保存なし）'}).click();
+  await page.getByText('練習：reject:確認資料が不足',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'キャンセル'}).click();
+});
 await check(width+'px revalidation action',async()=>{await page.getByRole('button',{name:'再検証',exact:true}).click();await page.getByText('合成再検証が完了しました。',{exact:true}).waitFor();});
 await check(width+'px approval history',async()=>{await page.getByText('承認履歴',{exact:true}).click();await page.getByText(/synthetic-created/).waitFor();});
 await check(width+'px navigation',async()=>{await page.getByRole('button',{name:'次へ ›'}).click();await page.getByRole('heading',{name:'SyntheticCA2',exact:true}).waitFor();await page.getByRole('button',{name:'‹ 前へ'}).click();await page.getByRole('heading',{name:'SyntheticCA1',exact:true}).waitFor();});
