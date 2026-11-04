@@ -14,23 +14,34 @@ export type NewCaReviewCard = {
   status: "pending_admin" | "held" | "ready_to_activate";
   cloverLinked?: boolean;
   sameGoogleAsViewer?: boolean;
+  exploreId?: string | null;
+  caLevel?: string | null;
+  masterResult?: string | null;
+  communityName?: string | null;
+  roleCheckedAt?: string | null;
+  createdAt?: string | null;
+  duplicateWarning?: string | null;
+  approvalHistory?: readonly { event: string; at: string }[];
 };
 
 type Props = {
   applications: readonly NewCaReviewCard[];
+  onRevalidate?: (application: NewCaReviewCard) => Promise<string>;
   // Deliberately no approval/write callback until the protected server bridge exists.
 };
 
-export default function NewCaApprovalDeck({ applications }: Props) {
+export default function NewCaApprovalDeck({ applications, onRevalidate }: Props) {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [checkResult, setCheckResult] = useState<string | null>(null);
   const touch = useRef<{ x: number; y: number } | null>(null);
   const unique = [...new Map(applications.map((row) => [row.id, row])).values()];
   const safeIndex = Math.min(index, Math.max(0, unique.length - 1));
   const current = unique[safeIndex] ?? null;
 
-  useEffect(() => { setFlipped(false); setCopied(false); }, [safeIndex]);
+  useEffect(() => { setFlipped(false); setCopied(false); setCheckResult(null); }, [current?.id]);
 
   function move(direction: number) {
     setIndex((value) => Math.max(0, Math.min(unique.length - 1, value + direction)));
@@ -54,6 +65,9 @@ export default function NewCaApprovalDeck({ applications }: Props) {
       move(dx < 0 ? 1 : -1);
     }
   }
+
+  const activeId = useRef<string | null>(null);
+  activeId.current = current?.id ?? null;
 
   const faceStyle: React.CSSProperties = {
     backfaceVisibility: "hidden",
@@ -124,11 +138,41 @@ export default function NewCaApprovalDeck({ applications }: Props) {
             <Info label="Discordユーザー名" value={current.discordUsername ? "@" + current.discordUsername : "未取得"}/>
             <Info label="サーバー内ニックネーム" value={current.discordNickname ?? "設定なし"}/>
             <Info label="本人照合用Discord固定ID" value={current.discordUserId ?? "未取得"}/>
+            <Info label="SCOPELY EXPLORE ID" value={current.exploreId ?? "正本による照合待ち"}/>
+            <Info label="CA区分" value={current.caLevel ?? "未確認"}/>
+            <Info label="CAマスター照合結果" value={current.masterResult ?? "未確認"}/>
+            <Info label="Community名" value={current.communityName ?? "未確認"}/>
+            <Info label="Google本人連携" value={current.cloverLinked ? "隔離環境で連携済み" : "未連携"}/>
+            <Info label="Discordロールの記録時刻" value={current.roleCheckedAt ?? "未確認"}/>
+            <p className="text-xs text-amber-800">現在のロールは「再検証」で確認してください。</p>
+            <Info label="重複登録チェック" value={current.duplicateWarning ?? "未検証（重複なしとは判定していません）"}/>
+            <Info label="申請日時" value={current.createdAt ?? "未取得"}/>
             {current.discordUserId && <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(current.discordUserId!); setCopied(true); } catch { setCopied(false); } }} className="rounded-xl border border-lime-300 px-3 py-2 text-xs font-black text-lime-900">{copied ? "コピーしました" : "Discord固定IDをコピー"}</button>}
             <details className="rounded-xl bg-lime-50 p-3 text-sm">
               <summary className="cursor-pointer font-black text-lime-900">Campfireコミュニティ</summary>
               <p className="mt-2 break-all text-xs text-slate-600">{current.campfireUrl ?? "確認待ち"}</p>
             </details>
+          </div>
+          <details className="mt-5 rounded-xl bg-lime-50 p-3 text-sm">
+            <summary className="cursor-pointer font-black text-lime-900">承認履歴</summary>
+            {current.approvalHistory?.length
+              ? <ul className="mt-2 space-y-2">{current.approvalHistory.map((entry, i) =>
+                  <li key={i} className="break-words text-xs text-slate-600">{entry.at} / {entry.event}</li>)}</ul>
+              : <p className="mt-2 text-xs text-slate-600">履歴を取得できていません。</p>}
+          </details>
+          <button type="button" disabled={!onRevalidate || checking} onClick={async () => {
+            if (!onRevalidate) return;
+            setChecking(true); setCheckResult(null);
+            try { const message = await onRevalidate(current); if (activeId.current === current.id) setCheckResult(message); }
+            catch { if (activeId.current === current.id) setCheckResult("確認できませんでした。承認は停止しています。"); }
+            finally { setChecking(false); }
+          }} className="mt-5 w-full rounded-xl border border-lime-300 px-4 py-3 text-sm font-black text-lime-900 disabled:opacity-40">
+            {checking ? "再検証中…" : "再検証"}
+          </button>
+          {checkResult && <p role="status" className="mt-3 break-words text-xs font-bold text-slate-700">{checkResult}</p>}
+          <div className="mt-4 grid grid-cols-3 gap-2" aria-label="審査操作">
+            {["承認", "保留", "却下"].map(action => <button key={action} type="button" disabled
+              className="rounded-xl border px-3 py-3 text-sm font-bold opacity-40">{action}</button>)}
           </div>
           <div className="mt-6 border-t border-lime-100 pt-5" role="status">
             <p className="text-sm font-black text-amber-900">🔒 正式承認は停止中</p>

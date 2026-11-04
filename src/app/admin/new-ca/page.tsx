@@ -127,7 +127,22 @@ export default function NewCaApprovalPreviewPage() {
           ? "隔離申請との接続を確認中…"
           : "隔離申請接続はOFFです。以下は架空のデザイン確認用カードです。" + (connectionIssue ? " 診断コード: " + connectionIssue : "")}
     </div>
-    <div className="mt-7"><NewCaApprovalDeck applications={liveQueue ?? PREVIEW}/></div>
+    <div className="mt-7"><NewCaApprovalDeck applications={liveQueue ?? PREVIEW}
+      onRevalidate={connectionState === "isolated" ? async application => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token || !application.discordUserId) throw Error("session_required");
+        const response = await fetch("/api/new-ca/approval-preflight", {
+          method: "POST", cache: "no-store",
+          headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+          body: JSON.stringify({ requestId: application.id, confirmedDiscordId: application.discordUserId }),
+        });
+        if (!response.ok) throw Error("revalidation_unavailable");
+        const data = await response.json();
+        if (data.productionActivated !== false || data.code !== "PREFLIGHT_READ_ONLY") throw Error("invalid_response");
+        return data.checks?.discordRoleCurrentlyVerified === true
+          ? "現在のDiscord CAロールを確認しました。他の登録条件の確認が必要なため、正式承認は停止中です。"
+          : "現在のDiscord CAロールを確認できませんでした。承認は停止しています。";
+      } : undefined}/></div>
     {connectionState === "isolated" && liveQueue && liveQueue.length > 0 && <NewCaPreflightPanel applications={liveQueue}/> }
   </main>;
 }
