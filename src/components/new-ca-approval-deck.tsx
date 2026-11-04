@@ -212,7 +212,7 @@ export default function NewCaApprovalDeck({ applications, onRevalidate, onPrevie
                 className="rounded-lg border px-3 py-2 text-xs font-bold">キャンセル</button>
             </div>
             {decisionResult && <p role="status" className="mt-2 text-xs font-bold">{decisionResult}</p>}
-          </div>
+          </div>}
           <div className="mt-6 border-t border-lime-100 pt-5" role="status">
             <p className="text-sm font-black text-amber-900">🔒 正式承認は停止中</p>
             <p className="mt-2 text-xs font-semibold leading-6 text-slate-600">このカードは確認専用です。Google・Discord本人照合、既存CAマスターのトレーナー名とCommunity確認、隔離総合試験が完了するまで、本番CA権限は付与しません。</p>
