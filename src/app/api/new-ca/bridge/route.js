@@ -68,7 +68,9 @@ async function confirmIsolation(client) {
 const listSql = `
 SELECT r.id, r.trainer_name, r.discord_user_id, r.discord_display_name,
        r.discord_username, r.discord_nickname, r.discord_display_name_source,
-       r.campfire_url, r.status, r.created_at,
+       r.campfire_url, r.status, r.created_at, r.role_verified_at,
+       (SELECT jsonb_agg(jsonb_build_object('event',h.event_type,'at',h.at) ORDER BY h.at)
+        FROM ca_onboarding_lab.audit h WHERE h.request_id=r.id) AS approval_history,
        (l.clover_user_id IS NOT NULL) AS clover_linked,
        (l.clover_user_id=$2::uuid) AS linked_to_viewer,
        (a."accountId"=$1) AS same_google_as_viewer
@@ -116,6 +118,9 @@ export async function GET(request) {
       discordNickname: row.discord_nickname,
       displayNameSource: row.discord_display_name_source ?? "not_verified",
       campfireUrl: row.campfire_url,
+      createdAt: row.created_at,
+      roleCheckedAt: row.role_verified_at,
+      approvalHistory: row.approval_history ?? [],
       status: row.status,
       cloverLinked: row.clover_linked,
       cloverLinkedByViewer: row.linked_to_viewer === true,
