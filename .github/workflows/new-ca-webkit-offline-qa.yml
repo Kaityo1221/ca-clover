@@ -9,6 +9,9 @@ on:
       - 'scripts/fixtures/new-ca-card-browser.tsx'
       - 'src/components/new-ca-approval-deck.tsx'
       - 'src/app/api/new-ca/approval-preflight/route.js'
+  pull_request:
+    branches:
+      - qa/newca-trainer-name-ui-20261105
   workflow_dispatch:
 permissions:
   contents: read
