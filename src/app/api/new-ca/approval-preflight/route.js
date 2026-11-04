@@ -83,9 +83,13 @@ export async function POST(request) {
                WHERE a."userId"::text=r.google_subject AND a."providerId"='google'
                  AND a."accountId" IS NOT NULL
              ) AS neon_google_linked,
-             EXISTS(
-               SELECT 1 FROM ca_onboarding_lab.master_snapshot m
-               WHERE lower(m.trainer_name)=lower(r.trainer_name)
+             (
+               SELECT count(*) = 1 FROM ca_onboarding_lab.master_snapshot m
+               WHERE lower(trim(m.trainer_name))=lower(trim(r.trainer_name))
+                 AND m.is_synthetic=true
+             ) AND (
+               SELECT count(*) = 1 FROM ca_onboarding_lab.master_snapshot m
+               WHERE lower(trim(m.trainer_name))=lower(trim(r.trainer_name))
                  AND m.campfire_url=r.campfire_url
                  AND m.community_key=r.community_key
                  AND m.is_synthetic=true AND m.status='active'
