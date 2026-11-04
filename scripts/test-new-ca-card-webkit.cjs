@@ -3,7 +3,8 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const pat
 const root=path.resolve(__dirname,'..');const chunkDir=path.join(root,'.next/static/chunks');
 const css=fs.readdirSync(chunkDir).find(f=>f.endsWith('.css'));
 if(!css)throw Error('Build the app first to generate CSS');
-(async()=>{const browser=await webkit.launch({headless:true,...(process.env.NEW_CA_WEBKIT_EXECUTABLE?{executablePath:process.env.NEW_CA_WEBKIT_EXECUTABLE}:{})});let n=0;const checks=[];
+let browser;
+(async()=>{browser=await webkit.launch({headless:true,...(process.env.NEW_CA_WEBKIT_EXECUTABLE?{executablePath:process.env.NEW_CA_WEBKIT_EXECUTABLE}:{})});let n=0;const checks=[];
 async function check(name,fn){await fn();checks.push({name,status:'PASS'});n++;}
 for(const width of [390,375,320]){
 const context=await browser.newContext({viewport:{width,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -18,4 +19,4 @@ await check(width+'px swipe',async()=>{await page.locator('[class*="perspective"
 await check(width+'px no runtime errors',async()=>assert.deepEqual(errors,[]));
 await context.close();}
 await browser.close();fs.writeFileSync(process.env.NEW_CA_BROWSER_REPORT || path.join(root,'.qa/card-webkit-results.json'),JSON.stringify({browser:'Playwright WebKit (Linux), mobile emulation; not physical iPhone Safari',checks},null,2));console.log('TOTAL',n,'PASS');
-})().catch(e=>{console.error(e);process.exitCode=1;});
+})().catch(async e=>{if(browser)await browser.close().catch(()=>{});console.error(e);process.exitCode=1;});
