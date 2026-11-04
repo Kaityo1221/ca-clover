@@ -59,7 +59,7 @@
   const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
   const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
   const ROOT="https://kaityo1221.github.io/ca-clover/";
-  const VERSION="my-community-20260927-feature-focus1";
+  const VERSION="ca-registration-20261104-v1";
   const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}
   });
@@ -253,6 +253,7 @@
       return;
     }
     const items=[["my","My Community"],["account","アカウント"]];
+    if(profile?.role==="pending")items.push(["register","🍀 CA登録"]);
     if(profile?.role==="admin")items.push(["zoroark-ideas","🦊 お題メモ"]);
     nav.innerHTML=items.map(function(x){
       return '<button data-go="'+x[0]+'" class="'+(route()===x[0]?"on":"")+'">'+x[1]+'</button>'
@@ -265,8 +266,18 @@
   }
   async function login(){
     flash=null;
+    if(route()==="register")try{sessionStorage.setItem("clover_ca_register_after_login","1")}catch(_e){}
     const r=await client.auth.signInWithOAuth({provider:"google",options:{redirectTo:ROOT}});
     if(r.error)setFlash(r.error.message,"err");
+  }
+  function restoreRegistrationRoute(){
+    if(!session||profile?.role!=="pending")return;
+    try{
+      if(sessionStorage.getItem("clover_ca_register_after_login")==="1"){
+        sessionStorage.removeItem("clover_ca_register_after_login");
+        location.hash="register";
+      }
+    }catch(_e){}
   }
   async function logout(){
     await client.auth.signOut(); session=null;profile=null;flash=null;location.hash="";render();
@@ -275,6 +286,7 @@
     const got=await client.auth.getSession();
     session=got.data.session||null;
     if(session)await loadProfile();
+    restoreRegistrationRoute();
     client.auth.onAuthStateChange(async function(event,newSession){
       const previousUserId=session&&session.user?session.user.id:null;
       const nextSession=newSession||null;
@@ -284,14 +296,17 @@
       if((event==="SIGNED_IN"||event==="TOKEN_REFRESHED")&&previousUserId&&previousUserId===nextUserId)return;
       renderToken++;
       if(session)await loadProfile();else {profile=null}
+      restoreRegistrationRoute();
       render();
     });
     window.addEventListener("hashchange",function(){flash=null;render()});
     render();
   }
   function loginView(){
-    app.innerHTML='<section class="card login center"><div class="logo">🍀</div><h1 style="margin-top:18px">CA Clover</h1><p class="muted strong">Japan Community Activity Dashboard</p><button id="google" class="btn section">G　Googleでログイン</button>'+flashHtml()+'<div class="version">mirror '+VERSION+'</div></section>';
+    const isRegister=route()==="register";
+    app.innerHTML='<section class="card login center"><div class="logo">🍀</div><h1 style="margin-top:18px">'+(isRegister?'🍀 新規CA登録':'CA Clover')+'</h1><p class="muted strong">'+(isRegister?'STEP 1 / 3　Googleでログインして登録を始めます。承認まではCA権限は付与されません。':'Japan Community Activity Dashboard')+'</p><button id="google" class="btn section">G　Googleでログイン</button>'+(isRegister?'<p class="muted small section">続いてEXPLORE IDとCampfire URLを登録し、管理者の確認を受けます。</p><button id="loginHome" class="btn line section" type="button">通常のログインへ戻る</button>':'<a class="btn line section" href="#register" style="display:block;text-decoration:none">初めてのCAはこちら：新規登録</a>')+flashHtml()+'<div class="version">mirror '+VERSION+'</div></section>';
     document.getElementById("google").onclick=login;
+    const back=document.getElementById("loginHome");if(back)back.onclick=function(){go("my")};
   }
   async function renderMy(token){
     app.innerHTML='<section class="card hero"><span class="pill">MY COMMUNITY</span><h1 class="my-welcome-title" style="margin-top:12px">My Communityへ<span>ようこそ。🍀</span></h1><p class="muted strong">読み込み中...</p></section>';
@@ -344,7 +359,7 @@
 
     if(token!=null&&token!==renderToken)return;
     app.innerHTML=html+'<div class="version">mirror '+VERSION+'</div>';
-    const toAccount=document.getElementById("toAccount");if(toAccount)toAccount.onclick=function(){go("account")};
+    const toAccount=document.getElementById("toAccount");if(toAccount)toAccount.onclick=function(){go("register")};
     const submit=document.getElementById("submitClaim");
     if(submit)submit.onclick=submitClaim;
     app.querySelectorAll("[data-community]").forEach(function(b){
@@ -616,15 +631,44 @@
       out.innerHTML='<div class="notice err section">'+e(msg)+'</div>';
       input.disabled=false;document.getElementById("submitClaim").disabled=false;return;
     }
+    if(route()==="register")go("my");
     setFlash(r.data&&r.data.communityName?r.data.communityName+" の承認申請を送りました 🍀":"承認申請を送りました 🍀","ok");
     await renderMy();
+  }
+  async function renderRegistration(token){
+    if(profile.role!=="pending"){
+      app.innerHTML='<section class="card"><span class="pill">CA CLOVER</span><h1 class="section">🍀 CA登録状況</h1><p class="muted strong">このアカウントは登録済みです。新たな申請は不要です。</p><button id="registrationBack" class="btn section" type="button">My Communityへ</button></section>';
+      document.getElementById("registrationBack").onclick=function(){go("my")};
+      return;
+    }
+    app.innerHTML='<section class="card"><h2>🍀 新規CA登録</h2><p class="muted">登録状況を確認中...</p></section>';
+    const result=await client.from("community_access_requests")
+      .select("id,community_name_snapshot,status,requested_at")
+      .eq("user_id",session.user.id).order("requested_at",{ascending:false}).limit(10);
+    if(token!=null&&token!==renderToken)return;
+    const rows=result.error?null:(result.data||[]);
+    const hasId=Boolean(String(profile.niantic_id||"").trim());
+    let html='<button class="btn line" id="registrationBack" type="button">← My Communityへ戻る</button>'+
+      '<section class="card hero section"><span class="pill">CA REGISTRATION</span><h1 style="margin-top:12px">🍀 新規CA登録</h1><p class="muted strong">Googleで本人のアカウントを確認し、EXPLORE IDとCampfire URLを提出します。管理者が確認するまで、CA権限は付与されません。</p></section>'+flashHtml()+
+      '<section class="card section"><span class="pill">STEP 1 / 3　完了</span><h2 class="section">✅ Googleログイン</h2><p class="small muted strong">ログイン中：'+e(session.user.email||"メールアドレス未取得")+'</p><p class="tiny muted section">連絡先のメールアドレスだけでCA本人を判定しません。</p></section>'+
+      '<section class="card section"><span class="pill '+(hasId?'':'amber')+'">STEP 2 / 3　'+(hasId?'登録済み':'入力待ち')+'</span><h2 class="section">SCOPELY EXPLORE ID</h2><label for="niantic" class="small muted strong section" style="display:block">ゲーム内のEXPLORE ID</label><input id="niantic" class="input section" value="'+e(profile.niantic_id||"")+'" placeholder="例：トレーナー名" autocomplete="off"><button id="saveNiantic" type="button" class="btn section">EXPLORE IDを保存</button><p class="tiny muted strong section">先頭の「@」は保存時に自動で外します。</p></section>'+
+      '<section class="card section"><span class="pill '+(hasId?'':'amber')+'">STEP 3 / 3　'+(hasId?'申請可能':'ID登録後に利用可能')+'</span><h2 class="section">🔥 CampfireでCA登録を申請</h2><p class="small muted strong section">自分のCommunity招待URL、または自分が主催したミートアップ共有URLを貼り付けてください。</p><label for="claimUrl" class="small muted strong section" style="display:block">CampfireのURL</label><input id="claimUrl" class="input section" type="url" placeholder="https://..." autocomplete="off" '+(hasId?'':'disabled')+'><button id="submitClaim" type="button" class="btn section" '+(hasId?'':'disabled')+'>管理者へ確認申請を送る</button><div id="claimResult" role="status" aria-live="polite"></div><p class="tiny muted strong section">申請は自動承認されません。管理者の審査後にCommunityが割り当てられます。</p></section>'+
+      '<section class="card section"><h2>申請状況</h2>';
+    if(rows===null)html+='<p class="notice section">申請状況を取得できませんでした。既存の申請は変更されていません。</p>';
+    else if(!rows.length)html+='<p class="small muted section">申請履歴はありません。</p>';
+    else html+=rows.map(function(x){const st=x.status==="approved"?"承認済み":x.status==="rejected"?"却下":"確認待ち";return '<div class="section" style="border-top:1px solid #ecfccb;padding-top:12px"><div class="strong">'+e(x.community_name_snapshot||"Community情報確認中")+'</div><div class="small muted">'+e(st)+' / '+e(fmt(x.requested_at))+'</div></div>';}).join("");
+    html+='</section><div class="version">mirror '+VERSION+'</div>';
+    app.innerHTML=html;
+    document.getElementById("registrationBack").onclick=function(){go("my")};
+    document.getElementById("saveNiantic").onclick=saveNiantic;
+    if(hasId)document.getElementById("submitClaim").onclick=submitClaim;
   }
   function renderAccount(){
     const id=profile&&profile.niantic_id?profile.niantic_id:"";
     app.innerHTML='<section class="card"><span class="pill">ACCOUNT</span><h1 style="margin-top:12px">👤 アカウント</h1><div class="section"><div class="tiny strong muted">Google account</div><div class="strong" style="margin-top:4px">'+e(session.user.email||"—")+'</div><div class="tiny strong muted" style="margin-top:18px">Role</div><span class="pill" style="margin-top:5px">'+e(profile.role||"pending")+'</span><label class="tiny strong muted" style="display:block;margin-top:20px">SCOPELY EXPLORE ID</label><input id="niantic" class="input" style="margin-top:7px" value="'+e(id)+'" placeholder="SCOPELY EXPLORE IDを入力"><button id="saveNiantic" class="btn section">SCOPELY EXPLORE IDを保存</button><p class="tiny muted strong center">先頭の「@」は保存時に自動で外します。</p>'+(profile.role==="pending"&&id?'<button id="continue" class="btn dark section">CA登録を続ける →</button>':'')+'<button id="logout" class="btn line section">ログアウト</button>'+flashHtml()+'</div></section><div class="version">mirror '+VERSION+'</div>';
     document.getElementById("saveNiantic").onclick=saveNiantic;
     document.getElementById("logout").onclick=logout;
-    const c=document.getElementById("continue");if(c)c.onclick=function(){go("my")};
+    const c=document.getElementById("continue");if(c)c.onclick=function(){go("register")};
   }
   async function saveNiantic(){
     const el=document.getElementById("niantic");
@@ -705,6 +749,7 @@
       }catch(_err){if(token===renderToken)app.innerHTML='<section class="card"><h2>ゲームを起動できません</h2><p>画面を再読み込みしてください。</p><button class="btn section" id="gameBack">戻る</button></section>';const b=document.getElementById("gameBack");if(b)b.onclick=function(){go("my")}}
       return;
     }
+    if(v==="register"){await renderRegistration(token);return}
     if(v==="account"){renderAccount();return}
     if(v==="admin"){await renderAdmin();return}
     if(v.startsWith("community:")){await renderCommunity(decodeURIComponent(v.slice("community:".length)));return}
