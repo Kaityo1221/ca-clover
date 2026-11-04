@@ -26,21 +26,30 @@ export type NewCaReviewCard = {
 type Props = {
   applications: readonly NewCaReviewCard[];
   onRevalidate?: (application: NewCaReviewCard) => Promise<string>;
-  // Deliberately no approval/write callback until the protected server bridge exists.
+  /** Synthetic-only UI rehearsal. Never writes, approves, or activates an account. */
+  onPreviewDecision?: (application: NewCaReviewCard, action: "approve" | "hold" | "reject", reason: string) => Promise<string>;
+  // Production approval/writer callback deliberately absent.
 };
 
-export default function NewCaApprovalDeck({ applications, onRevalidate }: Props) {
+export default function NewCaApprovalDeck({ applications, onRevalidate, onPreviewDecision }: Props) {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [copied, setCopied] = useState(false);
   const [checking, setChecking] = useState(false);
   const [checkResult, setCheckResult] = useState<string | null>(null);
+  const [decisionAction, setDecisionAction] = useState<"approve" | "hold" | "reject" | null>(null);
+  const [decisionReason, setDecisionReason] = useState("");
+  const [decisionBusy, setDecisionBusy] = useState(false);
+  const [decisionResult, setDecisionResult] = useState<string | null>(null);
   const touch = useRef<{ x: number; y: number } | null>(null);
   const unique = [...new Map(applications.map((row) => [row.id, row])).values()];
   const safeIndex = Math.min(index, Math.max(0, unique.length - 1));
   const current = unique[safeIndex] ?? null;
 
-  useEffect(() => { setFlipped(false); setCopied(false); setCheckResult(null); }, [current?.id]);
+  useEffect(() => {
+    setFlipped(false); setCopied(false); setCheckResult(null);
+    setDecisionAction(null); setDecisionReason(""); setDecisionResult(null);
+  }, [current?.id]);
 
   function move(direction: number) {
     setIndex((value) => Math.max(0, Math.min(unique.length - 1, value + direction)));
@@ -169,8 +178,40 @@ export default function NewCaApprovalDeck({ applications, onRevalidate }: Props)
           </button>
           {checkResult && <p role="status" className="mt-3 break-words text-xs font-bold text-slate-700">{checkResult}</p>}
           <div className="mt-4 grid grid-cols-3 gap-2" aria-label="審査操作">
-            {["承認", "保留", "却下"].map(action => <button key={action} type="button" disabled
-              className="rounded-xl border px-3 py-3 text-sm font-bold opacity-40">{action}</button>)}
+            {(["approve", "hold", "reject"] as const).map(action => <button key={action} type="button"
+              disabled={!onPreviewDecision || decisionBusy}
+              onClick={() => { setDecisionAction(action); setDecisionReason(""); setDecisionResult(null); }}
+              className="rounded-xl border px-2 py-3 text-xs font-bold disabled:opacity-40">
+              {action === "approve" ? "承認" : action === "hold" ? "保留" : "却下"}
+              {onPreviewDecision ? "（練習）" : ""}
+            </button>)}
+          </div>
+          {decisionAction && onPreviewDecision && <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
+            <p className="text-xs font-black text-amber-950">練習モード：記録・通知・CA権限付与は行いません</p>
+            <p className="mt-2 text-xs text-slate-700">対象：{current.trainerName} / {decisionAction === "approve" ? "承認" : decisionAction === "hold" ? "保留" : "却下"}</p>
+            {decisionAction !== "approve" && <>
+              <label htmlFor="new-ca-decision-reason" className="mt-3 block text-xs font-bold">理由（3文字以上、500文字以内）</label>
+              <textarea id="new-ca-decision-reason" value={decisionReason} maxLength={500}
+                onChange={e => setDecisionReason(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white p-2 text-sm" rows={3}/>
+            </>}
+            <div className="mt-3 flex gap-2">
+              <button type="button" disabled={decisionBusy || (decisionAction !== "approve" && (decisionReason.trim().length < 3 || decisionReason !== decisionReason.trim()))}
+                onClick={async () => {
+                  const id = current.id, action = decisionAction;
+                  setDecisionBusy(true); setDecisionResult(null);
+                  try {
+                    const result = await onPreviewDecision(current, action, decisionReason);
+                    if (activeId.current === id) setDecisionResult(result);
+                  } catch {
+                    if (activeId.current === id) setDecisionResult("練習操作を確認できませんでした。");
+                  } finally { setDecisionBusy(false); }
+                }}
+                className="rounded-lg bg-amber-200 px-3 py-2 text-xs font-black disabled:opacity-40">練習を実行（保存なし）</button>
+              <button type="button" onClick={() => setDecisionAction(null)}
+                className="rounded-lg border px-3 py-2 text-xs font-bold">キャンセル</button>
+            </div>
+            {decisionResult && <p role="status" className="mt-2 text-xs font-bold">{decisionResult}</p>}
           </div>
           <div className="mt-6 border-t border-lime-100 pt-5" role="status">
             <p className="text-sm font-black text-amber-900">🔒 正式承認は停止中</p>
