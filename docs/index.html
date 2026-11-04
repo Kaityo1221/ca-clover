@@ -648,11 +648,12 @@
     if(token!=null&&token!==renderToken)return;
     const rows=result.error?null:(result.data||[]);
     const hasId=Boolean(String(profile.niantic_id||"").trim());
+    const canSubmit=hasId&&rows!==null;
     let html='<button class="btn line" id="registrationBack" type="button">← My Communityへ戻る</button>'+
       '<section class="card hero section"><span class="pill">CA REGISTRATION</span><h1 style="margin-top:12px">🍀 新規CA登録</h1><p class="muted strong">Googleで本人のアカウントを確認し、EXPLORE IDとCampfire URLを提出します。管理者が確認するまで、CA権限は付与されません。</p></section>'+flashHtml()+
-      '<section class="card section"><span class="pill">STEP 1 / 3　完了</span><h2 class="section">✅ Googleログイン</h2><p class="small muted strong">ログイン中：'+e(session.user.email||"メールアドレス未取得")+'</p><p class="tiny muted section">連絡先のメールアドレスだけでCA本人を判定しません。</p></section>'+
+      '<section class="card section"><span class="pill">STEP 1 / 3　完了</span><h2 class="section">✅ Googleログイン</h2><p class="small muted strong">ログイン中：'+e(session.user.email||"メールアドレス未取得")+'</p><p class="tiny muted section">連絡先のメールアドレスだけでCA本人を判定しません。別のメールアドレスで登録済みの方は再申請せず、管理者にご連絡ください。</p></section>'+
       '<section class="card section"><span class="pill '+(hasId?'':'amber')+'">STEP 2 / 3　'+(hasId?'登録済み':'入力待ち')+'</span><h2 class="section">SCOPELY EXPLORE ID</h2><label for="niantic" class="small muted strong section" style="display:block">ゲーム内のEXPLORE ID</label><input id="niantic" class="input section" value="'+e(profile.niantic_id||"")+'" placeholder="例：トレーナー名" autocomplete="off"><button id="saveNiantic" type="button" class="btn section">EXPLORE IDを保存</button><p class="tiny muted strong section">先頭の「@」は保存時に自動で外します。</p></section>'+
-      '<section class="card section"><span class="pill '+(hasId?'':'amber')+'">STEP 3 / 3　'+(hasId?'申請可能':'ID登録後に利用可能')+'</span><h2 class="section">🔥 CampfireでCA登録を申請</h2><p class="small muted strong section">自分のCommunity招待URL、または自分が主催したミートアップ共有URLを貼り付けてください。</p><label for="claimUrl" class="small muted strong section" style="display:block">CampfireのURL</label><input id="claimUrl" class="input section" type="url" placeholder="https://..." autocomplete="off" '+(hasId?'':'disabled')+'><button id="submitClaim" type="button" class="btn section" '+(hasId?'':'disabled')+'>管理者へ確認申請を送る</button><div id="claimResult" role="status" aria-live="polite"></div><p class="tiny muted strong section">申請は自動承認されません。管理者の審査後にCommunityが割り当てられます。</p></section>'+
+      '<section class="card section"><span class="pill '+(hasId?'':'amber')+'">STEP 3 / 3　'+(hasId?'申請可能':'ID登録後に利用可能')+'</span><h2 class="section">🔥 CampfireでCA登録を申請</h2><p class="small muted strong section">自分のCommunity招待URL、または自分が主催したミートアップ共有URLを貼り付けてください。</p><label for="claimUrl" class="small muted strong section" style="display:block">CampfireのURL</label><input id="claimUrl" class="input section" type="url" placeholder="https://..." autocomplete="off" '+(canSubmit?'':'disabled')+'><button id="submitClaim" type="button" class="btn section" '+(canSubmit?'':'disabled')+'>管理者へ確認申請を送る</button><div id="claimResult" role="status" aria-live="polite"></div><p class="tiny muted strong section">申請は自動承認されません。管理者の審査後にCommunityが割り当てられます。</p></section>'+
       '<section class="card section"><h2>申請状況</h2>';
     if(rows===null)html+='<p class="notice section">申請状況を取得できませんでした。既存の申請は変更されていません。</p>';
     else if(!rows.length)html+='<p class="small muted section">申請履歴はありません。</p>';
@@ -661,7 +662,7 @@
     app.innerHTML=html;
     document.getElementById("registrationBack").onclick=function(){go("my")};
     document.getElementById("saveNiantic").onclick=saveNiantic;
-    if(hasId)document.getElementById("submitClaim").onclick=submitClaim;
+    if(canSubmit)document.getElementById("submitClaim").onclick=submitClaim;
   }
   function renderAccount(){
     const id=profile&&profile.niantic_id?profile.niantic_id:"";
