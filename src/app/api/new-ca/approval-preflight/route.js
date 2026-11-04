@@ -18,7 +18,7 @@ const reply = (status, value) => NextResponse.json(value, {
  */
 export async function POST(request) {
   if (process.env.VERCEL_ENV !== "preview" ||
-      process.env.VERCEL_GIT_COMMIT_REF !== "feature/new-ca-approval-admin-preview-20261103" ||
+      !["feature/new-ca-approval-admin-preview-20261103", "qa/newca-webkit-validation-20261105"].includes(process.env.VERCEL_GIT_COMMIT_REF) ||
       !isIsolatedBridgeReady(process.env))
     return reply(503, { code: "PREVIEW_ONLY", productionActivated: false });
   if (request.headers.get("origin") !== new URL(request.url).origin)
