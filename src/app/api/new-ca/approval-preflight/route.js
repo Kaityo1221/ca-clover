@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Client } from "pg";
-import { isIsolatedBridgeReady, BRIDGE_GUARD_MARKER } from "@/lib/new-ca-bridge-policy";
+import { isIsolatedPreflightReady, BRIDGE_GUARD_MARKER } from "@/lib/new-ca-bridge-policy";
 import { checkDiscordCurrentRole } from "@/lib/new-ca-discord-live";
 
 export const runtime = "nodejs";
@@ -17,9 +17,7 @@ const reply = (status, value) => NextResponse.json(value, {
  * Does NOT produce trusted evidence, approve any record, or issue CA privileges.
  */
 export async function POST(request) {
-  if (process.env.VERCEL_ENV !== "preview" ||
-      process.env.VERCEL_GIT_COMMIT_REF !== "feature/new-ca-approval-admin-preview-20261103" ||
-      !isIsolatedBridgeReady(process.env))
+  if (!isIsolatedPreflightReady(process.env))
     return reply(503, { code: "PREVIEW_ONLY", productionActivated: false });
   if (request.headers.get("origin") !== new URL(request.url).origin)
     return reply(403, { code: "ORIGIN_MISMATCH", productionActivated: false });

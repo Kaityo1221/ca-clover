@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   BRIDGE_PREVIEW_BRANCH,
   isIsolatedBridgeReady,
+  isIsolatedPreflightReady,
   verifiedGoogleProviderSubject,
   allowedToBindPreview,
 } from "../src/lib/new-ca-bridge-policy.ts";
@@ -36,3 +37,12 @@ check("existing admin refused",allowedToBindPreview("admin",0,1),false);
 check("previously linked CA identity refused",allowedToBindPreview("pending",1,1),false);
 check("missing application refused",allowedToBindPreview("pending",0,0),false);
 check("ambiguous applications refused",allowedToBindPreview("pending",0,2),false);
+
+const qaPreview = {...isolated, VERCEL_GIT_COMMIT_REF:"qa/newca-webkit-validation-20261105"};
+check("QA read-only preflight allowed",isIsolatedPreflightReady(qaPreview),true);
+check("QA cannot bind or write via existing bridge gate",isIsolatedBridgeReady(qaPreview),false);
+check("QA read-only preflight production forbidden",isIsolatedPreflightReady({...qaPreview,VERCEL_ENV:"production"}),false);
+check("QA read-only preflight requires explicit enable flag",isIsolatedPreflightReady({...qaPreview,NEW_CA_BRIDGE_ENABLED:"false"}),false);
+check("QA read-only preflight wrong DB refused",isIsolatedPreflightReady({...qaPreview,NEW_CA_LAB_DATABASE_URL:isolated.NEW_CA_LAB_DATABASE_URL.replace("ca_clover_test","production")}),false);
+check("QA read-only preflight main refused",isIsolatedPreflightReady({...qaPreview,VERCEL_GIT_COMMIT_REF:"main"}),false);
+check("QA read-only preflight wrong hostname refused",isIsolatedPreflightReady({...qaPreview,NEW_CA_LAB_DATABASE_URL:"postgresql://u:p@evil.example/ca_clover_test"}),false);

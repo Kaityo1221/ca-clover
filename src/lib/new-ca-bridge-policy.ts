@@ -6,11 +6,13 @@ export const BRIDGE_PREVIEW_BRANCH = "feature/new-ca-approval-admin-preview-2026
 export const BRIDGE_DB_NAME = "ca_clover_test";
 export const BRIDGE_GUARD_MARKER = "ca-onboarding-neon-auth-branch-20261103";
 
-export function isIsolatedBridgeReady(env: Record<string, string | undefined>): boolean {
-  if (env.NEW_CA_BRIDGE_ENABLED !== "true" ||
-      env.VERCEL_ENV !== "preview" ||
-      env.VERCEL_GIT_COMMIT_REF !== BRIDGE_PREVIEW_BRANCH ||
-      !env.NEW_CA_LAB_DATABASE_URL) return false;
+const READ_ONLY_PREFLIGHT_BRANCHES = [
+  BRIDGE_PREVIEW_BRANCH,
+  "qa/newca-webkit-validation-20261105",
+] as const;
+
+function verifiedIsolatedNeonUrl(env: Record<string, string | undefined>): boolean {
+  if (!env.NEW_CA_LAB_DATABASE_URL) return false;
   try {
     const url = new URL(env.NEW_CA_LAB_DATABASE_URL);
     return ["postgres:", "postgresql:"].includes(url.protocol) &&
@@ -18,6 +20,21 @@ export function isIsolatedBridgeReady(env: Record<string, string | undefined>): 
       url.pathname === "/" + BRIDGE_DB_NAME &&
       url.username.length > 0 && url.password.length > 0;
   } catch { return false; }
+}
+
+export function isIsolatedBridgeReady(env: Record<string, string | undefined>): boolean {
+  return env.NEW_CA_BRIDGE_ENABLED === "true" &&
+    env.VERCEL_ENV === "preview" &&
+    env.VERCEL_GIT_COMMIT_REF === BRIDGE_PREVIEW_BRANCH &&
+    verifiedIsolatedNeonUrl(env);
+}
+
+/** Read-only preflight only. Never reuse for bind, approval or any writer route. */
+export function isIsolatedPreflightReady(env: Record<string, string | undefined>): boolean {
+  return env.NEW_CA_BRIDGE_ENABLED === "true" &&
+    env.VERCEL_ENV === "preview" &&
+    READ_ONLY_PREFLIGHT_BRANCHES.some(branch => branch === env.VERCEL_GIT_COMMIT_REF) &&
+    verifiedIsolatedNeonUrl(env);
 }
 
 type Identity = {
