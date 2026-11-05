@@ -45,7 +45,7 @@ class Client {
 }
 const checkDiscordCurrentRole = async () => { state.externalCalls++; return state.discordCurrent; };
 const api = new Function("NextResponse", "createClient", "Client",
-  "isIsolatedBridgeReady", "BRIDGE_GUARD_MARKER", "checkDiscordCurrentRole", "process",
+  "isIsolatedPreflightReady", "BRIDGE_GUARD_MARKER", "checkDiscordCurrentRole", "process",
   route + "\nreturn { POST };")(
     NextResponse, createClient, Client, () => state.enabled, "synthetic-guard",
     checkDiscordCurrentRole, { env });
