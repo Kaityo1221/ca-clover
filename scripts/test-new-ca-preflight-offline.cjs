@@ -3,6 +3,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const { isIsolatedPreflightReady } = require("../src/lib/new-ca-bridge-policy.ts");
 const source = fs.readFileSync(path.join(__dirname, "../src/app/api/new-ca/approval-preflight/route.js"), "utf8");
 const route = source.replace(/import[\s\S]*?from\s+"[^"]+";/g, "")
   .replace(/export const /g, "const ")
@@ -10,10 +11,11 @@ const route = source.replace(/import[\s\S]*?from\s+"[^"]+";/g, "")
 const state = { admin: true, enabled: true, authorized: true, matching: true,
   duplicate: false, discordCurrent: true, throwDb: false, dbQueries: [], externalCalls: 0 };
 const env = {
+  NEW_CA_BRIDGE_ENABLED: "true",
   VERCEL_ENV: "preview",
   VERCEL_GIT_COMMIT_REF: "qa/newca-webkit-validation-20261105",
   NEXT_PUBLIC_SUPABASE_URL: "https://wgiittrvgtiosogyhfcl.supabase.co",
-  NEW_CA_LAB_DATABASE_URL: "postgresql://synthetic.invalid/qa",
+  NEW_CA_LAB_DATABASE_URL: "postgresql://qa_user:synthetic_pass@ep-test-pooler.us-east-2.aws.neon.tech/ca_clover_test?sslmode=require",
 };
 const NextResponse = { json: (body, options) => ({ status: options.status, body }) };
 const createClient = () => ({
@@ -47,7 +49,7 @@ const checkDiscordCurrentRole = async () => { state.externalCalls++; return stat
 const api = new Function("NextResponse", "createClient", "Client",
   "isIsolatedPreflightReady", "BRIDGE_GUARD_MARKER", "checkDiscordCurrentRole", "process",
   route + "\nreturn { POST };")(
-    NextResponse, createClient, Client, () => state.enabled, "synthetic-guard",
+    NextResponse, createClient, Client, isIsolatedPreflightReady, "synthetic-guard",
     checkDiscordCurrentRole, { env });
 const valid = {
   requestId: "00000000-0000-4000-8000-000000000111",
