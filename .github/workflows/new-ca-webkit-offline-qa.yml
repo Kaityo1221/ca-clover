@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/new-ca-webkit-offline-qa.yml'
       - 'scripts/test-new-ca-card-webkit.cjs'
+      - 'scripts/test-new-ca-preflight-offline.cjs'
       - 'scripts/fixtures/new-ca-card-browser.tsx'
       - 'src/components/new-ca-approval-deck.tsx'
       - 'src/app/api/new-ca/approval-preflight/route.js'
@@ -37,6 +38,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Install isolated browser QA tooling
         run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright@1.58.2 esbuild@0.25.12
+      - name: Run fail-closed approval preflight mock tests
+        run: node scripts/test-new-ca-preflight-offline.cjs
       - name: Install Playwright WebKit
         run: npx playwright install --with-deps webkit
       - name: Build static CSS and typecheck
