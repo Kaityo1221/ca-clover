@@ -68,7 +68,7 @@ export default function Page(){
         <div className="flex flex-col gap-4 md:flex-row md:items-center">
           <div className="min-w-0 flex-1">
             <div className="truncate font-black text-lime-950">{row.email??"メール未取得"}</div>
-            <div className="mt-1 text-xs font-semibold text-slate-500">Niantic ID: {row.niantic_id??"未登録"}</div>
+            <div className="mt-1 text-xs font-semibold text-slate-500">トレーナー名: {row.niantic_id??"未登録"}</div>
             <div className="mt-1 text-[11px] text-slate-400">登録 {new Date(row.created_at).toLocaleString("ja-JP")}</div>
           </div>
           <div className="flex flex-wrap gap-2">
