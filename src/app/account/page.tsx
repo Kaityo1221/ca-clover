@@ -74,10 +74,12 @@ export default function Page(){
       <div className="mt-5 text-xs font-black text-slate-500">Role</div>
       <div className="mt-1 inline-flex rounded-full bg-lime-100 px-3 py-1 text-xs font-black text-lime-800">{profile?.role ?? "pending"}</div>
 
-      <label className="mt-6 block text-xs font-black text-slate-600" htmlFor="niantic-id">Niantic ID</label>
-      <input id="niantic-id" value={nianticId} onChange={e=>setNianticId(e.target.value)} placeholder="Niantic IDを入力" className="mt-2 w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-lime-400" />
+      <label className="mt-6 block text-xs font-black text-slate-600" htmlFor="niantic-id">Pokémon GO トレーナー名</label>
+      <input id="niantic-id" value={nianticId} onChange={e=>setNianticId(e.target.value)} placeholder="ゲーム内のトレーナー名を入力" className="mt-2 w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-lime-400" />
 
-      <button onClick={save} disabled={saving} className="mt-4 w-full rounded-2xl bg-lime-400 px-5 py-3 text-sm font-black text-lime-950 disabled:opacity-50">{saving ? "保存中..." : "Niantic IDを保存"}</button>
+      <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">Pokémon GOのプロフィールに表示されるトレーナー名を入力してください。</p>
+
+      <button onClick={save} disabled={saving} className="mt-4 w-full rounded-2xl bg-lime-400 px-5 py-3 text-sm font-black text-lime-950 disabled:opacity-50">{saving ? "保存中..." : "トレーナー名を保存"}</button>
       {message ? <p className="mt-3 text-center text-xs font-bold text-lime-700">{message}</p> : null}
 
       <div className="mt-7 border-t border-lime-100 pt-6">

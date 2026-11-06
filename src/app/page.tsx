@@ -47,7 +47,7 @@ const adminSections = [
     subtitle: "普段使う場所",
     items: [
       { icon: "🍀", title: "My Community", description: "自分のCommunity活動を見る", href: "/my", access: "一般" },
-      { icon: "👤", title: "アカウント", description: "Niantic IDとログイン設定", href: "/account", access: "一般" },
+      { icon: "👤", title: "アカウント", description: "トレーナー名とログイン設定", href: "/account", access: "一般" },
       { icon: "🎮", title: "ミニゲーム", description: "ゾロアークを探せ！ 現地用GMゲーム", href: "/mini-games" },
     ],
   },
@@ -59,7 +59,7 @@ const caSections = [
     subtitle: "普段使う場所",
     items: [
       { icon: "🍀", title: "My Community", description: "自分のCommunity活動を見る", href: "/my" },
-      { icon: "👤", title: "アカウント", description: "Niantic IDとログイン設定", href: "/account" },
+      { icon: "👤", title: "アカウント", description: "トレーナー名とログイン設定", href: "/account" },
       { icon: "🎮", title: "ミニゲーム", description: "ゾロアークを探せ！ 現地用GMゲーム", href: "/mini-games" },
     ],
   },
@@ -181,9 +181,9 @@ export default function Page() {
         <div className="text-5xl">🌱</div>
         <h2 className="mt-3 text-xl font-black text-lime-950">CA登録を進める</h2>
         <p className="mx-auto mt-2 max-w-xl text-sm font-semibold leading-6 text-slate-500">
-          まずNiantic IDを登録してください。そのあと、自分が主催したMeetupを1件提出すると、CA確認とCommunity割当の申請へ進めます。
+          まずトレーナー名を登録してください。そのあと、自分が主催したMeetupを1件提出すると、CA確認とCommunity割当の申請へ進めます。
         </p>
-        <Link href="/account" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black text-lime-950">Niantic IDを登録する →</Link>
+        <Link href="/account" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black text-lime-950">トレーナー名を登録する →</Link>
       </section> : null}
 
       {profile?.role === "admin" ? <section className="mt-7 sm:hidden">

@@ -111,7 +111,7 @@ export default function Page(){
           return <option key={p.id} value={p.id}>{count>0?"✅ ":""}{p.email??p.niantic_id??p.id} ({p.role}){count>0?" / "+count+" Community":""}</option>;
         })}
       </select>
-      {selectedProfile ? <div className="mt-3 text-xs font-semibold text-slate-500">Niantic ID: {selectedProfile.niantic_id??"未登録"}</div> : null}
+      {selectedProfile ? <div className="mt-3 text-xs font-semibold text-slate-500">トレーナー名: {selectedProfile.niantic_id??"未登録"}</div> : null}
       <div className="mt-4 rounded-2xl border border-lime-100 bg-lime-50 p-4">
         <div className="text-[11px] font-black text-lime-700">現在の認証済みCommunity</div>
         <div className="mt-1 font-black text-lime-950">
