@@ -9,10 +9,10 @@ function check(label,fn){fn();process.stdout.write("PASS: "+label+"\n");}
 const example=[
  row("k-3","2026-11-07T15:15:00Z","alice","bob"),
  row("k-1","2026-11-06T15:00:00Z","alice","bob"),
- row("k-2","2026-11-07T11:00:00Z","bob","charlie"),
+ row("k-2","2026-11-07T14:50:00Z","bob","charlie"),
  row("k-4","2026-11-07T15:50:00Z","alice","bob"),
  row("k-5","2026-11-07T15:59:00Z","alice","dan"),
- row("k-6","2026-11-07T14:59:59Z","dan","charlie"),
+ row("k-6","2026-11-08T14:59:59Z","dan","charlie"),
  row("k-5","2026-11-07T15:59:00Z","alice","dan")
 ];
 const report=summarize(example,"2026-11-09T00:00:00Z");
