@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#eaf4e4">
+<meta http-equiv="Cache-Control" content="no-store">
+<title>メダル交換集計 | CA Clover ADMIN</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./stamp-exchange-stats-core.js"></script>
+<style>
+:root{font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#283b25;background:#f5f8f0;font-synthesis:none}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 0 0,#e1efd7 0,transparent 45%),#f5f8f0}
+a{color:inherit;text-decoration:none}button{font:inherit;cursor:pointer}
+header{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.93);backdrop-filter:blur(16px);border-bottom:1px solid #dce8d5}
+.head{max-width:960px;margin:auto;min-height:64px;padding:9px 18px;display:flex;align-items:center;gap:12px}
+.mark{width:40px;height:40px;display:grid;place-items:center;border-radius:14px;background:#dff0d2;font-size:23px}
+.brand{font-size:14px;font-weight:900}.brand small{display:block;color:#72936a;font-size:10px;letter-spacing:.13em}
+.spacer{flex:1}.link{font-size:12px;font-weight:800;border:1px solid #d7e4cd;border-radius:999px;padding:9px 12px;background:#fff;color:#54774b}
+main{max-width:960px;margin:auto;padding:24px 16px 80px}
+.hero{padding:26px;border-radius:28px;background:linear-gradient(125deg,#386b3c,#65994d 72%,#81af55);color:white;position:relative;overflow:hidden}
+.hero:before{content:"🍀";position:absolute;right:3%;bottom:-65px;font-size:220px;opacity:.12;pointer-events:none}
+.kicker{font-size:10px;letter-spacing:.22em;font-weight:800;opacity:.75}
+h1{font-size:clamp(25px,5.5vw,38px);margin:10px 0 8px;line-height:1.2}
+.hero p{margin:0;line-height:1.7;font-size:13px;max-width:550px;color:#e1f0dd;font-weight:650}
+.panel{border-radius:24px;background:#fff;border:1px solid #e1eadb;padding:20px;box-shadow:0 12px 34px rgba(43,85,29,.05)}
+.section{margin-top:16px}.label{color:#648260;font-size:12px;font-weight:800}
+.metrics{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:12px}
+.stat{min-width:0}.stat strong{display:block;font-size:clamp(23px,4.8vw,38px);line-height:1.1;margin-top:12px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-.04em}
+.stat strong span{font-size:14px;font-weight:700;margin-left:4px;letter-spacing:0;color:#739266}
+.stat .detail{font-size:11px;margin-top:8px;color:#7b8778;line-height:1.5}
+.stat.total{background:linear-gradient(135deg,#eff7e9,#fff)}
+.barline{display:flex;align-items:center;flex-wrap:wrap;gap:9px;justify-content:space-between}
+h2{font-size:18px;margin:0;letter-spacing:-.03em}
+.periods{display:flex;gap:5px;background:#f2f7ed;border-radius:999px;padding:4px}
+.period{border:0;background:transparent;border-radius:999px;padding:9px 12px;font-size:11px;font-weight:900;color:#72906b;min-height:36px}
+.period[aria-pressed="true"]{background:#426e3e;color:white;box-shadow:0 3px 9px #2d522224}
+.chart{width:100%;height:auto;display:block;overflow:visible;margin-top:22px}
+.axistext{fill:#8a9c85;font-size:13px;font-weight:700}.gridline{stroke:#e2ebe0;stroke-dasharray:5 6}
+.chartline{fill:none;stroke:#559a50;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+.caption{font-size:11px;color:#80927b;line-height:1.7;margin:12px 0 0}
+.tablebox{overflow-x:auto;margin-top:12px}table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:13px 8px;text-align:left;border-bottom:1px solid #edf3e9;font-size:13px}
+th{font-size:11px;color:#849680}td:nth-child(2),th:nth-child(2),td:nth-child(3),th:nth-child(3){text-align:right}
+td:nth-child(3){color:#3f7b39;font-weight:900}tr:last-child td{border-bottom:0}
+td.zero{color:#a9b4a5}.notice{padding:13px 16px;border-radius:16px;background:#eff6e8;color:#456d40;font-size:12px;font-weight:750;line-height:1.6}
+.notice.bad{background:#fff0ec;color:#b33d30}
+.actions{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+#refreshBtn{border:1px solid #ccddc6;background:white;color:#4e7848;padding:10px 15px;border-radius:999px;font-size:12px;font-weight:850;min-height:42px}
+#refreshBtn:disabled{opacity:.4}
+.status{font-size:12px;color:#54774b;font-weight:800;min-height:18px}
+#blocked{max-width:520px;margin:40px auto;text-align:center}#blocked button{border:0;background:#598548;border-radius:16px;padding:12px 18px;color:white;font-weight:800}
+.hidden,[hidden]{display:none!important}
+:focus-visible{outline:3px solid #88b071;outline-offset:3px}
+@media(max-width:640px){
+ main{padding:14px 12px 60px}.hero{padding:22px 18px}.panel{padding:17px;border-radius:21px}.metrics{grid-template-columns:1fr 1fr}
+ .metrics .total{grid-column:1/-1}.stat strong{font-size:26px}.metrics .total strong{font-size:39px}
+ .periods{width:100%;justify-content:space-around}.period{flex:1}.head{padding:8px 12px}.brand small{letter-spacing:.03em}
+ .chart{margin-top:12px}
+}
+</style>
+</head>
+<body>
+<header><div class="head">
+ <a class="mark" href="./admin.html" aria-label="管理メニューへ戻る">🍀</a>
+ <div class="brand">CA Clover<small>ADMIN / MEDAL ANALYTICS</small></div>
+ <div class="spacer"></div><a class="link" href="./admin.html">← 管理メニュー</a>
+</div></header>
+<main>
+ <section class="hero">
+   <div class="kicker">CA CLOVER / MEDAL RALLY</div>
+   <h1>メダル交換集計</h1>
+   <p>全国のCA同士で成立したメダル交換を、全期間と日別の累計で確認できます。</p>
+ </section>
+ <div id="blocked" class="panel hidden" role="alert">
+  <h2 id="blockedTitle">認証を確認しています</h2>
+  <p id="blockedMessage" class="caption"></p>
+  <a class="link" href="./admin.html">管理メニューへ戻る</a>
+ </div>
+ <div class="actions section">
+  <div id="status" class="status" role="status" aria-live="polite">ADMIN権限を確認しています...</div>
+  <button id="refreshBtn" type="button" disabled>⟳ 最新データを取得</button>
+ </div>
+ <div id="dashboard" hidden>
+  <section class="metrics section" aria-label="全期間の交換数">
+   <div class="panel stat total"><div class="label">🤝 全期間の交換総数</div><strong id="total">—</strong><div class="detail">成立した1組を1回として集計</div></div>
+   <div class="panel stat"><div class="label">📅 初回交換日</div><strong id="first">—</strong><div class="detail">記録開始日</div></div>
+   <div class="panel stat"><div class="label">🪙 最終交換日</div><strong id="last">—</strong><div class="detail">最新の交換完了日</div></div>
+  </section>
+  <section class="panel section" aria-label="日別累計グラフ">
+   <div class="barline"><h2>日別の累計交換回数</h2>
+    <div class="periods" aria-label="表示期間">
+     <button class="period" type="button" data-period="all" aria-pressed="true">全期間</button>
+     <button class="period" type="button" data-period="30" aria-pressed="false">30日</button>
+     <button class="period" type="button" data-period="7" aria-pressed="false">7日</button>
+    </div>
+   </div>
+   <svg id="chart" class="chart" viewBox="0 0 720 250" role="img" aria-label="日別の累計交換回数の折れ線グラフ"></svg>
+   <p class="caption">※ 日本時間（JST）で集計。交換がない日も累計は変わりません。期間切替しても累計値はリセットされません。</p>
+  </section>
+  <section class="panel section" aria-label="日別交換一覧">
+   <div class="barline"><h2>日別交換履歴</h2><span class="label">最新の日付から表示</span></div>
+   <div class="tablebox"><table>
+    <thead><tr><th scope="col">日付（JST）</th><th scope="col">当日の交換</th><th scope="col">累計</th></tr></thead>
+    <tbody id="dailyBody"></tbody>
+   </table></div>
+  </section>
+  <p class="caption">集計対象：メダル交換履歴のうち完了（completed）の取引のみ。自分のメダルの自動付与、管理者付与、QR発行だけの未成立セッションは含みません。個人別の情報は表示しません。</p>
+ </div>
+</main>
+<script>
+(function(){
+"use strict";
+const URL="https://wgiittrvgtiosogyhfcl.supabase.co";
+const KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
+const PAGE_SIZE=500;
+const client=window.supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
+const core=window.StampExchangeStats;
+const get=id=>document.getElementById(id);
+let aggregate=null,period="all",running=false;
+function number(n){return Number(n).toLocaleString("ja-JP")}
+function shortDate(day){return day?day.slice(5).replace("-","/"):"—"}
+function fullDate(day){return day?day.replaceAll("-","/"):"—"}
+function setStatus(text,error){get("status").textContent=text;get("status").style.color=error?"#b33d30":"#54774b"}
+function blocked(title,detail){
+ get("dashboard").hidden=true;get("blocked").classList.remove("hidden");
+ get("blockedTitle").textContent=title;get("blockedMessage").textContent=detail;
+ get("refreshBtn").disabled=true;
+}
+async function checkAdmin(){
+ const auth=await client.auth.getUser();
+ if(auth.error||!auth.data.user){blocked("ログインが必要です","CA Cloverの管理者アカウントでログインしてください。");return false}
+ const profile=await client.from("profiles").select("role").eq("id",auth.data.user.id).maybeSingle();
+ if(profile.error){blocked("権限を確認できません","認証情報を取得できません。再度お試しください。");return false}
+ if(profile.data?.role!=="admin"){blocked("ADMIN専用の集計画面です","このアカウントには管理者権限がありません。");return false}
+ get("blocked").classList.add("hidden");return true;
+}
+async function fetchCompleted(asOf){
+ let offset=0;
+ const rows=[];
+ for(;;){
+  const response=await client.from("stamp_exchange_transactions")
+   .select("exchange_key,completed_at")
+   .eq("status","completed")
+   .lte("completed_at",asOf)
+   .order("completed_at",{ascending:true})
+   .order("exchange_key",{ascending:true})
+   .range(offset,offset+PAGE_SIZE-1);
+  if(response.error)throw response.error;
+  const chunk=response.data||[];
+  rows.push(...chunk);
+  if(chunk.length<PAGE_SIZE)break;
+  offset+=PAGE_SIZE;
+ }
+ return rows;
+}
+function chartSvg(days){
+ const svg=get("chart");
+ if(!days.length){svg.innerHTML='<text x="360" y="125" text-anchor="middle" class="axistext">まだ交換履歴がありません</text>';return}
+ const W=720,H=250,L=47,R=12,T=15,B=39;
+ const x=i=>L+(W-L-R)*(days.length===1?.5:i/(days.length-1));
+ const max=Math.max(1,days[days.length-1].cumulative);
+ const y=v=>T+(H-T-B)*(1-v/max);
+ const points=days.map((d,i)=>[x(i),y(d.cumulative)]);
+ const path=points.map((p,i)=>(i?"L":"M")+p[0].toFixed(2)+" "+p[1].toFixed(2)).join(" ");
+ const bottom=H-B;
+ const area=path+" L"+x(days.length-1).toFixed(2)+" "+bottom+" L"+x(0).toFixed(2)+" "+bottom+" Z";
+ const ticks=[0,1,2,3,4].map(i=>{
+  const val=Math.round(max*i/4),yy=y(max*i/4);
+  return '<line class="gridline" x1="'+L+'" y1="'+yy+'" x2="'+(W-R)+'" y2="'+yy+'"/>'+
+   '<text class="axistext" text-anchor="end" x="'+(L-8)+'" y="'+(yy+5)+'">'+number(val)+'</text>';
+ }).join("");
+ const dateIndexes=[0,Math.round((days.length-1)/2),days.length-1].filter((i,k,a)=>a.indexOf(i)===k);
+ const labels=dateIndexes.map(i=>'<text class="axistext" text-anchor="'+(i===0?"start":i===days.length-1?"end":"middle")+'" x="'+x(i)+'" y="'+(H-9)+'">'+shortDate(days[i].day)+'</text>').join("");
+ const last=points[points.length-1];
+ svg.innerHTML='<defs><linearGradient id="statsFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#83bf77" stop-opacity=".33"/><stop offset="1" stop-color="#83bf77" stop-opacity=".02"/></linearGradient></defs>'+
+ ticks+'<path d="'+area+'" fill="url(#statsFill)"/><path d="'+path+'" class="chartline"/>'+
+ '<circle cx="'+last[0]+'" cy="'+last[1]+'" r="6" fill="#3b7f39" stroke="#fff" stroke-width="3"/>'+labels;
+ svg.setAttribute("aria-label",fullDate(days[0].day)+"から"+fullDate(days[days.length-1].day)+"まで、累計"+number(days[days.length-1].cumulative)+"回");
+}
+function render(){
+ if(!aggregate)return;
+ get("total").textContent=number(aggregate.total)+" 回";
+ get("first").textContent=shortDate(aggregate.firstDate);
+ get("last").textContent=shortDate(aggregate.lastDate);
+ const days=core.recent(aggregate.days,period);
+ chartSvg(days);
+ get("dailyBody").innerHTML=days.length?days.slice().reverse().map(d=>
+  '<tr><td>'+fullDate(d.day)+'</td><td class="'+(d.count===0?"zero":"")+'">'+number(d.count)+' 回</td><td>'+number(d.cumulative)+' 回</td></tr>'
+ ).join(""):'<tr><td colspan="3">交換完了履歴はありません</td></tr>';
+ document.querySelectorAll("[data-period]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.period===period)));
+ get("dashboard").hidden=false;
+}
+async function refresh(){
+ if(running)return;running=true;get("refreshBtn").disabled=true;
+ setStatus("交換履歴を読み込んでいます…",false);
+ try{
+  if(!(await checkAdmin())){setStatus("管理者の認証が必要です",true);return}
+  const asOf=new Date().toISOString();
+  const rows=await fetchCompleted(asOf);
+  aggregate=core.build(rows,asOf);
+  render();
+  setStatus("更新完了 ・ "+number(aggregate.total)+" 回（"+new Date(asOf).toLocaleString("ja-JP",{timeZone:"Asia/Tokyo"})+" JST）",false);
+ }catch(error){
+  setStatus("読み込みに失敗しました。交換数は更新されていません。"+(error?.message?" "+error.message:""),true);
+  if(!aggregate)get("dashboard").hidden=true;
+ }finally{running=false;get("refreshBtn").disabled=false}
+}
+document.querySelectorAll("[data-period]").forEach(b=>b.addEventListener("click",()=>{period=b.dataset.period;render()}));
+get("refreshBtn").addEventListener("click",refresh);
+refresh();
+})();
+</script>
+</body>
+</html>
