@@ -17,4 +17,5 @@ jobs:
       - run: node scripts/ci/verify-public-boundary.mjs
       - run: node scripts/test-community-title-fit.mjs
       - run: node scripts/test-medal-face-hires.mjs
+      - run: node scripts/test-stamp-exchange-stats.mjs
       - run: npm run build
