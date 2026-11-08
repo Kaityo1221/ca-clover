@@ -126,13 +126,14 @@ async function dashboard(){
   ["coverage","📊","Data Coverage","全国取得状態・未解決CAを確認",0],
   ["windows","🕐","イベント時間マスター","公式イベント時間窓",0],
   ["stamp-events","🎪","イベント管理","メダルラリーイベント・日替わりミッション",0],
+  ["stamp-exchange-stats","📈","メダル交換集計","全期間の交換総数・日別交換回数と累計",0],
   ["general","🏠","ホームへ","カテゴリホームに戻る",0],
   ["stamp-rally","🍀","CA Medal Rally","自分が実際に獲得したメダルを確認",0],
   ["medal-showcase","🪙","メダル見本帳","ADMIN限定：全国のメダルを3Dで確認（獲得扱いになりません）",0],
  ];
  app.innerHTML+='<div class="menu section">'+items.map(x=>'<button class="card menucard '+((x[0]==="watch"||x[0]==="claims"||x[0]==="icons")&&x[4]?'attention':'')+'" data-route="'+x[0]+'"><div class="icon">'+x[1]+'</div><h3 class="section">'+x[2]+'</h3><p class="small muted strong">'+x[3]+'</p>'+(x[4]?'<span class="pill '+(x[0]==="assignments"?'slate':'amber')+' count">'+(x[0]==="assignments"?'未割当 ':x[0]==="icons"?'要確認 ':'')+x[4]+'</span>':'')+'</button>').join("")+'</div>';
  app.innerHTML+='<div class="section center"><a href="./changelog.html" class="tiny muted strong">更新履歴</a></div>';
- app.querySelectorAll("[data-route]").forEach(b=>b.onclick=()=>{if(b.dataset.route==="general")location.href="./";else if(b.dataset.route==="map")location.href="./map.html";else if(b.dataset.route==="stamp-rally")location.href="./stamp-rally.html?v=20261015-offset012";else if(b.dataset.route==="medal-showcase")location.href="./stamp-rally.html?admin_catalog=1&v=20261015-offset012";else if(b.dataset.route==="stamp-events")location.href="./admin-stamp-events.html";else if(b.dataset.route==="new-ca-review")location.href="https://ca-clover-discord-oauth.vercel.app/admin-preview.html";else go(b.dataset.route)});
+ app.querySelectorAll("[data-route]").forEach(b=>b.onclick=()=>{if(b.dataset.route==="general")location.href="./";else if(b.dataset.route==="map")location.href="./map.html";else if(b.dataset.route==="stamp-rally")location.href="./stamp-rally.html?v=20261015-offset012";else if(b.dataset.route==="medal-showcase")location.href="./stamp-rally.html?admin_catalog=1&v=20261015-offset012";else if(b.dataset.route==="stamp-events")location.href="./admin-stamp-events.html";else if(b.dataset.route==="stamp-exchange-stats")location.href="./stamp-exchange-stats.html";else if(b.dataset.route==="new-ca-review")location.href="https://ca-clover-discord-oauth.vercel.app/admin-preview.html";else go(b.dataset.route)});
 }
 
 async function claims(){
