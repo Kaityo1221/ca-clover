@@ -18,4 +18,5 @@ jobs:
       - run: node scripts/test-community-title-fit.mjs
       - run: node scripts/test-medal-face-hires.mjs
       - run: node scripts/test-stamp-exchange-stats.mjs
+      - run: node scripts/test-stamp-exchange-breakdown.mjs
       - run: npm run build

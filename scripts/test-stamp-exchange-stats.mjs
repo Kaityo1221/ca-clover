@@ -61,7 +61,11 @@ check("new UI inline JS parses and remains admin-only", () => {
   assert.match(html,/role!=="admin"/);
   assert.match(html,/\.eq\("status","completed"\)/);
   assert.match(html,/\.order\("exchange_key"/);
-  assert.doesNotMatch(html,/user_a_id|user_b_id/);
+  assert.match(html,/\.select\("exchange_key,completed_at,user_a_id,user_b_id"\)/);
+  assert.match(html,/\.eq\("is_primary",true\)/);
+  assert.match(html,/data-day=/);
+  assert.match(html,/\[data-ranking\]/);
+  assert.match(html,/escapeHtml\(ca\.name\)/);
   assert.match(html,/data-period="all"/);
   assert.match(html,/data-period="30"/);
   assert.match(html,/data-period="7"/);

@@ -7,7 +7,8 @@
 <meta http-equiv="Cache-Control" content="no-store">
 <title>メダル交換集計 | CA Clover ADMIN</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./stamp-exchange-stats-core.js"></script>
+<script src="./stamp-exchange-stats-core.js?v=2"></script>
+<script src="./stamp-exchange-breakdown.js?v=1"></script>
 <style>
 :root{font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#283b25;background:#f5f8f0;font-synthesis:none}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 0 0,#e1efd7 0,transparent 45%),#f5f8f0}
@@ -49,6 +50,34 @@ td.zero{color:#a9b4a5}.notice{padding:13px 16px;border-radius:16px;background:#e
 #refreshBtn{border:1px solid #ccddc6;background:white;color:#4e7848;padding:10px 15px;border-radius:999px;font-size:12px;font-weight:850;min-height:42px}
 #refreshBtn:disabled{opacity:.4}
 .status{font-size:12px;color:#54774b;font-weight:800;min-height:18px}
+.day-button{border:0;border-radius:9px;background:transparent;padding:9px 7px;font-size:inherit;font-weight:800;color:#365c34;text-align:left;min-height:42px}
+.day-button:hover,.day-button[aria-expanded="true"]{background:#e6f2de;color:#294e26}
+.day-button:after{content:" ▾";font-size:11px;opacity:.6}
+.day-button[aria-expanded="true"]:after{content:" ▴"}
+table tr.selected{background:#f2f8ee}
+.detail-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:15px}
+.detail-card{background:#f5f9f1;border-radius:16px;padding:13px 11px;min-width:0}
+.detail-card label{display:block;font-size:11px;line-height:1.4;color:#65835d;font-weight:850}
+.detail-card strong{display:block;font-size:23px;margin-top:9px;color:#315e2e;font-variant-numeric:tabular-nums}
+.detail-card strong small{font-size:11px;color:#81947c;margin-left:2px}
+.small-note{color:#80947d;font-size:11px;line-height:1.6;margin:11px 0 0}
+.dual{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:9px}
+.dual div{border-radius:14px;background:#edf7e9;padding:11px}
+.dual span{display:block;font-size:11px;color:#63835e;font-weight:800}
+.dual strong{display:block;margin-top:6px;font-size:20px;font-variant-numeric:tabular-nums}
+.hours{margin-top:12px;display:grid;gap:8px}
+.hour-row{display:grid;grid-template-columns:38px minmax(0,1fr) 56px;align-items:center;gap:8px;font-size:12px;font-weight:800}
+.hour-row>span{text-align:right;color:#657b5f}.hour-track{height:14px;border-radius:999px;background:#edf5e7;overflow:hidden}
+.hour-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#a6cf90,#4d924b)}
+.hour-count{text-align:right;color:#426d3e;font-variant-numeric:tabular-nums}
+.rank-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.rank-button{border:1px solid #ccdfc1;color:#52714b;border-radius:999px;padding:9px 13px;background:white;font-size:12px;font-weight:850}
+.rank-button[aria-pressed="true"]{background:#3f7039;color:white}
+.rank-name{font-weight:850;color:#284c27;overflow-wrap:anywhere}
+.rank-region{display:block;font-weight:650;font-size:10px;color:#7c9378;margin-top:3px}
+.rank-top{font-size:15px;font-weight:900;color:#598c4e}
+#dayDetail[hidden]{display:none}
+@media(max-width:640px){.detail-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.day-button{font-size:12px;padding:7px 3px}.hour-row{grid-template-columns:32px minmax(0,1fr) 45px}.rank-tools{margin-top:12px}}
 #blocked{max-width:520px;margin:40px auto;text-align:center}#blocked button{border:0;background:#598548;border-radius:16px;padding:12px 18px;color:white;font-weight:800}
 .hidden,[hidden]{display:none!important}
 :focus-visible{outline:3px solid #88b071;outline-offset:3px}
@@ -104,6 +133,38 @@ td.zero{color:#a9b4a5}.notice{padding:13px 16px;border-radius:16px;background:#e
     <thead><tr><th scope="col">日付（JST）</th><th scope="col">当日の交換</th><th scope="col">累計</th></tr></thead>
     <tbody id="dailyBody"></tbody>
    </table></div>
+   <p class="small-note">日付を押すと、その日の交換内訳を表示します。</p>
+  </section>
+  <section id="dayDetail" class="panel section" hidden aria-label="日別交換の詳細">
+   <div class="barline"><h2 id="selectedTitle">日別の交換内訳</h2><span class="label">日付別の実績</span></div>
+   <div class="detail-metrics">
+    <div class="detail-card"><label>成立した交換</label><strong id="dayExchanges">0<small>回</small></strong></div>
+    <div class="detail-card"><label>参加したCA</label><strong id="dayParticipants">0<small>人</small></strong></div>
+    <div class="detail-card"><label>異なる交換ペア</label><strong id="dayPairs">0<small>組</small></strong></div>
+    <div class="detail-card"><label>過去からの累計</label><strong id="dayCumulative">0<small>回</small></strong></div>
+   </div>
+   <div class="dual">
+    <div><span>🌱 初記録ペアの交換</span><strong id="dayFirstPairs">0 回</strong></div>
+    <div><span>🤝 再交換（既存ペア）</span><strong id="dayRepeatPairs">0 回</strong></div>
+   </div>
+   <p class="small-note">初記録ペアは全期間を通じて初めて成立した組み合わせ。再交換は同じ組み合わせによる2回目以降です。</p>
+   <h2 style="margin-top:24px">時間帯別の交換回数</h2>
+   <div id="hourlyBars" class="hours" role="img" aria-label="各時間帯の交換回数"></div>
+   <p class="small-note">日本時間（JST）。交換がなかった時間は省略しています。</p>
+  </section>
+  <section class="panel section" aria-label="交換の多いCAランキング">
+   <div class="barline"><h2>🏅 交換の多いCA</h2>
+    <div class="rank-tools">
+     <button type="button" data-ranking="all" class="rank-button" aria-pressed="true">全期間 TOP 10</button>
+     <button type="button" data-ranking="day" class="rank-button" aria-pressed="false">選択日 TOP 10</button>
+    </div>
+   </div>
+   <p id="rankingScope" class="small-note">全期間の交換参加回数で集計</p>
+   <div class="tablebox"><table aria-label="メダル交換ランキング">
+    <thead><tr><th scope="col">順位・CA</th><th scope="col">交換回数</th><th scope="col">異なる交換相手</th></tr></thead>
+    <tbody id="rankingBody"></tbody>
+   </table></div>
+   <p id="rankingNote" class="small-note">交換の両当事者にそれぞれ1回を加算します。本人確認済みのCAのみ表示し、管理者以外には公開しません。</p>
   </section>
   <p class="caption">集計対象：メダル交換履歴のうち完了（completed）の取引のみ。自分のメダルの自動付与、管理者付与、QR発行だけの未成立セッションは含みません。個人別の情報は表示しません。</p>
  </div>
@@ -116,8 +177,9 @@ const KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
 const PAGE_SIZE=500;
 const client=window.supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
 const core=window.StampExchangeStats;
+const breakdown=window.StampExchangeBreakdown;
 const get=id=>document.getElementById(id);
-let aggregate=null,period="all",running=false;
+let aggregate=null,details=null,caNames=new Map(),selectedDay=null,period="all",rankingMode="all",running=false;
 function number(n){return Number(n).toLocaleString("ja-JP")}
 function shortDate(day){return day?day.slice(5).replace("-","/"):"—"}
 function fullDate(day){return day?day.replaceAll("-","/"):"—"}
@@ -140,7 +202,7 @@ async function fetchCompleted(asOf){
  const rows=[];
  for(;;){
   const response=await client.from("stamp_exchange_transactions")
-   .select("exchange_key,completed_at")
+   .select("exchange_key,completed_at,user_a_id,user_b_id")
    .eq("status","completed")
    .lte("completed_at",asOf)
    .order("completed_at",{ascending:true})
@@ -153,6 +215,62 @@ async function fetchCompleted(asOf){
   offset+=PAGE_SIZE;
  }
  return rows;
+}
+async function fetchConfirmedCaNames(){
+ const [identity,ca]=await Promise.all([
+  client.from("user_ca_identities").select("user_id,ca_member_id").eq("is_primary",true).order("user_id",{ascending:true}).limit(1000),
+  client.from("ca_members").select("id,trainer_name,prefecture,ca_level").order("id",{ascending:true}).limit(1000)
+ ]);
+ if(identity.error)throw identity.error;
+ if(ca.error)throw ca.error;
+ // Never treat truncated master/identity data as complete rankings.
+ if((identity.data||[]).length>=1000||(ca.data||[]).length>=1000)throw new Error("CA名簿の件数が取得上限に達しました。ランキング取得を停止します。");
+ const byId=new Map((ca.data||[]).map(x=>[x.id,x]));
+ const names=new Map();
+ for(const item of identity.data||[]){
+  const member=byId.get(item.ca_member_id);
+  if(!member||!member.trainer_name||names.has(item.user_id))continue;
+  names.set(item.user_id,{name:member.trainer_name,prefecture:member.prefecture||"",level:member.ca_level||""});
+ }
+ return names;
+}
+function escapeHtml(v){
+ return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function renderDayDetail(){
+ if(!details||!aggregate){get("dayDetail").hidden=true;return}
+ const day=aggregate.days.find(x=>x.day===selectedDay);
+ if(!day){get("dayDetail").hidden=true;return}
+ const d=details.byDay[selectedDay]||{exchangeCount:0,participantCount:0,uniquePairs:0,firstPairs:0,repeatPairs:0,hours:Array(24).fill(0)};
+ get("dayDetail").hidden=false;
+ get("selectedTitle").textContent=fullDate(selectedDay)+" の交換内訳";
+ const labels=[["dayExchanges",d.exchangeCount],["dayParticipants",d.participantCount],["dayPairs",d.uniquePairs],["dayCumulative",day.cumulative]];
+ labels.forEach(([id,n])=>get(id).innerHTML=number(n)+'<small>'+(id==="dayParticipants"?"人":id==="dayPairs"?"組":"回")+"</small>");
+ get("dayFirstPairs").textContent=number(d.firstPairs)+" 回";
+ get("dayRepeatPairs").textContent=number(d.repeatPairs)+" 回";
+ const max=Math.max(1,...d.hours);
+ const active=d.hours.map((count,hour)=>({count,hour})).filter(x=>x.count>0);
+ const bars=active.map(x=>{
+  const width=Math.max(2,Math.round(x.count/max*100));
+  return '<div class="hour-row"><span>'+x.hour+'時</span><div class="hour-track"><div class="hour-fill" style="width:'+width+'%"></div></div><div class="hour-count">'+number(x.count)+'回</div></div>';
+ });
+ get("hourlyBars").innerHTML=bars.length?bars.join(""):'<p class="small-note">この日の交換はありません。</p>';
+ get("hourlyBars").setAttribute("aria-label",fullDate(selectedDay)+"の時間帯別交換回数");
+}
+function renderRanking(){
+ if(!details)return;
+ const d=details.byDay[selectedDay];
+ const stats=rankingMode==="day"?(d?.ranking||[]):details.overall.ranking;
+ get("rankingScope").textContent=rankingMode==="day"?fullDate(selectedDay)+" の交換参加回数":"全期間の交換参加回数";
+ const rows=stats.filter(r=>caNames.has(r.userId)).slice(0,10);
+ get("rankingBody").innerHTML=rows.length?rows.map((r,i)=>{
+  const ca=caNames.get(r.userId);
+  return '<tr><td><span class="rank-top">'+(i+1)+'位</span> <span class="rank-name">'+escapeHtml(ca.name)+'</span><span class="rank-region">'+escapeHtml([ca.prefecture,ca.level].filter(Boolean).join(" / "))+'</span></td><td>'+number(r.count)+' 回</td><td>'+number(r.partners)+' 人</td></tr>';
+ }).join(""):'<tr><td colspan="3">対象の交換はありません。</td></tr>';
+ const unmatched=stats.filter(r=>!caNames.has(r.userId)).length;
+ get("rankingNote").textContent="交換の両当事者にそれぞれ1回を加算。異なる交換相手数は重複を除いた人数です。本人確認済みCAのみを管理者へ表示します。"+
+  (unmatched?"本人確認情報が照合できない "+number(unmatched)+" アカウントはランキングから除外。":"");
+ document.querySelectorAll("[data-ranking]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.ranking===rankingMode)));
 }
 function chartSvg(days){
  const svg=get("chart");
@@ -186,9 +304,11 @@ function render(){
  const days=core.recent(aggregate.days,period);
  chartSvg(days);
  get("dailyBody").innerHTML=days.length?days.slice().reverse().map(d=>
-  '<tr><td>'+fullDate(d.day)+'</td><td class="'+(d.count===0?"zero":"")+'">'+number(d.count)+' 回</td><td>'+number(d.cumulative)+' 回</td></tr>'
+  '<tr class="'+(d.day===selectedDay?"selected":"")+'"><td><button type="button" class="day-button" data-day="'+d.day+'" aria-expanded="'+String(d.day===selectedDay)+'" aria-label="'+fullDate(d.day)+'の交換内訳を表示">'+fullDate(d.day)+'</button></td><td class="'+(d.count===0?"zero":"")+'">'+number(d.count)+' 回</td><td>'+number(d.cumulative)+' 回</td></tr>'
  ).join(""):'<tr><td colspan="3">交換完了履歴はありません</td></tr>';
  document.querySelectorAll("[data-period]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.period===period)));
+ renderDayDetail();
+ renderRanking();
  get("dashboard").hidden=false;
 }
 async function refresh(){
@@ -198,7 +318,12 @@ async function refresh(){
   if(!(await checkAdmin())){setStatus("管理者の認証が必要です",true);return}
   const asOf=new Date().toISOString();
   const rows=await fetchCompleted(asOf);
-  aggregate=core.build(rows,asOf);
+  const newAggregate=core.build(rows,asOf);
+  const newDetails=breakdown.summarize(rows,asOf);
+  if(newDetails.total!==newAggregate.total)throw new Error("日別内訳と累計件数が一致しません。");
+  const newNames=await fetchConfirmedCaNames();
+  aggregate=newAggregate;details=newDetails;caNames=newNames;
+  if(!selectedDay || !aggregate.days.some(x=>x.day===selectedDay))selectedDay=aggregate.lastDate||aggregate.asOfDate;
   render();
   setStatus("更新完了 ・ "+number(aggregate.total)+" 回（"+new Date(asOf).toLocaleString("ja-JP",{timeZone:"Asia/Tokyo"})+" JST）",false);
  }catch(error){
@@ -208,6 +333,15 @@ async function refresh(){
 }
 document.querySelectorAll("[data-period]").forEach(b=>b.addEventListener("click",()=>{period=b.dataset.period;render()}));
 get("refreshBtn").addEventListener("click",refresh);
+get("dailyBody").addEventListener("click",event=>{
+ const button=event.target.closest("button[data-day]");
+ if(!button||!aggregate)return;
+ selectedDay=button.dataset.day;rankingMode="day";render();
+ get("dayDetail").scrollIntoView({behavior:"smooth",block:"nearest"});
+});
+document.querySelectorAll("[data-ranking]").forEach(button=>button.addEventListener("click",()=>{
+ rankingMode=button.dataset.ranking;renderRanking();
+}));
 refresh();
 })();
 </script>
