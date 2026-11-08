@@ -56,6 +56,7 @@ export default function Page(){
     ["🛎️","Community申請",pendingClaims?pendingClaims+"件の承認待ちがあります":"承認待ちはありません","/admin/claims"],
     ["🔐","Campfire接続","ADMIN tokenと接続状態を管理","/admin/campfire"],
     ["🔄","データ同期","Campfire Activityを全国更新","/admin/sync"],
+    ["🧩","Meetup履歴補完","URLから取得漏れを照合（試作・確認専用）","/admin/meetup-backfill"],
     ["🔗","Community権限調整","CA Cloverユーザーへの閲覧権限を手動補正","/admin/assignments"],
     ["👀","一般ユーザーページ","一般ユーザーページを確認","/admin/preview/general-ca"],
     ["👥","CAアカウント","pending / CA / ADMINを承認・変更","/admin/accounts"],
