@@ -45,24 +45,37 @@ check("7/30/all periods preserve global cumulative", () => {
   assert.equal(stats.recent(result.days, "all").length, result.days.length);
   assert.equal(recent7.at(-1).cumulative, result.total);
 });
-check("daily history defaults to last five days", () => {
-  const days=Array.from({length:22},(_,i)=>({day:"2026-10-"+String(i+1).padStart(2,"0"),count:i}));
-  assert.equal(stats.visibleDays(days,false).length,5);
-  assert.equal(stats.visibleDays(days,false)[0].day,"2026-10-18");
-  assert.equal(stats.visibleDays(days,true).length,22);
-  assert.equal(stats.visibleDays(days,false).length,5);
-  assert.equal(stats.visibleDays(days.slice(-3),false).length,3);
-  assert.equal(days.length,22);
+check("calendar month view is bounded to one month", () => {
+  const days=[
+    ...Array.from({length:17},(_,i)=>({day:"2026-10-"+String(i+15).padStart(2,"0"),cumulative:i+1})),
+    ...Array.from({length:9},(_,i)=>({day:"2026-11-"+String(i+1).padStart(2,"0"),cumulative:18+i}))
+  ];
+  const oct=stats.monthDays(days,"2026-10");
+  const nov=stats.monthDays(days,"2026-11");
+  assert.equal(oct.length,17);
+  assert.equal(nov.length,9);
+  assert.equal(nov.at(-1).cumulative,26);
+  assert.equal(stats.monthKey("2026-11-09"),"2026-11");
+  assert.equal(stats.shiftMonth("2026-11",-1),"2026-10");
+  assert.equal(stats.shiftMonth("2026-12",1),"2027-01");
+  assert.equal(stats.shiftMonth("2027-01",-1),"2026-12");
+  assert.throws(()=>stats.monthKey("2026-13"));
+  assert.throws(()=>stats.shiftMonth("invalid",1));
 });
-check("daily history expansion and compact mobile tap controls", () => {
+check("month switch and bounded iPhone scrolling controls", () => {
   const html=fs.readFileSync("docs/stamp-exchange-stats.html","utf8");
-  assert.match(html,/id="dailyMoreBtn"/);
-  assert.match(html,/core\.visibleDays\(days,dailyExpanded,5\)/);
-  assert.match(html,/get\("dailyMoreBtn"\)\.addEventListener\("click"/);
-  assert.match(html,/dailyExpanded=!dailyExpanded/);
-  assert.match(html,/#dailyBody td\{padding:3px 8px\}/);
+  assert.match(html,/id="prevMonthBtn"/);
+  assert.match(html,/id="nextMonthBtn"/);
+  assert.match(html,/id="historyMonthLabel"/);
+  assert.match(html,/core\.monthDays\(aggregate\.days,displayedMonth\)/);
+  assert.match(html,/core\.monthKey\(aggregate\.asOfDate\)/);
+  assert.match(html,/get\("dailyTableBox"\)\.scrollTop=0/);
+  assert.match(html,/scrollTop=0/);
+  assert.match(html,/#dailyTableBox\{max-height:340px;overflow-y:auto/);
+  assert.match(html,/#dailyTableBox thead th\{position:sticky/);
   assert.match(html,/min-height:44px/);
   assert.match(html,/日付を押すと交換内訳を確認できます/);
+  assert.doesNotMatch(html,/dailyExpanded|dailyMoreBtn|直近5日分/);
 });
 check("empty history", () => {
   assert.deepEqual(stats.build([], "2026-11-09T00:00:00Z").days, []);

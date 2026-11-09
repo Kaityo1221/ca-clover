@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-store">
 <title>メダル交換集計 | CA Clover ADMIN</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./stamp-exchange-stats-core.js?v=3"></script>
+<script src="./stamp-exchange-stats-core.js?v=4"></script>
 <script src="./stamp-exchange-breakdown.js?v=1"></script>
 <style>
 :root{font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#283b25;background:#f5f8f0;font-synthesis:none}
@@ -52,9 +52,13 @@ td.zero{color:#a9b4a5}.notice{padding:13px 16px;border-radius:16px;background:#e
 .status{font-size:12px;color:#54774b;font-weight:800;min-height:18px}
 .day-button{border:0;border-radius:9px;background:transparent;padding:6px 5px;font-size:inherit;font-weight:800;color:#365c34;text-align:left;min-height:42px}
 #dailyBody td{padding:3px 8px}
-#dailyMoreBtn{display:block;margin:12px auto 0;border:1px solid #ccdfc1;border-radius:999px;background:#f3f9ee;color:#456f3e;padding:11px 18px;min-height:44px;font-size:12px;font-weight:850}
-#dailyMoreBtn:hover{background:#e3f2d9}
-#dailyMoreBtn[hidden]{display:none!important}
+.month-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px;margin-bottom:12px}
+.month-nav button{border:1px solid #ccdfc1;border-radius:14px;background:#f3f9ee;color:#456f3e;padding:9px 11px;min-height:44px;font-size:12px;font-weight:850}
+.month-nav button:disabled{opacity:.35;cursor:not-allowed}
+.month-nav strong{font-size:16px;font-weight:900;color:#365e31;font-variant-numeric:tabular-nums;white-space:nowrap}
+#dailyTableBox{max-height:340px;overflow-y:auto;overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;border:1px solid #e9f0e3;border-radius:13px}
+#dailyTableBox thead th{position:sticky;top:0;z-index:1;background:#fff;border-bottom:1px solid #dce9d4}
+@media(max-width:640px){.month-nav{gap:5px}.month-nav button{padding:8px 10px;font-size:11px}.month-nav strong{font-size:14px}#dailyTableBox{max-height:310px}}
 .day-button:hover,.day-button[aria-expanded="true"]{background:#e6f2de;color:#294e26}
 .day-button:after{content:" ▾";font-size:11px;opacity:.6}
 .day-button[aria-expanded="true"]:after{content:" ▴"}
@@ -132,13 +136,17 @@ table tr.selected{background:#f2f8ee}
    <p class="caption">※ 日本時間（JST）で集計。交換がない日も累計は変わりません。期間切替しても累計値はリセットされません。</p>
   </section>
   <section class="panel section" aria-label="日別交換一覧">
-   <div class="barline"><h2>日別交換履歴</h2><span class="label">最新の日付から表示</span></div>
-   <div class="tablebox"><table>
+   <div class="barline"><h2>日別交換履歴</h2><span class="label">1か月単位で表示</span></div>
+   <nav class="month-nav" aria-label="履歴の月切替">
+    <button id="prevMonthBtn" type="button" aria-label="前の月の交換履歴を表示">‹ 前月</button>
+    <strong id="historyMonthLabel" aria-live="polite">読み込み中</strong>
+    <button id="nextMonthBtn" type="button" aria-label="次の月の交換履歴を表示">翌月 ›</button>
+   </nav>
+   <div id="dailyTableBox" class="tablebox" tabindex="0" aria-label="選択した月の交換履歴、上下にスクロールできます"><table>
     <thead><tr><th scope="col">日付（JST）</th><th scope="col">当日の交換</th><th scope="col">累計</th></tr></thead>
     <tbody id="dailyBody"></tbody>
    </table></div>
-   <button id="dailyMoreBtn" type="button" hidden aria-expanded="false" aria-controls="dailyBody">過去の記録も表示</button>
-   <p class="small-note">直近5日分を表示。過去の日付も開けます。日付を押すと交換内訳を確認できます。</p>
+   <p class="small-note">選択月の履歴を表示します。この一覧の中で上下にスクロールできます。日付を押すと交換内訳を確認できます。</p>
   </section>
   <section id="dayDetail" class="panel section" hidden aria-label="日別交換の詳細">
    <div class="barline"><h2 id="selectedTitle">日別の交換内訳</h2><span class="label">日付別の実績</span></div>
@@ -184,7 +192,7 @@ const client=window.supabase.createClient(URL,KEY,{auth:{persistSession:true,aut
 const core=window.StampExchangeStats;
 const breakdown=window.StampExchangeBreakdown;
 const get=id=>document.getElementById(id);
-let aggregate=null,details=null,caNames=new Map(),selectedDay=null,period="all",rankingMode="all",dailyExpanded=false,running=false;
+let aggregate=null,details=null,caNames=new Map(),selectedDay=null,selectedMonth=null,period="all",rankingMode="all",running=false;
 function number(n){return Number(n).toLocaleString("ja-JP")}
 function shortDate(day){return day?day.slice(5).replace("-","/"):"—"}
 function fullDate(day){return day?day.replaceAll("-","/"):"—"}
@@ -308,14 +316,17 @@ function render(){
  get("last").textContent=shortDate(aggregate.lastDate);
  const days=core.recent(aggregate.days,period);
  chartSvg(days);
- const visibleDays=core.visibleDays(days,dailyExpanded,5);
+ const displayedMonth=selectedMonth||core.monthKey(aggregate.asOfDate);
+ const visibleDays=core.monthDays(aggregate.days,displayedMonth);
  get("dailyBody").innerHTML=visibleDays.length?visibleDays.slice().reverse().map(d=>
   '<tr class="'+(d.day===selectedDay?"selected":"")+'"><td><button type="button" class="day-button" data-day="'+d.day+'" aria-expanded="'+String(d.day===selectedDay)+'" aria-label="'+fullDate(d.day)+'の交換内訳を表示">'+fullDate(d.day)+'</button></td><td class="'+(d.count===0?"zero":"")+'">'+number(d.count)+' 回</td><td>'+number(d.cumulative)+' 回</td></tr>'
  ).join(""):'<tr><td colspan="3">交換完了履歴はありません</td></tr>';
- const moreBtn=get("dailyMoreBtn");
- moreBtn.hidden=days.length<=5;
- moreBtn.setAttribute("aria-expanded",String(dailyExpanded));
- moreBtn.textContent=dailyExpanded?"最新5日分だけ表示":"過去の記録も表示（残り"+number(days.length-visibleDays.length)+"日）";
+ const [year,month]=displayedMonth.split("-");
+ get("historyMonthLabel").textContent=Number(year)+"年"+Number(month)+"月";
+ const firstMonth=core.monthKey(aggregate.firstDate||aggregate.asOfDate);
+ const latestMonth=core.monthKey(aggregate.asOfDate);
+ get("prevMonthBtn").disabled=displayedMonth<=firstMonth;
+ get("nextMonthBtn").disabled=displayedMonth>=latestMonth;
  document.querySelectorAll("[data-period]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.period===period)));
  renderDayDetail();
  renderRanking();
@@ -334,6 +345,9 @@ async function refresh(){
   const newNames=await fetchConfirmedCaNames();
   aggregate=newAggregate;details=newDetails;caNames=newNames;
   if(selectedDay && !aggregate.days.some(x=>x.day===selectedDay))selectedDay=null;
+  const firstMonth=core.monthKey(aggregate.firstDate||aggregate.asOfDate);
+  const lastMonth=core.monthKey(aggregate.asOfDate);
+  if(!selectedMonth||selectedMonth<firstMonth||selectedMonth>lastMonth)selectedMonth=lastMonth;
   render();
   setStatus("更新完了 ・ "+number(aggregate.total)+" 回（"+new Date(asOf).toLocaleString("ja-JP",{timeZone:"Asia/Tokyo"})+" JST）",false);
  }catch(error){
@@ -341,11 +355,21 @@ async function refresh(){
   if(!aggregate)get("dashboard").hidden=true;
  }finally{running=false;get("refreshBtn").disabled=false}
 }
-document.querySelectorAll("[data-period]").forEach(b=>b.addEventListener("click",()=>{period=b.dataset.period;dailyExpanded=false;render()}));
-get("dailyMoreBtn").addEventListener("click",()=>{
- dailyExpanded=!dailyExpanded;
+document.querySelectorAll("[data-period]").forEach(b=>b.addEventListener("click",()=>{period=b.dataset.period;render()}));
+function changeHistoryMonth(direction){
+ if(!aggregate||!selectedMonth)return;
+ const candidate=core.shiftMonth(selectedMonth,direction);
+ const first=core.monthKey(aggregate.firstDate||aggregate.asOfDate);
+ const last=core.monthKey(aggregate.asOfDate);
+ if(candidate<first||candidate>last)return;
+ selectedMonth=candidate;
+ selectedDay=null;
+ rankingMode="all";
  render();
-});
+ get("dailyTableBox").scrollTop=0;
+}
+get("prevMonthBtn").addEventListener("click",()=>changeHistoryMonth(-1));
+get("nextMonthBtn").addEventListener("click",()=>changeHistoryMonth(1));
 get("refreshBtn").addEventListener("click",refresh);
 get("dailyBody").addEventListener("click",event=>{
  const button=event.target.closest("button[data-day]");
