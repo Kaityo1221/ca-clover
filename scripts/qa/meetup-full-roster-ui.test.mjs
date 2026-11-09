@@ -11,7 +11,7 @@ test('export cannot run unless both preview/build and component gates are true',
 });
 test('no service credential or arbitrary endpoint in browser',()=>{
  assert.match(component,/supabase\.auth\.getSession\(\)/);
- assert.match(component,/supabase\.supabaseUrl/);
+ assert.match(component,/getBrowserSupabaseConfig/);
  assert.doesNotMatch(component,/SERVICE_ROLE|service_role|niantic-social-api/);
  assert.match(component,/response\.headers\.get\("content-type"\)/);
  assert.match(component,/URL\.revokeObjectURL/);
