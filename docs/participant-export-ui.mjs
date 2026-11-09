@@ -1,4 +1,5 @@
 import {createCsvClient} from './participant-export/client-adapter.mjs?v=20261109-full-roster1';
+import {verifyFullRosterBytes} from './participant-export/full-roster-validate.mjs';
 const PURPOSES=[['minigame','ミニゲーム利用'],['attendance','出欠確認と照合のため'],['operations','イベント運営'],['other','その他']];
 const validId=value=>typeof value==='string'&&/^[a-f0-9-]{36}$/i.test(value);
 export function createParticipantPanel({client,getIdentity,fetcher=fetch,document:doc=globalThis.document,endpoint='https://wgiittrvgtiosogyhfcl.supabase.co/functions/v1/participant-export',saveBlob,fullRosterEndpoint=null}={}){
@@ -39,7 +40,7 @@ export function createParticipantPanel({client,getIdentity,fetcher=fetch,documen
     if(lastFocus?.isConnected)lastFocus.focus();
   }
   function leave(){activeApi?.cancel();close();mounted=[];}
-  async function download(response,signal,fullRoster){
+  async function download(response,signal,fullRoster,meta){
     const activeMeetup=selectedMeetup;
     if(signal.aborted||!current()||!validId(activeMeetup))throw Error();
     const reader=response.body?.getReader();if(!reader)throw Error();
@@ -47,6 +48,12 @@ export function createParticipantPanel({client,getIdentity,fetcher=fetch,documen
     try{for(;;){if(signal.aborted||!current()||selectedMeetup!==activeMeetup)throw Error();const part=await reader.read();if(part.done)break;size+=part.value.byteLength;if(size>(fullRoster?8_000_000:2_000_000))throw Error();parts.push(part.value);}}
     finally{void reader.cancel().catch(()=>{});reader.releaseLock();}
     if(signal.aborted||!current()||selectedMeetup!==activeMeetup||size===0)throw Error();
+    if(fullRoster){
+      if(!meta||meta.fullRoster!==true)throw Error('ROSTER_METADATA');
+      const bytes=new Uint8Array(size);let offset=0;
+      for(const part of parts){bytes.set(part,offset);offset+=part.byteLength;}
+      verifyFullRosterBytes(bytes,meta.expectedCount);
+    }
     const blob=new Blob(parts,{type:'text/csv;charset=utf-8'});
     const filename=(fullRoster?'meetup-roster-':'participants-')+activeMeetup+'.csv';
     if(saveBlob){await saveBlob(blob,filename,signal);return;}
@@ -59,7 +66,7 @@ export function createParticipantPanel({client,getIdentity,fetcher=fetch,documen
     activeApi?.cancel();userId=id;
     const makeApi=(url,fullRoster)=>createCsvClient({
       endpoint:url,origin:'https://wgiittrvgtiosogyhfcl.supabase.co',fetcher,fullRoster,
-      download:(response,signal)=>download(response,signal,fullRoster),onStatus:setStatus,
+      download:(response,signal,meta)=>download(response,signal,fullRoster,meta),onStatus:setStatus,
       getBearer:async()=>{const r=await client.auth.getSession();if(!current()||r.error||r.data?.session?.user?.id!==userId||!r.data?.session?.access_token)throw Error();return r.data.session.access_token;}
     });
     raffleApi=makeApi(endpoint,false);
