@@ -1,7 +1,7 @@
 import {createCsvClickGuard} from './csv-click-guard.mjs';
 import {ENGINE_POLICY} from './engine-policy.mjs';
 // Public-safe adapter. No secret/source/store import, no automatic POST retries.
-export function createCsvClient({fetcher,endpoint,origin,getBearer,download,onStatus=()=>{},clock}={}){
+export function createCsvClient({fetcher,endpoint,origin,getBearer,download,onStatus=()=>{},clock,fullRoster=false}={}){
   const url=new URL(endpoint);
   if(url.protocol!=='https:'||url.username||url.password||url.hash||url.search||url.origin!==origin||
     ![fetcher,getBearer,download,onStatus].every(f=>typeof f==='function'))throw new TypeError('fixed HTTPS endpoint required');
@@ -18,14 +18,18 @@ export function createCsvClient({fetcher,endpoint,origin,getBearer,download,onSt
         signal:controller.signal,headers:{authorization:'Bearer '+bearer,'content-type':'application/json'},body:JSON.stringify(body)});
       if(controller.signal.aborted)throw Error();
       if(response.status===200){
-        const count=response.headers.get('x-ca-clover-checkin-count'),time=response.headers.get('x-ca-clover-verified-at');
-        if(response.headers.get('content-type')?.split(';')[0]!=='text/csv'||response.headers.get('x-ca-clover-csv-version')!=='2'||
-          !/^(0|[1-9][0-9]{0,3})$/.test(count)||Number(count)>1000||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(time)||!Number.isFinite(Date.parse(time)))throw Error();
-        await download(response,controller.signal);
+        const count=response.headers.get(fullRoster?'x-ca-clover-roster-count':'x-ca-clover-checkin-count');
+        const time=response.headers.get('x-ca-clover-verified-at');
+        const version=fullRoster?'full-roster-1':'2';
+        if(response.headers.get('content-type')?.split(';')[0]!=='text/csv'||response.headers.get('x-ca-clover-csv-version')!==version||
+          !/^(0|[1-9][0-9]{0,3})$/.test(count)||Number(count)>(fullRoster?5000:1000)||(fullRoster&&Number(count)===0)||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(time)||!Number.isFinite(Date.parse(time)))throw Error();
+        const unresolved=fullRoster?response.headers.get('x-ca-clover-unresolved-count'):'0';
+        if(!/^(0|[1-9][0-9]{0,3})$/.test(unresolved)||Number(unresolved)>Number(count))throw Error();
+        await download(response,controller.signal,{expectedCount:Number(count),expectedUnresolved:Number(unresolved),fullRoster});
         if(controller.signal.aborted)throw Error();
-        status(`人数確認済み ${count}人 / ${time}`);
+        status(`人数確認済み ${count}人 / ${time}${Number(unresolved)>0?' / 辞退者名未取得 '+unresolved+'人':''}`);
       }else{
-        status(response.status===409?'新しい参加者が反映されるまで再取得':
+        status(response.status===409?(fullRoster?'参加者情報が変わったか、名簿が空です。CSVは発行されません。':'新しい参加者が反映されるまで再取得'):
           response.status===502?'取得情報不一致、CSV未発行':'しばらくして再試行');
       }
       // Retain only rate-limit metadata, never Response / participant bytes.

@@ -66,8 +66,9 @@
 
   // PARTICIPANT_CSV_IMPORT_BEGIN
   let participantPanel;
-  const participantReady=import('./participant-export-ui.mjs?v=20261017-admin2').then(function(module){
-    participantPanel=module.createParticipantPanel({client:client,getIdentity:function(){return {userId:session&&session.user.id,role:profile&&profile.role}}});
+  const participantReady=import('./participant-export-ui.mjs?v=20261109-full-roster1').then(function(module){
+    // Keep full roster unavailable until its dedicated backend is approved.
+    participantPanel=module.createParticipantPanel({client:client,fullRosterEndpoint:null,getIdentity:function(){return {userId:session&&session.user.id,role:profile&&profile.role}}});
     return participantPanel;
   }).catch(function(){return null});
   // PARTICIPANT_CSV_IMPORT_END

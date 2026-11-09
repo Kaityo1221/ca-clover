@@ -1,0 +1,26 @@
+name: Full Roster Download Integrity (Isolated)
+on:
+  push:
+    branches:
+      - feature/meetup-full-roster-ui-isolated-20261109
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  csv-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Validate JavaScript syntax
+        run: |
+          node --check docs/participant-export/full-roster-validate.mjs
+          node --check docs/participant-export-ui.mjs
+          node --check docs/participant-export/client-adapter.mjs
+      - name: Full roster CSV integrity regression
+        run: node --test scripts/ci/test-full-roster-download.mjs
