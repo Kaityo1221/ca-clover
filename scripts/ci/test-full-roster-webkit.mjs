@@ -19,7 +19,7 @@ const server=http.createServer(async(req,res)=>{
  if(!Object.hasOwn(routes,path)){res.writeHead(404);res.end('Not Found');return;}
  try{
   const bytes=await readFile(resolve(root,routes[path]));
-  res.writeHead(200,{'content-type':extname(path)==='.html'?'text/html; charset=utf-8':'application/javascript; charset=utf-8',
+  res.writeHead(200,{'content-type':path==='/qa'?'text/html; charset=utf-8':'application/javascript; charset=utf-8',
     'cache-control':'no-store','x-content-type-options':'nosniff'});
   res.end(bytes);
  }catch{res.writeHead(500);res.end('Fixture unavailable');}
