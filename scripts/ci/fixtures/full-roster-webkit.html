@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Full Roster Mobile Synthetic QA</title>
+<style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;margin:1rem;background:#f6f9f5;color:#263e29}
+.btn{padding:9px 12px;border:1px solid #487f59;background:#e8f2e9;color:#19361d;border-radius:10px}
+.input{padding:9px;border-radius:8px;border:1px solid #bbb} [data-meetup-index]{padding:18px;background:white;border-radius:16px}</style></head>
+<body><main id="root"><div data-meetup-index="0" class="upcoming-sign">合成Meetup QA</div></main>
+<script type="module">
+import {createParticipantPanel} from '/docs/participant-export-ui.mjs';
+const qs=new URL(location.href).searchParams;
+const mode=qs.get('mode')??'success';
+const uid='00000000-0000-0000-0000-000000000001';
+const club='10000000-0000-0000-0000-000000000001';
+const meetup='20000000-0000-0000-0000-000000000001';
+window.qa={mode,ready:false,requests:0,saved:null,status:null,error:null};
+const getIdentity=()=>({userId:uid,role:'ca'});
+const from=(table)=>({
+ select(){return this},eq(){return this},
+ async maybeSingle(){
+  if(table==='user_permissions')return {data:mode==='notD'?null:{permission_code:'D'},error:null};
+  if(table==='community_memberships')return {data:{community_id:club},error:null};
+  throw Error('unexpected table');
+ }
+});
+const client={from,auth:{async getSession(){
+ return {data:{session:{user:{id:mode==='noSession'?'30000000-0000-0000-0000-000000000001':uid},
+ access_token:'fake-qa-bearer'}},error:null};
+}}};
+const lines=[
+ ['username','display_name','rsvp_status','checked_in'],
+ ['test_A','テスト太郎','CHECKED_IN','TRUE'],
+ ['test_B','テスト花子','ACCEPTED','FALSE'],
+ ['','','DECLINED','FALSE'],
+ ['test_D','参加検討','MAYBE','FALSE']
+];
+const toCell=v=>'"'+v.replaceAll('"','""')+'"';
+const goodCsv='\uFEFF'+lines.map(row=>row.map(toCell).join(',')).join('\r\n')+'\r\n';
+const fetcher=async()=>{
+ window.qa.requests++;
+ const declaredCount=mode==='wrongCount'?'5':'4';
+ const unresolved=mode==='wrongUnresolved'?'2':'1';
+ const body=mode==='headerOnly'?'\uFEFF'+lines[0].map(toCell).join(',')+'\r\n':goodCsv;
+ return new Response(new TextEncoder().encode(body),{status:200,headers:{
+  'content-type':'text/csv; charset=utf-8',
+  'x-ca-clover-csv-version':'full-roster-1',
+  'x-ca-clover-roster-count':declaredCount,
+  'x-ca-clover-unresolved-count':unresolved,
+  'x-ca-clover-verified-at':'2026-11-09T12:00:00.000Z'
+ }});
+};
+try{
+ const panel=createParticipantPanel({client,getIdentity,fetcher,document,
+  fullRosterEndpoint:'https://wgiittrvgtiosogyhfcl.supabase.co/functions/v1/meetup-full-roster',
+  saveBlob:async(blob,filename)=>{
+    window.qa.saved={filename,text:await blob.text(),size:blob.size};
+  }});
+ window.qa.mounted=await panel.mount({root:document.getElementById('root'),
+   meetups:[{id:meetup,title:'合成Meetup QA'}],communityId:club});
+ window.qa.ready=true;
+}catch(e){window.qa.error=e?.message??String(e);window.qa.ready=true;}
+</script></body></html>
