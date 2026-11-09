@@ -16,3 +16,11 @@ export function createBrowserSupabaseClient() {
   browserClient = createClient(url, key);
   return browserClient;
 }
+
+/** Only public browser config. Never expose service-role credentials. */
+export function getBrowserSupabaseConfig(){
+  return {
+    url:process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_URL,
+    key:process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || DEFAULT_SUPABASE_PUBLISHABLE_KEY,
+  };
+}

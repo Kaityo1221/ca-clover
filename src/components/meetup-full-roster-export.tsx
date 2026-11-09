@@ -1,6 +1,7 @@
 "use client";
 
 import {useState} from "react";
+import {getBrowserSupabaseConfig} from "@/lib/supabase";
 import type {createBrowserSupabaseClient} from "@/lib/supabase";
 
 type Props={
@@ -20,14 +21,15 @@ export default function MeetupFullRosterExport({meetupId,supabase,enabled=false}
     try{
       const {data:{session},error}=await supabase.auth.getSession();
       if(error||!session?.access_token)throw new Error("ログイン情報を確認できませんでした。");
-      const api=new URL(supabase.supabaseUrl);
+      const config=getBrowserSupabaseConfig();
+      const api=new URL(config.url);
       if(api.protocol!=="https:"||!/^\w{20}\.supabase\.co$/.test(api.hostname))
         throw new Error("接続先を確認できませんでした。");
       const response=await fetch(api.origin+"/functions/v1/meetup-roster",{
         method:"POST",
         headers:{
           authorization:"Bearer "+session.access_token,
-          apikey:supabase.supabaseKey,
+          apikey:config.key,
           "content-type":"application/json",
           accept:"text/csv",
         },
