@@ -1,7 +1,7 @@
 name: Meetup roster UI isolated no-deploy QA
 on:
   push:
-    branches: [qa/meetup-full-roster-ui-20261110]
+    branches: [qa/meetup-full-roster-ui-20261110, qa/meetup-roster-secure-download-ui-20261110]
 permissions:
   contents: read
 jobs:

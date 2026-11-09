@@ -381,7 +381,7 @@ export default function Page(){
           <div><div className="text-[11px] font-black text-slate-400">Check-in</div><div className="mt-1 font-bold text-slate-700">{selectedMeetup.checkin_count??"—"}</div></div>
         </div>
 
-        <MeetupFullRosterExport meetupId={selectedMeetup.id} enabled={false} />
+        <MeetupFullRosterExport meetupId={selectedMeetup.id} supabase={supabase} enabled={process.env.NEXT_PUBLIC_CA_MEETUP_ROSTER_EXPORT_ENABLED==="true"} />
 
         {selectedMeetup.details?.trim()?<div className="mt-4 whitespace-pre-wrap rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm font-medium leading-6 text-slate-600">{selectedMeetup.details}</div>:<div className="mt-4 rounded-2xl border border-dashed border-slate-200 p-4 text-sm font-semibold text-slate-400">概要文はありません。</div>}
 
