@@ -14,10 +14,11 @@ export function createParticipantPanel({client,getIdentity,fetcher=fetch,documen
   const setStatus=text=>{
     if(!dialog?.isConnected)return;
     const target=dialog.querySelector('[data-csv-status]');
-    const verified=/^人数確認済み ([0-9]+)人 \/ (.+)$/.exec(text);
+    const verified=/^人数確認済み ([0-9]+)人 \/ ([^ ]+)(?: \/ 辞退者名未取得 ([0-9]+)人)?$/.exec(text);
     if(verified&&Number.isFinite(Date.parse(verified[2]))){
       const time=new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date(verified[2]));
       target.replaceChildren(doc.createTextNode('人数確認済み '+verified[1]+'人'),doc.createElement('br'),doc.createTextNode('確認時刻：'+time+'（日本時間）'));
+      if(verified[3])target.append(doc.createElement('br'),doc.createTextNode('※ 辞退者 '+verified[3]+'人のユーザー名・表示名はCampfireから提供されないため、空欄です。'));
     }else target.textContent=text;
   };
   function refresh(){
@@ -52,7 +53,7 @@ export function createParticipantPanel({client,getIdentity,fetcher=fetch,documen
       if(!meta||meta.fullRoster!==true)throw Error('ROSTER_METADATA');
       const bytes=new Uint8Array(size);let offset=0;
       for(const part of parts){bytes.set(part,offset);offset+=part.byteLength;}
-      verifyFullRosterBytes(bytes,meta.expectedCount);
+      verifyFullRosterBytes(bytes,meta.expectedCount,meta.expectedUnresolved);
     }
     const blob=new Blob(parts,{type:'text/csv;charset=utf-8'});
     const filename=(fullRoster?'meetup-roster-':'participants-')+activeMeetup+'.csv';
@@ -79,7 +80,7 @@ export function createParticipantPanel({client,getIdentity,fetcher=fetch,documen
     dialog.innerHTML='<form><h2>チェックイン名簿CSV</h2><p data-csv-meetup></p><label>利用目的<select class="input" name="purpose" required></select></label><label class="section" style="display:block">補足情報<textarea class="input" name="note" maxlength="300" rows="3" placeholder="通常は任意。「その他」は入力してください"></textarea></label><p class="small muted">ミニゲーム・表彰など、申告した目的で利用してください。取得者・目的・件数・時刻を記録します。名簿を共有せず、利用後は削除してください。補足に参加者の個人情報を書かないでください。</p><p class="small muted" data-csv-format>CSV：表示名／抽選番号（同じMeetup内で固定）。確認後にチェックインした方は再取得で反映します。</p><p data-csv-status role="status" aria-live="polite"></p><div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button type="button" class="btn line" data-csv-close>閉じる</button><button type="submit" class="btn" data-csv-submit>最新の名簿を取得</button></div></form>';
     if(fullRoster){
       dialog.querySelector('h2').textContent='参加者名簿CSV';
-      dialog.querySelector('[data-csv-format]').textContent='CSV：ユーザー名／表示名／参加表明の状態／チェックインの有無。未チェックインの参加表明も含みます。';
+      dialog.querySelector('[data-csv-format]').textContent='CSV：ユーザー名／表示名／参加表明の状態／チェックインの有無。辞退者も含めますが、Campfireから名前が返されない場合は空欄になります。';
     }
     dialog.querySelector('[data-csv-meetup]').textContent=String(meetup.title??'Meetup');
     const form=dialog.querySelector('form'),select=form.elements.namedItem('purpose'),note=form.elements.namedItem('note');
