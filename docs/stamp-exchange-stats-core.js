@@ -60,11 +60,28 @@
     return days.slice(-n);
   }
 
-  function visibleDays(days, expanded, limit = 5) {
-    if (!Array.isArray(days)) throw new TypeError("Days must be an array");
-    const max = Math.max(1, Math.floor(Number(limit) || 5));
-    return expanded ? days.slice() : days.slice(-max);
+  function monthKey(day) {
+    if (typeof day !== "string" || !/^\d{4}-\d{2}(?:-\d{2})?$/.test(day)) {
+      throw new TypeError("Invalid JST date/month");
+    }
+    const key = day.slice(0, 7);
+    const [year, month] = key.split("-").map(Number);
+    if (month < 1 || month > 12 || year < 1) throw new RangeError("Invalid calendar month");
+    return key;
   }
 
-  return Object.freeze({ jstDate, build, recent, visibleDays });
+  function shiftMonth(month, offset) {
+    const key = monthKey(month);
+    if (!Number.isInteger(offset)) throw new TypeError("Month offset must be an integer");
+    const [year, m] = key.split("-").map(Number);
+    return new Date(Date.UTC(year, m - 1 + offset, 1)).toISOString().slice(0, 7);
+  }
+
+  function monthDays(days, month) {
+    if (!Array.isArray(days)) throw new TypeError("Days must be an array");
+    const key = monthKey(month);
+    return days.filter(day => monthKey(day.day) === key);
+  }
+
+  return Object.freeze({ jstDate, build, recent, monthKey, shiftMonth, monthDays });
 });
