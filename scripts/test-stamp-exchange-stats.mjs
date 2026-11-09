@@ -45,6 +45,25 @@ check("7/30/all periods preserve global cumulative", () => {
   assert.equal(stats.recent(result.days, "all").length, result.days.length);
   assert.equal(recent7.at(-1).cumulative, result.total);
 });
+check("daily history defaults to last five days", () => {
+  const days=Array.from({length:22},(_,i)=>({day:"2026-10-"+String(i+1).padStart(2,"0"),count:i}));
+  assert.equal(stats.visibleDays(days,false).length,5);
+  assert.equal(stats.visibleDays(days,false)[0].day,"2026-10-18");
+  assert.equal(stats.visibleDays(days,true).length,22);
+  assert.equal(stats.visibleDays(days,false).length,5);
+  assert.equal(stats.visibleDays(days.slice(-3),false).length,3);
+  assert.equal(days.length,22);
+});
+check("daily history expansion and compact mobile tap controls", () => {
+  const html=fs.readFileSync("docs/stamp-exchange-stats.html","utf8");
+  assert.match(html,/id="dailyMoreBtn"/);
+  assert.match(html,/core\.visibleDays\(days,dailyExpanded,5\)/);
+  assert.match(html,/get\("dailyMoreBtn"\)\.addEventListener\("click"/);
+  assert.match(html,/dailyExpanded=!dailyExpanded/);
+  assert.match(html,/#dailyBody td\{padding:3px 8px\}/);
+  assert.match(html,/min-height:44px/);
+  assert.match(html,/日付を押すと交換内訳を確認できます/);
+});
 check("empty history", () => {
   assert.deepEqual(stats.build([], "2026-11-09T00:00:00Z").days, []);
   assert.equal(stats.build([], "2026-11-09T00:00:00Z").total, 0);
