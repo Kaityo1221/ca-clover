@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#e9f4e4">
+<meta http-equiv="Cache-Control" content="no-store">
+<title>みんなの交換記録 | CA Clover</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#344733;background:#f7fbf4}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(circle at 0 0,#e4f1dc,transparent 25rem),#f7fbf4}
+a{text-decoration:none;color:inherit}
+header{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border-bottom:1px solid #dce8d5}
+.top{max-width:850px;min-height:65px;margin:auto;padding:12px 16px;display:flex;align-items:center;gap:12px}
+.logo{display:grid;place-items:center;width:42px;height:42px;border-radius:14px;background:#e3f1d9;font-size:22px}
+.brand{font-weight:900;font-size:14px}.brand small{display:block;font-size:10px;letter-spacing:.12em;color:#7d9b75;margin-top:3px}
+.spacer{flex:1}
+.back{border:1px solid #d6e7cf;border-radius:999px;padding:10px 12px;color:#4f7249;background:white;font-size:12px;font-weight:800}
+main{max-width:850px;margin:auto;padding:22px 15px 80px}
+.hero{padding:24px 21px;border-radius:26px;background:linear-gradient(120deg,#396f40,#6c9c57);color:#fff}
+.kicker{font-size:10px;letter-spacing:.2em;font-weight:800;color:#e2f2dd}
+h1{font-size:clamp(26px,6vw,35px);margin:9px 0}
+.hero p{font-size:13px;font-weight:750;line-height:1.7;margin:0;color:#e8f5e6}
+.card{margin-top:17px;border-radius:22px;padding:25px 19px;background:white;border:1px solid #dce9d6;box-shadow:0 10px 28px #294c240a}
+.center{text-align:center}
+.emoji{font-size:44px;margin-bottom:12px}
+h2{font-size:18px;color:#365c35;margin:5px 0 10px}
+p{line-height:1.8;font-size:13px;color:#6d8268}
+.note{margin-top:14px;font-size:12px;line-height:1.7;color:#779071}
+.pill{display:inline-block;padding:7px 12px;background:#eaf4e5;border-radius:999px;color:#507c49;font-size:11px;font-weight:850}
+.action{display:inline-block;margin-top:14px;padding:12px 18px;background:#53874c;color:white;font-size:13px;font-weight:900;border-radius:13px;min-height:44px}
+#privateContent[hidden]{display:none!important}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header><div class="top"><a href="./stamp-rally.html" class="logo" aria-label="メダルラリーへ戻る">🍀</a><div class="brand">CA Clover<small>MEDAL RALLY</small></div><div class="spacer"></div><a class="back" href="./stamp-rally.html">← メダル一覧</a></div></header>
+<main>
+  <section class="hero"><div class="kicker">COMMUNITY EXCHANGE RECORDS</div><h1>📊 みんなの交換記録</h1><p>CA同士の出会いと、メダル交換の広がりを振り返る専用ページです。</p></section>
+  <section class="card center" id="authState" role="status" aria-live="polite"><div class="emoji">🍀</div><h2 id="authTitle">CA登録を確認しています</h2><p id="authMessage">このページは、CA Cloverの承認済みCAと管理者向けです。</p></section>
+  <div id="privateContent" hidden>
+    <section class="card center" aria-labelledby="comingTitle">
+      <div class="emoji">🤝</div>
+      <span class="pill">専用ページの入口を公開しました</span>
+      <h2 id="comingTitle">みんなの交流が、ここに集まる。</h2>
+      <p>全期間の交換回数や月別・日別の記録を、このページで見られるように準備しています。</p>
+      <p class="note">現在は入口のみの公開です。交換履歴や個人ランキングは、まだ一般公開していません。</p>
+      <a href="./stamp-rally.html" class="action">メダルラリーに戻る</a>
+    </section>
+  </div>
+</main>
+<script>
+(function(){
+"use strict";
+const URL="https://wgiittrvgtiosogyhfcl.supabase.co";
+const KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
+const client=window.supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
+const title=document.getElementById("authTitle");
+const message=document.getElementById("authMessage");
+async function guard(){
+ try{
+  const auth=await client.auth.getUser();
+  if(auth.error||!auth.data.user){title.textContent="ログインが必要です";message.textContent="CA Cloverにログインしてから開いてください。";return}
+  const profile=await client.from("profiles").select("role").eq("id",auth.data.user.id).maybeSingle();
+  if(profile.error){title.textContent="認証を確認できません";message.textContent="通信状態を確認して再度お試しください。";return}
+  if(!["ca","admin"].includes(profile.data?.role)){title.textContent="CA専用ページです";message.textContent="承認済みCAと管理者のみ利用できます。";return}
+  document.getElementById("authState").hidden=true;
+  document.getElementById("privateContent").hidden=false;
+ }catch(_){
+  title.textContent="読み込みに失敗しました";message.textContent="通信状態を確認して再度お試しください。";
+ }
+}
+guard();
+})();
+</script>
+</body>
+</html>
