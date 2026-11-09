@@ -35,8 +35,8 @@ window.supabase={createClient:()=>client};
 let groups=0;
 const browser=await webkit.launch({headless:true});
 async function fixture(options={}){
- const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true,acceptDownloads:true});
- const page=await context.newPage();const calls=[],errors=[];let code=200,waitForExport;
+ const context=await browser.newContext({viewport:{width:options.width??390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true,acceptDownloads:true});
+ const page=await context.newPage();const calls=[],rosterCalls=[],errors=[];let code=200,waitForExport;
  await page.addInitScript({content:setup(options)});page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/*',async route=>{
    const u=new URL(route.request().url());
@@ -46,9 +46,23 @@ async function fixture(options={}){
        'content-type':code===200?'text/csv; charset=utf-8':'application/json','x-ca-clover-csv-version':'2','x-ca-clover-checkin-count':'29','x-ca-clover-verified-at':'2026-10-17T00:00:00.000Z'},body:code===200?'\uFEFF"表示名","抽選番号"\r\n"合成参加者","v1-0123456789abcdef0123456789abcdef"\r\n':JSON.stringify({error:code===409?'STALE_COUNT':'FORBIDDEN'})});}catch{/* browser abort is expected in cancellation scenario */}
      return;
    }
+   if(u.hostname==='wgiittrvgtiosogyhfcl.supabase.co'&&u.pathname==='/functions/v1/meetup-full-roster'){
+     rosterCalls.push(JSON.parse(route.request().postData()));
+     await route.fulfill({status:code,headers:{'access-control-allow-origin':'*',
+       'access-control-expose-headers':'X-CA-Clover-Roster-Count, X-CA-Clover-Verified-At, X-CA-Clover-CSV-Version',
+       'content-type':code===200?'text/csv; charset=utf-8':'application/json',
+       'x-ca-clover-csv-version':options.wrongRosterVersion?'2':'full-roster-1',
+       'x-ca-clover-roster-count':'2','x-ca-clover-verified-at':'2026-11-09T00:00:00.000Z'},
+       body:code===200?'\uFEFF"username","display_name","rsvp_status","checked_in"\r\n"test_one","合成参加者","ACCEPTED","FALSE"\r\n"test_two","合成参加者2","CHECKED_IN","TRUE"\r\n':'{}'});
+     return;
+   }
    if(u.hostname===origin.slice(8)){
      const path=u.pathname==='/'?'index.html':u.pathname.slice(1);
-     if(path==='index.html'){await route.fulfill({contentType:'text/html',body:index});return;}
+     if(path==='index.html'){
+       const html=options.fullRoster?index.replace('fullRosterEndpoint:null',
+         'fullRosterEndpoint:"https://wgiittrvgtiosogyhfcl.supabase.co/functions/v1/meetup-full-roster"'):index;
+       await route.fulfill({contentType:'text/html',body:html});return;
+     }
      if(path==='meetup-metrics.mjs'||/^participant-export(?:-ui\.mjs|\/(client-adapter|csv-click-guard|engine-policy)\.mjs)$/.test(path)){
        await route.fulfill({contentType:'application/javascript',body:readFileSync(join(root,'docs',path),'utf8')});return;
      }
@@ -57,7 +71,7 @@ async function fixture(options={}){
  });
  await page.goto(origin+'/#community:'+community,{waitUntil:'domcontentloaded'});
  await page.getByRole('heading',{name:options.own===false&&options.role!=='admin'?'このCommunityは表示できません':'合成Community'}).waitFor();
- return {page,context,calls,errors,setStatus:n=>code=n,hold(){let release;waitForExport=new Promise(r=>{release=r});return ()=>{waitForExport=undefined;release();}}};
+ return {page,context,calls,rosterCalls,errors,setStatus:n=>code=n,hold(){let release;waitForExport=new Promise(r=>{release=r});return ()=>{waitForExport=undefined;release();}}};
 }
 function pass(name){groups++;console.log('PASS '+name)}
 try{
@@ -119,5 +133,49 @@ try{
  await revoked.page.evaluate(()=>{window.__d=false;location.hash='my'});await revoked.page.waitForTimeout(50);
  await revoked.page.evaluate(c=>location.hash='community:'+c,community);await revoked.page.getByRole('heading',{name:'合成Community'}).waitFor();
  await revoked.page.waitForTimeout(50);assert.equal(await revoked.page.locator('[data-csv-meetup]').count(),0);pass('D解除後の再表示で導線消去');assert.deepEqual(revoked.errors,[]);await revoked.context.close();
+ for(const width of [320,375,390]){
+   const roster=await fixture({fullRoster:true,width});
+   const button=roster.page.getByRole('button',{name:'参加者名簿CSV',exact:true}).first();
+   await button.waitFor();
+   assert.equal(await roster.page.getByRole('button',{name:'チェックイン名簿CSV',exact:true}).count(),2);
+   assert.equal(roster.rosterCalls.length,0);
+   await button.click();
+   await roster.page.getByRole('heading',{name:'参加者名簿CSV'}).waitFor();
+   const dl=roster.page.waitForEvent('download');
+   await roster.page.locator('select[name=purpose]').selectOption('attendance');
+   await roster.page.locator('[data-csv-submit]').click();
+   const download=await dl;
+   assert.equal(download.suggestedFilename(),'meetup-roster-'+meetup+'.csv');
+   const content=readFileSync(await download.path(),'utf8');
+   assert.equal(content,'\uFEFF"username","display_name","rsvp_status","checked_in"\r\n"test_one","合成参加者","ACCEPTED","FALSE"\r\n"test_two","合成参加者2","CHECKED_IN","TRUE"\r\n');
+   assert.deepEqual(roster.rosterCalls,[{meetupId:meetup,purpose:'attendance',note:''}]);
+   assert.equal(roster.calls.length,0);
+   assert.deepEqual(roster.errors,[]);
+   assert(await roster.page.evaluate(()=>document.querySelector('dialog').getBoundingClientRect().width<=innerWidth));
+   if(width===390){
+     await roster.page.getByText('人数確認済み 2人',{exact:false}).waitFor();
+     mkdirSync('test-results/participant-ui',{recursive:true});
+     await roster.page.screenshot({path:'test-results/participant-ui/iphone-full-roster.png'});
+   }
+   await roster.context.close();
+   pass(width+'pxで未チェックインを含む4列名簿のみ保存、抽選API呼び出しなし');
+ }
+ for(const opts of [{},{fullRoster:true,d:false},{fullRoster:true,own:false},{fullRoster:true,role:'admin',d:false}]){
+   const disabled=await fixture(opts);
+   await disabled.page.waitForTimeout(80);
+   assert.equal(await disabled.page.getByRole('button',{name:'参加者名簿CSV',exact:true}).count(),0);
+   assert.equal(disabled.rosterCalls.length,0);
+   await disabled.context.close();
+ }
+ pass('ゲートOFF・Dなし・所属外で参加者名簿CSVを表示しない、既存ADMIN権限は抽選に限定');
+ const wrongVersion=await fixture({fullRoster:true,wrongRosterVersion:true});
+ let downloaded=false;wrongVersion.page.on('download',()=>{downloaded=true;});
+ await wrongVersion.page.getByRole('button',{name:'参加者名簿CSV',exact:true}).first().click();
+ await wrongVersion.page.locator('[data-csv-submit]').click();
+ await wrongVersion.page.getByText('しばらくして再試行',{exact:true}).waitFor();
+ assert.equal(wrongVersion.rosterCalls.length,1);
+ assert.equal(downloaded,false);
+ await wrongVersion.context.close();
+ pass('参加者名簿の応答に抽選CSVのバージョンが返る場合は保存を拒否');
  console.log(`PASS ${groups} mobile WebKit participant UI groups; synthetic only`);
 }finally{await browser.close();}
