@@ -7,6 +7,8 @@
 <meta http-equiv="Cache-Control" content="no-store">
 <title>みんなの交換記録 | CA Clover</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./stamp-exchange-stats-core.js?v=4"></script>
+<script src="./stamp-exchange-community-core.js?v=1"></script>
 <style>
 :root{font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#344733;background:#f7fbf4}
 *{box-sizing:border-box}
@@ -31,7 +33,49 @@ p{line-height:1.8;font-size:13px;color:#6d8268}
 .note{margin-top:14px;font-size:12px;line-height:1.7;color:#779071}
 .pill{display:inline-block;padding:7px 12px;background:#eaf4e5;border-radius:999px;color:#507c49;font-size:11px;font-weight:850}
 .action{display:inline-block;margin-top:14px;padding:12px 18px;background:#53874c;color:white;font-size:13px;font-weight:900;border-radius:13px;min-height:44px}
+.toolbar{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-top:17px}
+#loadStatus{font-size:12px;color:#597a51;font-weight:800}
+.reload{border:1px solid #c7dec0;background:#fff;border-radius:13px;color:#4c7548;padding:10px 14px;min-height:44px;font-size:12px;font-weight:900}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.metric{padding:16px 13px;border-radius:17px;background:#f1f7ed;text-align:center;min-width:0}
+.metric .label{font-size:11px;font-weight:850;color:#6d8a65}
+.metric strong{display:block;margin-top:10px;font-size:clamp(23px,5vw,35px);font-variant-numeric:tabular-nums;line-height:1.2;color:#396d35}
+.metric small{font-size:12px;margin-left:2px}
+.meta{display:flex;justify-content:center;gap:22px;flex-wrap:wrap;margin-top:13px;font-size:11px;font-weight:800;color:#73906d}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.section-head h2{margin:0}
+.periods{display:flex;gap:5px}
+.periods button,.monthnav button{border:1px solid #d2e1c9;background:#fff;color:#547d4e;border-radius:999px;padding:9px 13px;font-size:11px;min-height:42px;font-weight:900}
+.periods button[aria-pressed="true"]{background:#4b8546;color:white}
+.graph{display:block;width:100%;height:auto;min-height:165px;margin-top:15px}
+.axis{fill:#8aa084;font-size:11px;font-weight:650}
+.gridline{stroke:#e5eee0;stroke-width:1}
+.chartline{fill:none;stroke:#4b8b43;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+.monthnav{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:16px 0 10px}
+.monthnav strong{font-size:15px;color:#3d6638;font-weight:950}
+.monthnav button:disabled{opacity:.35;cursor:not-allowed}
+.tablebox{max-height:330px;overflow-y:auto;overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid #e4edde;border-radius:14px}
+table{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}
+th,td{border-bottom:1px solid #e5eee0;text-align:right;padding:12px 9px;font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+thead th{position:sticky;top:0;background:#fff;z-index:2;color:#859883;font-size:11px;font-weight:900}
+tbody tr:last-child td{border-bottom:0}
+tbody tr.active{background:#f2f8ed}
+.day-btn{border:0;background:transparent;color:#355e30;font-size:13px;font-weight:900;text-align:left;min-height:40px;padding:7px 4px}
+.day-btn:hover,.day-btn[aria-pressed="true"]{background:#e8f3df;border-radius:10px}
+.zero{color:#b5c3b1}
+.cumulative{color:#4e8047;font-weight:900}
+.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:14px}
+.detail-cell{background:#f1f7ed;border-radius:14px;padding:14px}
+.detail-cell span{display:block;font-size:11px;color:#709069;font-weight:850}
+.detail-cell strong{display:block;margin-top:6px;font-size:22px;color:#447a40}
+.hourly{display:grid;gap:8px;margin-top:17px}
+.hourbar{display:grid;grid-template-columns:35px minmax(0,1fr) 52px;align-items:center;gap:9px;font-size:12px;font-weight:800}
+.track{height:13px;border-radius:999px;background:#edf4e8;overflow:hidden}
+.fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#a1ca8b,#4d9545)}
+.hourbar label{text-align:right;font-variant-numeric:tabular-nums;color:#588450}
 #privateContent[hidden]{display:none!important}
+@media(max-width:480px){.card{padding:21px 15px}.metrics{gap:7px}.metric{padding:14px 7px}.metric .label{font-size:10px}.metric strong{font-size:24px}.monthnav button{padding:9px 11px}.tablebox{max-height:310px}th,td{padding:9px 7px}}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -41,14 +85,55 @@ p{line-height:1.8;font-size:13px;color:#6d8268}
   <section class="hero"><div class="kicker">COMMUNITY EXCHANGE RECORDS</div><h1>📊 みんなの交換記録</h1><p>CA同士の出会いと、メダル交換の広がりを振り返る専用ページです。</p></section>
   <section class="card center" id="authState" role="status" aria-live="polite"><div class="emoji">🍀</div><h2 id="authTitle">CA登録を確認しています</h2><p id="authMessage">このページは、CA Cloverの承認済みCAと管理者向けです。</p></section>
   <div id="privateContent" hidden>
-    <section class="card center" aria-labelledby="comingTitle">
-      <div class="emoji">🤝</div>
-      <span class="pill">専用ページの入口を公開しました</span>
-      <h2 id="comingTitle">みんなの交流が、ここに集まる。</h2>
-      <p>全期間の交換回数や月別・日別の記録を、このページで見られるように準備しています。</p>
-      <p class="note">現在は入口のみの公開です。交換履歴や個人ランキングは、まだ一般公開していません。</p>
-      <a href="./stamp-rally.html" class="action">メダルラリーに戻る</a>
+    <div class="toolbar"><div id="loadStatus" role="status" aria-live="polite">集計を準備しています</div><button id="reloadBtn" class="reload" type="button">⟳ 最新データを取得</button></div>
+    <section class="card" aria-label="全期間のメダル交換状況">
+      <h2>🍀 みんなの交流</h2>
+      <div class="metrics">
+        <div class="metric"><div class="label">累計交換</div><strong id="totalExchanges">—</strong></div>
+        <div class="metric"><div class="label">交換参加者</div><strong id="totalParticipants">—</strong></div>
+        <div class="metric"><div class="label">異なる交換ペア</div><strong id="totalPairs">—</strong></div>
+      </div>
+      <div class="meta"><span>初回：<b id="firstDate">—</b></span><span>最新：<b id="lastDate">—</b></span></div>
+      <p class="note">交換が成立した1組を1回として集計。参加者数は重複を除いたアカウント数です。</p>
     </section>
+    <section class="card" aria-label="交換累計グラフ">
+      <div class="section-head"><h2>📈 累計交換回数</h2>
+        <div class="periods" aria-label="グラフの表示期間">
+          <button type="button" data-period="all" aria-pressed="true">全期間</button>
+          <button type="button" data-period="30" aria-pressed="false">30日</button>
+          <button type="button" data-period="7" aria-pressed="false">7日</button>
+        </div>
+      </div>
+      <svg id="chart" class="graph" viewBox="0 0 720 245" role="img" aria-label="日別の累計交換回数"></svg>
+      <p class="note">期間を切り替えても、累計交換回数はリセットされません。日時は日本時間です。</p>
+    </section>
+    <section class="card" aria-label="日別交換履歴">
+      <div class="section-head"><h2>📅 日別交換履歴</h2><span class="pill">1か月単位</span></div>
+      <nav class="monthnav" aria-label="交換履歴の月切替">
+        <button id="prevMonth" type="button">‹ 前月</button>
+        <strong id="monthLabel" aria-live="polite">—</strong>
+        <button id="nextMonth" type="button">翌月 ›</button>
+      </nav>
+      <div id="scrollList" class="tablebox" tabindex="0" aria-label="月別交換履歴、上下にスクロールできます">
+        <table><thead><tr><th scope="col">日付（JST）</th><th scope="col">交換</th><th scope="col">累計</th></tr></thead><tbody id="dailyBody"></tbody></table>
+      </div>
+      <p class="note">日付をタップすると、その日の交流内訳が開きます。履歴は上の枠内をスクロールして確認できます。</p>
+    </section>
+    <section class="card" id="daySection" hidden aria-label="選択日の交換内訳">
+      <h2 id="selectedTitle">日別の交換内訳</h2>
+      <div class="detail-grid">
+        <div class="detail-cell"><span>交換回数</span><strong id="dayCount">—</strong></div>
+        <div class="detail-cell"><span>交換参加者</span><strong id="dayParticipants">—</strong></div>
+        <div class="detail-cell"><span>異なる交換ペア</span><strong id="dayPairs">—</strong></div>
+        <div class="detail-cell"><span>初記録ペアの交換</span><strong id="dayFirst">—</strong></div>
+        <div class="detail-cell"><span>同じペアの再交換</span><strong id="dayRepeat">—</strong></div>
+        <div class="detail-cell"><span>その日までの累計</span><strong id="dayCumulative">—</strong></div>
+      </div>
+      <h2 style="margin-top:23px">🕒 時間帯別の交換回数</h2>
+      <div id="hourly" class="hourly" aria-label="時間帯別回数"></div>
+      <p class="note">初記録ペアは、全期間で初めて交換した組み合わせ。再交換は同じ組み合わせの2回目以降です。</p>
+    </section>
+    <p class="note">表示内容は承認済みCA向けの匿名集計です。個人のID・交換相手・交換履歴・ランキングの名前は公開しません。</p>
   </div>
 </main>
 <script>
@@ -57,22 +142,114 @@ p{line-height:1.8;font-size:13px;color:#6d8268}
 const URL="https://wgiittrvgtiosogyhfcl.supabase.co";
 const KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
 const client=window.supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
-const title=document.getElementById("authTitle");
-const message=document.getElementById("authMessage");
-async function guard(){
- try{
-  const auth=await client.auth.getUser();
-  if(auth.error||!auth.data.user){title.textContent="ログインが必要です";message.textContent="CA Cloverにログインしてから開いてください。";return}
-  const profile=await client.from("profiles").select("role").eq("id",auth.data.user.id).maybeSingle();
-  if(profile.error){title.textContent="認証を確認できません";message.textContent="通信状態を確認して再度お試しください。";return}
-  if(!["ca","admin"].includes(profile.data?.role)){title.textContent="CA専用ページです";message.textContent="承認済みCAと管理者のみ利用できます。";return}
-  document.getElementById("authState").hidden=true;
-  document.getElementById("privateContent").hidden=false;
- }catch(_){
-  title.textContent="読み込みに失敗しました";message.textContent="通信状態を確認して再度お試しください。";
- }
+const stats=window.StampExchangeStats,core=window.StampExchangeCommunityCore;
+const get=id=>document.getElementById(id);
+let state=null,month=null,period="all",selectedDay=null,loading=false;
+function fmt(n){return Number(n).toLocaleString("ja-JP")}
+function date(day){return day?day.replaceAll("-","/"):"—"}
+function short(day){return day?day.slice(5).replace("-","/"):"—"}
+function fail(title,text){get("authTitle").textContent=title;get("authMessage").textContent=text;get("authState").hidden=false;get("privateContent").hidden=true}
+async function checkCa(){
+ const auth=await client.auth.getUser();
+ if(auth.error||!auth.data.user){fail("ログインが必要です","CA Cloverにログインしてから開いてください。");return false}
+ const p=await client.from("profiles").select("role").eq("id",auth.data.user.id).maybeSingle();
+ if(p.error){fail("認証を確認できません","通信状態を確認して再度お試しください。");return false}
+ if(!["ca","admin"].includes(p.data?.role)){fail("CA専用ページです","承認済みCAと管理者のみ利用できます。");return false}
+ return true;
 }
-guard();
+function drawChart(days){
+ const svg=get("chart");
+ if(!days.length){svg.innerHTML='<text x="360" y="120" text-anchor="middle" class="axis">まだ交換記録がありません</text>';return}
+ const W=720,H=245,L=47,R=14,T=16,B=39;
+ const x=i=>L+(W-L-R)*(days.length===1?0.5:i/(days.length-1));
+ const max=Math.max(1,days.at(-1).cumulative);
+ const y=v=>T+(H-T-B)*(1-v/max),pts=days.map((d,i)=>[x(i),y(d.cumulative)]);
+ const path=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+ const area=path+" L"+x(days.length-1).toFixed(1)+" "+(H-B)+" L"+x(0).toFixed(1)+" "+(H-B)+" Z";
+ const tick=[0,1,2,3,4].map(i=>{
+  const yy=y(i*max/4),v=Math.round(i*max/4);
+  return '<line class="gridline" x1="'+L+'" y1="'+yy+'" x2="'+(W-R)+'" y2="'+yy+'"/><text class="axis" x="'+(L-8)+'" y="'+(yy+4)+'" text-anchor="end">'+fmt(v)+'</text>';
+ }).join("");
+ const keys=[0,Math.round((days.length-1)/2),days.length-1].filter((v,i,a)=>a.indexOf(v)===i);
+ const labels=keys.map(i=>'<text class="axis" x="'+x(i)+'" y="'+(H-8)+'" text-anchor="'+(i===0?"start":i===days.length-1?"end":"middle")+'">'+short(days[i].day)+'</text>').join("");
+ svg.innerHTML='<defs><linearGradient id="communityChartFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#82ba74" stop-opacity=".35"/><stop offset="1" stop-color="#82ba74" stop-opacity=".03"/></linearGradient></defs>'+tick+'<path d="'+area+'" fill="url(#communityChartFill)"/><path class="chartline" d="'+path+'"/>'+labels;
+ svg.setAttribute("aria-label",date(days[0].day)+"から"+date(days.at(-1).day)+"の累計"+fmt(days.at(-1).cumulative)+"回");
+}
+function renderDay(){
+ if(!state||!selectedDay){get("daySection").hidden=true;return}
+ const d=state.days.find(d=>d.day===selectedDay);
+ if(!d){get("daySection").hidden=true;return}
+ get("daySection").hidden=false;
+ get("selectedTitle").textContent=date(d.day)+" の交換内訳";
+ for(const [id,value] of [["dayCount",d.count],["dayParticipants",d.participants],["dayPairs",d.pairs],["dayFirst",d.firstPairs],["dayRepeat",d.repeatPairs],["dayCumulative",d.cumulative]])
+  get(id).textContent=fmt(value)+(id==="dayParticipants"?" 人":id==="dayPairs"?" 組":" 回");
+ const max=Math.max(1,...d.hours);
+ get("hourly").innerHTML=d.hours.map((value,hour)=>({hour,value})).filter(x=>x.value).map(x=>
+  '<div class="hourbar"><span>'+x.hour+'時</span><div class="track"><div class="fill" style="width:'+Math.max(2,Math.round(x.value/max*100))+'%"></div></div><label>'+fmt(x.value)+'回</label></div>'
+ ).join("")||'<p class="note">この日の交換はありません。</p>';
+}
+function render(){
+ if(!state)return;
+ get("totalExchanges").textContent=fmt(state.total)+" 回";
+ get("totalParticipants").textContent=fmt(state.participants)+" 人";
+ get("totalPairs").textContent=fmt(state.pairs)+" 組";
+ get("firstDate").textContent=date(state.firstDate);
+ get("lastDate").textContent=date(state.lastDate);
+ drawChart(stats.recent(state.days,period));
+ document.querySelectorAll("[data-period]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.period===period)));
+ const first=stats.monthKey(state.firstDate||state.asOfDate);
+ const last=stats.monthKey(state.asOfDate);
+ if(!month||month<first||month>last)month=last;
+ const [year,m]=month.split("-");
+ get("monthLabel").textContent=Number(year)+"年"+Number(m)+"月";
+ get("prevMonth").disabled=month<=first;
+ get("nextMonth").disabled=month>=last;
+ const shown=stats.monthDays(state.days,month);
+ get("dailyBody").innerHTML=shown.length?shown.slice().reverse().map(d=>
+  '<tr class="'+(selectedDay===d.day?"active":"")+'"><td><button type="button" class="day-btn" data-day="'+d.day+'" aria-pressed="'+String(selectedDay===d.day)+'">'+date(d.day)+'</button></td><td class="'+(d.count===0?"zero":"")+'">'+fmt(d.count)+' 回</td><td class="cumulative">'+fmt(d.cumulative)+' 回</td></tr>'
+ ).join(""):'<tr><td colspan="3">まだ交換履歴がありません</td></tr>';
+ renderDay();
+ get("authState").hidden=true;
+ get("privateContent").hidden=false;
+}
+async function load(){
+ if(loading)return;
+ loading=true;
+ if(state)get("loadStatus").textContent="最新の交換記録を取得しています…";
+ get("reloadBtn").disabled=true;
+ try{
+  if(!(await checkCa()))return;
+  const response=await client.rpc("stamp_exchange_community_summary_v1");
+  if(response.error)throw response.error;
+  const next=core.normalize(response.data);
+  state=next;
+  if(selectedDay&&!state.days.some(d=>d.day===selectedDay))selectedDay=null;
+  render();
+  get("loadStatus").textContent="更新完了 ・ "+new Date(state.asOf).toLocaleString("ja-JP",{timeZone:"Asia/Tokyo"})+" JST";
+ }catch(error){
+  const msg="記録の取得に失敗しました。再読み込みしてお試しください。";
+  if(state){get("loadStatus").textContent=msg+"（表示中の数字は前回取得分です）"}
+  else fail("交換記録を取得できません",msg);
+ }finally{get("reloadBtn").disabled=false;loading=false}
+}
+function changeMonth(dir){
+ if(!state)return;
+ const target=stats.shiftMonth(month,dir);
+ const first=stats.monthKey(state.firstDate||state.asOfDate),last=stats.monthKey(state.asOfDate);
+ if(target<first||target>last)return;
+ month=target;selectedDay=null;render();get("scrollList").scrollTop=0;
+}
+get("reloadBtn").addEventListener("click",load);
+get("prevMonth").addEventListener("click",()=>changeMonth(-1));
+get("nextMonth").addEventListener("click",()=>changeMonth(1));
+get("dailyBody").addEventListener("click",event=>{
+ const btn=event.target.closest("button[data-day]");
+ if(!btn||!state)return;
+ selectedDay=btn.dataset.day;render();
+ get("daySection").scrollIntoView({behavior:"smooth",block:"nearest"});
+});
+document.querySelectorAll("[data-period]").forEach(b=>b.addEventListener("click",()=>{period=b.dataset.period;render()}));
+load();
 })();
 </script>
 </body>
