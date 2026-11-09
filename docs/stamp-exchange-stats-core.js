@@ -60,5 +60,11 @@
     return days.slice(-n);
   }
 
-  return Object.freeze({ jstDate, build, recent });
+  function visibleDays(days, expanded, limit = 5) {
+    if (!Array.isArray(days)) throw new TypeError("Days must be an array");
+    const max = Math.max(1, Math.floor(Number(limit) || 5));
+    return expanded ? days.slice() : days.slice(-max);
+  }
+
+  return Object.freeze({ jstDate, build, recent, visibleDays });
 });
