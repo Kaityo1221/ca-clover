@@ -117,6 +117,7 @@ export default function CAMasterReconcilePage() {
     <Link href="/admin" className="text-sm font-black text-lime-800">← 管理メニュー</Link>
     <span className="mt-4 block w-fit rounded-full bg-slate-200 px-3 py-1 text-xs font-black text-slate-700">隔離レビュー / 本番自動照合 OFF</span>
     <h1 className="mt-3 text-3xl font-black text-lime-950">🍀 CA名簿の不整合レポート</h1>
+    <Link href="/admin/ca-master-reconcile/phase2" className="mt-3 inline-block rounded-xl border border-lime-600 px-4 py-2 text-sm font-black text-lime-900">第2段階の承認フローを試す（端末内のみ）</Link>
     <p className="mt-2 text-sm font-semibold leading-7 text-slate-600">公式CA名簿とCloverの差異を確認する第一段階の画面です。既存CAの権限・所属・本人連携を変更しません。</p>
     <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-7 text-amber-900">
       現在は開発用の表示画面です。自動取得APIと日次チェックは本番に接続していません。安全な隔離台帳から書き出したレポートJSONだけを、この端末内で読み込んで確認できます。データはアップロードされません。
