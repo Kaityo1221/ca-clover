@@ -23,9 +23,11 @@ export function createCsvClient({fetcher,endpoint,origin,getBearer,download,onSt
         const version=fullRoster?'full-roster-1':'2';
         if(response.headers.get('content-type')?.split(';')[0]!=='text/csv'||response.headers.get('x-ca-clover-csv-version')!==version||
           !/^(0|[1-9][0-9]{0,3})$/.test(count)||Number(count)>(fullRoster?5000:1000)||(fullRoster&&Number(count)===0)||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(time)||!Number.isFinite(Date.parse(time)))throw Error();
-        await download(response,controller.signal,{expectedCount:Number(count),fullRoster});
+        const unresolved=fullRoster?response.headers.get('x-ca-clover-unresolved-count'):'0';
+        if(!/^(0|[1-9][0-9]{0,3})$/.test(unresolved)||Number(unresolved)>Number(count))throw Error();
+        await download(response,controller.signal,{expectedCount:Number(count),expectedUnresolved:Number(unresolved),fullRoster});
         if(controller.signal.aborted)throw Error();
-        status(`人数確認済み ${count}人 / ${time}`);
+        status(`人数確認済み ${count}人 / ${time}${Number(unresolved)>0?' / 辞退者名未取得 '+unresolved+'人':''}`);
       }else{
         status(response.status===409?(fullRoster?'参加者情報が変わったか、名簿が空です。CSVは発行されません。':'新しい参加者が反映されるまで再取得'):
           response.status===502?'取得情報不一致、CSV未発行':'しばらくして再試行');
