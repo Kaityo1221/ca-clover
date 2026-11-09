@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
 import ActivityTrendChart from "@/components/monthly-activity-chart";
+import MeetupFullRosterExport from "@/components/meetup-full-roster-export";
 
 type CommunityRow={
   id:string;
@@ -379,6 +380,8 @@ export default function Page(){
           <div><div className="text-[11px] font-black text-slate-400">RSVP</div><div className="mt-1 font-bold text-slate-700">{selectedMeetup.rsvp_count??"—"}</div></div>
           <div><div className="text-[11px] font-black text-slate-400">Check-in</div><div className="mt-1 font-bold text-slate-700">{selectedMeetup.checkin_count??"—"}</div></div>
         </div>
+
+        <MeetupFullRosterExport meetupId={selectedMeetup.id} enabled={false} />
 
         {selectedMeetup.details?.trim()?<div className="mt-4 whitespace-pre-wrap rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm font-medium leading-6 text-slate-600">{selectedMeetup.details}</div>:<div className="mt-4 rounded-2xl border border-dashed border-slate-200 p-4 text-sm font-semibold text-slate-400">概要文はありません。</div>}
 
