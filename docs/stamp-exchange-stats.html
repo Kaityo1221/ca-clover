@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-store">
 <title>メダル交換集計 | CA Clover ADMIN</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./stamp-exchange-stats-core.js?v=2"></script>
+<script src="./stamp-exchange-stats-core.js?v=3"></script>
 <script src="./stamp-exchange-breakdown.js?v=1"></script>
 <style>
 :root{font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#283b25;background:#f5f8f0;font-synthesis:none}
@@ -50,7 +50,11 @@ td.zero{color:#a9b4a5}.notice{padding:13px 16px;border-radius:16px;background:#e
 #refreshBtn{border:1px solid #ccddc6;background:white;color:#4e7848;padding:10px 15px;border-radius:999px;font-size:12px;font-weight:850;min-height:42px}
 #refreshBtn:disabled{opacity:.4}
 .status{font-size:12px;color:#54774b;font-weight:800;min-height:18px}
-.day-button{border:0;border-radius:9px;background:transparent;padding:9px 7px;font-size:inherit;font-weight:800;color:#365c34;text-align:left;min-height:42px}
+.day-button{border:0;border-radius:9px;background:transparent;padding:6px 5px;font-size:inherit;font-weight:800;color:#365c34;text-align:left;min-height:42px}
+#dailyBody td{padding:3px 8px}
+#dailyMoreBtn{display:block;margin:12px auto 0;border:1px solid #ccdfc1;border-radius:999px;background:#f3f9ee;color:#456f3e;padding:11px 18px;min-height:44px;font-size:12px;font-weight:850}
+#dailyMoreBtn:hover{background:#e3f2d9}
+#dailyMoreBtn[hidden]{display:none!important}
 .day-button:hover,.day-button[aria-expanded="true"]{background:#e6f2de;color:#294e26}
 .day-button:after{content:" ▾";font-size:11px;opacity:.6}
 .day-button[aria-expanded="true"]:after{content:" ▴"}
@@ -133,7 +137,8 @@ table tr.selected{background:#f2f8ee}
     <thead><tr><th scope="col">日付（JST）</th><th scope="col">当日の交換</th><th scope="col">累計</th></tr></thead>
     <tbody id="dailyBody"></tbody>
    </table></div>
-   <p class="small-note">日付を押すと、その日の交換内訳を表示します。</p>
+   <button id="dailyMoreBtn" type="button" hidden aria-expanded="false" aria-controls="dailyBody">過去の記録も表示</button>
+   <p class="small-note">直近5日分を表示。過去の日付も開けます。日付を押すと交換内訳を確認できます。</p>
   </section>
   <section id="dayDetail" class="panel section" hidden aria-label="日別交換の詳細">
    <div class="barline"><h2 id="selectedTitle">日別の交換内訳</h2><span class="label">日付別の実績</span></div>
@@ -179,7 +184,7 @@ const client=window.supabase.createClient(URL,KEY,{auth:{persistSession:true,aut
 const core=window.StampExchangeStats;
 const breakdown=window.StampExchangeBreakdown;
 const get=id=>document.getElementById(id);
-let aggregate=null,details=null,caNames=new Map(),selectedDay=null,period="all",rankingMode="all",running=false;
+let aggregate=null,details=null,caNames=new Map(),selectedDay=null,period="all",rankingMode="all",dailyExpanded=false,running=false;
 function number(n){return Number(n).toLocaleString("ja-JP")}
 function shortDate(day){return day?day.slice(5).replace("-","/"):"—"}
 function fullDate(day){return day?day.replaceAll("-","/"):"—"}
@@ -303,9 +308,14 @@ function render(){
  get("last").textContent=shortDate(aggregate.lastDate);
  const days=core.recent(aggregate.days,period);
  chartSvg(days);
- get("dailyBody").innerHTML=days.length?days.slice().reverse().map(d=>
+ const visibleDays=core.visibleDays(days,dailyExpanded,5);
+ get("dailyBody").innerHTML=visibleDays.length?visibleDays.slice().reverse().map(d=>
   '<tr class="'+(d.day===selectedDay?"selected":"")+'"><td><button type="button" class="day-button" data-day="'+d.day+'" aria-expanded="'+String(d.day===selectedDay)+'" aria-label="'+fullDate(d.day)+'の交換内訳を表示">'+fullDate(d.day)+'</button></td><td class="'+(d.count===0?"zero":"")+'">'+number(d.count)+' 回</td><td>'+number(d.cumulative)+' 回</td></tr>'
  ).join(""):'<tr><td colspan="3">交換完了履歴はありません</td></tr>';
+ const moreBtn=get("dailyMoreBtn");
+ moreBtn.hidden=days.length<=5;
+ moreBtn.setAttribute("aria-expanded",String(dailyExpanded));
+ moreBtn.textContent=dailyExpanded?"最新5日分だけ表示":"過去の記録も表示（残り"+number(days.length-visibleDays.length)+"日）";
  document.querySelectorAll("[data-period]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.period===period)));
  renderDayDetail();
  renderRanking();
@@ -323,7 +333,7 @@ async function refresh(){
   if(newDetails.total!==newAggregate.total)throw new Error("日別内訳と累計件数が一致しません。");
   const newNames=await fetchConfirmedCaNames();
   aggregate=newAggregate;details=newDetails;caNames=newNames;
-  if(!selectedDay || !aggregate.days.some(x=>x.day===selectedDay))selectedDay=aggregate.lastDate||aggregate.asOfDate;
+  if(selectedDay && !aggregate.days.some(x=>x.day===selectedDay))selectedDay=null;
   render();
   setStatus("更新完了 ・ "+number(aggregate.total)+" 回（"+new Date(asOf).toLocaleString("ja-JP",{timeZone:"Asia/Tokyo"})+" JST）",false);
  }catch(error){
@@ -331,7 +341,11 @@ async function refresh(){
   if(!aggregate)get("dashboard").hidden=true;
  }finally{running=false;get("refreshBtn").disabled=false}
 }
-document.querySelectorAll("[data-period]").forEach(b=>b.addEventListener("click",()=>{period=b.dataset.period;render()}));
+document.querySelectorAll("[data-period]").forEach(b=>b.addEventListener("click",()=>{period=b.dataset.period;dailyExpanded=false;render()}));
+get("dailyMoreBtn").addEventListener("click",()=>{
+ dailyExpanded=!dailyExpanded;
+ render();
+});
 get("refreshBtn").addEventListener("click",refresh);
 get("dailyBody").addEventListener("click",event=>{
  const button=event.target.closest("button[data-day]");
@@ -340,7 +354,11 @@ get("dailyBody").addEventListener("click",event=>{
  get("dayDetail").scrollIntoView({behavior:"smooth",block:"nearest"});
 });
 document.querySelectorAll("[data-ranking]").forEach(button=>button.addEventListener("click",()=>{
- rankingMode=button.dataset.ranking;renderRanking();
+ rankingMode=button.dataset.ranking;
+ if(rankingMode==="day"&&!selectedDay&&aggregate){
+   selectedDay=aggregate.lastDate||aggregate.asOfDate;
+   render();
+ }else renderRanking();
 }));
 refresh();
 })();
