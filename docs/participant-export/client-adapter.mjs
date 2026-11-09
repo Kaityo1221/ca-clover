@@ -23,7 +23,7 @@ export function createCsvClient({fetcher,endpoint,origin,getBearer,download,onSt
         const version=fullRoster?'full-roster-1':'2';
         if(response.headers.get('content-type')?.split(';')[0]!=='text/csv'||response.headers.get('x-ca-clover-csv-version')!==version||
           !/^(0|[1-9][0-9]{0,3})$/.test(count)||Number(count)>(fullRoster?5000:1000)||(fullRoster&&Number(count)===0)||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(time)||!Number.isFinite(Date.parse(time)))throw Error();
-        await download(response,controller.signal);
+        await download(response,controller.signal,{expectedCount:Number(count),fullRoster});
         if(controller.signal.aborted)throw Error();
         status(`人数確認済み ${count}人 / ${time}`);
       }else{
