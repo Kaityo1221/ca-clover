@@ -167,7 +167,10 @@ try {
   assert.equal(regions[5].complete, false);
   assert.equal(await page.locator(".complete-label").count(), 1);
   assert.equal(await page.locator(".exchange-card").getAttribute("href"), "./stamp-exchange.html");
-  assert.equal(await page.evaluate(() => document.querySelector(".hero").nextElementSibling.matches(".exchange-card")), true);
+  assert.equal(await page.locator(".community-record-card").getAttribute("href"), "./stamp-exchange-community.html?v=20261109");
+  assert.equal(await page.evaluate(() =>
+    document.querySelector(".hero").nextElementSibling.matches(".community-record-card") &&
+    document.querySelector(".community-record-card").nextElementSibling.matches(".exchange-card")), true);
   assert.equal(await page.locator(".mapbox .prefecture.acquired").count(), 2);
   await page.locator(".regionbtn").nth(1).click();
   await page.getByRole("button", { name: /^東京都/ }).click();
