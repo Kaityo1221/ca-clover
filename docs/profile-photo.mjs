@@ -17,6 +17,7 @@ export function mountProfilePhoto({host, client, session, role}) {
   let signedUrl = null;
   let active = true;
   let working = false;
+  let fileSelectionGeneration = 0;
   const setStatus = (s) => { if (active) msg.textContent = s; };
   const clearPreview = () => { if (previewUrl) URL.revokeObjectURL(previewUrl); previewUrl = null; };
   function setImage(url) {
@@ -78,7 +79,8 @@ export function mountProfilePhoto({host, client, session, role}) {
     setStatus('登録済みのプロフィール写真を表示中です。');
   }
   async function selectFile() {
-    if (!allowed || !active) return;
+    if (!allowed || !active || working) return;
+    const generation = ++fileSelectionGeneration;
     blob = null;
     save.disabled = true;
     clearPreview();
@@ -87,7 +89,7 @@ export function mountProfilePhoto({host, client, session, role}) {
     setStatus('画像を圧縮しています…');
     try {
       const compressed = await compress(file);
-      if (!active) return;
+      if (!active || generation !== fileSelectionGeneration) return;
       blob = compressed;
       previewUrl = URL.createObjectURL(blob);
       setImage(previewUrl);
@@ -95,7 +97,7 @@ export function mountProfilePhoto({host, client, session, role}) {
       save.disabled = !writeEnabled || !allowed;
       setStatus(writeEnabled ? 'プレビューを確認して保存してください。' : '圧縮プレビュー完了。保存機能は隔離試験中のため無効です。');
     } catch (err) {
-      if (active) { info.textContent = ''; setStatus(err.message || '画像を処理できませんでした。'); }
+      if (active && generation === fileSelectionGeneration) { info.textContent = ''; setStatus(err.message || '画像を処理できませんでした。'); }
     }
   }
   async function upload() {
@@ -189,5 +191,5 @@ export function mountProfilePhoto({host, client, session, role}) {
   if (!allowed) setStatus('プロフィール写真の登録は承認済みCAのみ利用できます。');
   else if (!writeEnabled) setStatus('画像の選択・圧縮プレビューができます。保存はまだ有効化していません。');
   else showStored();
-  return () => { active = false; clearPreview(); input.removeEventListener('change', selectFile); save.removeEventListener('click', upload); removeButton.removeEventListener('click', removeCurrentPhoto); };
+  return () => { active = false; ++fileSelectionGeneration; clearPreview(); input.removeEventListener('change', selectFile); save.removeEventListener('click', upload); removeButton.removeEventListener('click', removeCurrentPhoto); };
 }
