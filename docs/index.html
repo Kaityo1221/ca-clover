@@ -678,7 +678,7 @@
     if(zoroarkLeave){zoroarkLeave();zoroarkLeave=null;}
     if(ideasLeave){ideasLeave();ideasLeave=null;}
     if(sendaiMapLeave){sendaiMapLeave();sendaiMapLeave=null;}
-    if(participantPanel)participantPanel.leave(); // PARTICIPANT_CSV_LEAVE
+    // Full-roster card controls are scoped to each render; no legacy raffle panel remains.
     const token=++renderToken;
     header();
     if(!session){if(token===renderToken)loginView();return}
