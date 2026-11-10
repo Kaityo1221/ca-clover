@@ -24,7 +24,7 @@ test('admins see roster without D, CA still requires D and no hint visible',()=>
  assert.match(ui,/if\(initial\.role==='admin'\)return initial/);
  assert.match(ui,/if\(permission\.error\|\|permission\.data\?\.permission_code!=='D'\)return null/);
  assert.doesNotMatch(ui,/D権限が必要|D権限を確認できません|管理者も対象/);
- assert.match(page,/meetup-roster-ui\.mjs\?v=20261110-hourly-limit1/);
+ assert.match(page,/meetup-roster-ui\.mjs\?v=20261110-resave-memory1/);
 });
 
 test('Meetup card CSV invokes the same full-roster action as overview, not raffle CSV',()=>{
@@ -78,4 +78,23 @@ test('429 clearly explains hourly limit and does not promise download after 15 s
  assert.match(ui,/再試行まであと/);
  assert.doesNotMatch(ui,/再取得まであと/);
  assert.match(ui,/if\(response\.status===429\)beginCooldown|response\.status===200\|\|response\.status===429/);
+});
+
+test('in-memory reuse only, short TTL, scoped to user and Meetup, no server call',()=>{
+ assert.match(ui,/const MEMORY_TTL_MS=5\*60\*1000/);
+ assert.match(ui,/cachedRoster\.userId!==userId/);
+ assert.match(ui,/cachedRoster\.meetupId===meetupId/);
+ assert.match(ui,/expiresAt:Date\.now\(\)\+MEMORY_TTL_MS/);
+ assert.match(ui,/previous\.blob,meetup\.id/);
+ assert.match(ui,/client\.auth\.getSession\(\)/);
+ assert.match(ui,/client\.from\('profiles'\)/);
+ assert.match(ui,/roleCheck\.data\.role==='ca'/);
+ assert.doesNotMatch(ui,/localStorage|sessionStorage|indexedDB|caches\.open/);
+});
+test('resave action shares fixed layout with save location and remains separate from server cooldown',()=>{
+ assert.match(ui,/もう一度保存/);
+ assert.match(ui,/roster-secondary-actions/);
+ assert.match(ui,/grid-row:3/);
+ assert.match(ui,/saveRosterBlob\(previous\.blob,meetup\.id\)/);
+ assert.match(ui,/const previous=currentCached\(userId,meetup\.id\)/);
 });

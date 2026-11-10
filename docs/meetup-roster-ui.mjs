@@ -4,6 +4,24 @@ const ENDPOINT='https://wgiittrvgtiosogyhfcl.supabase.co/functions/v1/meetup-ros
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 let inFlight=false;
 
+// Ephemeral single-roster cache: never persisted to disk or sent elsewhere.
+const MEMORY_TTL_MS=5*60*1000;
+let cachedRoster=null;
+function currentCached(userId,meetupId){
+  if(cachedRoster&&(cachedRoster.expiresAt<=Date.now()||cachedRoster.userId!==userId)){
+    cachedRoster=null;
+  }
+  return cachedRoster&&cachedRoster.meetupId===meetupId?cachedRoster:null;
+}
+function saveRosterBlob(blob,meetupId){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.hidden=true;a.href=url;a.download='meetup-roster-'+meetupId+'.csv';
+  document.body.append(a);
+  try{a.click();}
+  finally{a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
+}
+
 const COOLDOWN_MS=15000;
 let cooldownUntil=0;
 let cooldownTimer=null;
@@ -13,6 +31,7 @@ function updateCooldown(){
   const seconds=Math.ceil(Math.max(0,cooldownUntil-Date.now())/1000);
   for(const control of controls){
     if(!control.button.isConnected){controls.delete(control);continue;}
+    if(control.resave)control.resave.hidden=!currentCached(control.userId,control.meetupId);
     if(control.button.classList.contains('roster-peach-loading'))continue;
     control.button.disabled=inFlight||seconds>0;
     control.button.textContent=seconds>0?'再試行まであと'+seconds+'秒':idleLabel(control.compact);
@@ -49,7 +68,10 @@ function ensureRosterStyle(){
     '.participant-roster-action{position:relative;box-sizing:border-box;display:grid!important;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:40px 22px 26px;align-items:center;column-gap:8px;row-gap:0;min-height:96px;height:96px;margin:5px 0 10px;overflow:visible}',
     '.participant-roster-action>.meetup-roster-button{grid-column:2;grid-row:1;justify-self:end;white-space:nowrap;min-width:126px}',
     '.participant-roster-action>[role=status]{grid-column:1 / -1;grid-row:2;justify-self:end;min-width:0;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;line-height:22px;margin:0}',
-    '.participant-roster-action>.roster-location-button{grid-column:1 / -1;grid-row:3;justify-self:end;line-height:22px;margin:0;white-space:nowrap}',
+    '.participant-roster-action>.roster-secondary-actions{grid-column:1 / -1;grid-row:3;justify-self:end;display:flex;align-items:center;gap:9px;min-width:0;white-space:nowrap}',
+    '.roster-secondary-actions{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:nowrap}',
+    '.roster-secondary-actions>.roster-location-button{font-size:11px;white-space:nowrap;padding:2px}',
+    '.roster-resave-button{border:0;background:transparent;color:#7938af;text-decoration:underline;padding:2px;font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer}',
     '.participant-roster-action>.roster-location-hint{position:absolute;z-index:20;top:calc(100% - 4px);right:0;margin:0;padding:9px 12px;max-width:calc(100vw - 48px);border-radius:9px;border:1px solid #d7bee9;background:#fff;color:#432265;box-shadow:0 7px 24px #3620472e}',
     '.participant-roster-action>.roster-location-hint[hidden]{display:none}',
 
@@ -100,10 +122,40 @@ function attachAction({root,container,meetup,client,getIdentity,publicKey,compac
   guide.textContent='📁 保存したファイルを探す';guide.hidden=true;
   const hint=document.createElement('p');hint.className='roster-location-hint';hint.hidden=true;
   guide.onclick=()=>{hint.hidden=!hint.hidden;if(!hint.hidden)hint.textContent=downloadLocationHint();};
-  wrapper.append(button,status,guide,hint);container.append(wrapper);
-  const control={button,compact};
+  const resave=document.createElement('button');
+  resave.type='button';resave.className='roster-resave-button';
+  resave.textContent='もう一度保存';resave.hidden=!currentCached(userId,meetup.id);
+  resave.setAttribute('aria-label','前回の名簿を通信なしでもう一度保存');
+  const actionLinks=document.createElement('div');
+  actionLinks.className='roster-secondary-actions';
+  actionLinks.append(resave,guide);
+  wrapper.append(button,status,actionLinks,hint);container.append(wrapper);
+  const control={button,compact,resave,meetupId:meetup.id,userId};
   controls.add(control);
   updateCooldown();
+  resave.onclick=async()=>{
+    if(inFlight||!root.isConnected||getIdentity()?.userId!==userId)return;
+    const previous=currentCached(userId,meetup.id);
+    if(!previous){resave.hidden=true;status.textContent='一時保存の期限が切れました';return;}
+    resave.disabled=true;
+    try{
+      const {data,error}=await client.auth.getSession();
+      if(error||!data?.session?.access_token||data.session.user?.id!==userId)
+        throw new Error('ログインし直してからお試しください');
+      const roleCheck=await client.from('profiles').select('role').eq('id',userId).maybeSingle();
+      if(roleCheck.error||!['admin','ca'].includes(roleCheck.data?.role))
+        throw new Error('名簿の利用権限を確認できません');
+      if(roleCheck.data.role==='ca'&&!await allowed({client,getIdentity:()=>({userId,role:'ca'})}))
+        throw new Error('名簿の利用権限を確認できません');
+      if(!root.isConnected||!currentCached(userId,meetup.id))
+        throw new Error('一時保存の期限が切れました');
+      saveRosterBlob(previous.blob,meetup.id);
+      status.textContent='前回の名簿を再保存しました（'+previous.count+'名）';
+      guide.hidden=false;
+    }catch(error){
+      status.textContent=error instanceof Error?error.message:'再保存に失敗しました';
+    }finally{resave.disabled=false;updateCooldown();}
+  };
   button.onclick=async()=>{
     if(inFlight||Date.now()<cooldownUntil||!root.isConnected||getIdentity()?.userId!==userId)return;
     inFlight=true;button.disabled=true;button.classList.add('roster-peach-loading');button.textContent='名簿を準備中';status.textContent='';
@@ -134,12 +186,10 @@ function attachAction({root,container,meetup,client,getIdentity,publicKey,compac
       const blob=await response.blob();
       if(blob.size<40||blob.size>8000000)throw new Error('CSVサイズを確認できませんでした');
       if(!root.isConnected||getIdentity()?.userId!==userId)throw new Error('セッションが変わりました');
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement('a');
-      a.hidden=true;a.href=url;a.download='meetup-roster-'+meetup.id+'.csv';
-      document.body.append(a);
-      try{a.click();status.textContent='ダウンロードしました（'+count+'名）';guide.hidden=false;}
-      finally{a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
+      saveRosterBlob(blob,meetup.id);
+      cachedRoster={blob,userId,meetupId:meetup.id,count,expiresAt:Date.now()+MEMORY_TTL_MS};
+      status.textContent='ダウンロードしました（'+count+'名）';guide.hidden=false;
+      updateCooldown();
     }catch(error){
       status.textContent=error instanceof Error?error.message:'CSVを取得できませんでした';
       status.title=status.textContent;
