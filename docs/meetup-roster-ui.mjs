@@ -4,7 +4,7 @@ const ENDPOINT='https://wgiittrvgtiosogyhfcl.supabase.co/functions/v1/meetup-ros
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 let inFlight=false;
 
-// Ephemeral single-roster cache: never persisted to localStorage/IndexedDB or sent elsewhere.
+// Ephemeral single-roster cache: never persisted to disk or sent elsewhere.
 const MEMORY_TTL_MS=5*60*1000;
 let cachedRoster=null;
 function currentCached(userId,meetupId){
