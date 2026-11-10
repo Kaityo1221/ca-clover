@@ -9,7 +9,7 @@ import {chromium,webkit} from 'playwright';
 const root=process.cwd();
 const artifacts=join(root,'qa-artifacts','ca-photo');
 mkdirSync(artifacts,{recursive:true});
-const fixture=\`<!doctype html><html lang="ja"><meta charset="UTF-8"><body>
+const fixture=`<!doctype html><html lang="ja"><meta charset="UTF-8"><body>
 <section id="testHost">
   <input type="file" id="profilePhotoInput" accept="image/*">
   <img id="profilePhotoPreview" alt="preview" hidden width="96" height="96">
@@ -17,13 +17,13 @@ const fixture=\`<!doctype html><html lang="ja"><meta charset="UTF-8"><body>
   <button id="profilePhotoDelete" disabled>削除</button>
   <p id="profilePhotoInfo"></p>
   <p id="profilePhotoStatus" role="status"></p>
-</section></body></html>\`;
+</section></body></html>`;
 const avatar='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#d5efc5"/><circle cx="50" cy="33" r="18" fill="#476d39"/><path d="M18 95C18 55 82 55 82 95" fill="#4c8d6a"/></svg>';
 const server=createServer((req,res)=>{
  const u=new URL(req.url,'http://127.0.0.1');
  if(u.pathname==='/qa/photo.svg') {res.writeHead(200,{'content-type':'image/svg+xml','cache-control':'no-store'});res.end(avatar);return}
  if(u.pathname==='/qa/photo-fixture.html') {res.writeHead(200,{'content-type':'text/html; charset=utf-8'});res.end(fixture);return}
- const file=normalize(join(root,decodeURIComponent(u.pathname).replace(/^\\/+/,'')));
+ const file=normalize(join(root,decodeURIComponent(u.pathname).replace(/^\/+/,'')));
  if(!file.startsWith(root+sep)){res.writeHead(403);res.end();return}
  try{
   const body=readFileSync(file);
