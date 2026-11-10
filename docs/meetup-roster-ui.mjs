@@ -59,7 +59,7 @@ function attachAction({root,container,meetup,client,getIdentity,publicKey,compac
   wrapper.append(button,status);container.append(wrapper);
   button.onclick=async()=>{
     if(inFlight||!root.isConnected||getIdentity()?.userId!==userId)return;
-    inFlight=true;button.disabled=true;button.classList.add('roster-peach-loading');button.textContent='🌸 桃の花と名簿を準備中…';status.textContent='古河の桃まつりをイメージした花びらが舞っています';
+    inFlight=true;button.disabled=true;button.classList.add('roster-peach-loading');button.textContent='名簿を準備中';status.textContent='';
     try{
       const {data,error}=await client.auth.getSession();
       const session=data?.session;
