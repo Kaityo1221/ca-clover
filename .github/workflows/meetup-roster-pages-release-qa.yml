@@ -1,0 +1,19 @@
+name: Meetup Roster Pages Release QA (No Deploy)
+on:
+  push:
+    branches: [release/meetup-roster-pages-20261110]
+permissions:
+  contents: read
+jobs:
+  static-roster-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --check docs/meetup-roster-ui.mjs
+      - run: node --test scripts/test-meetup-roster-pages.mjs

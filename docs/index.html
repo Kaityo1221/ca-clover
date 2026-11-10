@@ -71,6 +71,8 @@
     return participantPanel;
   }).catch(function(){return null});
   // PARTICIPANT_CSV_IMPORT_END
+  // Independent full roster CSV entry. Existing raffle/check-in CSV remains unchanged.
+  const rosterReady=import('./meetup-roster-ui.mjs?v=20261110-live1').catch(function(){return null});
   let sendaiMapLeave = null;
   const sendaiMapReady = import("./sendai-map.mjs?v=20261027-glow1").catch(function(){return null});
   // CARD_METRICS_IMPORT_BEGIN
@@ -587,6 +589,12 @@
       description+
       '<div class="grid g2 section"><button id="copyMeetup" class="btn" type="button">📋 概要をコピー</button>'+(detail.event_url?'<a class="extbtn" target="_blank" rel="noreferrer" href="'+e(detail.event_url)+'">Campfireで開く ↗</a>':'<button class="btn line" type="button" disabled>Campfire URLなし</button>')+'</div></section>';
     document.body.appendChild(back);
+    void rosterReady.then(function(module){
+      if(module&&back.isConnected&&session&&profile){
+        return module.mountRosterButton({root:back,meetup:m,client:client,publicKey:SUPABASE_KEY,
+          getIdentity:function(){return {userId:session&&session.user.id,role:profile&&profile.role}}});
+      }
+    }).catch(function(){});
     function close(){back.remove()}
     back.onclick=function(ev){if(ev.target===back)close()};
     document.getElementById("meetupClose").onclick=close;
