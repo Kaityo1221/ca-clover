@@ -174,7 +174,6 @@ let currentUserId=null;
 let stamp3dCleanup=null;
 let stamp3dToken=0;
 let caPhotoRequestToken=0;
-const caPhotoPathCache=new Map();
 function clearMedalProfilePhoto(){
  caPhotoRequestToken++;
  caMedalPhoto.removeAttribute("src");
@@ -186,16 +185,10 @@ async function updateMedalProfilePhoto(ca){
  caMedalPhotoRow.hidden=true;
  // Read-only verified mapping from CA identity to registered image path.
  // Missing RPC/storage or unregistered images never interrupt the medal.
- if(!ca?.id||!ca?.acquired&& !isAdminCatalogMode)return;
+ if(!ca?.id)return;
  try {
-  let req=caPhotoPathCache.get(ca.id);
-  if(!req){
-   req=client.rpc("ca_medal_profile_photo_path",{p_ca_member_id:ca.id})
-     .then(result=>result.error?null:(typeof result.data==="string"?result.data:null))
-     .catch(()=>null);
-   caPhotoPathCache.set(ca.id,req);
-  }
-  const path=await req;
+  const lookup=await client.rpc("ca_medal_profile_photo_path",{p_ca_member_id:ca.id});
+  const path=lookup.error?null:(typeof lookup.data==="string"?lookup.data:null);
   if(token!==caPhotoRequestToken||!path)return;
   // Signed URLs are short-lived; do not cache them between modal openings.
   const result=await client.storage.from("ca-profile-photos").createSignedUrl(path,600);
