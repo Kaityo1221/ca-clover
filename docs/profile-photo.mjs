@@ -147,6 +147,7 @@ export function mountProfilePhoto({host, client, session, role}) {
   }
   async function removeCurrentPhoto() {
     if (!writeEnabled || !allowed || working) return;
+    if (!window.confirm('登録済みのプロフィール写真を削除しますか？')) return;
     working = true;
     removeButton.disabled = true;
     save.disabled = true;
