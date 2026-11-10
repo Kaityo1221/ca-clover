@@ -6,7 +6,7 @@ const page=readFileSync('docs/index.html','utf8');
 test('roster UI lives separately from existing raffle/checkin export',()=>{
  assert.match(page,/rosterReady=import\('\.\/meetup-roster-ui\.mjs/);
  assert.match(page,/mountRosterButton\(\{root:back,meetup:m/);
- assert.match(page,/participant-export-ui\.mjs/);
+ assert.doesNotMatch(page,/import\('\.\/participant-export-ui\.mjs/);
  assert.match(ui,/\/functions\/v1\/meetup-roster/);
  assert.doesNotMatch(ui,/抽選番号|participant-export\/client-adapter/);
 });
@@ -25,4 +25,14 @@ test('admins see roster without D, CA still requires D and no hint visible',()=>
  assert.match(ui,/initial\.role!=='admin'&&\(permission\?\.error/);
  assert.doesNotMatch(ui,/D権限が必要|D権限を確認できません|管理者も対象/);
  assert.match(page,/meetup-roster-ui\.mjs\?v=20261110-admin1/);
+});
+
+test('Meetup card CSV invokes the same full-roster action as overview, not raffle CSV',()=>{
+ assert.match(page,/mountRosterCards\(\{root:app,meetups:cardMeetups/);
+ assert.match(ui,/export async function mountRosterCards/);
+ assert.match(ui,/attachAction\(\{root:wrap,container:wrap,meetup/);
+ assert.match(ui,/compact\?'CSV ↓':'名簿CSVを取得'/);
+ assert.match(ui,/\/functions\/v1\/meetup-roster/);
+ assert.doesNotMatch(page,/csvPanel\.mount/);
+ assert.doesNotMatch(ui,/participant-export\/client-adapter|抽選番号/);
 });
