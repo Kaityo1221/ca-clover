@@ -5,15 +5,26 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
+# Retain main push runs; cancel superseded iterations of the same PR only.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: npm install --no-audit --no-fund
       - run: node scripts/ci/verify-public-boundary.mjs
+      # npm test includes authentication routing, Sendai MAP and Zoroark tests.
       - run: npm test
       - run: npm run build
