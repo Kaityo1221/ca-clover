@@ -2,20 +2,27 @@ name: Public/Private Boundary CI
 on:
   pull_request:
   workflow_dispatch:
+
 permissions:
   contents: read
+
+# Keep the security boundary an independent required check; cancel only superseded PR runs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   boundary:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --no-audit --no-fund
       - name: Confirm only public frontend is present
         run: node scripts/ci/verify-public-boundary.mjs
-      - name: Verify login routing
-        run: npm run test:auth-routing
-      - name: Verify public frontend builds
-        run: npm run build
+      # Auth routing, all application tests and full Next.js build remain mandatory
+      # in the separate "CI / build" check. Running them a second time here
+      # burned runner minutes without increasing the covered test cases.
