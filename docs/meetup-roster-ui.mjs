@@ -60,7 +60,7 @@ function ensureRosterStyle(){
     '.meetup-roster-button{position:relative;isolation:isolate;overflow:hidden;background:linear-gradient(118deg,#6232bb 0%,#9d47d6 52%,#b35bec 100%)!important;border:1px solid #d4b0ff!important;color:#fff!important;font-weight:800!important;text-shadow:0 1px 2px #53218a;box-shadow:0 3px 12px #7833bc45, inset 0 1px 0 #ffffff65;transition:filter .2s,box-shadow .2s}',
     '.meetup-roster-button:not(:disabled):active{filter:brightness(1.12);box-shadow:0 2px 5px #7833bc4f}',
     '.meetup-roster-button.roster-peach-loading{background:linear-gradient(110deg,#7634c7,#c363d3,#ef8fb8)!important;box-shadow:0 2px 14px #d17aae55;opacity:1!important;cursor:progress}',
-    '.meetup-roster-button::before,.meetup-roster-button::after{content:"❀";position:absolute;z-index:-1;pointer-events:none;font-size:15px;color:#ffe5f2;text-shadow:0 1px 4px #b03d8d;animation:roster-peach-fall 3.6s ease-in-out infinite;top:-18px;left:10%;will-change:transform,opacity}',
+    '.meetup-roster-button::before,.meetup-roster-button::after{content:"❀";position:absolute;z-index:0;pointer-events:none;font-size:15px;color:#ffe5f2;text-shadow:0 1px 4px #b03d8d;animation:roster-peach-fall 3.6s ease-in-out infinite;top:-18px;left:10%;will-change:transform,opacity}',
     '.meetup-roster-button::after{left:77%;font-size:12px;animation-delay:-1.9s;animation-duration:4.3s;color:#ffd0e5}',
     '.meetup-roster-button.roster-peach-loading::before{animation-duration:1.7s;font-size:18px}',
     '.meetup-roster-button.roster-peach-loading::after{animation-duration:2s;font-size:15px}',

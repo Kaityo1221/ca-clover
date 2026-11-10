@@ -102,7 +102,7 @@ test('resave action shares fixed layout with save location and remains separate 
 test('Peach flowers animate on all CSV buttons, not only during loading',()=>{
  assert.match(ui,/\.meetup-roster-button::before,\.meetup-roster-button::after/);
  assert.match(ui,/animation:roster-peach-fall 3\.6s/);
- assert.match(ui,/z-index:-1;pointer-events:none/);
+ assert.match(ui,/z-index:0;pointer-events:none/);
  assert.match(ui,/\.meetup-roster-button\.roster-peach-loading::before/);
  assert.match(ui,/prefers-reduced-motion:reduce/);
  assert.doesNotMatch(ui,/\.meetup-roster-button\.roster-peach-loading::before,\.meetup-roster-button\.roster-peach-loading::after\{/);
