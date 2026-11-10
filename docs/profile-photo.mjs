@@ -10,12 +10,14 @@ export function mountProfilePhoto({host, client, session, role}) {
   const image = host.querySelector('#profilePhotoPreview');
   const save = host.querySelector('#profilePhotoSave');
   const msg = host.querySelector('#profilePhotoStatus');
+  const removeButton = host.querySelector('#profilePhotoDelete');
   const info = host.querySelector('#profilePhotoInfo');
   let blob = null;
   let previewUrl = null;
   let signedUrl = null;
   let active = true;
   let working = false;
+  let fileSelectionGeneration = 0;
   const setStatus = (s) => { if (active) msg.textContent = s; };
   const clearPreview = () => { if (previewUrl) URL.revokeObjectURL(previewUrl); previewUrl = null; };
   function setImage(url) {
@@ -77,7 +79,8 @@ export function mountProfilePhoto({host, client, session, role}) {
     setStatus('登録済みのプロフィール写真を表示中です。');
   }
   async function selectFile() {
-    if (!allowed || !active) return;
+    if (!allowed || !active || working) return;
+    const generation = ++fileSelectionGeneration;
     blob = null;
     save.disabled = true;
     clearPreview();
@@ -86,7 +89,7 @@ export function mountProfilePhoto({host, client, session, role}) {
     setStatus('画像を圧縮しています…');
     try {
       const compressed = await compress(file);
-      if (!active) return;
+      if (!active || generation !== fileSelectionGeneration) return;
       blob = compressed;
       previewUrl = URL.createObjectURL(blob);
       setImage(previewUrl);
@@ -94,7 +97,7 @@ export function mountProfilePhoto({host, client, session, role}) {
       save.disabled = !writeEnabled || !allowed;
       setStatus(writeEnabled ? 'プレビューを確認して保存してください。' : '圧縮プレビュー完了。保存機能は隔離試験中のため無効です。');
     } catch (err) {
-      if (active) { info.textContent = ''; setStatus(err.message || '画像を処理できませんでした。'); }
+      if (active && generation === fileSelectionGeneration) { info.textContent = ''; setStatus(err.message || '画像を処理できませんでした。'); }
     }
   }
   async function upload() {
@@ -116,12 +119,18 @@ export function mountProfilePhoto({host, client, session, role}) {
         cacheControl: '3600', contentType: 'image/webp', upsert: false
       });
       if (uploaded.error) throw Error('写真を保存できませんでした。');
-      const upserted = await client.from(TABLE).upsert({
-        user_id: uid, storage_path: path, updated_at: new Date().toISOString()
-      }, {onConflict: 'user_id'});
-      if (upserted.error) throw Error('写真の登録情報を更新できませんでした。');
-      const oldPath = old.data?.storage_path;
-      path = null; // DB now references new file. Never remove it during cleanup.
+      const oldPath = old.data?.storage_path || null;
+      // Optimistic compare-and-swap: never overwrite a concurrent change.
+      const updated = oldPath
+        ? await client.from(TABLE).update({
+            storage_path: path, updated_at: new Date().toISOString()
+          }).eq('user_id', uid).eq('storage_path', oldPath).select('storage_path').maybeSingle()
+        : await client.from(TABLE).insert({
+            user_id: uid, storage_path: path, updated_at: new Date().toISOString()
+          }).select('storage_path').maybeSingle();
+      if (updated.error || updated.data?.storage_path !== path)
+        throw Error('写真が別の画面で変更された可能性があります。再読み込みしてください。');
+      path = null; // The DB now owns this reference. Never clean up the current image.
       if (oldPath && oldPath.startsWith(uid + '/')) {
         await client.storage.from(BUCKET).remove([oldPath]);
       }
@@ -138,11 +147,49 @@ export function mountProfilePhoto({host, client, session, role}) {
       if (active) save.disabled = !blob || !writeEnabled || !allowed;
     }
   }
+  async function removeCurrentPhoto() {
+    if (!writeEnabled || !allowed || working) return;
+    if (!window.confirm('登録済みのプロフィール写真を削除しますか？')) return;
+    working = true;
+    removeButton.disabled = true;
+    save.disabled = true;
+    try {
+      const {data: auth, error: authError} = await client.auth.getUser();
+      if (authError || auth.user?.id !== session.user.id) throw Error('ログイン情報が確認できません。');
+      const uid = auth.user.id;
+      const old = await client.from(TABLE).select('storage_path').eq('user_id', uid).maybeSingle();
+      if (old.error) throw Error('写真を確認できませんでした。');
+      if (!old.data?.storage_path) { setStatus('登録済みの写真はありません。'); return; }
+      const path = old.data.storage_path;
+      // Deleting the DB record first stops new viewers from seeing the photo.
+      // A conditional DELETE prevents stale clients from deleting a replacement.
+      const removed = await client.from(TABLE).delete().eq('user_id', uid).eq('storage_path', path)
+        .select('storage_path').maybeSingle();
+      if (removed.error || removed.data?.storage_path !== path)
+        throw Error('写真が変更されました。画面を読み直してください。');
+      const fileRemoval = await client.storage.from(BUCKET).remove([path]);
+      clearPreview();
+      blob = null;
+      input.value = '';
+      info.textContent = '';
+      setImage('');
+      setStatus(fileRemoval.error
+        ? '写真の登録は解除しました。古い画像の削除は後で再試行してください。'
+        : 'プロフィール写真を削除しました。');
+    } catch(err) { setStatus(err.message || '削除できませんでした。'); }
+    finally {
+      working = false;
+      removeButton.disabled = !writeEnabled || !allowed;
+      save.disabled = !blob || !writeEnabled || !allowed;
+    }
+  }
   input.disabled = !allowed;
   input.addEventListener('change', selectFile);
   save.addEventListener('click', upload);
+  removeButton.disabled = !allowed || !writeEnabled;
+  removeButton.addEventListener('click', removeCurrentPhoto);
   if (!allowed) setStatus('プロフィール写真の登録は承認済みCAのみ利用できます。');
   else if (!writeEnabled) setStatus('画像の選択・圧縮プレビューができます。保存はまだ有効化していません。');
   else showStored();
-  return () => { active = false; clearPreview(); input.removeEventListener('change', selectFile); save.removeEventListener('click', upload); };
+  return () => { active = false; ++fileSelectionGeneration; clearPreview(); input.removeEventListener('change', selectFile); save.removeEventListener('click', upload); removeButton.removeEventListener('click', removeCurrentPhoto); };
 }
