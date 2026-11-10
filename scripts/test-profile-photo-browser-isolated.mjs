@@ -116,7 +116,7 @@ async function testMedal(browser,name){
  await page.locator('#caMedalPhotoRow:not([hidden])').waitFor();
  await page.waitForTimeout(430);
  const src=await page.locator('#caMedalPhoto').getAttribute('src');
- assert.ok(src.includes('/b.webp'),'old async CA photo replaced newer selection: '+src);
+ assert.ok(decodeURIComponent(src).includes('/b.webp'),'old async CA photo replaced newer selection: '+src);
  record(name+' CA switch ignores stale response');
  await page.close();
 }
@@ -130,7 +130,7 @@ async function testCompression(browser,name){
   return true;
  });
  assert.ok(result);
- const buffer=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL1yQAAAABJRU5ErkJggg==','base64');
+ const buffer=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGMU2aL7n4GBgYGJAQoAHV8B+NIe2REAAAAASUVORK5CYII=','base64');
  await page.locator('#profilePhotoInput').setInputFiles({name:'tiny.png',mimeType:'image/png',buffer});
  await page.waitForFunction(()=>document.querySelector('#profilePhotoStatus').textContent.includes('プレビュー完了'),{timeout:10000});
  assert.ok(await page.locator('#profilePhotoPreview').isVisible());
