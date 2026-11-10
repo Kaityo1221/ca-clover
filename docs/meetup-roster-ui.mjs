@@ -32,8 +32,8 @@ export async function mountRosterButton({root,meetup,client,getIdentity,publicKe
   button.disabled=!hasD;
   const status=document.createElement('p');status.className='small muted strong';status.setAttribute('role','status');
   if(!hasD) status.textContent=permission?.error
-    ?'D権限を確認できませんでした。再ログイン後にお試しください'
-    :'名簿取得にはD権限が必要です。管理者も対象です';
+    ?'現在、この機能を利用できません。時間をおいて再度お試しください'
+    :'現在、この機能は利用できません';
   wrapper.append(heading,help,button,status);container.append(wrapper);
   button.onclick=async()=>{
     if(!hasD||inFlight||!root.isConnected||getIdentity()?.userId!==userId)return;
@@ -51,7 +51,7 @@ export async function mountRosterButton({root,meetup,client,getIdentity,publicKe
       });
       if(response.status!==200){
         if(response.status===401)throw new Error('ログイン情報を確認できませんでした');
-        if(response.status===403)throw new Error('この名簿の取得権限がありません');
+        if(response.status===403)throw new Error('この名簿は現在取得できません');
         if(response.status===429)throw new Error('連続取得は制限されています。しばらくしてお試しください');
         throw new Error('名簿を取得できませんでした');
       }

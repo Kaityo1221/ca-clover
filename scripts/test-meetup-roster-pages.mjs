@@ -20,9 +20,10 @@ test('no data without active user and D, existing session and status checks',()=
  assert.doesNotMatch(ui,/service_role|SUPABASE_SERVICE_ROLE_KEY/);
 });
 
-test('D permission missing remains visibly explained and export disabled',()=>{
+test('restricted access shows generic unavailable message and export disabled',()=>{
  assert.match(ui,/button\.disabled=!hasD/);
  assert.match(ui,/if\(!hasD\|\|inFlight/);
- assert.match(ui,/管理者も対象です/);
+ assert.match(ui,/現在、この機能は利用できません/);
+ assert.doesNotMatch(ui,/D権限が必要|D権限を確認|管理者も対象/);
  assert.match(page,/meetup-roster-ui\.mjs\?v=20261110-permission2/);
 });
