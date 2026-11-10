@@ -46,6 +46,13 @@ function ensureRosterStyle(){
     '@keyframes roster-peach-fall{0%{transform:translate(0,-10px) rotate(-25deg);opacity:0}30%{opacity:1}100%{transform:translate(18px,66px) rotate(110deg);opacity:0}}',
     '.roster-location-hint{font-size:12px;margin-top:5px;overflow-wrap:anywhere}',
     '.roster-location-button{border:0;background:transparent;color:#7938af;text-decoration:underline;padding:3px;font-size:12px;font-weight:700;cursor:pointer}',
+    '.participant-roster-action{position:relative;box-sizing:border-box;display:grid!important;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:40px 22px 26px;align-items:center;column-gap:8px;row-gap:0;min-height:96px;height:96px;margin:5px 0 10px;overflow:visible}',
+    '.participant-roster-action>.meetup-roster-button{grid-column:2;grid-row:1;justify-self:end;white-space:nowrap;min-width:126px}',
+    '.participant-roster-action>[role=status]{grid-column:1 / -1;grid-row:2;justify-self:end;min-width:0;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;line-height:22px;margin:0}',
+    '.participant-roster-action>.roster-location-button{grid-column:1 / -1;grid-row:3;justify-self:end;line-height:22px;margin:0;white-space:nowrap}',
+    '.participant-roster-action>.roster-location-hint{position:absolute;z-index:20;top:calc(100% - 4px);right:0;margin:0;padding:9px 12px;max-width:calc(100vw - 48px);border-radius:9px;border:1px solid #d7bee9;background:#fff;color:#432265;box-shadow:0 7px 24px #3620472e}',
+    '.participant-roster-action>.roster-location-hint[hidden]{display:none}',
+
     '@media (prefers-reduced-motion:reduce){.meetup-roster-button{transition:none}.meetup-roster-button.roster-peach-loading::before,.meetup-roster-button.roster-peach-loading::after{animation:none;top:3px;opacity:.9}}'
   ].join('');
   document.head.append(style);
@@ -131,10 +138,11 @@ function attachAction({root,container,meetup,client,getIdentity,publicKey,compac
       const a=document.createElement('a');
       a.hidden=true;a.href=url;a.download='meetup-roster-'+meetup.id+'.csv';
       document.body.append(a);
-      try{a.click();status.textContent='ダウンロードを開始しました（'+count+'名）';guide.hidden=false;}
+      try{a.click();status.textContent='ダウンロードしました（'+count+'名）';guide.hidden=false;}
       finally{a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
     }catch(error){
       status.textContent=error instanceof Error?error.message:'CSVを取得できませんでした';
+      status.title=status.textContent;
     }finally{
       inFlight=false;
       if(root.isConnected)button.classList.remove('roster-peach-loading');
@@ -155,7 +163,7 @@ export async function mountRosterCards({root,meetups,client,getIdentity,publicKe
   if(!identity||!isCurrent()||!root.isConnected||identityFor(getIdentity)?.userId!==identity.userId)return false;
   if(!document.getElementById('meetup-roster-card-style')){
     const style=document.createElement('style');style.id='meetup-roster-card-style';
-    style.textContent='.participant-roster-wrap{min-width:0}.upcoming-strip>.participant-roster-wrap{flex:0 0 min(84vw,420px);scroll-snap-align:start}.participant-roster-wrap>.upcoming-sign{width:100%;box-sizing:border-box}.participant-roster-action{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:5px 0 10px;flex-wrap:wrap}.participant-roster-action .btn{padding:7px 13px;font-size:12px;width:auto;min-width:64px}.participant-roster-action [role=status]{font-size:11px;max-width:100%;overflow-wrap:anywhere}';
+    style.textContent='.participant-roster-wrap{min-width:0}.upcoming-strip>.participant-roster-wrap{flex:0 0 min(84vw,420px);scroll-snap-align:start}.participant-roster-wrap>.upcoming-sign{width:100%;box-sizing:border-box}.participant-roster-action .btn{padding:7px 13px;font-size:12px;width:auto}.participant-roster-action [role=status]{font-size:11px}';
     document.head.append(style);
   }
   let mounted=0;

@@ -24,7 +24,7 @@ test('admins see roster without D, CA still requires D and no hint visible',()=>
  assert.match(ui,/if\(initial\.role==='admin'\)return initial/);
  assert.match(ui,/if\(permission\.error\|\|permission\.data\?\.permission_code!=='D'\)return null/);
  assert.doesNotMatch(ui,/D権限が必要|D権限を確認できません|管理者も対象/);
- assert.match(page,/meetup-roster-ui\.mjs\?v=20261110-guide-cooldown1/);
+ assert.match(page,/meetup-roster-ui\.mjs\?v=20261110-layout-stable1/);
 });
 
 test('Meetup card CSV invokes the same full-roster action as overview, not raffle CSV',()=>{
@@ -53,7 +53,7 @@ test('15-second shared cooldown and truthful download status',()=>{
  assert.match(ui,/response\.status===200\|\|response\.status===429/);
  assert.match(ui,/Date\.now\(\)<cooldownUntil/);
  assert.match(ui,/再取得まであと/);
- assert.match(ui,/ダウンロードを開始しました/);
+ assert.match(ui,/ダウンロードしました/);
  assert.doesNotMatch(ui,/CSVの保存を開始しました/);
 });
 test('mobile download help stays short and cannot claim to open OS folders',()=>{
@@ -63,4 +63,12 @@ test('mobile download help stays short and cannot claim to open OS folders',()=>
  assert.match(ui,/ブラウザのダウンロード履歴/);
  assert.match(ui,/guide\.hidden=false/);
  assert.match(ui,/hint\.hidden=!hint\.hidden/);
+});
+
+test('Meetup card footer is stable while loading, cooling down and showing file help',()=>{
+ assert.match(ui,/grid-template-rows:40px 22px 26px/);
+ assert.match(ui,/min-height:96px;height:96px/);
+ assert.match(ui,/white-space:nowrap;overflow:hidden;text-overflow:ellipsis/);
+ assert.match(ui,/roster-location-hint\{position:absolute/);
+ assert.doesNotMatch(ui,/participant-roster-action\{display:flex/);
 });
