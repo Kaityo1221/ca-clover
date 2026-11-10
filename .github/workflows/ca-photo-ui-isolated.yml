@@ -3,6 +3,7 @@ on:
   pull_request:
     branches:
       - feature/my-community-profile-photo-isolated-20261110
+      - pages
     paths:
       - .github/workflows/ca-photo-ui-isolated.yml
       - docs/index.html
