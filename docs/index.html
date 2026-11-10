@@ -64,15 +64,9 @@
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}
   });
 
-  // PARTICIPANT_CSV_IMPORT_BEGIN
-  let participantPanel;
-  const participantReady=import('./participant-export-ui.mjs?v=20261017-admin2').then(function(module){
-    participantPanel=module.createParticipantPanel({client:client,getIdentity:function(){return {userId:session&&session.user.id,role:profile&&profile.role}}});
-    return participantPanel;
-  }).catch(function(){return null});
-  // PARTICIPANT_CSV_IMPORT_END
+  // Legacy draw CSV retained in source only. Card CSV now uses full roster.
   // Independent full roster CSV entry. Existing raffle/check-in CSV remains unchanged.
-  const rosterReady=import('./meetup-roster-ui.mjs?v=20261110-admin1').catch(function(){return null});
+  const rosterReady=import('./meetup-roster-ui.mjs?v=20261110-card1').catch(function(){return null});
   let sendaiMapLeave = null;
   const sendaiMapReady = import("./sendai-map.mjs?v=20261027-glow1").catch(function(){return null});
   // CARD_METRICS_IMPORT_BEGIN
@@ -524,9 +518,10 @@
       };
     });
     // PARTICIPANT_CSV_MOUNT_BEGIN
-    const csvPanel=await participantReady;
-    if(csvPanel&&session){
-      void csvPanel.mount({root:app,meetups:cardMeetups,communityId:id,
+    const rosterPanel=await rosterReady;
+    if(rosterPanel&&session){
+      void rosterPanel.mountRosterCards({root:app,meetups:cardMeetups,client:client,publicKey:SUPABASE_KEY,
+        getIdentity:function(){return {userId:session&&session.user.id,role:profile&&profile.role}},
         isCurrent:function(){return route()==="community:"+id&&!!session&&profile&&(profile.role==="ca"||profile.role==="admin")}});
     }
     // PARTICIPANT_CSV_MOUNT_END
@@ -683,7 +678,7 @@
     if(zoroarkLeave){zoroarkLeave();zoroarkLeave=null;}
     if(ideasLeave){ideasLeave();ideasLeave=null;}
     if(sendaiMapLeave){sendaiMapLeave();sendaiMapLeave=null;}
-    if(participantPanel)participantPanel.leave(); // PARTICIPANT_CSV_LEAVE
+    // Full-roster card controls are scoped to each render; no legacy raffle panel remains.
     const token=++renderToken;
     header();
     if(!session){if(token===renderToken)loginView();return}

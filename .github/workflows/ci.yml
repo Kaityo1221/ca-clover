@@ -20,4 +20,6 @@ jobs:
       - run: node scripts/test-stamp-exchange-stats.mjs
       - run: node scripts/test-stamp-exchange-community-entry.mjs
       - run: node scripts/test-stamp-exchange-breakdown.mjs
+      - run: node --check docs/meetup-roster-ui.mjs
+      - run: node --test scripts/test-meetup-roster-pages.mjs
       - run: npm run build

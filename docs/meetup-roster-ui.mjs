@@ -1,38 +1,46 @@
-// CA Clover full Meetup roster CSV. Independent of the older raffle/check-in CSV.
-// The server is authoritative for D, verified CA, Community and Meetup scope.
+// CA Clover full Meetup roster: both card and overview use the SAME four-column endpoint.
+// The previous two-column raffle/check-in module remains separately stored but is not mounted.
 const ENDPOINT='https://wgiittrvgtiosogyhfcl.supabase.co/functions/v1/meetup-roster';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 let inFlight=false;
 
-export async function mountRosterButton({root,meetup,client,getIdentity,publicKey}={}){
-  if(!root?.isConnected||!UUID.test(meetup?.id||'')||!client||
-     typeof getIdentity!=='function'||typeof publicKey!=='string'||!publicKey)return false;
-  const initial=getIdentity();
-  const userId=initial?.userId;
-  if(!UUID.test(userId||'')||!['ca','admin'].includes(initial?.role))return false;
-  let permission;
-  if(initial.role!=='admin'){
-    try{
-      permission=await client.from('user_permissions').select('permission_code')
-        .eq('user_id',userId).eq('permission_code','D').maybeSingle();
-    }catch{return false;}
-  }
-  if((initial.role!=='admin'&&(permission?.error||permission?.data?.permission_code!=='D'))||!root.isConnected||
-     getIdentity()?.userId!==userId)return false;
-  const container=root.querySelector('section.modal');
-  if(!container)return false;
+function identityFor(getIdentity){
+  const identity=getIdentity?.();
+  return identity&&UUID.test(identity.userId||'')&&['ca','admin'].includes(identity.role)
+    ? identity : null;
+}
+async function allowed({client,getIdentity}){
+  const initial=identityFor(getIdentity);
+  if(!initial)return null;
+  if(initial.role==='admin')return initial;
+  try{
+    const permission=await client.from('user_permissions').select('permission_code')
+      .eq('user_id',initial.userId).eq('permission_code','D').maybeSingle();
+    if(permission.error||permission.data?.permission_code!=='D')return null;
+  }catch{return null;}
+  return getIdentity()?.userId===initial.userId?initial:null;
+}
+function attachAction({root,container,meetup,client,getIdentity,publicKey,compact,identity}){
+  if(!root.isConnected||!container.isConnected||!UUID.test(meetup?.id||'')||
+     identityFor(getIdentity)?.userId!==identity.userId)return false;
+  const userId=identity.userId;
   const wrapper=document.createElement('div');
-  wrapper.className='section';
-  wrapper.style.cssText='padding:14px;border:1px solid #bddba8;border-radius:15px;background:#f5fce9';
-  const heading=document.createElement('h3');heading.textContent='📄 参加者名簿CSV';
-  const help=document.createElement('p');
-  help.className='small muted strong';
-  help.textContent='チェックイン済みを先頭に、参加表明者を含む4列で出力。不参加者は除外します。';
-  const button=document.createElement('button');button.type='button';button.className='btn';
-  button.textContent='名簿CSVを取得';
-  button.style.width='100%';
-  const status=document.createElement('p');status.className='small muted strong';status.setAttribute('role','status');
-  wrapper.append(heading,help,button,status);container.append(wrapper);
+  wrapper.className=compact?'participant-roster-action':'section';
+  if(!compact){
+    wrapper.style.cssText='padding:14px;border:1px solid #bddba8;border-radius:15px;background:#f5fce9';
+    const heading=document.createElement('h3');heading.textContent='📄 参加者名簿CSV';
+    const help=document.createElement('p');help.className='small muted strong';
+    help.textContent='チェックイン済みを先頭に、参加表明者を含む4列で出力。不参加者は除外します。';
+    wrapper.append(heading,help);
+  }
+  const button=document.createElement('button');
+  button.type='button';button.className=compact?'btn line':'btn';
+  button.textContent=compact?'CSV ↓':'名簿CSVを取得';
+  button.setAttribute('aria-label','参加者名簿CSVを取得');
+  if(!compact)button.style.width='100%';
+  const status=document.createElement('p');
+  status.className='small muted strong';status.setAttribute('role','status');
+  wrapper.append(button,status);container.append(wrapper);
   button.onclick=async()=>{
     if(inFlight||!root.isConnected||getIdentity()?.userId!==userId)return;
     inFlight=true;button.disabled=true;button.textContent='取得中…';status.textContent='名簿を確認しています';
@@ -71,8 +79,33 @@ export async function mountRosterButton({root,meetup,client,getIdentity,publicKe
       status.textContent=error instanceof Error?error.message:'CSVを取得できませんでした';
     }finally{
       inFlight=false;
-      if(root.isConnected){button.disabled=false;button.textContent='名簿CSVを取得';}
+      if(root.isConnected){button.disabled=false;button.textContent=compact?'CSV ↓':'名簿CSVを取得';}
     }
   };
   return true;
+}
+export async function mountRosterButton({root,meetup,client,getIdentity,publicKey}={}){
+  if(!root?.isConnected||!client||typeof getIdentity!=='function'||!publicKey)return false;
+  const identity=await allowed({client,getIdentity});
+  const container=root.querySelector('section.modal');
+  return !!(identity&&container&&attachAction({root,container,meetup,client,getIdentity,publicKey,compact:false,identity}));
+}
+export async function mountRosterCards({root,meetups,client,getIdentity,publicKey,isCurrent=()=>true}={}){
+  if(!root?.isConnected||!Array.isArray(meetups)||!client||typeof getIdentity!=='function'||!publicKey)return false;
+  const identity=await allowed({client,getIdentity});
+  if(!identity||!isCurrent()||!root.isConnected||identityFor(getIdentity)?.userId!==identity.userId)return false;
+  if(!document.getElementById('meetup-roster-card-style')){
+    const style=document.createElement('style');style.id='meetup-roster-card-style';
+    style.textContent='.participant-roster-wrap{min-width:0}.upcoming-strip>.participant-roster-wrap{flex:0 0 min(84vw,420px);scroll-snap-align:start}.participant-roster-wrap>.upcoming-sign{width:100%;box-sizing:border-box}.participant-roster-action{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:5px 0 10px;flex-wrap:wrap}.participant-roster-action .btn{padding:7px 13px;font-size:12px;width:auto;min-width:64px}.participant-roster-action [role=status]{font-size:11px;max-width:100%;overflow-wrap:anywhere}';
+    document.head.append(style);
+  }
+  let mounted=0;
+  for(const card of root.querySelectorAll('[data-meetup-index]')){
+    const meetup=meetups[Number(card.dataset.meetupIndex)];
+    if(!meetup||!UUID.test(meetup.id||'')||!card.isConnected||card.parentElement?.classList.contains('participant-roster-wrap'))continue;
+    const wrap=document.createElement('div');wrap.className='participant-roster-wrap';
+    card.replaceWith(wrap);wrap.append(card);
+    if(attachAction({root:wrap,container:wrap,meetup,client,getIdentity,publicKey,compact:true,identity})) mounted++;
+  }
+  return mounted>0;
 }
