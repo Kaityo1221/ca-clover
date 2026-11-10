@@ -1,0 +1,43 @@
+name: CA Photo Mobile Layout Isolated
+on:
+  pull_request:
+    branches:
+      - feature/my-community-profile-photo-isolated-20261110
+    paths:
+      - .github/workflows/ca-photo-ui-isolated.yml
+      - docs/index.html
+      - docs/profile-photo.mjs
+      - docs/stamp-rally.html
+      - scripts/test-profile-photo-isolated.mjs
+      - scripts/test-profile-photo-browser-isolated.mjs
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ca-photo-mobile-qa-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  browser-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: CA Photo static source regression
+        run: node scripts/test-profile-photo-isolated.mjs
+      - name: Install pinned Playwright
+        run: npm install --no-save --package-lock=false --ignore-scripts playwright@1.56.1
+      - name: Install synthetic browser engines
+        run: npx playwright install --with-deps chromium webkit
+      - name: QA mobile medal frame, fallback and WebP compression
+        run: node scripts/test-profile-photo-browser-isolated.mjs
+      - name: Attach synthetic UI screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ca-photo-synthetic-mobile-screenshots
+          path: qa-artifacts/ca-photo/*.png
+          if-no-files-found: ignore
+          retention-days: 3
