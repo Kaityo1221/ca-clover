@@ -15,8 +15,8 @@ export async function mountRosterButton({root,meetup,client,getIdentity,publicKe
     permission=await client.from('user_permissions').select('permission_code')
       .eq('user_id',userId).eq('permission_code','D').maybeSingle();
   }catch{return false;}
-  if(permission?.error||permission?.data?.permission_code!=='D'||!root.isConnected||
-     getIdentity()?.userId!==userId)return false;
+  if(!root.isConnected||getIdentity()?.userId!==userId)return false;
+  const hasD=permission?.data?.permission_code==='D'&&!permission?.error;
   const container=root.querySelector('section.modal');
   if(!container)return false;
   const wrapper=document.createElement('div');
@@ -29,10 +29,14 @@ export async function mountRosterButton({root,meetup,client,getIdentity,publicKe
   const button=document.createElement('button');button.type='button';button.className='btn';
   button.textContent='名簿CSVを取得';
   button.style.width='100%';
+  button.disabled=!hasD;
   const status=document.createElement('p');status.className='small muted strong';status.setAttribute('role','status');
+  if(!hasD) status.textContent=permission?.error
+    ?'D権限を確認できませんでした。再ログイン後にお試しください'
+    :'名簿取得にはD権限が必要です。管理者も対象です';
   wrapper.append(heading,help,button,status);container.append(wrapper);
   button.onclick=async()=>{
-    if(inFlight||!root.isConnected||getIdentity()?.userId!==userId)return;
+    if(!hasD||inFlight||!root.isConnected||getIdentity()?.userId!==userId)return;
     inFlight=true;button.disabled=true;button.textContent='取得中…';status.textContent='名簿を確認しています';
     try{
       const {data,error}=await client.auth.getSession();
@@ -69,7 +73,7 @@ export async function mountRosterButton({root,meetup,client,getIdentity,publicKe
       status.textContent=error instanceof Error?error.message:'CSVを取得できませんでした';
     }finally{
       inFlight=false;
-      if(root.isConnected){button.disabled=false;button.textContent='名簿CSVを取得';}
+      if(root.isConnected){button.disabled=!hasD;button.textContent='名簿CSVを取得';}
     }
   };
   return true;
