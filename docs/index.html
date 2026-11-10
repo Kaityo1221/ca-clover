@@ -623,9 +623,17 @@
     setFlash(r.data&&r.data.communityName?r.data.communityName+" の承認申請を送りました 🍀":"承認申請を送りました 🍀","ok");
     await renderMy();
   }
-  function renderSettings(){
-    app.innerHTML='<section class="card"><button type="button" id="settingsBack" class="linkbtn">← My Community</button><span class="pill section">SETTINGS</span><h1 style="margin-top:12px">⚙️ 環境設定</h1><p class="muted strong section">CA Cloverの個人設定を管理する画面です。</p><section class="notice section"><h2>📸 プロフィール写真</h2><p class="muted strong section">写真アップロードは次の開発段階で追加します。現在はまだ写真を送信・保存できません。</p></section></section>';
+  let profilePhotoLeave = null;
+  async function renderSettings(token){
+    app.innerHTML='<section class="card"><button type="button" id="settingsBack" class="linkbtn">← My Community</button><span class="pill section">SETTINGS</span><h1 style="margin-top:12px">⚙️ 環境設定</h1><p class="muted strong section">CA Cloverの個人設定を管理する画面です。</p><section class="notice section"><h2>📸 プロフィール写真</h2><p class="muted strong section">中央で正方形に切り抜き、WebP形式・最大256×256px・50KB以下に自動圧縮します。元画像や位置情報は送信しません。</p><div class="section" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><img id="profilePhotoPreview" alt="プロフィール写真のプレビュー" hidden style="height:96px;width:96px;object-fit:cover;border-radius:50%;border:2px solid #84cc16"><div style="flex:1;min-width:180px"><label for="profilePhotoInput" class="tiny strong">写真を選択（JPEG・PNG・WebP・HEIC）</label><input id="profilePhotoInput" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" class="input" style="width:100%;margin-top:8px"><div id="profilePhotoInfo" class="tiny muted" style="margin-top:6px"></div></div></div><button type="button" id="profilePhotoSave" class="btn section" disabled>プロフィール写真を保存</button><p id="profilePhotoStatus" class="tiny strong" role="status" aria-live="polite">準備中…</p></section></section>';
     document.getElementById("settingsBack").onclick=function(){go("my")};
+    try {
+      const module=await import('./profile-photo.mjs?v=20261110-isolated1');
+      if(token!==renderToken||route()!=="settings")return;
+      profilePhotoLeave=module.mountProfilePhoto({host:app,client,session,role:profile.role});
+    } catch(_err) {
+      if(token===renderToken)document.getElementById("profilePhotoStatus").textContent='写真機能を読み込めませんでした。';
+    }
   }
 
   function renderAccount(){
@@ -684,6 +692,7 @@
     if(zoroarkLeave){zoroarkLeave();zoroarkLeave=null;}
     if(ideasLeave){ideasLeave();ideasLeave=null;}
     if(sendaiMapLeave){sendaiMapLeave();sendaiMapLeave=null;}
+    if(profilePhotoLeave){profilePhotoLeave();profilePhotoLeave=null;}
     // Full-roster card controls are scoped to each render; no legacy raffle panel remains.
     const token=++renderToken;
     header();
@@ -714,7 +723,7 @@
       }catch(_err){if(token===renderToken)app.innerHTML='<section class="card"><h2>ゲームを起動できません</h2><p>画面を再読み込みしてください。</p><button class="btn section" id="gameBack">戻る</button></section>';const b=document.getElementById("gameBack");if(b)b.onclick=function(){go("my")}}
       return;
     }
-    if(v==="settings"){renderSettings();return}
+    if(v==="settings"){await renderSettings(token);return}
     if(v==="account"){renderAccount();return}
     if(v==="admin"){await renderAdmin();return}
     if(v.startsWith("community:")){await renderCommunity(decodeURIComponent(v.slice("community:".length)));return}
