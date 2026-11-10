@@ -139,6 +139,42 @@ async function testCompression(browser,name){
  record(name+' native canvas WebP compression and disabled writes');
  await page.close();
 }
+async function testRapidPhotoSelection(browser,name){
+ const page=await browser.newPage({viewport:{width:390,height:812}});
+ await page.goto(origin+'/qa/photo-fixture.html');
+ await page.evaluate(async()=>{
+  window.CA_PROFILE_PHOTO_UPLOAD_ENABLED=false;
+  let reads=0,encoded=0;
+  window.Image=class {
+   naturalWidth=200;naturalHeight=200;
+   set src(_){
+    const initial=++reads===1;
+    setTimeout(()=>this.onload?.(),initial?180:12);
+   }
+  };
+  HTMLCanvasElement.prototype.getContext=function(){return {drawImage(){}}};
+  HTMLCanvasElement.prototype.toBlob=function(cb){
+   const size=++encoded===1?10*1024:25*1024;
+   cb(new Blob([new Uint8Array(size)],{type:'image/webp'}));
+  };
+  const mod=await import('/docs/profile-photo.mjs');
+  mod.mountProfilePhoto({
+   host:document.querySelector('#testHost'),
+   role:'ca',session:{user:{id:'qa-browser-user'}},
+   client:{auth:{getUser:async()=>({data:{user:{id:'qa-browser-user'}}})}}
+  });
+ });
+ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGMU2aL7n4GBgYGJAQoAHV8B+NIe2REAAAAASUVORK5CYII=','base64');
+ await page.locator('#profilePhotoInput').setInputFiles({name:'first.png',mimeType:'image/png',buffer:png});
+ await page.waitForTimeout(20);
+ await page.locator('#profilePhotoInput').setInputFiles({name:'second.png',mimeType:'image/png',buffer:png});
+ await page.waitForTimeout(300);
+ const info=await page.locator('#profilePhotoInfo').textContent();
+ assert.ok(info.includes('10KB'),'an older compression overwrote the newer selection: '+info);
+ assert.equal(await page.locator('#profilePhotoSave').isDisabled(),true);
+ record(name+' rapid image selection keeps most recent preview');
+ await page.close();
+}
 try{
  const configured=(process.env.CA_PHOTO_QA_BROWSERS||'chromium').split(',').map(x=>x.trim()).filter(Boolean);
  for(const name of configured){
@@ -146,7 +182,7 @@ try{
   if(!type)throw Error('Unsupported browser engine '+name);
   const options=name==='chromium'&&process.env.QA_CHROME_BIN?{executablePath:process.env.QA_CHROME_BIN}:{};
   const browser=await type.launch({headless:true,...options});
-  try{await testMedal(browser,name);await testCompression(browser,name)}
+  try{await testMedal(browser,name);await testCompression(browser,name);await testRapidPhotoSelection(browser,name)}
   finally{await browser.close()}
  }
  console.log('CA PHOTO BROWSER PASS '+pass.length+'/'+pass.length);
