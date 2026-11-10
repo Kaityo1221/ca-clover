@@ -11,11 +11,13 @@ export async function mountRosterButton({root,meetup,client,getIdentity,publicKe
   const userId=initial?.userId;
   if(!UUID.test(userId||'')||!['ca','admin'].includes(initial?.role))return false;
   let permission;
-  try{
-    permission=await client.from('user_permissions').select('permission_code')
-      .eq('user_id',userId).eq('permission_code','D').maybeSingle();
-  }catch{return false;}
-  if(permission?.error||permission?.data?.permission_code!=='D'||!root.isConnected||
+  if(initial.role!=='admin'){
+    try{
+      permission=await client.from('user_permissions').select('permission_code')
+        .eq('user_id',userId).eq('permission_code','D').maybeSingle();
+    }catch{return false;}
+  }
+  if((initial.role!=='admin'&&(permission?.error||permission?.data?.permission_code!=='D'))||!root.isConnected||
      getIdentity()?.userId!==userId)return false;
   const container=root.querySelector('section.modal');
   if(!container)return false;
