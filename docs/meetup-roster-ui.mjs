@@ -3,6 +3,36 @@
 const ENDPOINT='https://wgiittrvgtiosogyhfcl.supabase.co/functions/v1/meetup-roster';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 let inFlight=false;
+
+const COOLDOWN_MS=15000;
+let cooldownUntil=0;
+let cooldownTimer=null;
+const controls=new Set();
+const idleLabel=compact=>compact?'CSV ↓':'名簿CSVを取得';
+function updateCooldown(){
+  const seconds=Math.ceil(Math.max(0,cooldownUntil-Date.now())/1000);
+  for(const control of controls){
+    if(!control.button.isConnected){controls.delete(control);continue;}
+    if(control.button.classList.contains('roster-peach-loading'))continue;
+    control.button.disabled=inFlight||seconds>0;
+    control.button.textContent=seconds>0?'再取得まであと'+seconds+'秒':idleLabel(control.compact);
+  }
+  if(seconds===0&&cooldownTimer!==null){clearInterval(cooldownTimer);cooldownTimer=null;}
+}
+function beginCooldown(){
+  cooldownUntil=Math.max(cooldownUntil,Date.now()+COOLDOWN_MS);
+  if(cooldownTimer===null)cooldownTimer=setInterval(updateCooldown,500);
+  updateCooldown();
+}
+function downloadLocationHint(){
+  // Browsers cannot inspect or open an arbitrary OS download directory.
+  const ua=globalThis.navigator?.userAgent||'';
+  if(/iPhone|iPad|iPod/i.test(ua)||(ua.includes('Macintosh')&&globalThis.navigator?.maxTouchPoints>1))
+    return '「ファイル」→「ブラウズ」→「ダウンロード」';
+  if(/Android/i.test(ua))return '「Files」などのアプリ →「ダウンロード」';
+  return 'ブラウザのダウンロード履歴をご確認ください';
+}
+
 function ensureRosterStyle(){
   if(document.getElementById('meetup-roster-purple-peach-style'))return;
   const style=document.createElement('style');
@@ -14,6 +44,8 @@ function ensureRosterStyle(){
     '.meetup-roster-button.roster-peach-loading::before,.meetup-roster-button.roster-peach-loading::after{content:"❀";position:absolute;pointer-events:none;font-size:18px;color:#ffe5f2;text-shadow:0 1px 4px #b03d8d;animation:roster-peach-fall 1.7s ease-in-out infinite;top:-15px;left:9%}',
     '.meetup-roster-button.roster-peach-loading::after{left:84%;font-size:13px;animation-delay:.85s;color:#ffd0e5}',
     '@keyframes roster-peach-fall{0%{transform:translate(0,-10px) rotate(-25deg);opacity:0}30%{opacity:1}100%{transform:translate(18px,66px) rotate(110deg);opacity:0}}',
+    '.roster-location-hint{font-size:12px;margin-top:5px;overflow-wrap:anywhere}',
+    '.roster-location-button{border:0;background:transparent;color:#7938af;text-decoration:underline;padding:3px;font-size:12px;font-weight:700;cursor:pointer}',
     '@media (prefers-reduced-motion:reduce){.meetup-roster-button{transition:none}.meetup-roster-button.roster-peach-loading::before,.meetup-roster-button.roster-peach-loading::after{animation:none;top:3px;opacity:.9}}'
   ].join('');
   document.head.append(style);
@@ -56,10 +88,19 @@ function attachAction({root,container,meetup,client,getIdentity,publicKey,compac
   if(!compact)button.style.width='100%';
   const status=document.createElement('p');
   status.className='small muted strong';status.setAttribute('role','status');
-  wrapper.append(button,status);container.append(wrapper);
+  const guide=document.createElement('button');
+  guide.type='button';guide.className='roster-location-button';
+  guide.textContent='📁 保存したファイルを探す';guide.hidden=true;
+  const hint=document.createElement('p');hint.className='roster-location-hint';hint.hidden=true;
+  guide.onclick=()=>{hint.hidden=!hint.hidden;if(!hint.hidden)hint.textContent=downloadLocationHint();};
+  wrapper.append(button,status,guide,hint);container.append(wrapper);
+  const control={button,compact};
+  controls.add(control);
+  updateCooldown();
   button.onclick=async()=>{
-    if(inFlight||!root.isConnected||getIdentity()?.userId!==userId)return;
+    if(inFlight||Date.now()<cooldownUntil||!root.isConnected||getIdentity()?.userId!==userId)return;
     inFlight=true;button.disabled=true;button.classList.add('roster-peach-loading');button.textContent='名簿を準備中';status.textContent='';
+    guide.hidden=true;hint.hidden=true;updateCooldown();
     try{
       const {data,error}=await client.auth.getSession();
       const session=data?.session;
@@ -71,6 +112,7 @@ function attachAction({root,container,meetup,client,getIdentity,publicKey,compac
                  apikey:publicKey,'content-type':'application/json','accept':'text/csv'},
         body:JSON.stringify({meetupId:meetup.id,purpose:'attendance',note:''})
       });
+      if(response.status===200||response.status===429)beginCooldown();
       if(response.status!==200){
         if(response.status===401)throw new Error('ログイン情報を確認できませんでした');
         if(response.status===403)throw new Error('この名簿の取得権限がありません');
@@ -89,13 +131,14 @@ function attachAction({root,container,meetup,client,getIdentity,publicKey,compac
       const a=document.createElement('a');
       a.hidden=true;a.href=url;a.download='meetup-roster-'+meetup.id+'.csv';
       document.body.append(a);
-      try{a.click();status.textContent='CSVの保存を開始しました（'+count+'名）';}
+      try{a.click();status.textContent='ダウンロードを開始しました（'+count+'名）';guide.hidden=false;}
       finally{a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
     }catch(error){
       status.textContent=error instanceof Error?error.message:'CSVを取得できませんでした';
     }finally{
       inFlight=false;
-      if(root.isConnected){button.classList.remove('roster-peach-loading');button.disabled=false;button.textContent=compact?'CSV ↓':'名簿CSVを取得';}
+      if(root.isConnected)button.classList.remove('roster-peach-loading');
+      updateCooldown();
     }
   };
   return true;
