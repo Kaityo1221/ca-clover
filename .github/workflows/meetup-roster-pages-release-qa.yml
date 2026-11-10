@@ -17,3 +17,17 @@ jobs:
           node-version: '22'
       - run: node --check docs/meetup-roster-ui.mjs
       - run: node --test scripts/test-meetup-roster-pages.mjs
+  live-pages-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify canonical Pages has the newly merged module
+        run: |
+          set -euo pipefail
+          root='https://kaityo1221.github.io/ca-clover/'
+          curl -fsSL --retry 3 --retry-delay 2 --max-time 20 "$root" -o /tmp/ca-clover-home.html
+          curl -fsSL --retry 3 --retry-delay 2 --max-time 20 "${root}meetup-roster-ui.mjs" -o /tmp/meetup-roster-ui.mjs
+          grep -q 'meetup-roster-ui.mjs' /tmp/ca-clover-home.html
+          grep -q '名簿CSVを取得' /tmp/meetup-roster-ui.mjs
+          grep -q '/functions/v1/meetup-roster' /tmp/meetup-roster-ui.mjs
+          echo 'PAGES_LIVE_ROSTER_PASS=true'
