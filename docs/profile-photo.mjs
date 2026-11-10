@@ -77,6 +77,7 @@ export function mountProfilePhoto({host, client, session, role}) {
     setStatus('登録済みのプロフィール写真を表示中です。');
   }
   async function selectFile() {
+    if (!allowed || !active) return;
     blob = null;
     save.disabled = true;
     clearPreview();
