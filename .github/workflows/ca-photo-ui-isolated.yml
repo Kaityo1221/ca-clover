@@ -29,8 +29,17 @@ jobs:
         run: node scripts/test-profile-photo-isolated.mjs
       - name: Install pinned Playwright
         run: npm install --no-save --package-lock=false --ignore-scripts playwright@1.56.1
-      - name: Install synthetic browser engines
-        run: npx playwright install --with-deps chromium webkit
+      - name: Use runner Chromium when available
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          if [ -n "$CHROME" ]; then
+            echo "QA_CHROME_BIN=$CHROME" >> "$GITHUB_ENV"
+          else
+            npx playwright install chromium
+          fi
+          echo "CA_PHOTO_QA_BROWSERS=chromium" >> "$GITHUB_ENV"
       - name: QA mobile medal frame, fallback and WebP compression
         run: node scripts/test-profile-photo-browser-isolated.mjs
       - name: Attach synthetic UI screenshots
