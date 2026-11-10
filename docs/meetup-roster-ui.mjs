@@ -15,7 +15,7 @@ function updateCooldown(){
     if(!control.button.isConnected){controls.delete(control);continue;}
     if(control.button.classList.contains('roster-peach-loading'))continue;
     control.button.disabled=inFlight||seconds>0;
-    control.button.textContent=seconds>0?'再取得まであと'+seconds+'秒':idleLabel(control.compact);
+    control.button.textContent=seconds>0?'再試行まであと'+seconds+'秒':idleLabel(control.compact);
   }
   if(seconds===0&&cooldownTimer!==null){clearInterval(cooldownTimer);cooldownTimer=null;}
 }
@@ -123,7 +123,7 @@ function attachAction({root,container,meetup,client,getIdentity,publicKey,compac
       if(response.status!==200){
         if(response.status===401)throw new Error('ログイン情報を確認できませんでした');
         if(response.status===403)throw new Error('この名簿の取得権限がありません');
-        if(response.status===429)throw new Error('連続取得は制限されています。しばらくしてお試しください');
+        if(response.status===429)throw new Error('取得制限中：15秒間隔・1時間12回まで。時間を空けて再試行してください');
         throw new Error('名簿を取得できませんでした');
       }
       const type=response.headers.get('content-type')||'';
