@@ -24,7 +24,7 @@ test('admins see roster without D, CA still requires D and no hint visible',()=>
  assert.match(ui,/if\(initial\.role==='admin'\)return initial/);
  assert.match(ui,/if\(permission\.error\|\|permission\.data\?\.permission_code!=='D'\)return null/);
  assert.doesNotMatch(ui,/D権限が必要|D権限を確認できません|管理者も対象/);
- assert.match(page,/meetup-roster-ui\.mjs\?v=20261110-resave-memory1/);
+ assert.match(page,/meetup-roster-ui\.mjs\?v=20261110-petals-always1/);
 });
 
 test('Meetup card CSV invokes the same full-roster action as overview, not raffle CSV',()=>{
@@ -97,4 +97,13 @@ test('resave action shares fixed layout with save location and remains separate 
  assert.match(ui,/grid-row:3/);
  assert.match(ui,/saveRosterBlob\(previous\.blob,meetup\.id\)/);
  assert.match(ui,/const previous=currentCached\(userId,meetup\.id\)/);
+});
+
+test('Peach flowers animate on all CSV buttons, not only during loading',()=>{
+ assert.match(ui,/\.meetup-roster-button::before,\.meetup-roster-button::after/);
+ assert.match(ui,/animation:roster-peach-fall 3\.6s/);
+ assert.match(ui,/z-index:-1;pointer-events:none/);
+ assert.match(ui,/\.meetup-roster-button\.roster-peach-loading::before/);
+ assert.match(ui,/prefers-reduced-motion:reduce/);
+ assert.doesNotMatch(ui,/\.meetup-roster-button\.roster-peach-loading::before,\.meetup-roster-button\.roster-peach-loading::after\{/);
 });
