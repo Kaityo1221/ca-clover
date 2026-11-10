@@ -24,7 +24,7 @@ test('admins see roster without D, CA still requires D and no hint visible',()=>
  assert.match(ui,/if\(initial\.role==='admin'\)return initial/);
  assert.match(ui,/if\(permission\.error\|\|permission\.data\?\.permission_code!=='D'\)return null/);
  assert.doesNotMatch(ui,/D権限が必要|D権限を確認できません|管理者も対象/);
- assert.match(page,/meetup-roster-ui\.mjs\?v=20261110-short-loading1/);
+ assert.match(page,/meetup-roster-ui\.mjs\?v=20261110-guide-cooldown1/);
 });
 
 test('Meetup card CSV invokes the same full-roster action as overview, not raffle CSV',()=>{
@@ -45,4 +45,22 @@ test('Koga peach festival loading and violet card button honor reduced motion',(
  assert.match(ui,/linear-gradient\(118deg,#6232bb/);
  assert.match(ui,/prefers-reduced-motion:reduce/);
  assert.match(ui,/参加表明者を含む3列で出力/);
+});
+
+test('15-second shared cooldown and truthful download status',()=>{
+ assert.match(ui,/const COOLDOWN_MS=15000/);
+ assert.match(ui,/const controls=new Set\(\)/);
+ assert.match(ui,/response\.status===200\|\|response\.status===429/);
+ assert.match(ui,/Date\.now\(\)<cooldownUntil/);
+ assert.match(ui,/再取得まであと/);
+ assert.match(ui,/ダウンロードを開始しました/);
+ assert.doesNotMatch(ui,/CSVの保存を開始しました/);
+});
+test('mobile download help stays short and cannot claim to open OS folders',()=>{
+ assert.match(ui,/📁 保存したファイルを探す/);
+ assert.match(ui,/iPhone\|iPad\|iPod/);
+ assert.match(ui,/Android/);
+ assert.match(ui,/ブラウザのダウンロード履歴/);
+ assert.match(ui,/guide\.hidden=false/);
+ assert.match(ui,/hint\.hidden=!hint\.hidden/);
 });
