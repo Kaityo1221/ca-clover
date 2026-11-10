@@ -140,8 +140,12 @@ async function testCompression(browser,name){
  await page.close();
 }
 try{
- for(const [name,type] of [['chromium',chromium],['webkit',webkit]]){
-  const browser=await type.launch({headless:true});
+ const configured=(process.env.CA_PHOTO_QA_BROWSERS||'chromium').split(',').map(x=>x.trim()).filter(Boolean);
+ for(const name of configured){
+  const type={chromium,webkit}[name];
+  if(!type)throw Error('Unsupported browser engine '+name);
+  const options=name==='chromium'&&process.env.QA_CHROME_BIN?{executablePath:process.env.QA_CHROME_BIN}:{};
+  const browser=await type.launch({headless:true,...options});
   try{await testMedal(browser,name);await testCompression(browser,name)}
   finally{await browser.close()}
  }
