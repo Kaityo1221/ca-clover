@@ -21,7 +21,7 @@ test('no data without active user and D, existing session and status checks',()=
 });
 
 test('admins see roster without D, CA still requires D and no hint visible',()=>{
- assert.match(ui,/if\(initial\.role!=='admin'\)/);
+ assert.match(ui,/if\(initial\.role==='admin'\)return initial/);
  assert.match(ui,/if\(permission\.error\|\|permission\.data\?\.permission_code!=='D'\)return null/);
  assert.doesNotMatch(ui,/D権限が必要|D権限を確認できません|管理者も対象/);
  assert.match(page,/meetup-roster-ui\.mjs\?v=20261110-card1/);
