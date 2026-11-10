@@ -1,7 +1,7 @@
 name: Meetup Roster Pages Release QA (No Deploy)
 on:
   push:
-    branches: [release/meetup-roster-pages-20261110]
+    branches: [release/meetup-roster-pages-20261110, fix/meetup-roster-permission-visibility-20261110]
 permissions:
   contents: read
 jobs:
