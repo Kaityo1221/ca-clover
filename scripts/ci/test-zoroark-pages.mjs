@@ -41,6 +41,14 @@ assert.ok(moduleSource.includes('typeof gateway.newRound!=="function"'),"GM is r
 assert.ok(index.includes('20261111-playstyle1'),"new mode-selection code avoids old module caches");
 assert.ok(moduleSource.includes('esc(round.prompts[player])'),"topic escaped before DOM");
 assert.ok(moduleSource.includes('return destroy;'),"timer and handlers cleanup");
+assert.ok(moduleSource.includes('phase==="card-handoff"'),"private card handoff exists");
+assert.ok(moduleSource.includes('phase==="card-private"'),"player's five-card private hand exists");
+assert.ok(moduleSource.includes('Array.from({length:5}'),"hand is replenished to five cards");
+assert.ok(moduleSource.includes('cardDeadline=Date.now()+10000'),"global question card cooldown is ten seconds");
+assert.ok(moduleSource.includes('cardAnnouncementUntil=Date.now()+2000'),"talk time reveal lasts two seconds");
+assert.ok(moduleSource.includes('usedQuestions.push('),"question uses are kept in shared history");
+assert.ok(moduleSource.includes('if(document.hidden&&phase==="card-private")'),"private cards are masked when tab is hidden");
+assert.ok(index.includes('20261111-cards1'),"card module is cache-busted");
 assert.ok(nav.includes("data-open-zoroark"),"existing game list card");
 assert.ok(nav.includes('if((location.hash||"#my")!=="#my"'),"mini-game entry is scoped to My Community home");
 assert.ok(nav.includes('app.querySelector("#sendaiMapHost")'),"top entry requires CA/ADMIN home marker");
