@@ -315,11 +315,14 @@ export function mountZoroark({host,gateway,onBack}){
   if(name==="reveal"){reveal=true;render();return}
   if(name==="reset"){reset()}
  }
+ let swipeStart=null;
+ const onTouchStart=event=>{if((phase==="results"&&reveal)||phase==="medal-summary"){const t=event.touches?.[0];if(t)swipeStart={x:t.clientX,y:t.clientY}}};
+ const onTouchEnd=event=>{if(!swipeStart)return;const t=event.changedTouches?.[0],start=swipeStart;swipeStart=null;if(!t)return;const dx=t.clientX-start.x,dy=t.clientY-start.y;if(Math.abs(dx)<70||Math.abs(dy)>85)return;if(phase==="results"&&reveal&&dx<0){phase="medal-summary";render()}else if(phase==="medal-summary"&&dx>0){phase="results";render()}};
  const click=event=>{const b=event.target.closest("[data-act]");if(b&&host.contains(b)&&!b.disabled)act(b.dataset.act)};
  const change=event=>{if(event.target.id==="zg-level")level=event.target.value;if(event.target.id==="zg-mode")mode=event.target.value;if(event.target.id==="zg-duration"){duration=Number(event.target.value);remaining=duration}if(event.target.id==="zg-mimikyu")enableMimikyu=Boolean(event.target.checked)};
  const hidden=()=>{if(document.hidden&&phase==="pass"&&visible){visible=false;render()}if(document.hidden&&phase==="card-private"){phase="card-handoff";render()}if(document.hidden&&(phase==="medal-private"||phase==="medal-confirm")){medalTarget=-1;phase="medal-handoff";render()}};
- host.addEventListener("click",click);host.addEventListener("change",change);document.addEventListener("visibilitychange",hidden);
- function destroy(){if(destroyed)return;destroyed=true;clearInterval(timer);host.removeEventListener("click",click);host.removeEventListener("change",change);document.removeEventListener("visibilitychange",hidden)}
+ host.addEventListener("click",click);host.addEventListener("touchstart",onTouchStart);host.addEventListener("touchend",onTouchEnd);host.addEventListener("change",change);document.addEventListener("visibilitychange",hidden);
+ function destroy(){if(destroyed)return;destroyed=true;clearInterval(timer);host.removeEventListener("click",click);host.removeEventListener("touchstart",onTouchStart);host.removeEventListener("touchend",onTouchEnd);host.removeEventListener("change",change);document.removeEventListener("visibilitychange",hidden)}
  render();
  return destroy;
 }
