@@ -38,7 +38,10 @@ assert.ok(moduleSource.includes('i!==value.wolf'),"Mimikyu never receives the wo
 assert.ok(moduleSource.includes('crypto.getRandomValues'),"additional role uses secure random source");
 assert.ok(moduleSource.includes('if(name==="chooseMode")'),"player can return to mode chooser");
 assert.ok(moduleSource.includes('typeof gateway.newRound!=="function"'),"GM is required in both modes");
-assert.ok(index.includes('20261111-playstyle1'),"new mode-selection code avoids old module caches");
+assert.ok(index.includes('20261111-roles1'),"manual role-reveal module avoids old caches");
+assert.ok(moduleSource.includes('(visible?privatePrompt()'),"private roles only render after a player opens the hidden topic");
+assert.ok(moduleSource.includes('役職も本人だけに知らせます。'),"manual mode explains role disclosure");
+assert.ok(moduleSource.includes('本人には少数派だと知らせません'),"simple mode retains hidden minority role");
 assert.ok(moduleSource.includes('esc(round.prompts[player])'),"topic escaped before DOM");
 assert.ok(moduleSource.includes('return destroy;'),"timer and handlers cleanup");
 assert.ok(nav.includes("data-open-zoroark"),"existing game list card");
