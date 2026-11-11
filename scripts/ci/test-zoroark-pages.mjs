@@ -60,4 +60,12 @@ assert.ok(nav.includes('location.hash="mini-games"'),"routes to canonical Pages"
 assert.ok(loader.includes("20261111-welcome-right1"),"asset cache busted");
 const m=await import(new URL("../../docs/zoroark-local.mjs",import.meta.url));
 assert.equal(typeof m.mountZoroark,"function");
+assert.equal(typeof m.zoroarkRoleInfo,"function");
+assert.equal(m.zoroarkRoleInfo("simple",0,0,-1),null,"simple mode does not disclose Zoroark");
+assert.equal(m.zoroarkRoleInfo("simple",1,0,1),null,"simple mode does not disclose Mimikyu");
+assert.equal(m.zoroarkRoleInfo("manual",0,0,1).name,"ゾロアーク","manual minority knows their role");
+assert.equal(m.zoroarkRoleInfo("manual",1,0,1).name,"ミミッキュ","manual Mimikyu knows their role");
+assert.equal(m.zoroarkRoleInfo("manual",2,0,1).name,"村人","manual majority knows their role");
+assert.equal(m.zoroarkRoleInfo("manual",1,0,-1).name,"村人","manual mode without Mimikyu is valid");
+for(const index of [0,1,2])assert.ok(m.zoroarkRoleInfo("manual",index,0,1).description.length>10,"each role explains its objective");
 console.log("ZOROARK_PAGES_UI_CONTRACT_PASS");
