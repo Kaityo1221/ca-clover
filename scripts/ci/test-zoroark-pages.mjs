@@ -39,7 +39,7 @@ assert.ok(nav.includes("← My Communityへ戻る"),"mini-game hub returns to My
 assert.ok(nav.includes('event.stopImmediatePropagation()'),"My Community top navigation still returns home");
 
 assert.ok(nav.includes('location.hash="mini-games"'),"routes to canonical Pages");
-assert.ok(loader.includes("20261029-zoroark1"),"asset cache busted");
+assert.ok(loader.includes("20261111-welcome-right1"),"asset cache busted");
 const m=await import(new URL("../../docs/zoroark-local.mjs",import.meta.url));
 assert.equal(typeof m.mountZoroark,"function");
 console.log("ZOROARK_PAGES_UI_CONTRACT_PASS");
