@@ -38,7 +38,7 @@ assert.ok(moduleSource.includes('i!==value.wolf'),"Mimikyu never receives the wo
 assert.ok(moduleSource.includes('crypto.getRandomValues'),"additional role uses secure random source");
 assert.ok(moduleSource.includes('if(name==="chooseMode")'),"player can return to mode chooser");
 assert.ok(moduleSource.includes('typeof gateway.newRound!=="function"'),"GM is required in both modes");
-assert.ok(index.includes('20261111-questionoverlay1'),"question overlay fix avoids old module caches");
+assert.ok(index.includes('20261111-caption1'),"question overlay fix avoids old module caches");
 assert.ok(moduleSource.includes('phase==="card-private"'),"private question screen is present");
 assert.ok(moduleSource.includes('phase==="card-handoff"'),"private handoff mask is present");
 assert.ok(moduleSource.includes('questionHands=Array.from({length:count},()=>Array.from({length:5},drawQuestion))'),"each player gets five cards");
@@ -49,6 +49,8 @@ assert.ok(moduleSource.includes('.zg-question-overlay{position:fixed;inset:0;'),
 assert.ok(moduleSource.includes('role="dialog" aria-modal="true"'),"public question is presented as an accessible dialog");
 assert.ok(moduleSource.includes('questionOverlay()'),"overlay is rendered outside normal card flow");
 assert.ok(moduleSource.includes('name==="closeQuestionOverlay"'),"question can be dismissed by user");
+assert.ok(moduleSource.includes('class="zg-question-note">10秒間表示</div>'),"caption is concise");
+assert.ok(!moduleSource.includes('約10秒間表示されます'),"outdated caption removed");
 assert.ok(moduleSource.includes('cardCooldownUntil=0;render()'),"cooldown automatically re-enables card button");
 assert.ok(moduleSource.includes('questionUsed.push('),"used questions are recorded for everyone");
 assert.ok(moduleSource.includes('if(document.hidden&&phase==="card-private")'),"private cards lock on app background");
