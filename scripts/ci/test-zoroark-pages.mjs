@@ -29,7 +29,11 @@ assert.ok(moduleSource.includes('return destroy;'),"timer and handlers cleanup")
 assert.ok(nav.includes("data-open-zoroark"),"existing game list card");
 assert.ok(nav.includes('if((location.hash||"#my")!=="#my"'),"mini-game entry is scoped to My Community home");
 assert.ok(nav.includes('app.querySelector("#sendaiMapHost")'),"top entry requires CA/ADMIN home marker");
-assert.ok(nav.includes('hero.insertAdjacentElement("afterend",entry)'),"entry appears immediately below the welcome hero");
+assert.ok(nav.includes('const title=hero.querySelector("h1.my-welcome-title")'),"welcome heading must be present");
+assert.ok(nav.includes('titleRow.appendChild(title);'),"welcome heading moves into one shared row");
+assert.ok(nav.includes('titleRow.appendChild(button);'),"mini-game button appears directly to the right of welcome heading");
+assert.ok(nav.includes("flex-direction:column;justify-content:center;width:78px"),"mobile button remains compact and right aligned");
+assert.ok(!nav.includes('hero.insertAdjacentElement("afterend",entry)'),"separate card below welcome hero is removed");
 assert.ok(!nav.includes("hub.insertBefore(button,hub.firstChild)"),"old Community-detail entry removed");
 assert.ok(nav.includes("← My Communityへ戻る"),"mini-game hub returns to My Community");
 assert.ok(nav.includes('event.stopImmediatePropagation()'),"My Community top navigation still returns home");
