@@ -38,7 +38,7 @@ assert.ok(moduleSource.includes('i!==value.wolf'),"Mimikyu never receives the wo
 assert.ok(moduleSource.includes('crypto.getRandomValues'),"additional role uses secure random source");
 assert.ok(moduleSource.includes('if(name==="chooseMode")'),"player can return to mode chooser");
 assert.ok(moduleSource.includes('typeof gateway.newRound!=="function"'),"GM is required in both modes");
-assert.ok(index.includes('20261111-roles1'),"manual role-reveal module avoids old caches");
+assert.ok(index.includes('20261111-roles2'),"manual role and vote resolution module avoids old caches");
 assert.ok(moduleSource.includes('(visible?privatePrompt()'),"private roles only render after a player opens the hidden topic");
 assert.ok(moduleSource.includes('役職も本人だけに知らせます。'),"manual mode explains role disclosure");
 assert.ok(moduleSource.includes('本人には少数派だと知らせません'),"simple mode retains hidden minority role");
@@ -61,6 +61,26 @@ assert.ok(loader.includes("20261111-welcome-right1"),"asset cache busted");
 const m=await import(new URL("../../docs/zoroark-local.mjs",import.meta.url));
 assert.equal(typeof m.mountZoroark,"function");
 assert.equal(typeof m.zoroarkRoleInfo,"function");
+assert.equal(typeof m.judgeZoroarkVotes,"function","round outcome has an explicit judge");
+const judge=(counts,wolfIndex,mimikyuIndex,gameMode="manual",eligibleCandidates=null)=>m.judgeZoroarkVotes({
+ counts,gameMode,wolfIndex,mimikyuIndex,eligibleCandidates,voterCount:counts.length
+});
+assert.deepEqual(judge([0,0,6,0,0,0],1,2),{status:"winner",winner:"mimikyu",selectedIndex:2,points:{villagers:0,zoroark:0,mimikyu:5}},"unique Mimikyu majority awards five points");
+assert.deepEqual(judge([0,6,0,0,0,0],1,2),{status:"winner",winner:"villagers",selectedIndex:1,points:{villagers:1,zoroark:0,mimikyu:1}},"finding Zoroark gives villagers and Mimikyu one point");
+assert.deepEqual(judge([6,0,0,0,0,0],1,2),{status:"winner",winner:"zoroark",selectedIndex:0,points:{villagers:0,zoroark:2,mimikyu:0}},"voting for an ordinary villager gives Zoroark two points");
+assert.deepEqual(judge([0,0,6,0,0,0],1,-1),{status:"winner",winner:"zoroark",selectedIndex:2,points:{villagers:0,zoroark:2,mimikyu:0}},"disabling Mimikyu prevents special win");
+assert.equal(judge([0,0,6,0,0,0],1,2,"simple").winner,"zoroark","simple mode does not allow special-role victory");
+assert.equal(judge([0,0,6,0,0,0],1,2,"simple").points,null,"simple mode does not introduce advanced scoring");
+assert.deepEqual(judge([0,0,3,3,0,0],1,2),{status:"runoff",candidates:[2,3]},"a tied Mimikyu is not yet the winner");
+assert.deepEqual(judge([0,0,0,6,0,0],1,2,"manual",[2,3]),{status:"winner",winner:"zoroark",selectedIndex:3,points:{villagers:0,zoroark:2,mimikyu:0}},"a runoff among tied candidates can award Zoroark victory");
+assert.deepEqual(judge([0,0,6,0,0,0],1,2,"manual",[2,3]),{status:"winner",winner:"mimikyu",selectedIndex:2,points:{villagers:0,zoroark:0,mimikyu:5}},"Mimikyu can win after a runoff");
+assert.equal(judge([0,0,4,0,0,0],1,2).status,"incomplete","missing votes cannot determine winner");
+assert.equal(judge([0,0,7,0,0,0],1,2).status,"invalid","extra votes cannot determine winner");
+assert.equal(judge([0,0,6,0,0,0],1,2,"manual",[1,3]).status,"invalid","non-finalists cannot receive runoff votes");
+assert.equal(judge([0,0,6,0,0,0],2,2).status,"invalid","Mimikyu and Zoroark must be distinct players");
+assert.ok(moduleSource.includes('voteCounts.reduce((sum,n)=>sum+n,0)'),"GM enters and totals real votes");
+assert.ok(moduleSource.includes('voteFinalists=result.candidates'),"same-count leaders trigger a runoff");
+assert.ok(moduleSource.includes('voteDecision=result'),"only finalized winner is displayed");
 assert.equal(m.zoroarkRoleInfo("simple",0,0,-1),null,"simple mode does not disclose Zoroark");
 assert.equal(m.zoroarkRoleInfo("simple",1,0,1),null,"simple mode does not disclose Mimikyu");
 assert.equal(m.zoroarkRoleInfo("manual",0,0,1).name,"ゾロアーク","manual minority knows their role");
