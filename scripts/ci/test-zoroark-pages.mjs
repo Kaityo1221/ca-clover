@@ -27,6 +27,13 @@ assert.ok(moduleSource.includes('visible=false'),"handoff hides prompts");
 assert.ok(moduleSource.includes('esc(round.prompts[player])'),"topic escaped before DOM");
 assert.ok(moduleSource.includes('return destroy;'),"timer and handlers cleanup");
 assert.ok(nav.includes("data-open-zoroark"),"existing game list card");
+assert.ok(nav.includes('if((location.hash||"#my")!=="#my"'),"mini-game entry is scoped to My Community home");
+assert.ok(nav.includes('app.querySelector("#sendaiMapHost")'),"top entry requires CA/ADMIN home marker");
+assert.ok(nav.includes('hero.insertAdjacentElement("afterend",entry)'),"entry appears immediately below the welcome hero");
+assert.ok(!nav.includes("hub.insertBefore(button,hub.firstChild)"),"old Community-detail entry removed");
+assert.ok(nav.includes("← My Communityへ戻る"),"mini-game hub returns to My Community");
+assert.ok(nav.includes('event.stopImmediatePropagation()'),"My Community top navigation still returns home");
+
 assert.ok(nav.includes('location.hash="mini-games"'),"routes to canonical Pages");
 assert.ok(loader.includes("20261029-zoroark1"),"asset cache busted");
 const m=await import(new URL("../../docs/zoroark-local.mjs",import.meta.url));
