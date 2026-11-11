@@ -22,6 +22,9 @@ const readableErrors: Record<string, string> = {
   room_limit_reached: "同時に作成できるゲームルームは3件までです。",
   room_storage_unavailable: "ルーム保存先の準備がまだ完了していません。",
   room_create_failed: "ルームを作成できませんでした。",
+  isolated_room_api_not_configured: "隔離DBへの安全な接続設定がまだ完了していません。",
+  isolated_database_mismatch: "隔離DBの接続先が一致しないため、安全のため作成を停止しました。",
+  isolated_room_service_unavailable: "隔離DBに接続できません。管理者が環境設定を確認してください。",
   origin_not_allowed: "このアクセス元は許可されていません。",
   not_configured: "サーバー設定が完了していません。",
 };
@@ -41,16 +44,20 @@ export default function ZoroarkRoomCreatePage() {
     setBusy(true);
     setError("");
     try {
-      const { data, error: apiError } = await supabase.functions.invoke("zoroark-room-admin", {
-        body: { action: "create", mode, maxPlayers, talkSeconds },
+      const { data: authData, error: authError } = await supabase.auth.getSession();
+      const accessToken = authData.session?.access_token;
+      if (authError || !accessToken) throw new Error("ログインセッションがありません。再ログインしてください。");
+      // The server independently verifies this token and current CA role with Supabase Auth.
+      const response = await fetch("/api/zoroark/rooms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + accessToken },
+        body: JSON.stringify({ action: "create", mode, maxPlayers, talkSeconds }),
+        cache: "no-store",
       });
-      if (apiError || !data || typeof data.roomId !== "string" || data.joinEnabled !== false) {
-        const context = apiError && "context" in apiError ? apiError.context : null;
-        const details = context instanceof Response
-          ? await context.clone().json().catch(() => null)
-          : data;
-        const code = details && typeof details.error === "string" ? details.error : "";
-        throw new Error(readableErrors[code] ?? "ルーム作成APIを利用できません。隔離環境の設定・認証を確認してください。");
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data || typeof data.roomId !== "string" || data.joinEnabled !== false) {
+        const code = data && typeof data.error === "string" ? data.error : "";
+        throw new Error(readableErrors[code] ?? "ルーム作成サービスが準備できていません。隔離環境の接続を確認してください。");
       }
       setRoom(data as RoomCreated);
     } catch (cause) {
