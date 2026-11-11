@@ -40,6 +40,12 @@ export function judgeZoroarkVotes({counts,gameMode,wolfIndex,mimikyuIndex=-1,eli
  }
  return {status:"winner",winner:"zoroark",selectedIndex,points:gameMode==="manual"?{villagers:0,zoroark:2,mimikyu:0}:null};
 }
+// This is an aggregate-only, single-device game state. No giver-to-recipient history is retained.
+export function suspicionLeaders(totals){
+ if(!Array.isArray(totals)||!totals.length||!totals.every(v=>Number.isInteger(v)&&v>=0))return [];
+ const top=Math.max(...totals);
+ return top===0?[]:totals.map((v,i)=>v===top?i:-1).filter(i=>i>=0);
+}
 const styles=[
 ".zg{max-width:720px;margin:auto}.zg-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.zg-panel{margin-top:16px;background:#fff;border:1px solid #d9f99d;border-radius:24px;padding:20px;box-shadow:0 12px 26px #36531412}",
 ".zg-label{display:block;margin:18px 0 7px;font-size:13px;font-weight:900;color:#365314}.zg-select{display:block;width:100%;min-height:47px;border:1px solid #d9f99d;border-radius:12px;background:#fff;color:#1f2937;padding:10px;font-size:16px}",
@@ -50,7 +56,8 @@ const styles=[
  ".zg-question-overlay{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:max(18px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));background:rgba(16,31,25,.82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}.zg-question-modal{box-sizing:border-box;width:min(100%,560px);max-height:calc(100dvh - 44px);overflow-y:auto;border:3px solid #f5c363;border-radius:26px;padding:clamp(20px,5vw,38px);background:#fffbeb;color:#493015;text-align:center;box-shadow:0 24px 60px #0008;animation:zg-question-pop .45s ease-out}.zg-question-modal .zg-question-title{font-size:clamp(24px,6vw,35px);line-height:1.4;font-weight:950}.zg-question-modal .zg-question-person{margin:18px 0 6px;font-size:clamp(16px,4vw,21px);font-weight:850}.zg-question-modal .zg-question-text{font-size:clamp(23px,6vw,36px);line-height:1.5;font-weight:950;overflow-wrap:anywhere;padding:16px 0}.zg-question-modal .zg-question-note{font-size:14px;font-weight:800;color:#78551b}.zg-question-overlay .zg-btn{margin-top:18px;min-width:170px}.zg-question-choice{display:block;width:100%;text-align:left;margin:9px 0;padding:15px;border:1px solid #d9f99d;border-radius:13px;background:#f7fee7;color:#365314;font-weight:800;cursor:pointer;line-height:1.5}.zg-question-banner{margin:14px 0;padding:18px;border:2px solid #eab85e;border-radius:16px;background:#fffbeb;color:#6b450d;text-align:center;animation:zg-question-pop .5s ease-out}.zg-question-banner strong{font-size:20px}.zg-question-history{border-bottom:1px solid #d9f99d;padding:8px 2px;color:#365314;font-size:14px}.zg-card-leaf{display:inline-block;animation:zg-leaf-fall 1.3s ease-in-out}.zg-question-help{margin:12px 0;font-size:13px;color:#365314}@keyframes zg-question-pop{from{opacity:0;transform:translateY(-24px)}to{opacity:1;transform:none}}@keyframes zg-leaf-fall{from{transform:translate(-15px,-18px) rotate(-40deg);opacity:.25}to{transform:translate(0,0) rotate(25deg);opacity:1}}@media(prefers-reduced-motion:reduce){.zg-question-banner,.zg-card-leaf{animation:none}}",
  ".zg-secret{min-height:215px;margin:16px 0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;border-radius:22px;background:#162438;color:white;padding:20px;text-align:center}.zg-secret strong{font-size:clamp(23px,7vw,35px)}",
 ".zg-timer{text-align:center;font-size:clamp(45px,13vw,68px);font-weight:950;color:#365314;font-variant-numeric:tabular-nums;margin:20px 0}.zg-votes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:18px 0}",
-".zg-tally-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0}.zg-tally-item{padding:12px;border:1px solid #d9f99d;border-radius:13px;background:#f7fee7}.zg-tally-item strong{font-size:18px}.zg-tally-buttons{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:10px}.zg-tally-buttons .zg-btn{min-width:42px;min-height:40px}.zg-tally-count{font-variant-numeric:tabular-nums;font-size:24px;font-weight:950;color:#365314}.zg-vote-progress{margin:12px 0;padding:10px 13px;border-radius:12px;background:#ecfccb;color:#365314;font-weight:900}.zg-result-winner{padding:12px 14px;background:#f7fee7;border:1px solid #d9f99d;border-radius:14px;text-align:center;color:#365314;font-weight:900}",
+".zg-medal-circle{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;border:3px ridge #e9c879;background:radial-gradient(circle at 30% 24%,#fff7c3,#d9b36a 45%,#956427 90%);box-shadow:inset 0 2px 3px #fff9,0 3px 9px #0002;color:#6a4512;font-weight:950;font-size:21px}.zg-medal-large{width:62px;height:62px;font-size:30px}.zg-medal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:18px 0}.zg-medal-grid button{min-height:69px}.zg-medal-warning{padding:14px;border:1px solid #dab46a;background:#fff7e1;border-radius:14px;font-weight:850;color:#754a13}.zg-medal-row{margin:9px 0;padding:12px;border:1px solid #ead5a5;background:#fffaf0;border-radius:15px;display:flex;align-items:center;justify-content:space-between;gap:9px}.zg-medal-row.zg-wolf{border-color:#d48793;background:#fff2f2}.zg-medal-stack{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:3px;max-width:65%}.zg-medal-stack .zg-medal-circle{width:24px;height:24px;font-size:14px;border-width:2px;animation:zg-medal-drop .45s both}.zg-suspicion-popup{position:fixed;inset:0;z-index:2147483001;display:flex;justify-content:center;align-items:center;padding:18px;background:#101c2bdd;backdrop-filter:blur(5px)}.zg-suspicion-popup article{max-width:560px;width:100%;background:#fffbeb;border:3px solid #d8b068;border-radius:24px;padding:25px;text-align:center;color:#4d3512}.zg-suspicion-popup h2{font-size:clamp(24px,7vw,35px)}@keyframes zg-medal-drop{from{opacity:0;transform:translateY(-30px) rotate(-18deg)}to{opacity:1;transform:translateY(0) rotate(0)}}@media(prefers-reduced-motion:reduce){.zg-medal-stack .zg-medal-circle{animation:none}}",
+ ".zg-tally-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0}.zg-tally-item{padding:12px;border:1px solid #d9f99d;border-radius:13px;background:#f7fee7}.zg-tally-item strong{font-size:18px}.zg-tally-buttons{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:10px}.zg-tally-buttons .zg-btn{min-width:42px;min-height:40px}.zg-tally-count{font-variant-numeric:tabular-nums;font-size:24px;font-weight:950;color:#365314}.zg-vote-progress{margin:12px 0;padding:10px 13px;border-radius:12px;background:#ecfccb;color:#365314;font-weight:900}.zg-result-winner{padding:12px 14px;background:#f7fee7;border:1px solid #d9f99d;border-radius:14px;text-align:center;color:#365314;font-weight:900}",
  ".zg-votes button{min-height:54px;border:1px solid #d9f99d;border-radius:13px;background:#fff;color:#365314;font-weight:950;font-size:16px}.zg-votes button[aria-pressed=true]{background:#84cc16;border-color:#65a30d}",
 ".zg-mode-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0}.zg-mode-card{display:flex;flex-direction:column;gap:10px;align-items:flex-start;min-height:175px;padding:20px;border-radius:20px;border:2px solid #bef264;background:#f7fee7;color:#365314;text-align:left;cursor:pointer}.zg-mode-card.manual{border-color:#fed7aa;background:#fff7ed}.zg-mode-card .mode-icon{font-size:32px}.zg-mode-card strong{font-size:20px}.zg-mode-card .mode-desc{font-size:13px;line-height:1.6;font-weight:700}.zg-role-option{display:flex;gap:10px;align-items:center;border:1px solid #d9f99d;border-radius:14px;padding:14px;margin-top:10px;font-weight:800}.zg-role-option input{width:20px;height:20px;accent-color:#65a30d}",
  ".zg-reveal{margin:15px 0;padding:30px 12px;border-radius:22px;text-align:center;color:white;background:radial-gradient(circle at 50% 30%,#7653a9,#241837 68%)}.zg-reveal .zg-fox{font-size:70px;animation:zg-pop .55s ease-out both}.zg-winner{font-size:22px;font-weight:950;text-align:center;color:#365314}",
@@ -68,8 +75,8 @@ export function mountZoroark({host,gateway,onBack}){
  ensureStyle();
  let destroyed=false,phase="play-style",playStyle=null,gameMode=null,enableMimikyu=true,mimikyuIndex=-1,count=6,level="all",duration=180,mode="free",round=null,player=0,visible=false,
   remaining=duration,running=false,deadline=0,topic=0,talkRound=1,vote=0,voteCounts=[],voteFinalists=null,voteRound=1,voteDecision=null,reveal=false,roundNo=0,
-  busy=false,error="",history=recentLoad(),questionHands=[],questionUsed=[],cardPlayer=-1,cardCooldownUntil=0,cardAnnouncement=null,cardAnnouncementUntil=0,cardWasRunning=false;
- const panel=()=>'<div class="zg"><section class="card hero"><div class="zg-head"><button data-act="back" type="button" class="zg-btn secondary">← My Communityへ戻る</button><span class="pill">🦊 CA専用GM</span></div><h1 style="margin-top:13px">🎭 ゾロアークを探せ！</h1><p class="muted strong">対面かリモートを選んでから、ゲームモードを決めよう。</p></section><section class="zg-panel">'+body()+'</section>'+questionOverlay()+'</div>';
+  busy=false,error="",history=recentLoad(),questionHands=[],questionUsed=[],cardPlayer=-1,cardCooldownUntil=0,cardAnnouncement=null,cardAnnouncementUntil=0,cardWasRunning=false,medalTotals=[],medalUsed=[],medalActor=-1,medalTarget=-1,medalWasRunning=false,midpointFired=false,midpointUntil=0,midpointNotice=null,talkElapsedMs=0,talkResumeAt=0;
+ const panel=()=>'<div class="zg"><section class="card hero"><div class="zg-head"><button data-act="back" type="button" class="zg-btn secondary">← My Communityへ戻る</button><span class="pill">🦊 CA専用GM</span></div><h1 style="margin-top:13px">🎭 ゾロアークを探せ！</h1><p class="muted strong">対面かリモートを選んでから、ゲームモードを決めよう。</p></section><section class="zg-panel">'+body()+'</section>'+questionOverlay()+midpointOverlay()+'</div>';
  function action(text,id,other=false,disabled=false){return '<button type="button" data-act="'+id+'" class="zg-btn'+(other?' secondary':'')+' zg-full"'+(disabled?' disabled':'')+'>'+text+'</button>'}
  function questionOverlay(){
   if(phase!=="talk"||!cardAnnouncement||Date.now()>=cardAnnouncementUntil)return '';
@@ -102,8 +109,31 @@ export function mountZoroark({host,gateway,onBack}){
    return '';
  }
  function closeCards(){
-   if(cardWasRunning&&duration>0&&remaining>0){running=true;deadline=Date.now()+remaining*1000}
+   if(cardWasRunning)resumeTalk()
    cardWasRunning=false;cardPlayer=-1;phase="talk";render();
+ }
+
+ function tickTalk(now=Date.now()){if(running&&talkResumeAt){talkElapsedMs+=Math.max(0,now-talkResumeAt);talkResumeAt=now}}
+ function pauseTalk(){tickTalk();running=false;talkResumeAt=0}
+ function resumeTalk(){if(duration>0&&remaining>0){running=true;deadline=Date.now()+remaining*1000;talkResumeAt=Date.now()}}
+ function midpointOverlay(){
+  if(phase!=="talk"||!midpointNotice||Date.now()>=midpointUntil)return '';
+  return '<div class="zg-suspicion-popup"><article role="dialog" aria-modal="true"><span class="zg-medal-circle zg-medal-large">?</span><h2>📣 疑惑速報！</h2><p style="font-size:23px;font-weight:950">'+esc(midpointNotice)+'</p><p>投票者・獲得枚数は秘密</p>'+action('会話に戻る',"closeMidpoint",true)+'</article></div>';
+ }
+ function medalScreen(){
+  if(phase==="medal-owner")return '<span class="pill">🪙 疑惑メダル</span><h2>誰が投げる？</h2><p class="zg-medal-warning">1人3枚。本人だけが投票先を確認してください。</p><div class="zg-medal-grid">'+Array.from({length:count},(_,i)=>'<button type="button" class="zg-btn secondary" data-act="medalActor:'+i+'">'+(i+1)+'番</button>').join("")+'</div>'+action('会話に戻る',"medalClose",true);
+  if(phase==="medal-handoff")return '<span class="pill">🔒 非公開操作</span><h2>プレイヤー'+(medalActor+1)+'番</h2><div class="zg-secret"><strong>本人だけが開いてね</strong><span>ほかの人には見せないでください</span></div>'+action('メダルを確認する',"medalOpen")+action('投げずに戻る',"medalClose",true);
+  if(phase==="medal-private")return '<span class="pill">🪙 疑惑メダル</span><h2>プレイヤー'+(medalActor+1)+'番</h2><p class="zg-medal-warning">残り '+(3-medalUsed[medalActor])+' / 3枚。同じ相手に複数枚投げてもOK！</p>'+(medalUsed[medalActor]===3?'<p>すべて使用しました。</p>':'<p>怪しい相手を選んでください</p><div class="zg-medal-grid">'+Array.from({length:count},(_,i)=>i===medalActor?'':'<button type="button" class="zg-btn secondary" data-act="medalTarget:'+i+'">'+(i+1)+'番</button>').join("")+'</div>')+action('画面を隠して戻る',"medalClose",true);
+  if(phase==="medal-confirm")return '<span class="pill">⚠️ 最終確認</span><h2>メダルを投げる？</h2><div class="zg-medal-warning" style="font-size:22px;text-align:center">🪙 '+(medalTarget+1)+'番へ1枚<br>確定後は取消・変更できません！</div>'+action('確定して投げる',"medalCommit")+action('キャンセル',"medalCancel",true);
+  if(phase==="medal-done")return '<span class="pill">🪙 投票完了</span><h2>メダルを投げました</h2><div class="zg-secret"><strong>投票先は非公開</strong><span>画面を伏せてGMに返してください。</span></div>'+action('画面を隠して会話へ',"medalClose");
+  return '';
+ }
+ function medalsResult(){
+  const sorted=medalTotals.map((total,i)=>({i,total})).sort((a,b)=>b.total-a.total||a.i-b.i);
+  const leaders=suspicionLeaders(medalTotals);
+  return '<span class="pill">🪙 結果 2/2</span><h2>疑惑メダル集計</h2><p>投票者・投票先の組み合わせは非公開。合計枚数のみ公開します。</p>'+
+   sorted.map((item,rank)=>'<div class="zg-medal-row'+(item.i===round.wolf?' zg-wolf':'')+'"><div><strong>'+(item.i+1)+'番 '+(item.i===round.wolf?'🦊':'')+'</strong><div style="font-size:12px">'+(leaders.includes(item.i)?'最多疑惑！':'')+'</div></div><div><strong>'+item.total+'枚</strong><div class="zg-medal-stack">'+Array.from({length:item.total},(_,j)=>'<span class="zg-medal-circle" style="animation-delay:'+Math.min(j*90+rank*65,1400)+'ms">?</span>').join("")+'</div></div></div>').join("")+
+   action('← 正体発表へ戻る',"backResults",true)+action('次のゲームへ',"start")+action('人数設定へ戻る',"reset",true);
  }
  function voteView(){
   const total=voteCounts.reduce((sum,n)=>sum+n,0);
@@ -133,9 +163,11 @@ export function mountZoroark({host,gateway,onBack}){
    (voteRound>1?'<p>決選投票：'+voteRound+'回目で決着</p>':'')+
    '<p>多数派：<strong>'+esc(round.majority)+'</strong><br>少数派：<strong>'+esc(round.minority)+'</strong></p>'+
    '<div class="zg-hint"><strong>共通点：</strong>'+esc(round.pair.common)+'<br><strong>違い：</strong>'+esc(round.pair.difference)+'</div>'+
-   action(busy?'CA権限を確認中…':'次のゲームへ',"start",false,busy)+action('人数設定に戻る',"reset",true);
+   action(busy?'CA権限を確認中…':'次のゲームへ',"start",false,busy)+action('🪙 疑惑メダル集計へ →',"medalResults")+action('人数設定に戻る',"reset",true);
  }
  function body(){
+  if(phase.startsWith("medal-")&&phase!=="medal-summary")return medalScreen();
+  if(phase==="medal-summary")return medalsResult();
   if(phase==="card-owner"||phase==="card-handoff"||phase==="card-private")return cardScreen();
  if(phase==="play-style")return '<span class="pill">PLAY STYLE</span><h2 style="margin-top:12px">遊び方を選ぶ</h2><p class="muted strong">どちらもGMが必要です。</p><div class="zg-mode-grid"><button type="button" class="zg-mode-card" data-act="face-to-face"><span class="mode-icon">🤝</span><strong>対面</strong><span class="mode-desc">会場で集まって、GMのスマホを順番に回して遊ぶ。</span></button><button type="button" class="zg-mode-card manual" data-act="remote"><span class="mode-icon">🌐</span><strong>リモート</strong><span class="mode-desc">各自の端末で参加する方式。通信機能は開発準備中。</span></button></div>';
  if(phase==="mode-select")return '<span class="pill">'+(playStyle==="remote"?"🌐 リモート":"🤝 対面")+'</span><h2 style="margin-top:12px">モードを選ぶ</h2><p class="muted strong">どちらもGMが必要です。人数・難易度・トーク時間・進行操作は共通です。</p><div class="zg-mode-grid"><button type="button" class="zg-mode-card" data-act="simple"><span class="mode-icon">🎮</span><strong>シンプルモード</strong><span class="mode-desc">村人とゾロアークだけで遊ぶ基本ルール。</span></button><button type="button" class="zg-mode-card manual" data-act="manual"><span class="mode-icon">🎭</span><strong>マニュアルモード</strong><span class="mode-desc">基本ルールにミミッキュなどの追加役職を組み込む。</span></button></div>'+action('← 対面・リモート選択へ',"chooseStyle",true);
@@ -145,7 +177,7 @@ export function mountZoroark({host,gateway,onBack}){
 
    action(cardCooldownUntil>Date.now()?'🍂 質問カード（クールダウン中）':'🍂 質問カードを使う',"cardChoose",true,cardCooldownUntil>Date.now())+
    (questionUsed.length?'<h3>使用済みの質問</h3>'+questionUsed.map(q=>'<div class="zg-question-history">プレイヤー'+(q.owner+1)+'番：'+esc(q.text)+'</div>').join(""):'')+
-   action('指差し投票へ','vote');
+   action('🪙 疑惑メダルを投げる',"medalChoose",true)+(duration===0?'<p class="muted small">制限時間なし：中間疑惑速報はありません。</p>':'')+action('指差し投票へ','vote');
   if(phase==="vote")return voteView();
   if(phase==="results")return resultView();
  return '<p>ゲームを準備してください</p>';
@@ -153,7 +185,15 @@ export function mountZoroark({host,gateway,onBack}){
  function render(){if(destroyed)return;host.innerHTML=panel();const set=(id,v)=>{const e=host.querySelector(id);if(e)e.value=String(v)};if(phase==="setup"){set("#zg-level",level);set("#zg-mode",mode);set("#zg-duration",duration)}}
  const timer=window.setInterval(()=>{if(!destroyed&&phase==="talk"&&cardAnnouncement&&Date.now()>=cardAnnouncementUntil){cardAnnouncement=null;render()}
    if(!destroyed&&phase==="talk"&&cardCooldownUntil&&Date.now()>=cardCooldownUntil){cardCooldownUntil=0;render()}
-   if(!destroyed&&phase==="talk"&&running&&duration){remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));const el=host.querySelector("[data-clock]");if(el)el.textContent=fmt(remaining);if(!remaining){running=false;render()}}},250);
+   if(!destroyed&&phase==="talk"&&midpointNotice&&Date.now()>=midpointUntil){midpointNotice=null;render()}
+   if(!destroyed&&phase==="talk"&&running&&duration){
+    tickTalk();
+    if(!midpointFired&&talkElapsedMs>=duration*500&&!cardAnnouncement){
+      midpointFired=true;const leaders=suspicionLeaders(medalTotals);
+      midpointNotice=leaders.length?'最も疑われているのは '+leaders.map(i=>(i+1)+'番').join('・')+'！':'まだ疑惑メダルは投げられていません';
+      midpointUntil=Date.now()+8000;render();
+    }
+    remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));const el=host.querySelector("[data-clock]");if(el)el.textContent=fmt(remaining);if(!remaining){running=false;render()}}},250);
  async function begin(){
   if(busy||destroyed||playStyle!=="face-to-face")return;
   busy=true;error="";render();
@@ -170,16 +210,19 @@ export function mountZoroark({host,gateway,onBack}){
     }
     roundNo++;history=[...history,value.pair.id].slice(-6);recentSave(history);
    questionHands=Array.from({length:count},()=>Array.from({length:5},drawQuestion));questionUsed=[];cardPlayer=-1;cardCooldownUntil=0;cardAnnouncement=null;cardAnnouncementUntil=0;cardWasRunning=false;
+    medalTotals=Array(count).fill(0);medalUsed=Array(count).fill(0);medalActor=-1;medalTarget=-1;medalWasRunning=false;midpointFired=false;midpointNotice=null;midpointUntil=0;talkElapsedMs=0;talkResumeAt=0;
     phase="pass";player=0;visible=false;remaining=duration;running=false;talkRound=1;topic=(topic+1)%topics.length;vote=0;voteCounts=Array(count).fill(0);voteFinalists=null;voteRound=1;voteDecision=null;reveal=false;
   }catch(e){if(!destroyed){error=e instanceof Error?e.message:"お題を取得できませんでした";phase="setup"}}
   finally{busy=false;render()}
  }
- function reset(){questionHands=[];questionUsed=[];cardPlayer=-1;cardCooldownUntil=0;cardAnnouncement=null;cardAnnouncementUntil=0;cardWasRunning=false;phase="setup";round=null;mimikyuIndex=-1;player=0;visible=false;running=false;vote=0;voteCounts=[];voteFinalists=null;voteRound=1;voteDecision=null;reveal=false;error="";render()}
+ function reset(){medalTotals=[];medalUsed=[];medalActor=-1;medalTarget=-1;medalWasRunning=false;midpointFired=false;midpointNotice=null;midpointUntil=0;talkElapsedMs=0;talkResumeAt=0;questionHands=[];questionUsed=[];cardPlayer=-1;cardCooldownUntil=0;cardAnnouncement=null;cardAnnouncementUntil=0;cardWasRunning=false;phase="setup";round=null;mimikyuIndex=-1;player=0;visible=false;running=false;vote=0;voteCounts=[];voteFinalists=null;voteRound=1;voteDecision=null;reveal=false;error="";render()}
  function chooseMode(){if(busy)return;phase="mode-select";gameMode=null;round=null;mimikyuIndex=-1;running=false;visible=false;error="";render()}
  function chooseStyle(){if(busy)return;phase="play-style";playStyle=null;gameMode=null;round=null;mimikyuIndex=-1;running=false;visible=false;error="";render()}
  function act(name){
   if(destroyed)return;
   if(name==="closeQuestionOverlay"){if(phase==="talk"&&cardAnnouncement){cardAnnouncement=null;cardAnnouncementUntil=0;render()}return}
+  if(name==="closeMidpoint"){if(phase==="talk"&&midpointNotice){midpointNotice=null;midpointUntil=0;render()}return}
+  if(phase==="talk"&&midpointNotice&&Date.now()<midpointUntil)return;
   if(phase==="talk"&&cardAnnouncement&&Date.now()<cardAnnouncementUntil)return;
   if(name==="back"){destroy();onBack();return}
   if(name==="face-to-face"||name==="remote"){playStyle=name;phase="mode-select";render();return}
@@ -191,10 +234,35 @@ export function mountZoroark({host,gateway,onBack}){
   if(name==="start"){void begin();return}
   if(name==="show"){visible=true;render();return}
   if(name==="next"){visible=false;if(player+1===round.count){phase="talk"}else player++;render();return}
-  if(name==="cardChoose"){
+  if(name==="medalChoose"){
+    if(phase!=="talk")return;
+    medalWasRunning=Boolean(running);
+    if(running){remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));pauseTalk()}
+    phase="medal-owner";medalActor=-1;medalTarget=-1;render();return;
+   }
+   if(name.startsWith("medalActor:")&&phase==="medal-owner"){
+    const i=Number(name.slice("medalActor:".length));
+    if(Number.isInteger(i)&&i>=0&&i<count){medalActor=i;phase="medal-handoff";render()}return;
+   }
+   if(name==="medalOpen"&&phase==="medal-handoff"&&medalActor>=0){phase="medal-private";render();return}
+   if(name.startsWith("medalTarget:")&&phase==="medal-private"&&medalActor>=0&&medalUsed[medalActor]<3){
+    const i=Number(name.slice("medalTarget:".length));
+    if(Number.isInteger(i)&&i>=0&&i<count&&i!==medalActor){medalTarget=i;phase="medal-confirm";render()}return;
+   }
+   if(name==="medalCancel"&&phase==="medal-confirm"){medalTarget=-1;phase="medal-private";render();return}
+   if(name==="medalCommit"&&phase==="medal-confirm"&&medalActor>=0&&medalTarget>=0&&medalActor!==medalTarget&&medalUsed[medalActor]<3){
+    medalUsed[medalActor]++;medalTotals[medalTarget]++;medalTarget=-1;phase="medal-done";render();return;
+   }
+   if(name==="medalClose"&&phase.startsWith("medal-")&&phase!=="medal-summary"){
+    if(medalWasRunning)resumeTalk();
+    medalWasRunning=false;medalActor=-1;medalTarget=-1;phase="talk";render();return;
+   }
+   if(name==="medalResults"&&phase==="results"&&reveal){phase="medal-summary";render();return}
+   if(name==="backResults"&&phase==="medal-summary"){phase="results";render();return}
+   if(name==="cardChoose"){
     if(phase!=="talk"||Date.now()<cardCooldownUntil)return;
     cardWasRunning=Boolean(running);
-    if(running){remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));running=false}
+    if(running){remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));pauseTalk()}
     phase="card-owner";render();return;
    }
    if(name.startsWith("cardOwner:")){
@@ -216,11 +284,11 @@ export function mountZoroark({host,gateway,onBack}){
     closeCards();return;
    }
    if(name==="cardClose"&&(phase==="card-owner"||phase==="card-handoff"||phase==="card-private")){closeCards();return}
-   if(name==="timer"){if(duration===0)return;if(running){remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));running=false}else if(remaining>0){deadline=Date.now()+remaining*1000;running=true}render();return}
+   if(name==="timer"){if(duration===0)return;if(running){remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));pauseTalk()}else if(remaining>0){resumeTalk()}render();return}
   if(name==="extend"){if(!duration)return;remaining+=30;if(running)deadline+=30000;render();return}
   if(name==="topic"){topic=(topic+1)%topics.length;render();return}
   if(name==="talkRound"){talkRound=talkRound===1?2:1;render();return}
-  if(name==="vote"){running=false;phase="vote";vote=0;voteCounts=Array(count).fill(0);voteFinalists=null;voteRound=1;voteDecision=null;render();return}
+  if(name==="vote"){pauseTalk();phase="vote";vote=0;voteCounts=Array(count).fill(0);voteFinalists=null;voteRound=1;voteDecision=null;render();return}
   if(name.startsWith("addVote:")||name.startsWith("subtractVote:")){
    if(phase!=="vote")return;
    const index=Number(name.split(":")[1]);
@@ -247,11 +315,14 @@ export function mountZoroark({host,gateway,onBack}){
   if(name==="reveal"){reveal=true;render();return}
   if(name==="reset"){reset()}
  }
+ let swipeStart=null;
+ const onTouchStart=event=>{if((phase==="results"&&reveal)||phase==="medal-summary"){const t=event.touches?.[0];if(t)swipeStart={x:t.clientX,y:t.clientY}}};
+ const onTouchEnd=event=>{if(!swipeStart)return;const t=event.changedTouches?.[0],start=swipeStart;swipeStart=null;if(!t)return;const dx=t.clientX-start.x,dy=t.clientY-start.y;if(Math.abs(dx)<70||Math.abs(dy)>85)return;if(phase==="results"&&reveal&&dx<0){phase="medal-summary";render()}else if(phase==="medal-summary"&&dx>0){phase="results";render()}};
  const click=event=>{const b=event.target.closest("[data-act]");if(b&&host.contains(b)&&!b.disabled)act(b.dataset.act)};
  const change=event=>{if(event.target.id==="zg-level")level=event.target.value;if(event.target.id==="zg-mode")mode=event.target.value;if(event.target.id==="zg-duration"){duration=Number(event.target.value);remaining=duration}if(event.target.id==="zg-mimikyu")enableMimikyu=Boolean(event.target.checked)};
- const hidden=()=>{if(document.hidden&&phase==="pass"&&visible){visible=false;render()}if(document.hidden&&phase==="card-private"){phase="card-handoff";render()}};
- host.addEventListener("click",click);host.addEventListener("change",change);document.addEventListener("visibilitychange",hidden);
- function destroy(){if(destroyed)return;destroyed=true;clearInterval(timer);host.removeEventListener("click",click);host.removeEventListener("change",change);document.removeEventListener("visibilitychange",hidden)}
+ const hidden=()=>{if(document.hidden&&phase==="pass"&&visible){visible=false;render()}if(document.hidden&&phase==="card-private"){phase="card-handoff";render()}if(document.hidden&&(phase==="medal-private"||phase==="medal-confirm")){medalTarget=-1;phase="medal-handoff";render()}};
+ host.addEventListener("click",click);host.addEventListener("touchstart",onTouchStart);host.addEventListener("touchend",onTouchEnd);host.addEventListener("change",change);document.addEventListener("visibilitychange",hidden);
+ function destroy(){if(destroyed)return;destroyed=true;clearInterval(timer);host.removeEventListener("click",click);host.removeEventListener("touchstart",onTouchStart);host.removeEventListener("touchend",onTouchEnd);host.removeEventListener("change",change);document.removeEventListener("visibilitychange",hidden)}
  render();
  return destroy;
 }
