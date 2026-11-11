@@ -64,7 +64,7 @@ export default function ZoroarkRoomCreatePage() {
   if (!user) return <main className="mx-auto max-w-lg p-6">
     <h1 className="text-2xl font-black">🦊 ゾロアーク ルーム作成</h1>
     <p className="mt-4">ゲームマスターはCA Cloverへのログインが必要です。</p>
-    <Link className="mt-5 inline-block rounded-xl bg-lime-400 px-5 py-3 font-bold" href="/login">ログインへ</Link>
+    <Link className="mt-5 inline-block rounded-xl bg-lime-400 px-5 py-3 font-bold" href="/login?next=%2Fzoroark%2Frooms">ログインへ</Link>
   </main>;
   if (!authorized) return <main className="mx-auto max-w-lg p-6">
     <h1 className="text-2xl font-black">🔒 CA限定機能</h1>
