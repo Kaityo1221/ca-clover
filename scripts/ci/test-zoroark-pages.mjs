@@ -38,7 +38,7 @@ assert.ok(moduleSource.includes('i!==value.wolf'),"Mimikyu never receives the wo
 assert.ok(moduleSource.includes('crypto.getRandomValues'),"additional role uses secure random source");
 assert.ok(moduleSource.includes('if(name==="chooseMode")'),"player can return to mode chooser");
 assert.ok(moduleSource.includes('typeof gateway.newRound!=="function"'),"GM is required in both modes");
-assert.ok(index.includes('20261111-caption1'),"question overlay fix avoids old module caches");
+assert.ok(index.includes('20261111-medals1'),"question overlay fix avoids old module caches");
 assert.ok(moduleSource.includes('phase==="card-private"'),"private question screen is present");
 assert.ok(moduleSource.includes('phase==="card-handoff"'),"private handoff mask is present");
 assert.ok(moduleSource.includes('questionHands=Array.from({length:count},()=>Array.from({length:5},drawQuestion))'),"each player gets five cards");
