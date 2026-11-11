@@ -203,6 +203,64 @@ await new Promise(resolve=>setImmediate(resolve));
 tap("show");
 assert.ok(!fakeHost.innerHTML.includes("あなたの役職"),"simple mode still hides role identity");
 teardown();
+
+/* Suspicion medal integration: one-device handoff, irreversibility, midpoint, and final tally. */
+const teardownMedals=m.mountZoroark({host:fakeHost,gateway,onBack(){}});
+tap("face-to-face");tap("manual");tap("start");
+await new Promise(resolve=>setImmediate(resolve));
+for(let i=0;i<6;i++){tap("show");tap("next")}
+assert.ok(fakeHost.innerHTML.includes("疑惑メダルを投げる"),"suspicion medal button is available in talk");
+tap("medalChoose");
+assert.ok(fakeHost.innerHTML.includes("誰が投げる？"),"public screen selects private medal player");
+assert.ok(!fakeHost.innerHTML.includes("残り 3 / 3枚"),"public screen does not show an individual's remaining medals");
+tap("medalActor:0");
+assert.ok(fakeHost.innerHTML.includes("本人だけが開いてね"),"medal target remains hidden at handoff");
+tap("medalOpen");
+assert.ok(fakeHost.innerHTML.includes("残り 3 / 3枚"),"private screen shows own three medals");
+assert.ok(!fakeHost.innerHTML.includes('data-act="medalTarget:0"'),"player cannot select themselves");
+tap("medalTarget:2");
+assert.ok(fakeHost.innerHTML.includes("取消・変更できません"),"commit requires irreversible confirmation");
+tap("medalCancel");
+assert.ok(fakeHost.innerHTML.includes("残り 3 / 3枚"),"cancel does not spend a medal");
+for(let i=0;i<3;i++){
+ tap("medalTarget:2");tap("medalCommit");
+ assert.ok(fakeHost.innerHTML.includes("投票先は非公開"),"public handoff does not disclose medal recipient");
+ tap("medalClose");
+ if(i<2){tap("medalChoose");tap("medalActor:0");tap("medalOpen")}
+}
+tap("medalChoose");tap("medalActor:0");tap("medalOpen");
+assert.ok(fakeHost.innerHTML.includes("残り 0 / 3枚"),"all three medals are consumed");
+assert.ok(!fakeHost.innerHTML.includes('data-act="medalTarget:2"'),"a fourth medal cannot be selected");
+tap("medalTarget:2");
+assert.ok(!fakeHost.innerHTML.includes("最終確認"),"direct click cannot bypass the three-medal limit");
+globalThis.document.hidden=true;
+documentHandlers.visibilitychange();
+globalThis.document.hidden=false;
+tap("medalClose");
+assert.ok(!fakeHost.innerHTML.includes("3枚</strong>"),"public talk does not show medal totals");
+tap("timer");
+clockNow+=90200;intervalTick();
+assert.ok(fakeHost.innerHTML.includes("疑惑速報！"),"midpoint bulletin appears at half the configured talk duration");
+assert.ok(fakeHost.innerHTML.includes("最も疑われているのは 3番"),"bulletin announces only the suspected leader");
+assert.ok(!fakeHost.innerHTML.includes("3枚"),"midpoint does not reveal aggregate medal counts");
+tap("closeMidpoint");
+assert.ok(!fakeHost.innerHTML.includes("疑惑速報！"),"midpoint can be dismissed");
+tap("vote");
+for(let i=0;i<6;i++)tap("addVote:1");
+tap("judgeVotes");tap("reveal");
+assert.ok(fakeHost.innerHTML.includes("村人側の勝利！"),"medal tally cannot alter win conditions");
+tap("medalResults");
+assert.ok(fakeHost.innerHTML.includes("疑惑メダル集計"),"postgame aggregate tally is available");
+assert.ok(fakeHost.innerHTML.includes("3枚"),"postgame aggregate publishes counted medal total");
+assert.ok(fakeHost.innerHTML.includes("zg-medal-stack"),"metallic falling medal stack is rendered");
+assert.ok(fakeHost.innerHTML.includes("zg-wolf"),"Zoroark is highlighted in final medal table");
+handlers.touchstart({touches:[{clientX:35,clientY:150}]});
+handlers.touchend({changedTouches:[{clientX:165,clientY:150}]});
+assert.ok(fakeHost.innerHTML.includes("正体発表！"),"swipe right returns to first result page");
+handlers.touchstart({touches:[{clientX:165,clientY:150}]});
+handlers.touchend({changedTouches:[{clientX:35,clientY:150}]});
+assert.ok(fakeHost.innerHTML.includes("疑惑メダル集計"),"swipe left advances to medal result page");
+teardownMedals();
 Date.now=realNow;
 for(const key of Object.keys(originalGlobals)){
  if(originalGlobals[key]===undefined)delete globalThis[key];else globalThis[key]=originalGlobals[key];
