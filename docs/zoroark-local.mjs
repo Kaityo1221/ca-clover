@@ -109,7 +109,7 @@ export function mountZoroark({host,gateway,onBack}){
    return '';
  }
  function closeCards(){
-   if(cardWasRunning&&duration>0&&remaining>0){running=true;deadline=Date.now()+remaining*1000}
+   if(cardWasRunning)resumeTalk()
    cardWasRunning=false;cardPlayer=-1;phase="talk";render();
  }
 
@@ -185,7 +185,15 @@ export function mountZoroark({host,gateway,onBack}){
  function render(){if(destroyed)return;host.innerHTML=panel();const set=(id,v)=>{const e=host.querySelector(id);if(e)e.value=String(v)};if(phase==="setup"){set("#zg-level",level);set("#zg-mode",mode);set("#zg-duration",duration)}}
  const timer=window.setInterval(()=>{if(!destroyed&&phase==="talk"&&cardAnnouncement&&Date.now()>=cardAnnouncementUntil){cardAnnouncement=null;render()}
    if(!destroyed&&phase==="talk"&&cardCooldownUntil&&Date.now()>=cardCooldownUntil){cardCooldownUntil=0;render()}
-   if(!destroyed&&phase==="talk"&&running&&duration){remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));const el=host.querySelector("[data-clock]");if(el)el.textContent=fmt(remaining);if(!remaining){running=false;render()}}},250);
+   if(!destroyed&&phase==="talk"&&midpointNotice&&Date.now()>=midpointUntil){midpointNotice=null;render()}
+   if(!destroyed&&phase==="talk"&&running&&duration){
+    tickTalk();
+    if(!midpointFired&&talkElapsedMs>=duration*500&&!cardAnnouncement){
+      midpointFired=true;const leaders=suspicionLeaders(medalTotals);
+      midpointNotice=leaders.length?'最も疑われているのは '+leaders.map(i=>(i+1)+'番').join('・')+'！':'まだ疑惑メダルは投げられていません';
+      midpointUntil=Date.now()+8000;render();
+    }
+    remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));const el=host.querySelector("[data-clock]");if(el)el.textContent=fmt(remaining);if(!remaining){running=false;render()}}},250);
  async function begin(){
   if(busy||destroyed||playStyle!=="face-to-face")return;
   busy=true;error="";render();
@@ -202,16 +210,19 @@ export function mountZoroark({host,gateway,onBack}){
     }
     roundNo++;history=[...history,value.pair.id].slice(-6);recentSave(history);
    questionHands=Array.from({length:count},()=>Array.from({length:5},drawQuestion));questionUsed=[];cardPlayer=-1;cardCooldownUntil=0;cardAnnouncement=null;cardAnnouncementUntil=0;cardWasRunning=false;
+    medalTotals=Array(count).fill(0);medalUsed=Array(count).fill(0);medalActor=-1;medalTarget=-1;medalWasRunning=false;midpointFired=false;midpointNotice=null;midpointUntil=0;talkElapsedMs=0;talkResumeAt=0;
     phase="pass";player=0;visible=false;remaining=duration;running=false;talkRound=1;topic=(topic+1)%topics.length;vote=0;voteCounts=Array(count).fill(0);voteFinalists=null;voteRound=1;voteDecision=null;reveal=false;
   }catch(e){if(!destroyed){error=e instanceof Error?e.message:"お題を取得できませんでした";phase="setup"}}
   finally{busy=false;render()}
  }
- function reset(){questionHands=[];questionUsed=[];cardPlayer=-1;cardCooldownUntil=0;cardAnnouncement=null;cardAnnouncementUntil=0;cardWasRunning=false;phase="setup";round=null;mimikyuIndex=-1;player=0;visible=false;running=false;vote=0;voteCounts=[];voteFinalists=null;voteRound=1;voteDecision=null;reveal=false;error="";render()}
+ function reset(){medalTotals=[];medalUsed=[];medalActor=-1;medalTarget=-1;medalWasRunning=false;midpointFired=false;midpointNotice=null;midpointUntil=0;talkElapsedMs=0;talkResumeAt=0;questionHands=[];questionUsed=[];cardPlayer=-1;cardCooldownUntil=0;cardAnnouncement=null;cardAnnouncementUntil=0;cardWasRunning=false;phase="setup";round=null;mimikyuIndex=-1;player=0;visible=false;running=false;vote=0;voteCounts=[];voteFinalists=null;voteRound=1;voteDecision=null;reveal=false;error="";render()}
  function chooseMode(){if(busy)return;phase="mode-select";gameMode=null;round=null;mimikyuIndex=-1;running=false;visible=false;error="";render()}
  function chooseStyle(){if(busy)return;phase="play-style";playStyle=null;gameMode=null;round=null;mimikyuIndex=-1;running=false;visible=false;error="";render()}
  function act(name){
   if(destroyed)return;
   if(name==="closeQuestionOverlay"){if(phase==="talk"&&cardAnnouncement){cardAnnouncement=null;cardAnnouncementUntil=0;render()}return}
+  if(name==="closeMidpoint"){if(phase==="talk"&&midpointNotice){midpointNotice=null;midpointUntil=0;render()}return}
+  if(phase==="talk"&&midpointNotice&&Date.now()<midpointUntil)return;
   if(phase==="talk"&&cardAnnouncement&&Date.now()<cardAnnouncementUntil)return;
   if(name==="back"){destroy();onBack();return}
   if(name==="face-to-face"||name==="remote"){playStyle=name;phase="mode-select";render();return}
@@ -223,10 +234,35 @@ export function mountZoroark({host,gateway,onBack}){
   if(name==="start"){void begin();return}
   if(name==="show"){visible=true;render();return}
   if(name==="next"){visible=false;if(player+1===round.count){phase="talk"}else player++;render();return}
-  if(name==="cardChoose"){
+  if(name==="medalChoose"){
+    if(phase!=="talk")return;
+    medalWasRunning=Boolean(running);
+    if(running){remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));pauseTalk()}
+    phase="medal-owner";medalActor=-1;medalTarget=-1;render();return;
+   }
+   if(name.startsWith("medalActor:")&&phase==="medal-owner"){
+    const i=Number(name.slice("medalActor:".length));
+    if(Number.isInteger(i)&&i>=0&&i<count){medalActor=i;phase="medal-handoff";render()}return;
+   }
+   if(name==="medalOpen"&&phase==="medal-handoff"&&medalActor>=0){phase="medal-private";render();return}
+   if(name.startsWith("medalTarget:")&&phase==="medal-private"&&medalActor>=0&&medalUsed[medalActor]<3){
+    const i=Number(name.slice("medalTarget:".length));
+    if(Number.isInteger(i)&&i>=0&&i<count&&i!==medalActor){medalTarget=i;phase="medal-confirm";render()}return;
+   }
+   if(name==="medalCancel"&&phase==="medal-confirm"){medalTarget=-1;phase="medal-private";render();return}
+   if(name==="medalCommit"&&phase==="medal-confirm"&&medalActor>=0&&medalTarget>=0&&medalActor!==medalTarget&&medalUsed[medalActor]<3){
+    medalUsed[medalActor]++;medalTotals[medalTarget]++;medalTarget=-1;phase="medal-done";render();return;
+   }
+   if(name==="medalClose"&&phase.startsWith("medal-")&&phase!=="medal-summary"){
+    if(medalWasRunning)resumeTalk();
+    medalWasRunning=false;medalActor=-1;medalTarget=-1;phase="talk";render();return;
+   }
+   if(name==="medalResults"&&phase==="results"&&reveal){phase="medal-summary";render();return}
+   if(name==="backResults"&&phase==="medal-summary"){phase="results";render();return}
+   if(name==="cardChoose"){
     if(phase!=="talk"||Date.now()<cardCooldownUntil)return;
     cardWasRunning=Boolean(running);
-    if(running){remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));running=false}
+    if(running){remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));pauseTalk()}
     phase="card-owner";render();return;
    }
    if(name.startsWith("cardOwner:")){
@@ -248,11 +284,11 @@ export function mountZoroark({host,gateway,onBack}){
     closeCards();return;
    }
    if(name==="cardClose"&&(phase==="card-owner"||phase==="card-handoff"||phase==="card-private")){closeCards();return}
-   if(name==="timer"){if(duration===0)return;if(running){remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));running=false}else if(remaining>0){deadline=Date.now()+remaining*1000;running=true}render();return}
+   if(name==="timer"){if(duration===0)return;if(running){remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));pauseTalk()}else if(remaining>0){resumeTalk()}render();return}
   if(name==="extend"){if(!duration)return;remaining+=30;if(running)deadline+=30000;render();return}
   if(name==="topic"){topic=(topic+1)%topics.length;render();return}
   if(name==="talkRound"){talkRound=talkRound===1?2:1;render();return}
-  if(name==="vote"){running=false;phase="vote";vote=0;voteCounts=Array(count).fill(0);voteFinalists=null;voteRound=1;voteDecision=null;render();return}
+  if(name==="vote"){pauseTalk();phase="vote";vote=0;voteCounts=Array(count).fill(0);voteFinalists=null;voteRound=1;voteDecision=null;render();return}
   if(name.startsWith("addVote:")||name.startsWith("subtractVote:")){
    if(phase!=="vote")return;
    const index=Number(name.split(":")[1]);
@@ -281,7 +317,7 @@ export function mountZoroark({host,gateway,onBack}){
  }
  const click=event=>{const b=event.target.closest("[data-act]");if(b&&host.contains(b)&&!b.disabled)act(b.dataset.act)};
  const change=event=>{if(event.target.id==="zg-level")level=event.target.value;if(event.target.id==="zg-mode")mode=event.target.value;if(event.target.id==="zg-duration"){duration=Number(event.target.value);remaining=duration}if(event.target.id==="zg-mimikyu")enableMimikyu=Boolean(event.target.checked)};
- const hidden=()=>{if(document.hidden&&phase==="pass"&&visible){visible=false;render()}if(document.hidden&&phase==="card-private"){phase="card-handoff";render()}};
+ const hidden=()=>{if(document.hidden&&phase==="pass"&&visible){visible=false;render()}if(document.hidden&&phase==="card-private"){phase="card-handoff";render()}if(document.hidden&&(phase==="medal-private"||phase==="medal-confirm")){medalTarget=-1;phase="medal-handoff";render()}};
  host.addEventListener("click",click);host.addEventListener("change",change);document.addEventListener("visibilitychange",hidden);
  function destroy(){if(destroyed)return;destroyed=true;clearInterval(timer);host.removeEventListener("click",click);host.removeEventListener("change",change);document.removeEventListener("visibilitychange",hidden)}
  render();
