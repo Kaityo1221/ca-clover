@@ -147,7 +147,7 @@ tap("cardOwner:0");
 assert.ok(fakeHost.innerHTML.includes("本人だけが開いてね"),"hand is hidden before opening");
 assert.ok(!fakeHost.innerHTML.includes("zg-question-choice"),"no private card displayed on handoff");
 tap("cardOpen");
-assert.equal((fakeHost.innerHTML.match(/data-act="cardUse:\\d+"/g)||[]).length,5,"private hand shows five cards");
+assert.equal((fakeHost.innerHTML.match(/data-act="cardUse:\d+"/g)||[]).length,5,"private hand shows five cards");
 tap("cardUse:0");
 assert.ok(fakeHost.innerHTML.includes("トークタイム！"),"used card becomes a public announcement");
 assert.ok(fakeHost.innerHTML.includes("プレイヤー1番"),"announced question identifies its owner");
@@ -160,7 +160,7 @@ assert.ok(!fakeHost.innerHTML.includes("zg-question-banner\" role=\"status\""),"
 clockNow+=7501;intervalTick();
 assert.ok(fakeHost.innerHTML.includes("質問カードを使う"),"card button unlocks after ten seconds without other input");
 tap("cardChoose");tap("cardOwner:0");tap("cardOpen");
-assert.equal((fakeHost.innerHTML.match(/data-act="cardUse:\\d+"/g)||[]).length,5,"a replacement card maintains five-card hand");
+assert.equal((fakeHost.innerHTML.match(/data-act="cardUse:\d+"/g)||[]).length,5,"a replacement card maintains five-card hand");
 globalThis.document.hidden=true;
 documentHandlers.visibilitychange();
 assert.ok(fakeHost.innerHTML.includes("本人だけが開いてね"),"backgrounding the app re-locks the private hand");
