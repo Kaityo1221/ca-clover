@@ -27,10 +27,12 @@ function ensureStyle(){
  if(document.getElementById(STYLE_ID))return;
  const style=document.createElement("style");style.id=STYLE_ID;
  style.textContent=`
-.community-hub-layout{position:relative}
-.community-hub-layout>.community-minigames-btn{position:absolute;right:0;top:-10px;z-index:4;min-width:132px;height:46px;border:1px solid #fdba74;border-radius:18px;background:linear-gradient(145deg,#fff7ed,#ffedd5);box-shadow:0 6px 16px rgba(194,65,12,.12);color:#9a3412;font-weight:950;font-size:12px;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;white-space:nowrap}
-.community-hub-layout>.community-minigames-btn:active{transform:translateY(1px)}
-.community-minigames-btn .game-icon{font-size:18px;line-height:1}
+.ca-minigames-title-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
+.ca-minigames-title-row .my-welcome-title{flex:1;min-width:0;margin-top:0!important;font-size:clamp(18px,4.5vw,34px)}
+.ca-minigames-top-btn{display:inline-flex;flex:0 0 auto;align-items:center;gap:7px;padding:12px 14px;border:1px solid #fdba74;border-radius:18px;background:linear-gradient(145deg,#fff7ed,#ffedd5);box-shadow:0 6px 16px rgba(194,65,12,.12);color:#9a3412;font-weight:950;font-size:13px;text-align:center;white-space:nowrap;cursor:pointer}
+.ca-minigames-top-btn:active{transform:translateY(1px)}
+.ca-minigames-top-btn .game-icon{font-size:20px;line-height:1}
+.ca-minigames-top-btn .game-arrow{margin-left:2px}
 .ca-minigames-view{max-width:920px;margin:0 auto}
 .ca-minigames-head{display:flex;align-items:flex-start;gap:12px}
 .ca-minigames-back{border:0;background:#f7fee7;color:#4d7c0f;border-radius:999px;padding:10px 14px;font-weight:950}
@@ -51,7 +53,7 @@ function ensureStyle(){
 .ca-minigames-item-desc{margin-top:4px;color:#64748b;font-size:11px;font-weight:800;line-height:1.5}
 .ca-minigames-soon{display:inline-flex;margin-top:7px;border-radius:999px;background:#f1f5f9;color:#64748b;padding:4px 8px;font-size:9px;font-weight:950}
 @media(max-width:760px){.ca-minigames-entry-grid,.ca-minigames-list{grid-template-columns:1fr}.ca-minigames-entry{padding:18px}}
-@media(max-width:480px){.community-hub-layout>.community-minigames-btn{top:-12px;min-width:124px;height:42px;padding:0 10px}.community-hub-layout>.community-minigames-btn+div .community-hero-row>div:last-child{min-width:0}.community-hub-layout>.community-minigames-btn+div .community-hero-row h1{font-size:22px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ca-minigames-head{display:block}.ca-minigames-back{margin-bottom:14px}}
+@media(max-width:480px){.ca-minigames-title-row{gap:7px}.ca-minigames-title-row .my-welcome-title{font-size:clamp(16px,4.5vw,23px)}.ca-minigames-top-btn{flex-direction:column;justify-content:center;width:78px;min-height:58px;gap:3px;padding:7px 4px;font-size:11px}.ca-minigames-top-btn .game-arrow{display:none}.ca-minigames-head{display:block}.ca-minigames-back{margin-bottom:14px}}
 `;
  document.head.appendChild(style);
 }
@@ -62,13 +64,13 @@ function renderList(kind){
  const games=kind==="games",items=games?GAME_ITEMS:TOOL_ITEMS;
  const app=document.getElementById("app");if(!app)return;
  app.innerHTML='<div class="ca-minigames-view"><section class="card hero"><div class="ca-minigames-head"><button type="button" class="ca-minigames-back">← ミニゲーム集</button><div><span class="pill">'+(games?'GAME LIST':'TOOLS')+'</span><h1 style="margin-top:10px">'+(games?'🎮 ミニゲーム一覧':'🧰 ツール')+'</h1><p class="ca-minigames-lead">'+(games?'すぐ使えるゲームの候補です。':'ゲームづくりに使える道具の候補です。')+'</p></div></div></section><div class="ca-minigames-list">'+(games?'<button type="button" class="ca-minigames-item" data-open-zoroark style="border:2px solid #84cc16;background:linear-gradient(135deg,#f7fee7,#fff);cursor:pointer"><span class="ca-minigames-item-icon">🦊</span><span><span class="ca-minigames-item-title">ゾロアークを探せ！</span><span class="ca-minigames-item-desc">CA専用GM・42組のお題・現地プレイ</span><span class="ca-minigames-soon" style="background:#d9f99d;color:#365314">ゲームを開始</span></span></button>':'')+items.map(itemHtml).join("")+'</div></div>';
- app.querySelector(".ca-minigames-back").onclick=function(){renderHub()};
- if(games){const game=app.querySelector("[data-open-zoroark]");if(game)game.onclick=function(){location.hash="mini-games"}};
+ app.querySelector(".ca-minigames-back").onclick=function(){setMiniHistory("hub",true);renderHub()};
+ if(games){const game=app.querySelector("[data-open-zoroark]");if(game)game.onclick=function(){history.replaceState(null,"",miniUrl(null));location.hash="mini-games"}};
  window.scrollTo({top:0,behavior:"auto"});
 }
 function renderHub(){
  const app=document.getElementById("app");if(!app)return;
- app.innerHTML='<div class="ca-minigames-view"><section class="card hero"><button type="button" class="ca-minigames-back">← Communityへ戻る</button><span class="pill" style="margin-left:8px">MINI GAMES</span><h1 style="margin-top:14px">🎮 ミニゲーム集</h1><p class="ca-minigames-lead">Meetupを、ちょっと楽しく。</p></section><div class="ca-minigames-entry-grid"><button type="button" class="ca-minigames-entry orange" data-kind="games"><div class="ca-minigames-entry-icon">🎮</div><h2>ミニゲーム一覧</h2><p>すぐ使えるゲームから選ぶ　›</p></button><button type="button" class="ca-minigames-entry green" data-kind="tools"><div class="ca-minigames-entry-icon">🧰</div><h2>ツール</h2><p>ゲームづくりに使える道具　›</p></button></div></div>';
+ app.innerHTML='<div class="ca-minigames-view"><section class="card hero"><button type="button" class="ca-minigames-back">← My Communityへ戻る</button><span class="pill" style="margin-left:8px">MINI GAMES</span><h1 style="margin-top:14px">🎮 ミニゲーム集</h1><p class="ca-minigames-lead">Meetupを、ちょっと楽しく。</p></section><div class="ca-minigames-entry-grid"><button type="button" class="ca-minigames-entry orange" data-kind="games"><div class="ca-minigames-entry-icon">🎮</div><h2>ミニゲーム一覧</h2><p>すぐ使えるゲームから選ぶ　›</p></button><button type="button" class="ca-minigames-entry green" data-kind="tools"><div class="ca-minigames-entry-icon">🧰</div><h2>ツール</h2><p>ゲームづくりに使える道具　›</p></button></div></div>';
  app.querySelector('[data-kind="games"]').onclick=function(){setMiniHistory("games",true);renderList("games")};
  app.querySelector('[data-kind="tools"]').onclick=function(){setMiniHistory("tools",true);renderList("tools")};
  app.querySelector(".ca-minigames-back").onclick=function(){history.back()};
@@ -85,26 +87,44 @@ function setMiniHistory(view,replace){
  else history.pushState(state,"",miniUrl(view));
 }
 function install(){
- if((location.hash||"").indexOf("#community:")!==0)return;
- const hub=document.querySelector(".community-hub-layout");
- if(!hub||hub.querySelector(".community-minigames-btn"))return;
- ensureStyle();
- const button=document.createElement("button");button.type="button";button.className="community-minigames-btn";button.setAttribute("aria-label","ミニゲーム集");
- button.innerHTML='<span class="game-icon">🎮</span><span>ミニゲーム集</span><span aria-hidden="true">›</span>';
- button.addEventListener("click",function(){setMiniHistory("hub",false);renderHub()});
- hub.insertBefore(button,hub.firstChild);
+  // The home hero owns the CA-only navigation; pending/guest views
+  // have no sendaiMapHost. Never place this entry on Community details.
+  if((location.hash||"#my")!=="#my"||new URL(location.href).searchParams.has("caMini"))return;
+  const app=document.getElementById("app");
+  const hero=app?.querySelector(":scope > section.card.hero");
+  if(!hero||!app.querySelector("#sendaiMapHost")||hero.querySelector(".ca-minigames-top-btn"))return;
+  const title=hero.querySelector("h1.my-welcome-title");
+  if(!title)return;
+  ensureStyle();
+  const titleRow=document.createElement("div");titleRow.className="ca-minigames-title-row";
+  const button=document.createElement("button");button.type="button";button.className="ca-minigames-top-btn";button.setAttribute("aria-label","ミニゲーム集");
+  button.innerHTML='<span class="game-icon">🎮</span><span>ミニゲーム集</span><span class="game-arrow" aria-hidden="true">›</span>';
+  button.addEventListener("click",function(){setMiniHistory("hub",false);renderHub()});
+  title.parentNode.insertBefore(titleRow,title);
+  titleRow.appendChild(title);
+  titleRow.appendChild(button);
 }
 ensureStyle();
 let timer=0;function schedule(){clearTimeout(timer);timer=setTimeout(install,80)}
 new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
 window.addEventListener("hashchange",schedule);
 window.addEventListener("popstate",function(){
- if((location.hash||"").indexOf("#community:")!==0)return;
- const view=new URL(location.href).searchParams.get("caMini");
- if(view==="games"){renderList("games");return}
- if(view==="tools"){renderList("tools");return}
- if(view==="hub"){renderHub();return}
- window.dispatchEvent(new HashChangeEvent("hashchange"));
+  if((location.hash||"#my")!=="#my")return;
+  const view=new URL(location.href).searchParams.get("caMini");
+  if(view==="games"){renderList("games");return}
+  if(view==="tools"){renderList("tools");return}
+  if(view==="hub"){renderHub();return}
+  window.dispatchEvent(new HashChangeEvent("hashchange"));
 });
+// The primary home nav uses the same #my hash as the overlay. Ensure
+// pressing My Community still returns home even without a hash change.
+document.addEventListener("click",function(event){
+  if((location.hash||"#my")!=="#my"||!new URL(location.href).searchParams.has("caMini"))return;
+  const target=event.target;
+  if(!(target instanceof Element)||!target.closest('#nav [data-go="my"]'))return;
+  event.stopImmediatePropagation();
+  history.replaceState(null,"",miniUrl(null));
+  window.dispatchEvent(new HashChangeEvent("hashchange"));
+},true);
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",schedule,{once:true});else schedule();
 })();
