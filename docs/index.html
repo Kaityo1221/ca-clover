@@ -702,7 +702,7 @@
       app.innerHTML='<section class="card"><h2>🦊 ゲームの準備中…</h2></section>';
       const host=app;
       try{
-        const module=await import("./zoroark-local.mjs?v=20261029-pages1");
+        const module=await import("./zoroark-local.mjs?v=20261111-playstyle1");
         if(token!==renderToken||!host.isConnected)return;
         zoroarkLeave=module.mountZoroark({host,gateway:zoroarkGateway,onBack:function(){go("my")}});
       }catch(_err){if(token===renderToken)app.innerHTML='<section class="card"><h2>ゲームを起動できません</h2><p>画面を再読み込みしてください。</p><button class="btn section" id="gameBack">戻る</button></section>';const b=document.getElementById("gameBack");if(b)b.onclick=function(){go("my")}}
