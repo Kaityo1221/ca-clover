@@ -22,6 +22,7 @@ jobs:
         with:
           node-version: 22
       - run: npm ci --prefix scripts/ci/participant-runtime --no-audit --no-fund
-      - run: node scripts/ci/participant-runtime/node_modules/playwright/cli.js install --with-deps chromium
+      # GitHub-hosted Ubuntu runners include Chromium system libraries; avoid apt font-mirror DNS failures.
+      - run: node scripts/ci/participant-runtime/node_modules/playwright/cli.js install chromium
       - run: node scripts/ci/test-sendai-map-browser.mjs
       - run: node scripts/ci/verify-public-boundary.mjs
