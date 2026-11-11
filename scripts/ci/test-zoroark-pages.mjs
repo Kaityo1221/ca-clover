@@ -24,6 +24,15 @@ assert.ok(!moduleSource.includes("Bearer "),"no raw JWT in independent game UI")
 assert.ok(!moduleSource.includes("supabase"),"game doesn't own auth client");
 assert.ok(moduleSource.includes("gateway.newRound("),"round requests use limited bridge");
 assert.ok(moduleSource.includes('visible=false'),"handoff hides prompts");
+assert.ok(moduleSource.includes('phase="mode-select"'),"mode selection is the first game screen");
+assert.ok(moduleSource.includes('data-act="simple"'),"simple mode is selectable");
+assert.ok(moduleSource.includes('data-act="manual"'),"manual mode is selectable");
+assert.ok(moduleSource.includes('gameMode==="manual"&&enableMimikyu'),"Mimikyu is restricted to manual mode");
+assert.ok(moduleSource.includes('i!==value.wolf'),"Mimikyu never receives the wolf role");
+assert.ok(moduleSource.includes('crypto.getRandomValues'),"additional role uses secure random source");
+assert.ok(moduleSource.includes('if(name==="chooseMode")'),"player can return to mode chooser");
+assert.ok(moduleSource.includes('typeof gateway.newRound!=="function"'),"GM is required in both modes");
+assert.ok(index.includes('20261111-modes1'),"new mode-selection code avoids old module caches");
 assert.ok(moduleSource.includes('esc(round.prompts[player])'),"topic escaped before DOM");
 assert.ok(moduleSource.includes('return destroy;'),"timer and handlers cleanup");
 assert.ok(nav.includes("data-open-zoroark"),"existing game list card");
