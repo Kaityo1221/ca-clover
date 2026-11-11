@@ -27,11 +27,12 @@ function ensureStyle(){
  if(document.getElementById(STYLE_ID))return;
  const style=document.createElement("style");style.id=STYLE_ID;
  style.textContent=`
-.ca-minigames-top-entry{margin-top:16px}
-.ca-minigames-top-btn{display:flex;width:100%;align-items:center;gap:12px;padding:15px 18px;border:1px solid #fdba74;border-radius:18px;background:linear-gradient(145deg,#fff7ed,#ffedd5);box-shadow:0 6px 16px rgba(194,65,12,.12);color:#9a3412;font-weight:950;font-size:16px;text-align:left;cursor:pointer}
+.ca-minigames-title-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
+.ca-minigames-title-row .my-welcome-title{flex:1;min-width:0;margin-top:0!important;font-size:clamp(18px,4.5vw,34px)}
+.ca-minigames-top-btn{display:inline-flex;flex:0 0 auto;align-items:center;gap:7px;padding:12px 14px;border:1px solid #fdba74;border-radius:18px;background:linear-gradient(145deg,#fff7ed,#ffedd5);box-shadow:0 6px 16px rgba(194,65,12,.12);color:#9a3412;font-weight:950;font-size:13px;text-align:center;white-space:nowrap;cursor:pointer}
 .ca-minigames-top-btn:active{transform:translateY(1px)}
-.ca-minigames-top-btn .game-icon{font-size:24px;line-height:1}
-.ca-minigames-top-btn .game-arrow{margin-left:auto}
+.ca-minigames-top-btn .game-icon{font-size:20px;line-height:1}
+.ca-minigames-top-btn .game-arrow{margin-left:2px}
 .ca-minigames-view{max-width:920px;margin:0 auto}
 .ca-minigames-head{display:flex;align-items:flex-start;gap:12px}
 .ca-minigames-back{border:0;background:#f7fee7;color:#4d7c0f;border-radius:999px;padding:10px 14px;font-weight:950}
@@ -52,7 +53,7 @@ function ensureStyle(){
 .ca-minigames-item-desc{margin-top:4px;color:#64748b;font-size:11px;font-weight:800;line-height:1.5}
 .ca-minigames-soon{display:inline-flex;margin-top:7px;border-radius:999px;background:#f1f5f9;color:#64748b;padding:4px 8px;font-size:9px;font-weight:950}
 @media(max-width:760px){.ca-minigames-entry-grid,.ca-minigames-list{grid-template-columns:1fr}.ca-minigames-entry{padding:18px}}
-@media(max-width:480px){.ca-minigames-top-btn{padding:14px 15px;font-size:15px}.ca-minigames-head{display:block}.ca-minigames-back{margin-bottom:14px}}
+@media(max-width:480px){.ca-minigames-title-row{gap:7px}.ca-minigames-title-row .my-welcome-title{font-size:clamp(16px,4.5vw,23px)}.ca-minigames-top-btn{flex-direction:column;justify-content:center;width:78px;min-height:58px;gap:3px;padding:7px 4px;font-size:11px}.ca-minigames-top-btn .game-arrow{display:none}.ca-minigames-head{display:block}.ca-minigames-back{margin-bottom:14px}}
 `;
  document.head.appendChild(style);
 }
@@ -91,14 +92,17 @@ function install(){
   if((location.hash||"#my")!=="#my"||new URL(location.href).searchParams.has("caMini"))return;
   const app=document.getElementById("app");
   const hero=app?.querySelector(":scope > section.card.hero");
-  if(!hero||!app.querySelector("#sendaiMapHost")||app.querySelector(".ca-minigames-top-entry"))return;
+  if(!hero||!app.querySelector("#sendaiMapHost")||hero.querySelector(".ca-minigames-top-btn"))return;
+  const title=hero.querySelector("h1.my-welcome-title");
+  if(!title)return;
   ensureStyle();
-  const entry=document.createElement("section");entry.className="section ca-minigames-top-entry";
+  const titleRow=document.createElement("div");titleRow.className="ca-minigames-title-row";
   const button=document.createElement("button");button.type="button";button.className="ca-minigames-top-btn";button.setAttribute("aria-label","ミニゲーム集");
   button.innerHTML='<span class="game-icon">🎮</span><span>ミニゲーム集</span><span class="game-arrow" aria-hidden="true">›</span>';
   button.addEventListener("click",function(){setMiniHistory("hub",false);renderHub()});
-  entry.appendChild(button);
-  hero.insertAdjacentElement("afterend",entry);
+  title.parentNode.insertBefore(titleRow,title);
+  titleRow.appendChild(title);
+  titleRow.appendChild(button);
 }
 ensureStyle();
 let timer=0;function schedule(){clearTimeout(timer);timer=setTimeout(install,80)}
