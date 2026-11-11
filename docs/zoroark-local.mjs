@@ -78,7 +78,7 @@ export function mountZoroark({host,gateway,onBack}){
    '<div id="zg-question-title" class="zg-question-title">🍂 🎤 トークタイム！</div>'+
    '<div class="zg-question-person">プレイヤー'+(announcement.owner+1)+'番からの質問</div>'+
    '<div id="zg-question-text" class="zg-question-text">'+esc(announcement.text)+'</div>'+
-   '<div class="zg-question-note">🍃 質問カードを1枚補充！<p>約10秒間表示されます</p></div>'+
+   '<div class="zg-question-note">10秒間表示</div>'+
    action('会話に戻る',"closeQuestionOverlay",true)+'</div></div>';
  }
  function privatePrompt(){
