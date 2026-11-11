@@ -38,7 +38,18 @@ assert.ok(moduleSource.includes('i!==value.wolf'),"Mimikyu never receives the wo
 assert.ok(moduleSource.includes('crypto.getRandomValues'),"additional role uses secure random source");
 assert.ok(moduleSource.includes('if(name==="chooseMode")'),"player can return to mode chooser");
 assert.ok(moduleSource.includes('typeof gateway.newRound!=="function"'),"GM is required in both modes");
-assert.ok(index.includes('20261111-roles2'),"manual role and vote resolution module avoids old caches");
+assert.ok(index.includes('20261111-cardsmerge1'),"combined game module avoids old caches");
+assert.ok(moduleSource.includes('phase==="card-private"'),"private question screen is present");
+assert.ok(moduleSource.includes('phase==="card-handoff"'),"private handoff mask is present");
+assert.ok(moduleSource.includes('questionHands=Array.from({length:count},()=>Array.from({length:5},drawQuestion))'),"each player gets five cards");
+assert.ok(moduleSource.includes('cardCooldownUntil=Date.now()+10000'),"question card use starts ten-second cooldown");
+assert.ok(moduleSource.includes('cardAnnouncementUntil=Date.now()+2000'),"talk alert displays for two seconds");
+assert.ok(moduleSource.includes('cardAnnouncement=null;render()'),"talk alert clears automatically");
+assert.ok(moduleSource.includes('cardCooldownUntil=0;render()'),"cooldown automatically re-enables card button");
+assert.ok(moduleSource.includes('questionUsed.push('),"used questions are recorded for everyone");
+assert.ok(moduleSource.includes('if(document.hidden&&phase==="card-private")'),"private cards lock on app background");
+assert.ok(moduleSource.includes('voteFinalists=result.candidates'),"Mimikyu runoff is retained");
+assert.ok(moduleSource.includes('visible?privatePrompt()'),"manual mode role reveal is retained");
 assert.ok(moduleSource.includes('(visible?privatePrompt()'),"private roles only render after a player opens the hidden topic");
 assert.ok(moduleSource.includes('役職も本人だけに知らせます。'),"manual mode explains role disclosure");
 assert.ok(moduleSource.includes('本人には少数派だと知らせません'),"simple mode retains hidden minority role");
@@ -88,4 +99,87 @@ assert.equal(m.zoroarkRoleInfo("manual",1,0,1).name,"ミミッキュ","manual Mi
 assert.equal(m.zoroarkRoleInfo("manual",2,0,1).name,"村人","manual majority knows their role");
 assert.equal(m.zoroarkRoleInfo("manual",1,0,-1).name,"村人","manual mode without Mimikyu is valid");
 for(const index of [0,1,2])assert.ok(m.zoroarkRoleInfo("manual",index,0,1).description.length>10,"each role explains its objective");
+
+/* Minimal DOM hand-off regression: no browser network or CA secrets are used. */
+const originalGlobals={window:globalThis.window,document:globalThis.document,sessionStorage:globalThis.sessionStorage};
+const realNow=Date.now;
+let clockNow=3000000,intervalTick=()=>{};
+const handlers={},documentHandlers={};
+globalThis.window={setInterval(fn){intervalTick=fn;return 101},clearInterval(){}};
+globalThis.document={
+ hidden:false,
+ getElementById(){return {}},
+ addEventListener(k,fn){documentHandlers[k]=fn},
+ removeEventListener(k){delete documentHandlers[k]}
+};
+globalThis.sessionStorage={getItem(){return null},setItem(){}};
+Date.now=()=>clockNow;
+const fakeHost={
+ innerHTML:"",
+ addEventListener(k,fn){handlers[k]=fn},
+ removeEventListener(k){delete handlers[k]},
+ contains(){return true},
+ querySelector(selector){return selector.startsWith("#zg-")?{value:""}:null}
+};
+const fakeRound={
+ count:6,
+ wolf:1,
+ prompts:["ガーディ","ロコン","ガーディ","ガーディ","ガーディ","ガーディ"],
+ majority:"ガーディ",minority:"ロコン",
+ pair:{id:"a01",common:"犬・狐に似たポケモン",difference:"タイプと進化"}
+};
+const gateway={async newRound(){return {round:fakeRound}}};
+const teardown=m.mountZoroark({host:fakeHost,gateway,onBack(){}});
+function tap(act){
+ const node={dataset:{act},disabled:false};
+ handlers.click({target:{closest(selector){return selector==="[data-act]"?node:null}}});
+}
+tap("face-to-face");tap("manual");tap("start");
+await new Promise(resolve=>setImmediate(resolve));
+assert.ok(fakeHost.innerHTML.includes("自分のお題を確認"),"round starts with private prompts");
+for(let i=0;i<6;i++){tap("show");tap("next")}
+assert.ok(fakeHost.innerHTML.includes("会話で探り合おう"),"all six prompts complete");
+assert.ok(fakeHost.innerHTML.includes("質問カードを使う"),"cards are available in manual talk phase");
+tap("timer");
+tap("cardChoose");
+assert.ok(fakeHost.innerHTML.includes("誰がカードを使う？"),"GM chooses a handoff recipient");
+tap("cardOwner:0");
+assert.ok(fakeHost.innerHTML.includes("本人だけが開いてね"),"hand is hidden before opening");
+assert.ok(!fakeHost.innerHTML.includes("zg-question-choice"),"no private card displayed on handoff");
+tap("cardOpen");
+assert.equal((fakeHost.innerHTML.match(/data-act="cardUse:\d+"/g)||[]).length,5,"private hand shows five cards");
+tap("cardUse:0");
+assert.ok(fakeHost.innerHTML.includes("トークタイム！"),"used card becomes a public announcement");
+assert.ok(fakeHost.innerHTML.includes("プレイヤー1番"),"announced question identifies its owner");
+assert.ok(fakeHost.innerHTML.includes("使用済みの質問"),"question is tracked in shared public history");
+assert.ok(fakeHost.innerHTML.includes("クールダウン中"),"card cooldown begins immediately");
+tap("cardChoose");
+assert.ok(fakeHost.innerHTML.includes("会話で探り合おう"),"cooldown cannot be bypassed by direct action");
+clockNow+=2500;intervalTick();
+assert.ok(!fakeHost.innerHTML.includes("zg-question-banner\" role=\"status\""),"talk announcement clears after two seconds");
+clockNow+=7501;intervalTick();
+assert.ok(fakeHost.innerHTML.includes("質問カードを使う"),"card button unlocks after ten seconds without other input");
+tap("cardChoose");tap("cardOwner:0");tap("cardOpen");
+assert.equal((fakeHost.innerHTML.match(/data-act="cardUse:\d+"/g)||[]).length,5,"a replacement card maintains five-card hand");
+globalThis.document.hidden=true;
+documentHandlers.visibilitychange();
+assert.ok(fakeHost.innerHTML.includes("本人だけが開いてね"),"backgrounding the app re-locks the private hand");
+assert.ok(!fakeHost.innerHTML.includes("zg-question-choice"),"background lock hides the card content");
+globalThis.document.hidden=false;tap("cardClose");
+tap("vote");
+for(let i=0;i<6;i++)tap("addVote:1");
+tap("judgeVotes");
+assert.ok(fakeHost.innerHTML.includes("いよいよ正体発表！"),"correct vote total determines a winner");
+tap("reveal");
+assert.ok(fakeHost.innerHTML.includes("村人側の勝利！"),"integrated question cards do not disturb Mimikyu scoring");
+tap("reset");tap("chooseMode");tap("simple");tap("start");
+await new Promise(resolve=>setImmediate(resolve));
+tap("show");
+assert.ok(!fakeHost.innerHTML.includes("あなたの役職"),"simple mode still hides role identity");
+teardown();
+Date.now=realNow;
+for(const key of Object.keys(originalGlobals)){
+ if(originalGlobals[key]===undefined)delete globalThis[key];else globalThis[key]=originalGlobals[key];
+}
+
 console.log("ZOROARK_PAGES_UI_CONTRACT_PASS");
