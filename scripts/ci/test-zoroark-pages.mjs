@@ -76,6 +76,18 @@ assert.ok(nav.includes('event.stopImmediatePropagation()'),"My Community top nav
 assert.ok(nav.includes('location.hash="mini-games"'),"routes to canonical Pages");
 assert.ok(loader.includes("20261111-welcome-right1"),"asset cache busted");
 const m=await import(new URL("../../docs/zoroark-local.mjs",import.meta.url));
+assert.deepEqual(m.suspicionLeaders([0,0,0,0]),[],"zero medals have no leader");
+assert.deepEqual(m.suspicionLeaders([1,2,2,0]),[1,2],"midpoint can show multiple tied leaders");
+assert.deepEqual(m.suspicionLeaders([3,1,2,0]),[0],"unique suspicion leader is found");
+assert.deepEqual(m.suspicionLeaders([0,-1,0]),[],"invalid counts cannot be published");
+assert.ok(moduleSource.includes('medalUsed[medalActor]<3'),"three medals per player cannot be exceeded");
+assert.ok(moduleSource.includes('medalActor!==medalTarget'),"players cannot vote for themselves");
+assert.ok(moduleSource.includes('medalUsed[medalActor]++'),"commits spend a medal");
+assert.ok(moduleSource.includes('medalTotals[medalTarget]++'),"commits update only recipient aggregate");
+assert.ok(moduleSource.includes('midpointFired=true'),"midpoint bulletin fires once");
+assert.ok(moduleSource.includes('talkElapsedMs>=duration*500'),"midpoint uses actual unpaused half-duration");
+assert.ok(moduleSource.includes('onTouchEnd'),"final result pages support swipe");
+assert.ok(moduleSource.includes('if(document.hidden&&(phase==="medal-private"||phase==="medal-confirm"))'),"hidden device masks private recipient selection");
 assert.equal(typeof m.mountZoroark,"function");
 assert.equal(typeof m.zoroarkRoleInfo,"function");
 assert.equal(typeof m.judgeZoroarkVotes,"function","round outcome has an explicit judge");
