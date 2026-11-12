@@ -1,4 +1,6 @@
--- Review-only SQL. DO NOT run on production before explicit DB-change approval.
+-- Historical reference: approved SQL APPLIED to CA Clover production on 2026-11-13 JST.
+-- DO NOT apply this file again; CREATE ROLE/FUNCTION are already provisioned.
+-- For subsequent login/secret setup use scripts/activate-suzuki-hp-reader.ps1.
 -- This provisions a narrowly scoped PostgreSQL login that can retrieve ONLY
 -- the public prefecture aggregates. Password/login is enabled separately.
 -- Run in a controlled, approved migration after reviewing existing privileges.
@@ -42,7 +44,7 @@ GRANT EXECUTE ON FUNCTION private.suzuki_hp_snapshot() TO suzuki_hp_reader;
 -- The role must not get USAGE on other schemas or direct SELECT on public.communities.
 COMMIT;
 
--- AFTER explicit GO only:
+-- REMAINING: performed by the one-pass PowerShell activation script only:
 -- 1) Set a strong password and LOGIN for suzuki_hp_reader in an approved
 --    secret-safe channel. Do not commit password or paste it in a PR/issue.
 -- 2) Validate has_table_privilege('suzuki_hp_reader','public.communities','SELECT')=false.
