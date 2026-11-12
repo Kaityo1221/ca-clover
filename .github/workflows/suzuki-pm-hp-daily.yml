@@ -1,0 +1,67 @@
+name: Suzuki PM prefecture HP daily snapshot
+
+on:
+  schedule:
+    - cron: '43 18 * * *' # 03:43 JST; exactly one scheduled check daily
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: suzuki-pm-hp-daily
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: worker
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: pages
+          path: site
+          persist-credentials: true
+      - name: Decide whether one daily read is needed
+        id: gate
+        env:
+          READONLY_URL: ${{ secrets.SUZUKI_HP_READONLY_DATABASE_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${READONLY_URL:-}" ]; then
+            echo 'state=SKIP' >> "$GITHUB_OUTPUT"
+            echo 'SKIPPED: a dedicated read-only DB URL is not configured.'
+            exit 0
+          fi
+          state="$(node worker/scripts/refresh-suzuki-hp.mjs should-query site/docs/suzuki-pm-hp.json)"
+          echo "state=$state" >> "$GITHUB_OUTPUT"
+          echo "Daily HP refresh eligibility: $state"
+      - name: Read existing Clover counts once and publish sanitized JSON
+        if: steps.gate.outputs.state == 'RUN'
+        env:
+          PGURL: ${{ secrets.SUZUKI_HP_READONLY_DATABASE_URL }}
+          PGOPTIONS: '-c default_transaction_read_only=on -c statement_timeout=15000'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+          # Exactly one read-only SQL statement; never initiate Campfire ingestion.
+          psql -X -Atq -v ON_ERROR_STOP=1 "$PGURL" -f worker/scripts/export-suzuki-hp.sql > /tmp/suzuki-hp-aggregate.json
+          node worker/scripts/refresh-suzuki-hp.mjs apply /tmp/suzuki-hp-aggregate.json site/docs/suzuki-pm-hp.json
+          git -C site add -- docs/suzuki-pm-hp.json
+          if git -C site diff --cached --quiet; then
+            echo 'UNCHANGED: no JSON update to publish.'
+            exit 0
+          fi
+          git -C site -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'data(suzuki): daily static prefecture HP snapshot'
+          git -C site push origin HEAD:pages
