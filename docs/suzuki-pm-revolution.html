@@ -396,12 +396,28 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
     boss.x=W/2+Math.sin(clock*.75+stage*.6)*W*.13;
     boss.y=Math.max(162,Math.min(H*.22,213))+Math.sin(clock*1.1)*6;
   }
+  // v13-4: HP gauge awakening, computed from Suzuki's own stage HP.
+  const PM_AWAKEN_LABELS=['','⚡ 覚醒','🔥 暴走','💥 限界突破'];
+  const pmAwakenTag=document.createElement('span');pmAwakenTag.id='pm-awaken-label';
+  pmAwakenTag.setAttribute('aria-live','polite');
+  $('bossbar').append(pmAwakenTag);
+  let pmAwakenTier=0;
+  function pmSetAwaken(tier){
+    if(tier===pmAwakenTier)return;
+    pmAwakenTier=tier;
+    $('bossbar').dataset.awaken=String(tier);
+    pmAwakenTag.textContent=PM_AWAKEN_LABELS[tier]||'';
+    document.body.classList.toggle('pm-awaken-final',tier===3&&stage===3&&phase==='stage');
+    if(tier>0&&phase==='stage')tone(tier===1?390:tier===2?250:170,.18,'sawtooth',.018,-70);
+  }
+  window.PM_HP_AWAKEN_STATUS=()=>({tier:pmAwakenTier,ratio:boss&&boss.max>0?boss.hp/boss.max:null,label:PM_AWAKEN_LABELS[pmAwakenTier],stage,phase});
   function createSuzuki(){
     const hp=pmStageHp[stage-1]||PM_HP_FALLBACK;
     boss={x:W/2,y:Math.max(162,Math.min(H*.22,213)),hp,max:hp,t:0};
     rageElapsed=0;rageWindup=0;rageSwipes=0;swipeFlash=0;
     $('bossbar').style.display='block';
     $('bosshealth').style.width='100%';
+    pmSetAwaken(0);
     positionSuzuki();
   }
   stageData=function(n){
@@ -450,7 +466,7 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
   function prepareCrash(){
     phase='fall';crashClock=0;crashX=boss?.x??W/2;crashY=boss?.y??H*.25;fallBeat=0;
     keys.left=keys.right=keys.fire=false;enemyBullets=[];bullets=[];boss=null;particles=[];collapseDebris=[];shake=0;
-    $('bossbar').style.display='none';$('stageNotice').classList.remove('show');noticeUntil=-1;bodyCut(true);
+    $('bossbar').style.display='none';pmSetAwaken(0);$('stageNotice').classList.remove('show');noticeUntil=-1;bodyCut(true);
     setStory('💥 SUZUKI PM 撃墜！','……通信途絶……');
     kickTimer=0;effectAlpha=1;news.style.display='none';booNewlyCollected=false;updateHUD();
     tone(240,.7,'sawtooth',.06,-195);
@@ -542,6 +558,9 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
    boss.hp=Math.max(0,boss.hp-dealt);pmHpRemaining=Math.max(0,pmHpRemaining-dealt);suzukiHits++;score+=75*stage;
     explode(b.x,b.y,'#ffe16b',6);
     $('bosshealth').style.width=(100*boss.hp/boss.max)+'%';
+    const hpRatio=boss.max>0?boss.hp/boss.max:0;
+    const awakened=boss.hp<=0?0:hpRatio<=.15?3:hpRatio<=.35?2:hpRatio<=.70?1:0;
+    pmSetAwaken(awakened);
     updateHUD();
     if(boss.hp===0){
       explode(boss.x,boss.y,'#ffe17d',56);
@@ -899,7 +918,20 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
  #fireDock.manual #autoFireToggle{height:44px!important;font-size:12px;background:#423355}
  #tapShot{height:44px!important;min-height:44px;width:64px;flex:0 0 64px;border-radius:12px}
  #fireDock.manual #tapShot{font-size:12px}
- #pm-hp-hud{display:block;color:#ffd28a;font-size:clamp(10px,2.6vw,12px);font-weight:900;margin-top:2px;white-space:nowrap}
+ /* v13-4: stage HP awakening is attached to Suzuki's existing gauge. */
+  #bossbar{overflow:visible;transition:box-shadow .2s,border-color .2s;background:#230c40}
+  #bosshealth{height:100%;border-radius:inherit;transition:width .12s linear,background .2s}
+  #pm-awaken-label{position:absolute;left:50%;top:-26px;transform:translateX(-50%);font:950 12px system-ui,sans-serif;white-space:nowrap;color:#fff4c5;text-shadow:0 2px 8px #14021a,0 0 14px #ffb55c}
+  #bossbar[data-awaken="1"]{border-color:#ffe788;box-shadow:0 0 11px #ffdb67,0 0 22px #ffdb6770}
+  #bossbar[data-awaken="1"] #bosshealth{background:linear-gradient(90deg,#f7bf51,#ffe984)}
+  #bossbar[data-awaken="2"]{border-color:#ff7b4f;box-shadow:0 0 16px #fa5735,0 0 31px #fc663b8a;animation:pm-awaken-pulse .72s ease-in-out infinite alternate}
+  #bossbar[data-awaken="2"] #bosshealth{background:linear-gradient(90deg,#f7444d,#ffad3b)}
+  #bossbar[data-awaken="3"]{border-color:#fff3bc;box-shadow:0 0 23px #ed47ff,0 0 38px #f13d6eb0;animation:pm-awaken-pulse .38s ease-in-out infinite alternate}
+  #bossbar[data-awaken="3"] #bosshealth{background:linear-gradient(90deg,#992cff,#ff4873,#ffe19a)}
+  body.pm-awaken-final #pm-awaken-label{color:#fff;text-shadow:0 0 12px #ff4df8,0 0 21px #ffe58b}
+  @keyframes pm-awaken-pulse{from{filter:brightness(.88)}to{filter:brightness(1.25)}}
+  @media(prefers-reduced-motion:reduce){#bossbar[data-awaken="2"],#bossbar[data-awaken="3"]{animation:none}}
+  #pm-hp-hud{display:block;color:#ffd28a;font-size:clamp(10px,2.6vw,12px);font-weight:900;margin-top:2px;white-space:nowrap}
  #pm-hp-menu-note{font-size:12px;opacity:.85;margin:8px auto;color:#ffe4a5}
  #start:disabled,#pm-resume:disabled{opacity:.55;cursor:progress}
  body.cutscene #battle-tools,body.cutscene #pm-rage{display:none!important}
