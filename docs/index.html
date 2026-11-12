@@ -699,13 +699,26 @@
         app.innerHTML='<section class="card"><h2>🔒 CA専用ミニゲーム</h2><p class="muted strong">CAまたはADMINの承認が必要です。</p><button id="gameHome" class="btn section">My Communityへ戻る</button></section>';
         document.getElementById("gameHome").onclick=function(){go("my")};return;
       }
-      app.innerHTML='<section class="card"><h2>👾 SuzukiのPMレボリューション</h2><p class="muted strong">全国47都道府県をめぐり、SuzukiPMを倒してご当地ブーイングを集めよう！ 親指スライド・自動連射対応。</p><a class="btn section" href="./suzuki-pm-revolution.html">🚀 出撃する</a></section><div id="zoroarkMiniGameHost"></div>';
+      app.innerHTML='<section class="card"><h2>🎮 ミニゲームを選ぶ</h2><p class="muted strong">遊びたいゲームを選択してください。</p></section>'
+      +'<section class="card section"><h2>👾 SuzukiのPMレボリューション</h2><p class="muted strong">全国47都道府県のブーイングを収集！ 宇宙船を親指で動かしてSuzukiPMに挑戦。</p><a class="btn section" href="./suzuki-pm-revolution.html">🚀 出撃する</a></section>'
+      +'<section class="card section"><h2>🦊 ゾロアークを探せ！</h2><p class="muted strong">CAがゲームマスターになる交流ゲーム。対面・リモートを選んで楽しもう。</p><button id="openZoroark" class="btn section">🎭 ゲームを開く</button></section>'
+      +'<button id="miniGamesHome" class="btn section">← My Communityへ戻る</button>';
+      document.getElementById("openZoroark").onclick=function(){go("mini-games:zoroark")};
+      document.getElementById("miniGamesHome").onclick=function(){go("my")};
+      return;
+    }
+    if(v==="mini-games:zoroark"){
+      if(profile?.role!=="ca"&&profile?.role!=="admin"){go("mini-games");return;}
+      app.innerHTML='<button id="miniGamesBack" class="btn section">← ミニゲーム一覧に戻る</button><div id="zoroarkMiniGameHost" class="section"></div>';
+      document.getElementById("miniGamesBack").onclick=function(){go("mini-games")};
       const host=document.getElementById("zoroarkMiniGameHost");
       try{
         const module=await import("./zoroark-local.mjs?v=20261111-medals1");
         if(token!==renderToken||!host.isConnected)return;
-        zoroarkLeave=module.mountZoroark({host,gateway:zoroarkGateway,onBack:function(){go("my")}});
-      }catch(_err){if(token===renderToken)app.innerHTML='<section class="card"><h2>ゲームを起動できません</h2><p>画面を再読み込みしてください。</p><button class="btn section" id="gameBack">戻る</button></section>';const b=document.getElementById("gameBack");if(b)b.onclick=function(){go("my")}}
+        zoroarkLeave=module.mountZoroark({host,gateway:zoroarkGateway,onBack:function(){go("mini-games")}});
+      }catch(_err){
+        if(token===renderToken)host.innerHTML='<section class="card"><h2>ゲームを起動できません</h2><p>再読み込みしてください。</p></section>';
+      }
       return;
     }
     if(v==="account"){renderAccount();return}
