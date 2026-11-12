@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   refresh:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'schedule' && github.run_attempt == 1
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
