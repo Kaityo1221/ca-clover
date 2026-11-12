@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no"><title>SuzukiのPMレボリューション | スマホ画面整理・タッチ操作版 v10</title><style>
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no"><title>SuzukiのPMレボリューション | ビジュアル・操縦・BGM強化 v12</title><style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#08031b;color:#fff;font-family:system-ui,-apple-system,'Hiragino Kaku Gothic ProN',sans-serif;touch-action:none;-webkit-user-select:none;user-select:none}#bg{background:radial-gradient(ellipse at 72% 24%,#632384 0%,transparent 38%),radial-gradient(ellipse at 21% 70%,#302b8b 0%,transparent 45%),radial-gradient(ellipse at 55% 55%,#7a185c 0%,#06091c 75%);position:fixed;inset:0;width:100%;height:100%;object-fit:cover;filter:hue-rotate(22deg) saturate(1.6) brightness(.73);opacity:.82}#veil{position:fixed;inset:0;background:linear-gradient(180deg,#06031d6b,#14082615 43%,#07021e84 95%);pointer-events:none}#game{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}#hud{position:fixed;top:calc(7px + env(safe-area-inset-top));left:10px;right:10px;display:flex;gap:6px;z-index:4;pointer-events:none;align-items:center;justify-content:space-between;font-size:clamp(10px,2.7vw,14px);font-weight:950;text-shadow:0 2px 5px #000}#hud>span{background:#1c0c4bbd;border:1px solid #ba74f774;padding:8px;border-radius:10px;white-space:nowrap}#hud b{color:#fa9dff}#controls{position:fixed;bottom:calc(8px + env(safe-area-inset-bottom));left:0;right:0;display:flex;justify-content:center;gap:10px;padding:0 10px;z-index:5;pointer-events:none}#controls button{pointer-events:auto;touch-action:none;-webkit-tap-highlight-color:transparent;border:1px solid #ca88ff90;border-radius:18px;width:30%;max-width:200px;height:65px;background:#342068cc;color:white;font-size:clamp(16px,4.5vw,22px);font-weight:900;box-shadow:0 3px 20px #04011688}#controls button.pressed{background:#8b3ce6}#controls #fire{width:37%;background:linear-gradient(120deg,#bb38ed,#f52c94)}#controls #fire.pressed{background:#fb5cce}#menu,#result{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px;background:radial-gradient(ellipse at 50% 42%,#50177bdd,#08031be9 75%);text-align:center;gap:14px}#menu h1,#result h1{font-size:clamp(27px,8vw,42px);line-height:1.25;margin:0;text-shadow:0 0 20px #d74fff}#menu p,#result p{max-width:420px;font-size:15px;font-weight:700;line-height:1.75;margin:0;color:#f1dfff}#start,#retry{border:0;border-radius:18px;padding:18px 34px;background:linear-gradient(110deg,#bf8dff,#fa53bd);color:#160523;font-weight:950;font-size:20px;box-shadow:0 5px 35px #b53fea8b;touch-action:manipulation}#result{display:none}#result img{height:min(48vw,210px);width:min(48vw,210px);border:6px solid #ffe681;box-shadow:0 0 45px #eb43dd;border-radius:50%;object-fit:cover}#topbtn{position:fixed;right:12px;top:calc(53px + env(safe-area-inset-top));z-index:5;padding:7px 11px;border-radius:9px;border:1px solid #e6b3ff66;background:#160d40b9;color:#fff;display:none}#stageNotice{position:fixed;top:17%;left:0;right:0;text-align:center;pointer-events:none;z-index:4;font-weight:950;font-size:clamp(26px,7vw,39px);color:#ffe4ff;text-shadow:0 0 21px #ff5cfa,0 4px #3d095c;opacity:0;transition:opacity .2s}#stageNotice.show{opacity:1}#sub{position:fixed;bottom:calc(84px + env(safe-area-inset-bottom));left:0;right:0;text-align:center;color:#efcaff;font-size:11px;pointer-events:none}#bossbar{position:fixed;left:9%;right:9%;top:calc(99px + env(safe-area-inset-top));height:13px;border-radius:9px;border:2px solid #ffb1f8;background:#30083f;z-index:4;overflow:hidden;display:none}#bossbar>div{height:100%;background:linear-gradient(90deg,#fb47a5,#ffea87);width:100%;transition:width .1s}#facepop{position:fixed;top:34%;left:50%;transform:translate(-50%,-50%);display:none;pointer-events:none;z-index:4;border:5px solid #fff09f;border-radius:50%;box-shadow:0 0 35px #f629e7}#credit{font-size:10px!important;opacity:.75}@media(max-height:660px){#controls button{height:50px}#sub{bottom:67px}#menu{gap:8px}}
 
 /* v4: mobile-friendly one-thumb arcade controls */
@@ -97,7 +97,7 @@ function drawBoss(){if(!boss)return;ctx.save();const r=Math.min(62,W*.15);ctx.sh
 function draw(){ctx.clearRect(0,0,W,H);ctx.save();if(shake>0.5){ctx.translate(rand(-shake,shake),rand(-shake,shake));shake*=.8;}
  for(let s of stars){ctx.fillStyle=`rgba(240,171,255,${.18+s.z*.53})`;ctx.fillRect(s.x,s.y,s.z*2,2+s.z*6);}
  if(phase==='stage'||phase==='transition')drawMap();if(phase==='boss')drawBoss();
- for(let b of enemyBullets){ctx.shadowColor='#fa46ae';ctx.shadowBlur=15;ctx.fillStyle='#ffd0fa';ctx.beginPath();ctx.arc(b.x,b.y,5,0,7);ctx.fill();ctx.shadowBlur=0;}
+ for(let b of enemyBullets){ctx.shadowColor='#ff6d1d';ctx.shadowBlur=16;ctx.fillStyle='#ff8d35';ctx.strokeStyle='#43101c';ctx.lineWidth=2;ctx.beginPath();ctx.arc(b.x,b.y,6.2,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#fff5c1';ctx.beginPath();ctx.arc(b.x,b.y,2.5,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;}
  for(let b of bullets){ctx.shadowColor='#6ef9ff';ctx.shadowBlur=20;const g=ctx.createLinearGradient(b.x,b.y-20,b.x,b.y+6);g.addColorStop(0,'#fff7a8');g.addColorStop(.55,'#73f4ff');g.addColorStop(1,'#1fd5ff');ctx.fillStyle=g;ctx.fillRect(b.x-3,b.y-20,6,24);ctx.shadowBlur=0;}
  if(['stage','boss','transition'].includes(phase)&&!(invuln>0&&Math.floor(clock*10)%2)){let flame=20+Math.sin(clock*36)*6;ctx.fillStyle='#d668ff';ctx.beginPath();ctx.moveTo(playerX-8,playerY+13);ctx.lineTo(playerX,playerY+flame);ctx.lineTo(playerX+8,playerY+13);ctx.fill();drawSprite(images.ship,playerX,playerY,62,54);}
  for(let p of particles){ctx.globalAlpha=clamp(p.ttl/.6,0,1);if(images[p.type]?.complete){drawSprite(images[p.type],p.x,p.y,p.size*2,p.size*2,p.spin)}else{ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,p.size,p.size)}}ctx.globalAlpha=1;
@@ -200,7 +200,7 @@ bind('left','left');bind('right','right');bind('fire','fire');document.getElemen
 
   const story=document.createElement('div');story.id='pm-story';document.body.append(story);
   const skip=document.createElement('button');skip.id='pm-skip';skip.type='button';skip.textContent='▶ 演出を進める';document.body.append(skip);
-  const audioButton=document.createElement('button');audioButton.id='pm-audio';audioButton.type='button';audioButton.setAttribute('aria-label','効果音を切り替え');audioButton.textContent='🔇';document.body.append(audioButton);
+  const audioButton=document.createElement('button');audioButton.id='pm-audio';audioButton.type='button';audioButton.setAttribute('aria-label','BGMと効果音を切り替え');audioButton.textContent='🔇';document.body.append(audioButton);
   const booHud=document.createElement('div');booHud.id='pm-boo-hud';document.body.append(booHud);
   const bookButton=document.createElement('button');bookButton.type='button';bookButton.id='pm-book-btn';bookButton.textContent='📖';bookButton.setAttribute('aria-label','ブーイング図鑑');document.body.append(bookButton);const battleTools=document.createElement('div');battleTools.id='battle-tools';document.body.append(battleTools);battleTools.append($('topbtn'),audioButton,bookButton);
   const news=document.createElement('section');news.id='pm-news';news.setAttribute('aria-live','polite');news.innerHTML=`<div class="pm-news-ribbon"><span>🔴 緊急速報</span><span>LIVE / SUZUKI PM</span></div><div id="pm-news-title"></div><div id="pm-news-sub"></div><div class="pm-news-ticker">📣 県民の声：俺たちの土地を返せー！！</div>`;document.body.append(news);
@@ -302,8 +302,43 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
   function setStory(head,sub=''){story.innerHTML=head+(sub?'<small>'+sub+'</small>':'');}
   function audio(){if(muted)return;try{audioContext ||= new (window.AudioContext||window.webkitAudioContext)();audioContext.resume().catch(()=>{});}catch{muted=true;}}
   function tone(freq,dur=0.3,kind='sawtooth',vol=.04,shift=0){if(muted)return;audio();if(!audioContext)return;const o=audioContext.createOscillator(),g=audioContext.createGain();const now=audioContext.currentTime;o.type=kind;o.frequency.setValueAtTime(freq,now);if(shift)o.frequency.exponentialRampToValueAtTime(Math.max(25,freq+shift),now+dur);g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.02);g.gain.exponentialRampToValueAtTime(.0001,now+dur);o.connect(g).connect(audioContext.destination);o.start(now);o.stop(now+dur+.01);}
+  /* v12: original 16-step synth score, activated by the sound button only. */
+  const PM_BGM_PATTERNS=[
+    [0,null,7,null,3,null,10,null,7,null,3,null,5,null,7,null],
+    [0,7,10,null,3,7,12,null,0,5,10,null,7,5,3,null],
+    [0,7,10,12,7,3,10,14,12,10,7,5,3,7,10,12]
+  ];
+  const PM_BGM_ROOTS=[48,44,46,43];
+  let pmBgmNext=0,pmBgmBeat=0,pmBgmStage=0,pmLastShotSound=0;
+  function pmBgmVoice(midi,when,length,level,shape='triangle'){
+    if(!audioContext)return;
+    const o=audioContext.createOscillator(),g=audioContext.createGain();
+    o.type=shape;o.frequency.setValueAtTime(440*Math.pow(2,(midi-69)/12),when);
+    g.gain.setValueAtTime(.0001,when);
+    g.gain.linearRampToValueAtTime(level,when+.012);
+    g.gain.exponentialRampToValueAtTime(.0001,when+length);
+    o.connect(g);g.connect(audioContext.destination);
+    o.start(when);o.stop(when+length+.02);
+  }
+  setInterval(()=>{
+    if(muted||document.hidden||phase!=='stage'||!audioContext||audioContext.state!=='running'){
+      pmBgmNext=0;pmBgmBeat=0;pmBgmStage=0;return;
+    }
+    if(pmBgmStage!==stage){pmBgmStage=stage;pmBgmNext=0;pmBgmBeat=0;}
+    const now=audioContext.currentTime,stepLength=60/(122+stage*12)/4;
+    if(!pmBgmNext||pmBgmNext<now-.2)pmBgmNext=now+.035;
+    let scheduled=0;
+    while(pmBgmNext<now+.13&&scheduled++<5){
+      const step=pmBgmBeat%16,bar=Math.floor(pmBgmBeat/16)%4,root=PM_BGM_ROOTS[bar],note=PM_BGM_PATTERNS[stage-1][step];
+      if(note!==null)pmBgmVoice(root+12+note,pmBgmNext,stepLength*.75,.009,'triangle');
+      if(step%4===0)pmBgmVoice(root,pmBgmNext,stepLength*2.6,.012,'sine');
+      if(stage===3&&step%4===2)pmBgmVoice(root+7,pmBgmNext,stepLength*.45,.0035,'square');
+      pmBgmBeat++;pmBgmNext+=stepLength;
+    }
+  },90);
+  window.PM_BGM_STATUS=()=>({muted,enabled:!muted&&!!audioContext,stage,phase,bpm:122+stage*12,step:pmBgmBeat});
   function booNoise(){for(let i=0;i<5;i++)setTimeout(()=>tone(100+i*15,.42,'sawtooth',.016,-25),i*115);}
-  audioButton.addEventListener('click',()=>{muted=!muted;audioButton.textContent=muted?'🔇':'🔊';if(!muted){audio();tone(300,.11,'triangle',.055,180);}});
+  audioButton.addEventListener('click',()=>{muted=!muted;audioButton.textContent=muted?'🔇':'🎵';if(!muted){audio();tone(300,.11,'triangle',.055,180);}});
   function mapInside(x,y){let inside=false;const poly=currentOutline;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if(((a[1]>y)!==(b[1]>y))&&(x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0]))inside=!inside;}return inside;}
   inPoly = mapInside;
   function updateBanner(){renderBoos();const el=$('round');if(phase==='boss')el.textContent=`👑 ${PREFS[prefIndex]} BOSS`;else if(isCutscene())el.textContent=`🛸 ${PREFS[prefIndex]} ${prefIndex+1}/${PREFS.length}`;else el.textContent=`🗾 ${PREFS[prefIndex]} ${stage}/3`;}
@@ -329,7 +364,7 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
   stageData=function(n){
     syncOutline(PREFS[prefIndex]);
     stage=n;phase='stage';transition=0;bullets=[];enemyBullets=[];collapseDebris=[];
-    bodyCut(false);audioButton.style.display='block';
+    bodyCut(false);audioButton.style.display='block';document.body.dataset.pmStage=String(n);
     stageAngle=[0,.22,-.28][n-1];stageScale=Math.min(W*.69,H*.37,290)/112;
     stageCenter={x:W/2,y:Math.min(H*.51,466)};cells=[];
     for(let gy=0;gy<12;gy++)for(let gx=0;gx<12;gx++){
@@ -343,7 +378,7 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
   };
   // No separate fourth boss round. The third encounter triggers the existing cinematic fall.
   enterBoss=function(){finish(true);};
-  shoot=function(){origShoot();tone(550,.06,'triangle',.013,-175);};
+  shoot=function(){origShoot();const now=performance.now();if(now-pmLastShotSound>=420){pmLastShotSound=now;tone(570,.045,'triangle',.009,-165);}};
   // 撃墜後の暗転を含めた長めの墜落シネマティック（秒）。
   const FALL_FADE_END=1.15, FALL_FLOAT_BEGIN=1.55, FALL_DROP_BEGIN=4.35, FALL_IMPACT=8.35;
   let fallBeat=0;
@@ -712,20 +747,21 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
 (() => {
  const dock=document.getElementById('fireDock'),toggle=document.getElementById('autoFireToggle'),shot=document.getElementById('tapShot'),canvas=document.getElementById('game');
  const active=()=>phase==='stage'||phase==='boss';
- let pointer=null,lastX=0,targetX=null,visible=false;
+ let pointer=null,lastX=0,targetX=null,visible=false,lastFrame=0,dragCarry=0;
  canvas.addEventListener('pointerdown',e=>{
    if(!active()||pointer!==null)return;
    if(e.cancelable)e.preventDefault();
-   pointer=e.pointerId;lastX=e.clientX;targetX=playerX;
+   pointer=e.pointerId;lastX=e.clientX;targetX=playerX;dragCarry=0;
    try{canvas.setPointerCapture(e.pointerId);}catch{}
  });
  canvas.addEventListener('pointermove',e=>{
    if(e.pointerId!==pointer||!active())return;
    if(e.cancelable)e.preventDefault();
-   targetX=clamp((targetX===null?playerX:targetX)+e.clientX-lastX,25,W-25);
+   dragCarry+=e.clientX-lastX;
+   if(Math.abs(dragCarry)>=1.2){targetX=clamp((targetX===null?playerX:targetX)+dragCarry,25,W-25);dragCarry=0;}
    lastX=e.clientX;
  });
- const end=e=>{if(e.pointerId===pointer){pointer=null;targetX=null;}};
+ const end=e=>{if(e.pointerId===pointer){pointer=null;targetX=null;dragCarry=0;}};
  for(const t of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(t,end);
  const paint=()=>{
    dock.classList.toggle('manual',!autoFireEnabled);
@@ -735,14 +771,15 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
  };
  toggle.addEventListener('click',()=>{autoFireEnabled=!autoFireEnabled;paint();});
  shot.addEventListener('click',()=>{if(!autoFireEnabled&&active()&&cooldown<=0)shoot();});
- function tick(){
+ function tick(ts){
+   const dt=lastFrame?Math.min(.05,Math.max(0,(ts-lastFrame)/1000)):1/60;lastFrame=ts;
    const v=['stage','boss','transition'].includes(phase);
    if(v!==visible){document.body.classList.toggle('pilot-active',v);visible=v;}
-   if(active()&&targetX!==null){const d=targetX-playerX;playerX=clamp(playerX+Math.sign(d)*Math.min(Math.abs(d),Math.max(1,W*.033)),25,W-25);}
+   if(active()&&targetX!==null){const d=targetX-playerX;playerX=clamp(playerX+Math.sign(d)*Math.min(Math.abs(d),Math.max(1,W*1.98*dt)),25,W-25);}
    requestAnimationFrame(tick);
  }
  paint();tick();
- window.PM_CONTROL_STATUS=()=>({autoFire:autoFireEnabled,playerX:Math.round(playerX),targetX:targetX===null?null:Math.round(targetX),width:W,phase,dockVisible:visible,dragActive:pointer!==null,mode:'canvas-delta-v10'});
+ window.PM_CONTROL_STATUS=()=>({autoFire:autoFireEnabled,playerX:Math.round(playerX),targetX:targetX===null?null:Math.round(targetX),width:W,phase,dockVisible:visible,dragActive:pointer!==null,mode:'canvas-delta-v12'});
 })();
 </script><script>
 /* v10 combat layout: compact information, visible Suzuki, clear touch playfield. */
@@ -759,7 +796,7 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
  #stageNotice{top:43%!important;left:50%;right:auto;width:min(83vw,315px);transform:translate(-50%,-50%);padding:9px 12px;border:1px solid #da8eff77;border-radius:14px;background:#180b36dd;box-shadow:0 0 24px #a649c244;font-size:clamp(15px,4.2vw,21px)!important;line-height:1.4;z-index:7;white-space:pre-line}
  #bossbar{position:fixed;z-index:5;height:11px;left:25%;right:25%;top:250px;border-width:1px;pointer-events:none}
  #pm-rage{position:fixed;z-index:5;display:none;pointer-events:none;text-align:center;white-space:nowrap;font-size:clamp(11px,3vw,14px);font-weight:950;text-shadow:0 2px 9px #15021b;color:#ffdeb1;transform:translateX(-50%)}
- #pilotDock{bottom:calc(env(safe-area-inset-bottom) + 8px);left:auto;right:9px;justify-content:flex-end;width:auto}
+ #pilotDock{bottom:calc(env(safe-area-inset-bottom) + 68px);left:auto;right:9px;justify-content:flex-end;width:auto}
  #touchHint{display:none}
  #fireDock{width:76px;flex:0 0 76px;height:66px}
  #autoFireToggle{height:66px;font-size:12px}
@@ -767,14 +804,28 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
  #fireDock.manual #autoFireToggle{height:29px}
  #fireDock.manual #tapShot{font-size:12px}
  body.cutscene #battle-tools,body.cutscene #pm-rage{display:none!important}
+  body[data-pm-stage="1"] #stageNotice{border-color:#73dcff99;box-shadow:0 0 22px #46d3ff4a}
+  body[data-pm-stage="2"] #stageNotice{border-color:#ffe18a99;box-shadow:0 0 22px #ef9e354a}
+  body[data-pm-stage="3"] #stageNotice{border-color:#ff8bd999;box-shadow:0 0 25px #ec3ba45e}
+  body.pm-danger #bossbar{box-shadow:0 0 19px #ff5f35,0 0 5px #ffe49e}
+  body.pm-danger #pm-rage{color:#fff4a6;animation:pm-danger-pulse .24s ease-in-out infinite alternate}
+  #pm-hit-flash{position:fixed;inset:0;z-index:9;pointer-events:none;opacity:0;box-shadow:inset 0 0 68px 20px #f73851}
+  #pm-hit-flash.active{animation:pm-hit-pulse .45s ease-out both}
+  @keyframes pm-hit-pulse{0%{opacity:.78}100%{opacity:0}}
+  @keyframes pm-danger-pulse{from{opacity:.65}to{opacity:1;text-shadow:0 0 16px #ff351e}}
+  @media(prefers-reduced-motion:reduce){body.pm-danger #pm-rage{animation:none}#pm-hit-flash.active{animation-duration:.1s}}
  @media(max-width:365px){#hud>span{padding:7px 2px}#pm-boo-hud{font-size:11px}}
  @media(max-height:620px){#battle-tools{top:calc(env(safe-area-inset-top) + 40px)}#pm-boo-hud{top:calc(env(safe-area-inset-top) + 40px)}#fireDock,#autoFireToggle{height:56px}}
  `;
  document.head.append(style);
  const rage=document.createElement('div');rage.id='pm-rage';rage.setAttribute('aria-live','off');document.body.append(rage);
  const bar=document.getElementById('bossbar');
+ const hitFlash=document.createElement('div');hitFlash.id='pm-hit-flash';hitFlash.setAttribute('aria-hidden','true');document.body.append(hitFlash);
+ const originalDamage=damage;
+ damage=function(){const before=life;originalDamage();if(life<before){hitFlash.classList.remove('active');void hitFlash.offsetWidth;hitFlash.classList.add('active');}};
  function positionBossUI(){
    const info=window.PM_GAME_STATUS?.();
+   document.body.classList.toggle('pm-danger',phase==='stage'&&!!(info?.rageWindup>0));
    if(boss&&['stage','transition'].includes(phase)&&!document.body.classList.contains('cutscene')){
      const r=Math.min(62,W*.15);
      const x=clamp(boss.x-r,8,Math.max(8,W-2*r-8));
