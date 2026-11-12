@@ -1,12 +1,13 @@
-// Public guest lobby endpoint, isolated Vercel Preview only.
+// Public guest lobby; dedicated database and explicit deployment gates.
 // A guest never receives another player's identity, role or secret.
 import { NextResponse } from "next/server";
-import { neon } from "@neondatabase/serverless";
+import { runtimeConfig, runtimeDatabase, readJson, BodyError, sameOrigin } from "@/lib/zoroark/runtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const COOKIE = "__Host-zg_guest";
+const DEVICE = "__Host-zg_device";
 const SESSION_BYTES = 32;
 const json = (data: Record<string, unknown>, code: number) => NextResponse.json(data, {
   status: code,
@@ -33,60 +34,52 @@ async function sha256(value: string) {
 }
 function normalizeName(raw: unknown) {
   if (typeof raw !== "string") return null;
+  if (/[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}]/u.test(raw)) return null;
   const name = raw.normalize("NFKC").trim().replace(/\s+/gu, " ");
   if (!name || name.length > 24 || /[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}]/u.test(name)) return null;
   return { display: name, normalized: name.toLocaleLowerCase("ja-JP") };
 }
 
 export async function POST(request: Request) {
-  const origin = new URL(request.url).origin;
-  if (request.headers.get("origin") !== origin ||
-      request.headers.get("sec-fetch-site") && request.headers.get("sec-fetch-site") !== "same-origin" ||
+  if (!sameOrigin(request) ||
       request.headers.get("x-zoroark-request") !== "guest-lobby-v1") {
     return json({ error: "forbidden_origin" }, 403);
   }
   if (!request.headers.get("content-type")?.startsWith("application/json")) {
     return json({ error: "invalid_content_type" }, 415);
   }
-  const dbUrl = process.env.ZOROARK_NEON_DATABASE_URL;
-  if (process.env.VERCEL_ENV !== "preview" ||
-      process.env.ZOROARK_GUEST_LOBBY_ENABLED !== "true" ||
-      process.env.VERCEL_GIT_COMMIT_REF !== "feature/zoroark-guest-invite-chat-isolated-20261113" ||
-      !dbUrl) return json({ error: "guest_lobby_unavailable" }, 503);
+  if (!runtimeConfig("guest") || process.env.ZOROARK_GUEST_LOBBY_ENABLED !== "true") return json({error:"guest_lobby_unavailable"},503);
   let data: Record<string, unknown>;
   try {
-    if (Number(request.headers.get("content-length") ?? 0) > 2048) return json({error:"too_large"},413);
-    const source = await request.text();
-    if (new TextEncoder().encode(source).byteLength > 2048) return json({error:"too_large"},413);
-    const parsed: unknown = JSON.parse(source);
+    const parsed: unknown = await readJson(request);
     if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") return json({error:"invalid_request"},400);
     data = parsed as Record<string, unknown>;
-  } catch { return json({error:"invalid_request"},400); }
+  } catch(error) { return json({error:"invalid_request"},error instanceof BodyError ? error.status : 400); }
 
-  const sql = neon(dbUrl);
   try {
-    const [db] = await sql`select current_database() as name`;
-    if (db?.name !== "ca_clover_test") return json({error:"wrong_isolation_database"},503);
+    const sql = await runtimeDatabase("guest");
     // Shared, non-tracking limiter. Does not persist IP addresses or device fingerprints.
     const [rate] = await sql`select zoroark_isolated.guest_rate_gate() as allowed`;
     if (!rate?.allowed) return json({error:"rate_limited"},429);
+    const deviceCookies=(request.headers.get("cookie")??"").split(";").map(x=>x.trim()).filter(x=>x.startsWith(DEVICE+"="));
+    if(deviceCookies.length>1)return json({error:"ambiguous_device_cookie"},400);
+    const device=deviceCookies[0]?.slice(DEVICE.length+1);
 
     if (data.action === "inspect" || data.action === "join") {
       if (!isHex64(data.invite)) return json({error:"invalid_invite"},400);
       const inviteHash = await sha256(data.invite);
       if (data.action === "inspect") {
-        const [room] = await sql`
-          select id, max_players, join_expires_at,
-            (select count(*)::int from zoroark_isolated.guest_participants
-             where room_id = r.id and state in ('pending','approved')) as occupied
-          from zoroark_isolated.rooms r where invite_sha256=${inviteHash}
-          and state='lobby' and not join_locked
-          and join_expires_at > now() and expires_at > now()
-        `;
+        const [room] = await sql`select * from zoroark_isolated.guest_inspect(${inviteHash}::text)`;
         if (!room) return json({error:"expired_or_closed"},410);
-        return json({roomId:room.id,maxPlayers:room.max_players,occupied:room.occupied,
+        const result=json({roomId:room.id,maxPlayers:room.max_players,occupied:room.occupied,
           joinExpiresAt:room.join_expires_at},200);
+        if(!isHex64(device))result.cookies.set(DEVICE,bytesHex(SESSION_BYTES),{
+          httpOnly:true,secure:true,sameSite:"strict",path:"/",maxAge:21600,
+        });
+        return result;
       }
+      if(!isHex64(device))return json({error:"device_cookie_required"},403);
+      const deviceHash=await sha256(device);
       const name = normalizeName(data.nickname);
       if (!name) return json({error:"invalid_nickname"},400);
       // One existing browser session must not silently create additional
@@ -98,14 +91,8 @@ export async function POST(request: Request) {
         const previous=previousCookies[0].slice(COOKIE.length+1);
         if(isHex64(previous)){
           const previousHash=await sha256(previous);
-          const [existing]=await sql`
-            select p.id from zoroark_isolated.guest_participants p
-            join zoroark_isolated.rooms r on r.id=p.room_id
-            where p.session_sha256=${previousHash}
-              and r.invite_sha256=${inviteHash}
-              and r.expires_at>now()
-          `;
-          if(existing)return json({error:"already_joined"},409);
+          const [existing]=await sql`select zoroark_isolated.guest_existing(${previousHash}::text,${inviteHash}::text) as present`;
+          if(existing?.present)return json({error:"already_joined"},409);
         }
       }
       const sessionToken = bytesHex(SESSION_BYTES);
@@ -113,7 +100,7 @@ export async function POST(request: Request) {
       let guest;
       try {
         [guest] = await sql`select * from zoroark_isolated.guest_join(
-          ${inviteHash}::text,${name.display}::text,${name.normalized}::text,${hash}::text)`;
+          ${inviteHash}::text,${name.display}::text,${name.normalized}::text,${hash}::text,${deviceHash}::text)`;
       } catch (error) {
         const code = (error as {code?: string;message?: string}).code;
         if (code === "23505") return json({error:"nickname_unavailable"},409);
@@ -131,19 +118,15 @@ export async function POST(request: Request) {
       return result;
     }
     if (data.action === "me") {
+      if(!isHex64(device))return json({error:"device_cookie_required"},401);
       const cookie = request.headers.get("cookie") ?? "";
       const matches = cookie.split(";").map(s=>s.trim()).filter(s=>s.startsWith(COOKIE+"="));
       if (matches.length !== 1) return json({error:"session_missing"},401);
       const token = matches[0].slice(COOKIE.length+1);
       if (!isHex64(token)) return json({error:"session_invalid"},401);
       const hash = await sha256(token);
-      const [guest] = await sql`
-        select p.room_id, p.display_name, p.state, r.expires_at
-        from zoroark_isolated.guest_participants p
-        join zoroark_isolated.rooms r on r.id = p.room_id
-        where p.session_sha256=${hash} and r.expires_at>now()
-          and r.state not in ('ended','expired')
-      `;
+      const deviceHash=await sha256(device);
+      const [guest] = await sql`select * from zoroark_isolated.guest_me(${hash}::text,${deviceHash}::text)`;
       if (!guest) {
         const result=json({error:"session_expired"},401);
         result.cookies.set(COOKIE,"",{httpOnly:true,secure:true,sameSite:"strict",path:"/",maxAge:0});

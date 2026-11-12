@@ -13,10 +13,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - run: node scripts/ci/verify-public-boundary.mjs
       - run: node scripts/ci/test-zoroark-room-preview.mjs
       - run: node scripts/ci/test-zoroark-guest-isolation.mjs
+      - run: node --test scripts/ci/test-zoroark-runtime.mjs
       - run: node scripts/test-community-title-fit.mjs
       - run: node scripts/test-medal-face-hires.mjs
       - run: node scripts/test-stamp-exchange-stats.mjs

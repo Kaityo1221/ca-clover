@@ -1,6 +1,6 @@
-// Isolated Vercel preview only. No production DB and no guest access.
+// Dedicated Zoroark runtime; production remains disabled until explicit release gate.
 import { NextResponse } from "next/server";
-import { neon } from "@neondatabase/serverless";
+import { runtimeConfig, runtimeDatabase, readJson, BodyError, sameOrigin } from "@/lib/zoroark/runtime";
 import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
@@ -39,23 +39,18 @@ export async function GET() {
   return json({
     previewEnvironment: process.env.VERCEL_ENV === "preview",
     featureFlagPresent: process.env.ZOROARK_ROOM_CREATE_ENABLED === "true",
-    isolatedDatabaseConfigured: Boolean(process.env.ZOROARK_NEON_DATABASE_URL),
+    isolatedDatabaseConfigured: Boolean(runtimeConfig("gm")),
     // This is intentionally not a database connectivity or CA auth test.
   }, 200);
 }
 
 export async function POST(request: Request) {
-  // A branch-specific, explicitly enabled Vercel preview is mandatory.
-  // Missing configuration fails closed, never falls back to production storage.
-  const databaseUrl = process.env.ZOROARK_NEON_DATABASE_URL;
-  if (process.env.VERCEL_ENV !== "preview" ||
-      process.env.ZOROARK_ROOM_CREATE_ENABLED !== "true" ||
-      !databaseUrl) {
+  // Explicit target, branch, endpoint, DB role and release gates are mandatory.
+  if (!runtimeConfig("gm") || process.env.ZOROARK_ROOM_CREATE_ENABLED !== "true") {
     return json({ error: "isolated_room_api_not_configured" }, 503);
   }
 
-  const expectedOrigin = new URL(request.url).origin;
-  if (request.headers.get("origin") !== expectedOrigin) {
+  if (!sameOrigin(request)) {
     return json({ error: "origin_not_allowed" }, 403);
   }
   if (!request.headers.get("content-type")?.startsWith("application/json")) {
@@ -71,13 +66,9 @@ export async function POST(request: Request) {
 
   let body: unknown;
   try {
-    const text = await request.text();
-    if (new TextEncoder().encode(text).byteLength > 2048) {
-      return json({ error: "body_too_large" }, 413);
-    }
-    body = JSON.parse(text);
-  } catch {
-    return json({ error: "invalid_json" }, 400);
+    body = await readJson(request);
+  } catch (error) {
+    return json({ error: "invalid_json" }, error instanceof BodyError ? error.status : 400);
   }
   if (!isValidInput(body)) return json({ error: "invalid_room_settings" }, 400);
 
@@ -103,12 +94,9 @@ export async function POST(request: Request) {
       return json({ error: "ca_role_required" }, 403);
     }
 
-    const sql = neon(databaseUrl);
-    // Refuse to write to any database other than the explicitly isolated synthetic DB.
-    const [identity] = await sql`select current_database() as database_name`;
-    if (identity?.database_name !== "ca_clover_test") {
-      return json({ error: "isolated_database_mismatch" }, 503);
-    }
+    const sql = await runtimeDatabase("gm");
+    const [rate] = await sql`select zoroark_isolated.guest_rate_gate() as allowed`;
+    if (!rate?.allowed) return json({error:"rate_limited"},429);
 
     const random = new Uint8Array(32);
     crypto.getRandomValues(random);
@@ -131,8 +119,7 @@ export async function POST(request: Request) {
       joinExpiresAt: room.join_expires_at,
       expiresAt: room.expires_at,
       invite,
-      joinEnabled: process.env.ZOROARK_GUEST_LOBBY_ENABLED === "true" &&
-        process.env.VERCEL_GIT_COMMIT_REF === "feature/zoroark-guest-invite-chat-isolated-20261113",
+      joinEnabled: process.env.ZOROARK_GUEST_LOBBY_ENABLED === "true" && Boolean(runtimeConfig("guest")),
     }, 201);
   } catch (error) {
     const dbError = error as { code?: string; message?: string };
