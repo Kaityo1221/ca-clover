@@ -200,7 +200,7 @@ bind('left','left');bind('right','right');bind('fire','fire');document.getElemen
 
   const story=document.createElement('div');story.id='pm-story';document.body.append(story);
   const skip=document.createElement('button');skip.id='pm-skip';skip.type='button';skip.textContent='▶ 演出を進める';document.body.append(skip);
-  const audioButton=document.createElement('button');audioButton.id='pm-audio';audioButton.type='button';audioButton.setAttribute('aria-label','効果音を切り替え');audioButton.textContent='🔇';document.body.append(audioButton);
+  const audioButton=document.createElement('button');audioButton.id='pm-audio';audioButton.type='button';audioButton.setAttribute('aria-label','BGMと効果音を切り替え');audioButton.textContent='🔇';document.body.append(audioButton);
   const booHud=document.createElement('div');booHud.id='pm-boo-hud';document.body.append(booHud);
   const bookButton=document.createElement('button');bookButton.type='button';bookButton.id='pm-book-btn';bookButton.textContent='📖';bookButton.setAttribute('aria-label','ブーイング図鑑');document.body.append(bookButton);const battleTools=document.createElement('div');battleTools.id='battle-tools';document.body.append(battleTools);battleTools.append($('topbtn'),audioButton,bookButton);
   const news=document.createElement('section');news.id='pm-news';news.setAttribute('aria-live','polite');news.innerHTML=`<div class="pm-news-ribbon"><span>🔴 緊急速報</span><span>LIVE / SUZUKI PM</span></div><div id="pm-news-title"></div><div id="pm-news-sub"></div><div class="pm-news-ticker">📣 県民の声：俺たちの土地を返せー！！</div>`;document.body.append(news);
@@ -302,8 +302,43 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
   function setStory(head,sub=''){story.innerHTML=head+(sub?'<small>'+sub+'</small>':'');}
   function audio(){if(muted)return;try{audioContext ||= new (window.AudioContext||window.webkitAudioContext)();audioContext.resume().catch(()=>{});}catch{muted=true;}}
   function tone(freq,dur=0.3,kind='sawtooth',vol=.04,shift=0){if(muted)return;audio();if(!audioContext)return;const o=audioContext.createOscillator(),g=audioContext.createGain();const now=audioContext.currentTime;o.type=kind;o.frequency.setValueAtTime(freq,now);if(shift)o.frequency.exponentialRampToValueAtTime(Math.max(25,freq+shift),now+dur);g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.02);g.gain.exponentialRampToValueAtTime(.0001,now+dur);o.connect(g).connect(audioContext.destination);o.start(now);o.stop(now+dur+.01);}
+  /* v12: original 16-step synth score, activated by the sound button only. */
+  const PM_BGM_PATTERNS=[
+    [0,null,7,null,3,null,10,null,7,null,3,null,5,null,7,null],
+    [0,7,10,null,3,7,12,null,0,5,10,null,7,5,3,null],
+    [0,7,10,12,7,3,10,14,12,10,7,5,3,7,10,12]
+  ];
+  const PM_BGM_ROOTS=[48,44,46,43];
+  let pmBgmNext=0,pmBgmBeat=0,pmBgmStage=0,pmLastShotSound=0;
+  function pmBgmVoice(midi,when,length,level,shape='triangle'){
+    if(!audioContext)return;
+    const o=audioContext.createOscillator(),g=audioContext.createGain();
+    o.type=shape;o.frequency.setValueAtTime(440*Math.pow(2,(midi-69)/12),when);
+    g.gain.setValueAtTime(.0001,when);
+    g.gain.linearRampToValueAtTime(level,when+.012);
+    g.gain.exponentialRampToValueAtTime(.0001,when+length);
+    o.connect(g);g.connect(audioContext.destination);
+    o.start(when);o.stop(when+length+.02);
+  }
+  setInterval(()=>{
+    if(muted||document.hidden||phase!=='stage'||!audioContext||audioContext.state!=='running'){
+      pmBgmNext=0;pmBgmBeat=0;pmBgmStage=0;return;
+    }
+    if(pmBgmStage!==stage){pmBgmStage=stage;pmBgmNext=0;pmBgmBeat=0;}
+    const now=audioContext.currentTime,stepLength=60/(122+stage*12)/4;
+    if(!pmBgmNext||pmBgmNext<now-.2)pmBgmNext=now+.035;
+    let scheduled=0;
+    while(pmBgmNext<now+.13&&scheduled++<5){
+      const step=pmBgmBeat%16,bar=Math.floor(pmBgmBeat/16)%4,root=PM_BGM_ROOTS[bar],note=PM_BGM_PATTERNS[stage-1][step];
+      if(note!==null)pmBgmVoice(root+12+note,pmBgmNext,stepLength*.75,.009,'triangle');
+      if(step%4===0)pmBgmVoice(root,pmBgmNext,stepLength*2.6,.012,'sine');
+      if(stage===3&&step%4===2)pmBgmVoice(root+7,pmBgmNext,stepLength*.45,.0035,'square');
+      pmBgmBeat++;pmBgmNext+=stepLength;
+    }
+  },90);
+  window.PM_BGM_STATUS=()=>({muted,enabled:!muted&&!!audioContext,stage,phase,bpm:122+stage*12,step:pmBgmBeat});
   function booNoise(){for(let i=0;i<5;i++)setTimeout(()=>tone(100+i*15,.42,'sawtooth',.016,-25),i*115);}
-  audioButton.addEventListener('click',()=>{muted=!muted;audioButton.textContent=muted?'🔇':'🔊';if(!muted){audio();tone(300,.11,'triangle',.055,180);}});
+  audioButton.addEventListener('click',()=>{muted=!muted;audioButton.textContent=muted?'🔇':'🎵';if(!muted){audio();tone(300,.11,'triangle',.055,180);}});
   function mapInside(x,y){let inside=false;const poly=currentOutline;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if(((a[1]>y)!==(b[1]>y))&&(x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0]))inside=!inside;}return inside;}
   inPoly = mapInside;
   function updateBanner(){renderBoos();const el=$('round');if(phase==='boss')el.textContent=`👑 ${PREFS[prefIndex]} BOSS`;else if(isCutscene())el.textContent=`🛸 ${PREFS[prefIndex]} ${prefIndex+1}/${PREFS.length}`;else el.textContent=`🗾 ${PREFS[prefIndex]} ${stage}/3`;}
@@ -343,7 +378,7 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
   };
   // No separate fourth boss round. The third encounter triggers the existing cinematic fall.
   enterBoss=function(){finish(true);};
-  shoot=function(){origShoot();tone(550,.06,'triangle',.013,-175);};
+  shoot=function(){origShoot();const now=performance.now();if(now-pmLastShotSound>=420){pmLastShotSound=now;tone(570,.045,'triangle',.009,-165);}};
   // 撃墜後の暗転を含めた長めの墜落シネマティック（秒）。
   const FALL_FADE_END=1.15, FALL_FLOAT_BEGIN=1.55, FALL_DROP_BEGIN=4.35, FALL_IMPACT=8.35;
   let fallBeat=0;
