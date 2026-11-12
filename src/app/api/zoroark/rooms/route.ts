@@ -131,7 +131,8 @@ export async function POST(request: Request) {
       joinExpiresAt: room.join_expires_at,
       expiresAt: room.expires_at,
       invite,
-      joinEnabled: false,
+      joinEnabled: process.env.ZOROARK_GUEST_LOBBY_ENABLED === "true" &&
+        process.env.VERCEL_GIT_COMMIT_REF === "feature/zoroark-guest-invite-chat-isolated-20261113",
     }, 201);
   } catch (error) {
     const dbError = error as { code?: string; message?: string };
