@@ -32,6 +32,7 @@ jobs:
         id: gate
         env:
           READONLY_URL: ${{ secrets.SUZUKI_HP_READONLY_DATABASE_URL }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -46,6 +47,24 @@ jobs:
             exit 0
           fi
           state="$(node worker/scripts/refresh-suzuki-hp.mjs should-query site/docs/suzuki-pm-hp.json)"
+          if [ "$state" = 'RUN' ]; then
+            # Even if values did not change yesterday, a second distinct scheduled
+            # workflow run on the same Japan date must not repeat the DB read.
+            # On API failure, set -e prevents the read (fail closed).
+            jst_today="$(TZ=Asia/Tokyo date +%F)"
+            history="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/suzuki-pm-hp-daily.yml/runs?event=schedule&per_page=100")"
+            earlier="$(printf '%s' "$history" | jq -r --arg today "$jst_today" --argjson current "$GITHUB_RUN_ID" '
+              [.workflow_runs[]
+               | select(.event=="schedule")
+               | select(.id < $current)
+               | select((.created_at | fromdateiso8601 + 32400 | strftime("%Y-%m-%d")) == $today)]
+              | length
+            ')"
+            if [ "$earlier" -gt 0 ]; then
+              echo 'SKIPPED: an earlier scheduled run already exists for this Japan date.'
+              state='SKIP'
+            fi
+          fi
           echo "state=$state" >> "$GITHUB_OUTPUT"
           echo "Daily HP refresh eligibility: $state"
       - name: Read existing Clover counts once and publish sanitized JSON
