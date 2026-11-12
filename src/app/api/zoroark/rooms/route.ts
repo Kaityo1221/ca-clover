@@ -34,6 +34,16 @@ function isValidInput(body: unknown): body is {
     && [0, 120, 180, 300].includes(value.talkSeconds);
 }
 
+// Read-only preview diagnostics. Never expose env values, credentials or tokens.
+export async function GET() {
+  return json({
+    previewEnvironment: process.env.VERCEL_ENV === "preview",
+    featureFlagPresent: process.env.ZOROARK_ROOM_CREATE_ENABLED === "true",
+    isolatedDatabaseConfigured: Boolean(process.env.ZOROARK_NEON_DATABASE_URL),
+    // This is intentionally not a database connectivity or CA auth test.
+  }, 200);
+}
+
 export async function POST(request: Request) {
   // A branch-specific, explicitly enabled Vercel preview is mandatory.
   // Missing configuration fails closed, never falls back to production storage.
