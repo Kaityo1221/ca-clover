@@ -40,6 +40,11 @@ jobs:
             echo 'SKIPPED: a dedicated read-only DB URL is not configured.'
             exit 0
           fi
+          if [ ! -f site/docs/suzuki-pm-hp.json ]; then
+            echo 'state=SKIP' >> "$GITHUB_OUTPUT"
+            echo 'SKIPPED: v13 HP game snapshot has not been released.'
+            exit 0
+          fi
           state="$(node worker/scripts/refresh-suzuki-hp.mjs should-query site/docs/suzuki-pm-hp.json)"
           echo "state=$state" >> "$GITHUB_OUTPUT"
           echo "Daily HP refresh eligibility: $state"
