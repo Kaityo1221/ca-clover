@@ -10,19 +10,19 @@ const readJson = name => JSON.parse(fs.readFileSync(name,'utf8'));
 if (command === 'should-query') {
   let prev;
   try { prev=readJson(arg1); } catch { prev=null; }
-  const isCurrentDay=prev?.syncComplete===true && prev?.generatedAt &&
+  const isCurrentDay=prev?.snapshotReady===true && prev?.generatedAt &&
     tokyoDate(new Date(prev.generatedAt))===tokyoDate(new Date());
   process.stdout.write(isCurrentDay?'SKIP':'RUN');
 } else if (command === 'apply') {
   if (!arg1 || !arg2) throw new Error('Usage: apply AGGREGATE_RESULT.json DOCS_TARGET.json');
   const raw=fs.readFileSync(arg1,'utf8').trim();
   if (!raw || raw === 'null') {
-    console.log('SKIPPED: Clover daily sync incomplete, old HP snapshot retained');
+    console.log('SKIPPED: no aggregate returned; old HP snapshot retained');
     process.exit(0);
   }
   const data=JSON.parse(raw);
   const items=Object.entries(data.prefectures||{});
-  if (data.version!==1 || data.syncComplete!==true ||
+  if (data.version!==1 || data.snapshotReady!==true ||
       !Number.isFinite(Date.parse(data.generatedAt)) ||
       items.length<35 || items.length>47 ||
       !items.some(([pref])=>pref==='東京都')) throw new Error('Invalid prefecture aggregate');
@@ -39,7 +39,7 @@ if (command === 'should-query') {
   try { previous=readJson(arg2); } catch { previous=null; }
   const canon=d=>JSON.stringify(Object.keys(d.prefectures).sort().map(pref=>
     [pref,d.prefectures[pref].hp,d.prefectures[pref].communities]));
-  if (previous && previous.syncComplete===true && canon(previous)===canon({prefectures:cleaned})) {
+  if (previous && previous.snapshotReady===true && canon(previous)===canon({prefectures:cleaned})) {
     console.log('UNCHANGED: no HP changes, no commit needed');
     process.exit(0);
   }
@@ -47,7 +47,7 @@ if (command === 'should-query') {
     version:1,
     source:'CA Clover stored community member totals, prefecture aggregate',
     generatedAt:data.generatedAt,
-    syncComplete:true,
+    snapshotReady:true,
     prefectures:cleaned
   };
   fs.writeFileSync(arg2,JSON.stringify(document,null,2)+'\n','utf8');
