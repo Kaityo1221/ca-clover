@@ -1,214 +1,173 @@
 {
   "version": 1,
-  "source": "CA Clover community member totals (prefecture aggregate only)",
+  "source": "CA Clover stored community member totals, prefecture aggregate",
   "generatedAt": "2026-11-12T13:17:00Z",
   "syncComplete": false,
-  "note": "Initial development snapshot; some member counts may be stale. Automated updates require a completed clean sync.",
+  "note": "Initial isolated development snapshot. Daily refresh is not active until approved and configured.",
   "prefectures": {
     "三重県": {
       "hp": 3476,
-      "communities": 1,
-      "latestFetchedAt": "2026-11-12 08:50:25.205+00"
+      "communities": 1
     },
     "京都府": {
       "hp": 8252,
-      "communities": 5,
-      "latestFetchedAt": "2026-11-12 13:20:13.005+00"
+      "communities": 5
     },
     "佐賀県": {
       "hp": 2753,
-      "communities": 3,
-      "latestFetchedAt": "2026-11-12 12:35:05.527+00"
+      "communities": 3
     },
     "兵庫県": {
       "hp": 29350,
-      "communities": 5,
-      "latestFetchedAt": "2026-11-12 13:20:13.005+00"
+      "communities": 5
     },
     "北海道": {
       "hp": 20078,
-      "communities": 12,
-      "latestFetchedAt": "2026-11-12 13:02:41.959+00"
+      "communities": 12
     },
     "千葉県": {
       "hp": 27682,
-      "communities": 7,
-      "latestFetchedAt": "2026-11-12 13:20:13.005+00"
+      "communities": 7
     },
     "和歌山県": {
       "hp": 623,
-      "communities": 1,
-      "latestFetchedAt": "2026-11-12 12:50:27.787+00"
+      "communities": 1
     },
     "埼玉県": {
       "hp": 16662,
-      "communities": 6,
-      "latestFetchedAt": "2026-11-12 10:50:23.552+00"
+      "communities": 6
     },
     "大分県": {
       "hp": 1441,
-      "communities": 2,
-      "latestFetchedAt": "2026-11-12 10:20:27.672+00"
+      "communities": 2
     },
     "大阪府": {
       "hp": 39246,
-      "communities": 7,
-      "latestFetchedAt": "2026-11-12 13:01:27.271+00"
+      "communities": 7
     },
     "奈良県": {
       "hp": 4991,
-      "communities": 3,
-      "latestFetchedAt": "2026-11-12 13:20:13.005+00"
+      "communities": 3
     },
     "宮城県": {
       "hp": 2703,
-      "communities": 1,
-      "latestFetchedAt": "2026-10-09 21:05:05.995+00"
+      "communities": 1
     },
     "宮崎県": {
       "hp": 3359,
-      "communities": 2,
-      "latestFetchedAt": "2026-11-12 10:20:32.798+00"
+      "communities": 2
     },
     "山口県": {
       "hp": 2481,
-      "communities": 2,
-      "latestFetchedAt": "2026-11-12 07:20:24.031+00"
+      "communities": 2
     },
     "山形県": {
       "hp": 465,
-      "communities": 2,
-      "latestFetchedAt": "2026-11-12 13:02:41.959+00"
+      "communities": 2
     },
     "山梨県": {
       "hp": 6101,
-      "communities": 3,
-      "latestFetchedAt": "2026-11-12 12:05:13.433+00"
+      "communities": 3
     },
     "岐阜県": {
       "hp": 10471,
-      "communities": 5,
-      "latestFetchedAt": "2026-11-12 12:50:27.787+00"
+      "communities": 5
     },
     "岩手県": {
       "hp": 2987,
-      "communities": 2,
-      "latestFetchedAt": "2026-10-31 02:05:23.529+00"
+      "communities": 2
     },
     "広島県": {
       "hp": 4157,
-      "communities": 1,
-      "latestFetchedAt": "2026-10-31 03:05:21.39+00"
+      "communities": 1
     },
     "徳島県": {
       "hp": 3431,
-      "communities": 5,
-      "latestFetchedAt": "2026-11-12 13:02:41.959+00"
+      "communities": 5
     },
     "愛媛県": {
       "hp": 1293,
-      "communities": 1,
-      "latestFetchedAt": "2026-11-03 20:05:37.324+00"
+      "communities": 1
     },
     "愛知県": {
       "hp": 33620,
-      "communities": 10,
-      "latestFetchedAt": "2026-11-12 13:01:27.271+00"
+      "communities": 10
     },
     "新潟県": {
       "hp": 7890,
-      "communities": 7,
-      "latestFetchedAt": "2026-11-12 11:35:12.197+00"
+      "communities": 7
     },
     "東京都": {
       "hp": 195636,
-      "communities": 14,
-      "latestFetchedAt": "2026-11-12 13:05:10.897+00"
+      "communities": 14
     },
     "栃木県": {
       "hp": 8731,
-      "communities": 4,
-      "latestFetchedAt": "2026-11-12 13:00:33.143+00"
+      "communities": 4
     },
     "沖縄県": {
       "hp": 4443,
-      "communities": 2,
-      "latestFetchedAt": "2026-11-12 13:01:27.271+00"
+      "communities": 2
     },
     "滋賀県": {
       "hp": 7386,
-      "communities": 4,
-      "latestFetchedAt": "2026-11-12 13:20:13.005+00"
+      "communities": 4
     },
     "熊本県": {
       "hp": 4477,
-      "communities": 4,
-      "latestFetchedAt": "2026-11-12 11:20:21.196+00"
+      "communities": 4
     },
     "神奈川県": {
       "hp": 28670,
-      "communities": 6,
-      "latestFetchedAt": "2026-11-12 12:50:27.787+00"
+      "communities": 6
     },
     "福井県": {
       "hp": 1913,
-      "communities": 2,
-      "latestFetchedAt": "2026-11-12 11:20:21.196+00"
+      "communities": 2
     },
     "福岡県": {
       "hp": 17975,
-      "communities": 3,
-      "latestFetchedAt": "2026-11-12 13:20:13.005+00"
+      "communities": 3
     },
     "福島県": {
       "hp": 2149,
-      "communities": 2,
-      "latestFetchedAt": "2026-11-12 09:20:29.335+00"
+      "communities": 2
     },
     "秋田県": {
       "hp": 493,
-      "communities": 1,
-      "latestFetchedAt": "2026-11-12 08:50:25.205+00"
+      "communities": 1
     },
     "群馬県": {
       "hp": 7356,
-      "communities": 4,
-      "latestFetchedAt": "2026-11-12 11:50:35.664+00"
+      "communities": 4
     },
     "茨城県": {
       "hp": 2412,
-      "communities": 2,
-      "latestFetchedAt": "2026-11-12 13:20:13.005+00"
+      "communities": 2
     },
     "長崎県": {
       "hp": 3119,
-      "communities": 1,
-      "latestFetchedAt": "2026-11-12 13:20:13.005+00"
+      "communities": 1
     },
     "長野県": {
       "hp": 10137,
-      "communities": 6,
-      "latestFetchedAt": "2026-11-12 13:01:27.271+00"
+      "communities": 6
     },
     "青森県": {
       "hp": 3019,
-      "communities": 1,
-      "latestFetchedAt": "2026-11-12 12:20:26.752+00"
+      "communities": 1
     },
     "静岡県": {
       "hp": 8425,
-      "communities": 4,
-      "latestFetchedAt": "2026-11-12 10:50:23.552+00"
+      "communities": 4
     },
     "香川県": {
       "hp": 3185,
-      "communities": 2,
-      "latestFetchedAt": "2026-11-12 00:20:11.205+00"
+      "communities": 2
     },
     "鹿児島県": {
       "hp": 4677,
-      "communities": 3,
-      "latestFetchedAt": "2026-11-12 09:20:29.335+00"
+      "communities": 3
     }
   }
 }
