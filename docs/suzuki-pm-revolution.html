@@ -744,4 +744,49 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
  paint();tick();
  window.PM_CONTROL_STATUS=()=>({autoFire:autoFireEnabled,playerX:Math.round(playerX),targetX:targetX===null?null:Math.round(targetX),width:W,phase,dockVisible:visible,dragActive:pointer!==null,mode:'canvas-delta-v10'});
 })();
+</script><script>
+/* v10 combat layout: compact information, visible Suzuki, clear touch playfield. */
+(() => {
+ const style=document.createElement('style');
+ style.textContent=`
+ #hud{top:calc(env(safe-area-inset-top) + 6px);left:7px;right:7px;display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,.95fr) minmax(0,1fr);gap:4px;font-size:clamp(10px,2.7vw,13px);z-index:7;align-items:center}
+ #hud>span{min-width:0;overflow:hidden;text-overflow:ellipsis;text-align:center;padding:7px 4px;border-radius:10px;background:#21143de6}
+ #hud #round{font-size:clamp(10px,2.7vw,13px)}
+ #hud #life{letter-spacing:-1px;font-size:clamp(11px,3.1vw,15px)}
+ #pm-boo-hud{top:calc(env(safe-area-inset-top) + 43px);left:8px;padding:7px 9px;z-index:7}
+ #battle-tools{position:fixed;z-index:8;right:8px;top:calc(env(safe-area-inset-top) + 42px);display:flex;gap:5px;align-items:center}
+ #battle-tools>button{position:static!important;left:auto!important;right:auto!important;top:auto!important;transform:none!important;min-height:36px;min-width:39px;max-width:44px;padding:6px!important;border-radius:11px!important;font-size:18px!important;line-height:1!important;touch-action:manipulation}
+ #stageNotice{top:43%!important;left:50%;right:auto;width:min(83vw,315px);transform:translate(-50%,-50%);padding:9px 12px;border:1px solid #da8eff77;border-radius:14px;background:#180b36dd;box-shadow:0 0 24px #a649c244;font-size:clamp(15px,4.2vw,21px)!important;line-height:1.4;z-index:7;white-space:pre-line}
+ #bossbar{position:fixed;z-index:5;height:11px;left:25%;right:25%;top:250px;border-width:1px;pointer-events:none}
+ #pm-rage{position:fixed;z-index:5;display:none;pointer-events:none;text-align:center;white-space:nowrap;font-size:clamp(11px,3vw,14px);font-weight:950;text-shadow:0 2px 9px #15021b;color:#ffdeb1;transform:translateX(-50%)}
+ #pilotDock{bottom:calc(env(safe-area-inset-bottom) + 8px);left:auto;right:9px;justify-content:flex-end;width:auto}
+ #touchHint{display:none}
+ #fireDock{width:76px;flex:0 0 76px;height:66px}
+ #autoFireToggle{height:66px;font-size:12px}
+ #autoFireToggle span{font-size:18px}
+ #fireDock.manual #autoFireToggle{height:29px}
+ #fireDock.manual #tapShot{font-size:12px}
+ body.cutscene #battle-tools,body.cutscene #pm-rage{display:none!important}
+ @media(max-width:365px){#hud>span{padding:7px 2px}#pm-boo-hud{font-size:11px}}
+ @media(max-height:620px){#battle-tools{top:calc(env(safe-area-inset-top) + 40px)}#pm-boo-hud{top:calc(env(safe-area-inset-top) + 40px)}#fireDock,#autoFireToggle{height:56px}}
+ `;
+ document.head.append(style);
+ const rage=document.createElement('div');rage.id='pm-rage';rage.setAttribute('aria-live','off');document.body.append(rage);
+ const bar=document.getElementById('bossbar');
+ function positionBossUI(){
+   const info=window.PM_GAME_STATUS?.();
+   if(boss&&['stage','transition'].includes(phase)&&!document.body.classList.contains('cutscene')){
+     const r=Math.min(62,W*.15);
+     const x=clamp(boss.x-r,8,Math.max(8,W-2*r-8));
+     bar.style.left=x+'px';bar.style.right='auto';bar.style.width=(r*2)+'px';
+     bar.style.top=(boss.y+r+10)+'px';
+     rage.style.left=boss.x+'px';rage.style.top=(boss.y+r+27)+'px';
+     const remain=Math.max(0,[8,6,4][stage-1]-(info?.rageElapsed||0));
+     rage.textContent=(info?.rageWindup||0)>0?'😡 手払い準備！':'😠 次の手払いまで '+Math.ceil(remain)+'秒';
+     rage.style.display='block';
+   }else rage.style.display='none';
+   requestAnimationFrame(positionBossUI);
+ }
+ positionBossUI();
+})();
 </script></body></html>
