@@ -20,6 +20,7 @@ const messages:Record<string,string>={
   expired_or_full:"満員または招待受付終了です。",
   nickname_unavailable:"このニックネームは既に使用されています。",
   invalid_nickname:"1〜24文字のニックネームを入力してください。",
+  already_joined:"この端末はすでに参加申請済みです。専用ページを開いてください。",
   guest_service_unavailable:"参加サーバーへ接続できません。",
 };
 type RoomInfo={roomId:string;maxPlayers:number;occupied:number;joinExpiresAt:string};
