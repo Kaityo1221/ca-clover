@@ -310,22 +310,41 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
   inPoly = mapInside;
   function updateBanner(){renderBoos();const el=$('round');if(phase==='boss')el.textContent=`👑 ${PREFS[prefIndex]} BOSS`;else if(isCutscene())el.textContent=`🛸 ${PREFS[prefIndex]} ${prefIndex+1}/${PREFS.length}`;else el.textContent=`🗾 ${PREFS[prefIndex]} ${stage}/3`;}
   updateHUD=function(){origUpdateHUD();updateBanner();};
+  // v9: SuzukiPM appears on all three stages. Prefectures shield Suzuki from player fire.
+  const SUZUKI_INTERVALS=[8,6,4];
+  let rageElapsed=0, rageWindup=0, rageSwipes=0, blockedShots=0, landDamage=0, suzukiHits=0;
+  let swipeFlash=0, swipeX=0, swipeY=0, stageClearedAt=0;
+  function positionSuzuki(){
+    if(!boss)return;
+    boss.t+=0;
+    boss.x=W/2+Math.sin(clock*.75+stage*.6)*W*.13;
+    boss.y=Math.min(H*.135,112)+Math.sin(clock*1.1)*6;
+  }
+  function createSuzuki(){
+    const hp=[10,14,18][stage-1]+Math.min(6,Math.floor(prefIndex/10));
+    boss={x:W/2,y:Math.min(H*.135,112),hp,max:hp,t:0};
+    rageElapsed=0;rageWindup=0;rageSwipes=0;swipeFlash=0;
+    $('bossbar').style.display='block';
+    $('bosshealth').style.width='100%';
+    positionSuzuki();
+  }
   stageData=function(n){
     syncOutline(PREFS[prefIndex]);
-    stage=n;phase='stage';transition=0;bullets=[];enemyBullets=[];boss=null;collapseDebris=[];
-    $('bossbar').style.display='none';bodyCut(false);audioButton.style.display='block';
-    stageAngle=[0,.25,-.4][n-1];stageScale=Math.min(W*.69,H*.37,290)/112;
-    stageCenter={x:W/2,y:Math.min(H*.36,310)};cells=[];
+    stage=n;phase='stage';transition=0;bullets=[];enemyBullets=[];collapseDebris=[];
+    bodyCut(false);audioButton.style.display='block';
+    stageAngle=[0,.22,-.28][n-1];stageScale=Math.min(W*.69,H*.37,290)/112;
+    stageCenter={x:W/2,y:Math.min(H*.45,355)};cells=[];
     for(let gy=0;gy<12;gy++)for(let gx=0;gx<12;gx++){
       const x=6+gx*7.7,y=6+gy*7.7;
-      if(inPoly(x,y))cells.push({x,y,hp:n===3?2:1,alive:true,tint:rand(0,1),angle:rand(-.4,.4)});
+      if(inPoly(x,y))cells.push({x,y,hp:1,alive:true,tint:rand(0,1),angle:rand(-.4,.4)});
     }
-    if(!cells.length){cells.push({x:50,y:50,hp:1,alive:true,tint:.6,angle:0});}
-    drift=0;updateHUD();
-    showNotice(`${PREFS[prefIndex]}  ${prefIndex+1} / 47\nSTAGE ${n} / 3  ${['北向き','右斜め','左斜め'][n-1]}`,2.1);
-    if(n===1){tone(300,.35,'triangle',.03,280);}
+    if(!cells.length)cells.push({x:50,y:50,hp:1,alive:true,tint:.6,angle:0});
+    createSuzuki();drift=0;updateHUD();
+    showNotice(`${PREFS[prefIndex]}  ${prefIndex+1} / 47\nSTAGE ${n} / 3　SUZUKI PM 出現！`,2.1);
+    if(n===1)tone(300,.35,'triangle',.03,280);
   };
-  enterBoss=function(){origBoss();boss.hp=20+Math.min(16,prefIndex);boss.max=boss.hp;boss.y=Math.min(H*.25,210);updateHUD();showNotice(`${PREFS[prefIndex]} 最終戦\n👑 SUZUKI PM 降臨！`,2.3);tone(120,.6,'sawtooth',.075,-80);};
+  // No separate fourth boss round. The third encounter triggers the existing cinematic fall.
+  enterBoss=function(){finish(true);};
   shoot=function(){origShoot();tone(550,.06,'triangle',.013,-175);};
   // 撃墜後の暗転を含めた長めの墜落シネマティック（秒）。
   const FALL_FADE_END=1.15, FALL_FLOAT_BEGIN=1.55, FALL_DROP_BEGIN=4.35, FALL_IMPACT=8.35;
@@ -396,38 +415,113 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
     prefIndex++;life=Math.min(5,life+2);playerX=W/2;invuln=1.3;stageData(1);saveState();
   }
   skip.addEventListener('click',advanceScene);
-  update=function(dt,elapsed=dt){
-    const enteredInCombat=phase==='stage'||phase==='boss';
-    origUpdate(dt);
-    // Start the blackout at zero even on the frame containing the lethal hit.
-    if(enteredInCombat&&isCutscene())return;
-    if(phase==='stage'||phase==='transition'){
-      // A hit breaks neighboring blocks too, creating satisfying chain reactions.
-      const fallen=cells.filter(c=>!c.alive&&!c.fragmented);
-      for(const c of fallen){
-        c.fragmented=true;
-        const extras=cells.filter(n=>n.alive&&Math.hypot(n.x-c.x,n.y-c.y)<22)
-                          .sort((a,b)=>Math.hypot(a.x-c.x,a.y-c.y)-Math.hypot(b.x-c.x,b.y-c.y))
-                          .slice(0,stage===1?2:stage===2?3:2);
-        for(const n of extras){n.alive=false;n.fragmented=true;score+=55*stage;}
-        for(const frag of [c,...extras]){
-          const p=getScreen(frag.x,frag.y);
-          for(let q=0;q<3;q++)collapseDebris.push({x:p.x+rand(-8,8),y:p.y+rand(-8,8),vx:rand(-100,100),vy:rand(-190,-40),angle:rand(0,6),spin:rand(-6,6),size:rand(4,12),ttl:1.5});
-        }
-        if(Math.random()<.22)tone(140,.1,'square',.014,-90);
+  function showerOfPrefectureDebris(c){
+    const p=getScreen(c.x,c.y);
+    for(let q=0;q<3;q++)collapseDebris.push({x:p.x+rand(-8,8),y:p.y+rand(-8,8),vx:rand(-100,100),vy:rand(-190,-40),angle:rand(0,6),spin:rand(-6,6),size:rand(4,12),ttl:1.5});
+  }
+  function suzukiHandSwipe(){
+    if(phase!=='stage'||!boss)return;
+    rageSwipes++;swipeFlash=.55;
+    // Suzuki's sweeping arm hits the prefecture, never the player's own fire.
+    const alive=cells.filter(c=>c.alive);
+    if(!alive.length)return;
+    const targetX=50+Math.sin(rageSwipes*2.47+stage)*21;
+    const targetY=25+(rageSwipes%4)*15;
+    const ranked=alive.map(c=>({c,dist:Math.hypot((c.x-targetX)*.82,(c.y-targetY)*1.12)})).sort((a,b)=>a.dist-b.dist);
+    const desired=Math.min(ranked.length,Math.max(8,Math.ceil(cells.length*.19)));
+    const destroyed=ranked.slice(0,desired);
+    for(const {c} of destroyed){c.alive=false;c.hp=0;landDamage++;showerOfPrefectureDebris(c);}
+    const centre=destroyed[Math.floor(destroyed.length/2)].c;
+    const screen=getScreen(centre.x,centre.y);
+    swipeX=screen.x;swipeY=screen.y;
+    explode(screen.x,screen.y,'#ff9d56',16);
+    shake=Math.max(shake,9);
+    tone(120,.3,'sawtooth',.045,-80);
+    showNotice('😡 SUZUKI PM 手払い！\n'+PREFS[prefIndex]+'に被害発生！',1.1);
+    updateHUD();
+  }
+  function bulletHitsLand(x,y){
+    const pos=getLocal(x,y);
+    // The outline is visual; ONLY still-intact cells block shots, leaving an actual opening.
+    for(const c of cells){if(c.alive&&Math.abs(c.x-pos.x)<4.4&&Math.abs(c.y-pos.y)<4.4)return true;}
+    return false;
+  }
+  function suzukiShotHit(b){
+    if(!boss)return false;
+    const r=Math.min(57,W*.145);
+    return Math.hypot(b.x-boss.x,b.y-boss.y)<r;
+  }
+  function handleSuzukiHit(b){
+    if(!boss)return;
+    boss.hp=Math.max(0,boss.hp-1);suzukiHits++;score+=75*stage;
+    explode(b.x,b.y,'#ffe16b',6);
+    $('bosshealth').style.width=(100*boss.hp/boss.max)+'%';
+    updateHUD();
+    if(boss.hp===0){
+      explode(boss.x,boss.y,'#ffe17d',56);
+      if(stage===3){finish(true);}
+      else{
+        phase='transition';transition=1.05;bullets=[];enemyBullets=[];
+        showNotice('SUZUKI PM 一時撤退！\n次のステージへ',1.25);
       }
-      if(fallen.length){updateHUD();if(cells.every(c=>!c.alive)&&phase==='stage'){
-        phase='transition';transition=.85;showNotice(`${PREFS[prefIndex]} 粉砕！`,1.1);
-      }}
     }
-    for(let i=collapseDebris.length-1;i>=0;i--){const d=collapseDebris[i];d.x+=d.vx*dt;d.y+=d.vy*dt;d.vy+=360*dt;d.angle+=d.spin*dt;d.ttl-=dt;if(d.ttl<0)collapseDebris.splice(i,1);}
+  }
+  update=function(dt,elapsed=dt){
+    // Combat and cinematic transitions share the existing single animation clock.
+    clock+=dt;
+    for(const star of stars){star.y+=(30+star.z*65)*dt;if(star.y>H){star.y=0;star.x=rand(0,W);}}
+    if(noticeUntil<clock)$('stageNotice').classList.remove('show');
+    if(phase==='stage'){
+      cooldown=Math.max(0,cooldown-dt);invuln=Math.max(0,invuln-dt);
+      drift=Math.sin(clock*(.7+stage*.19))*Math.min(12,W*.025);
+      playerX=clamp(playerX+((keys.right?1:0)-(keys.left?1:0))*W*.83*dt,25,W-25);
+      if((keys.fire||autoFireEnabled)&&cooldown<=0)shoot();
+      if(boss){boss.t+=dt;positionSuzuki();}
+      rageElapsed+=dt;
+      if(rageWindup>0){
+        rageWindup-=dt;
+        if(rageWindup<=0){suzukiHandSwipe();rageElapsed=0;rageWindup=0;}
+      }else if(rageElapsed>=SUZUKI_INTERVALS[stage-1]){
+        rageWindup=.75;
+        showNotice('⚠️ SUZUKI PM が激怒！\n手払いに注意！',.85);
+        tone(340,.18,'triangle',.035,100);
+      }
+      swipeFlash=Math.max(0,swipeFlash-dt);
+      // Segmented collision avoids fast shots tunnelling through small map blocks.
+      for(let i=bullets.length-1;i>=0;i--){
+        const b=bullets[i],oldY=b.y;b.y+=b.vy*dt;
+        let blocked=false,hitSuzuki=false;
+        for(let step=1;step<=Math.max(1,Math.ceil(Math.abs(b.y-oldY)/4));step++){
+          const y=oldY+(b.y-oldY)*step/Math.max(1,Math.ceil(Math.abs(b.y-oldY)/4));
+          if(bulletHitsLand(b.x,y)){blocked=true;break;}
+          if(suzukiShotHit({x:b.x,y})){hitSuzuki=true;break;}
+        }
+        if(blocked){blockedShots++;bullets.splice(i,1);continue;}
+        if(hitSuzuki){bullets.splice(i,1);handleSuzukiHit(b);if(phase!=='stage')break;continue;}
+        if(b.y<-28)bullets.splice(i,1);
+      }
+      // Suzuki's ordinary projectiles can threaten the player but cannot damage land.
+      enemyCooldown-=dt;
+      if(enemyCooldown<=0&&boss){
+        enemyBullets.push({x:boss.x,y:boss.y+47,vx:rand(-55,55),vy:160+stage*23});
+        enemyCooldown=Math.max(1.05,2.0-stage*.22);
+      }
+      for(let i=enemyBullets.length-1;i>=0;i--){
+        const b=enemyBullets[i];b.y+=b.vy*dt;b.x+=b.vx*dt;
+        if(b.y>H+20){enemyBullets.splice(i,1);continue;}
+        if(Math.hypot(b.x-playerX,b.y-playerY)<19){
+          enemyBullets.splice(i,1);damage();if(phase==='result')break;
+        }
+      }
+    }
+    for(let i=collapseDebris.length-1;i>=0;i--){
+      const d=collapseDebris[i];d.x+=d.vx*dt;d.y+=d.vy*dt;d.vy+=360*dt;d.angle+=d.spin*dt;d.ttl-=dt;
+      if(d.ttl<0)collapseDebris.splice(i,1);
+    }
     if(isCutscene()){
-      // No setTimeout story callbacks: a single clock owns every scene transition.
       crashClock+=elapsed;
-      if(phase==='fall'){
-        updateFallBeat();
-        if(crashClock>=FALL_IMPACT)impact();
-      }else if(phase==='impact'&&crashClock>=IMPACT_DURATION)beginBoo();
+      if(phase==='fall'){updateFallBeat();if(crashClock>=FALL_IMPACT)impact();}
+      else if(phase==='impact'&&crashClock>=IMPACT_DURATION)beginBoo();
       else if(phase==='boo'&&crashClock>=BOO_DURATION)beginEscape();
       else if(phase==='escape'&&crashClock>=ESCAPE_DURATION)nextPref();
     }
@@ -569,6 +663,20 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
     if(collectionOpen&&cutscenePausedFrame){ctx.putImageData(cutscenePausedFrame,0,0);return;}
     if(isCutscene()){drawCutscene();return;}
     origDraw();
+    if(phase==='stage'||phase==='transition'){
+      drawBoss();
+      if(rageWindup>0&&boss){
+        ctx.save();ctx.font='900 16px system-ui';ctx.textAlign='center';
+        ctx.shadowColor='#ff584b';ctx.shadowBlur=19;ctx.fillStyle='#ffea89';
+        ctx.fillText('😡 手払い準備！',boss.x,boss.y+Math.min(57,W*.145)+28);ctx.restore();
+      }
+      if(swipeFlash>0){
+        const opacity=clamp(swipeFlash/.55,0,1);
+        ctx.save();ctx.globalAlpha=opacity;ctx.strokeStyle='#ffa74b';ctx.lineWidth=14;
+        ctx.shadowColor='#ff4e31';ctx.shadowBlur=26;
+        ctx.beginPath();ctx.moveTo(W*.12,swipeY-29);ctx.quadraticCurveTo(swipeX,swipeY+40,W*.88,swipeY-30);ctx.stroke();ctx.restore();
+      }
+    }
     ctx.save();for(const d of collapseDebris){ctx.globalAlpha=clamp(d.ttl/1.25,0,1);ctx.translate(d.x,d.y);ctx.rotate(d.angle);ctx.fillStyle='#b865f7';ctx.fillRect(-d.size/2,-d.size/2,d.size,d.size);ctx.strokeStyle='#fae5ff';ctx.lineWidth=.6;ctx.strokeRect(-d.size/2,-d.size/2,d.size,d.size);ctx.rotate(-d.angle);ctx.translate(-d.x,-d.y);}ctx.restore();
     // Scene rendering has no clock mutations.
   };
@@ -584,7 +692,7 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
     outlinePrefecture:outlineOwner,
     geometrySynchronized:currentOutline===SHAPES[PREFS[prefIndex]]
   });
-  window.PM_GAME_STATUS=()=>({prefecture:PREFS[prefIndex],outlinePrefecture:outlineOwner,geometrySynchronized:currentOutline===SHAPES[PREFS[prefIndex]],prefIndex,stage,phase,score,life,blocksRemaining:cells.filter(c=>c.alive).length,visited,booCount:collectedBoos.size,booNames:[...collectedBoos],newsVisible:news.style.display==='block',cutClock:crashClock,scene:phase==='fall'?['blackout','float','drop'][fallBeat]:phase,projectiles:bullets.length+enemyBullets.length,collectionOpen});
+  window.PM_GAME_STATUS=()=>({v9:true,rageElapsed,rageWindup,rageSwipes,blockedShots,landDamage,suzukiHits,bossHp:boss?.hp??null,bossMax:boss?.max??null,suzukiVisible:Boolean(boss&&(phase==='stage'||phase==='transition')),prefecture:PREFS[prefIndex],outlinePrefecture:outlineOwner,geometrySynchronized:currentOutline===SHAPES[PREFS[prefIndex]],prefIndex,stage,phase,score,life,blocksRemaining:cells.filter(c=>c.alive).length,visited,booCount:collectedBoos.size,booNames:[...collectedBoos],newsVisible:news.style.display==='block',cutClock:crashClock,scene:phase==='fall'?['blackout','float','drop'][fallBeat]:phase,projectiles:bullets.length+enemyBullets.length,collectionOpen});
   if(location.protocol==='file:')window.PM_GAME_TEST_ADVANCE=()=>{if(phase==='stage'){cells.forEach(c=>c.alive=false);transition=.05;phase='transition';}else if(phase==='boss'&&boss){boss.hp=1;finish(true);}else if(isCutscene())advanceScene();};
 })();
 
