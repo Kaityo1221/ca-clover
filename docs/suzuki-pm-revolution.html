@@ -367,7 +367,7 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
  function pmLoadHp(){
    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),4000);
    const url=new URL('suzuki-pm-hp.json',location.href);
-   fetch(url.toString(),{cache:'force-cache',signal:controller.signal}).then(response=>{
+   fetch(url.toString(),{cache:'default',signal:controller.signal}).then(response=>{
      if(!response.ok)throw new Error('HP data HTTP '+response.status);return response.json();
    }).then(data=>{
      if(data?.version!==1||!data.prefectures||typeof data.prefectures!=='object')throw new Error('Invalid HP snapshot');
