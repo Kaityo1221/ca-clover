@@ -86,6 +86,25 @@ export async function POST(request: Request) {
       }
       const name = normalizeName(data.nickname);
       if (!name) return json({error:"invalid_nickname"},400);
+      // One existing browser session must not silently create additional
+      // player slots in the same room. This is NOT proof of one physical person.
+      const previousCookies=(request.headers.get("cookie")??"").split(";")
+        .map(value=>value.trim()).filter(value=>value.startsWith(COOKIE+"="));
+      if(previousCookies.length>1)return json({error:"ambiguous_guest_cookie"},400);
+      if(previousCookies.length===1){
+        const previous=previousCookies[0].slice(COOKIE.length+1);
+        if(isHex64(previous)){
+          const previousHash=await sha256(previous);
+          const [existing]=await sql`
+            select p.id from zoroark_isolated.guest_participants p
+            join zoroark_isolated.rooms r on r.id=p.room_id
+            where p.session_sha256=${previousHash}
+              and r.invite_sha256=${inviteHash}
+              and r.expires_at>now()
+          `;
+          if(existing)return json({error:"already_joined"},409);
+        }
+      }
       const sessionToken = bytesHex(SESSION_BYTES);
       const hash = await sha256(sessionToken);
       let guest;
