@@ -67,7 +67,7 @@
   document.head.appendChild(reachOps);
 
   const minigames=document.createElement("script");
-  minigames.src="./community-minigames-placeholder.js?v=20261111-welcome-right1";
+  minigames.src="./community-minigames-placeholder.js?v=20261112-suzuki-list2";
   minigames.async=false;
   document.head.appendChild(minigames);
 
