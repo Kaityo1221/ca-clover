@@ -442,9 +442,12 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
   }
   function bulletHitsLand(x,y){
     const pos=getLocal(x,y);
-    // The outline is visual; ONLY still-intact cells block shots, leaving an actual opening.
-    for(const c of cells){if(c.alive&&Math.abs(c.x-pos.x)<4.4&&Math.abs(c.y-pos.y)<4.4)return true;}
-    return false;
+    if(!inPoly(pos.x,pos.y))return false;
+    // The silhouette blocks shots except at the destroyed block closest to this coordinate.
+    // Intact land absorbs bullets harmlessly and never changes its HP.
+    let nearest=null,dist=Infinity;
+    for(const c of cells){const d=(c.x-pos.x)**2+(c.y-pos.y)**2;if(d<dist){dist=d;nearest=c;}}
+    return Boolean(nearest&&nearest.alive);
   }
   function suzukiShotHit(b){
     if(!boss)return false;
@@ -672,9 +675,19 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
       }
       if(swipeFlash>0){
         const opacity=clamp(swipeFlash/.55,0,1);
+        const u=1-opacity;
         ctx.save();ctx.globalAlpha=opacity;ctx.strokeStyle='#ffa74b';ctx.lineWidth=14;
         ctx.shadowColor='#ff4e31';ctx.shadowBlur=26;
-        ctx.beginPath();ctx.moveTo(W*.12,swipeY-29);ctx.quadraticCurveTo(swipeX,swipeY+40,W*.88,swipeY-30);ctx.stroke();ctx.restore();
+        ctx.beginPath();ctx.moveTo(W*.12,swipeY-29);ctx.quadraticCurveTo(swipeX,swipeY+40,W*.88,swipeY-30);ctx.stroke();
+        // The visible sweeping hand belongs to Suzuki, not the fighter.
+        if(boss){
+          const handX=boss.x+(swipeX-boss.x)*Math.min(1,.65+u*.35);
+          const handY=boss.y+55+(swipeY-boss.y-55)*Math.min(1,.65+u*.35);
+          ctx.strokeStyle='#f3a7ce';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(boss.x+25,boss.y+26);
+          ctx.quadraticCurveTo(handX+35,handY-35,handX,handY);ctx.stroke();
+          ctx.shadowBlur=0;ctx.font='900 39px system-ui';ctx.fillText('👋',handX,handY);
+        }
+        ctx.restore();
       }
     }
     ctx.save();for(const d of collapseDebris){ctx.globalAlpha=clamp(d.ttl/1.25,0,1);ctx.translate(d.x,d.y);ctx.rotate(d.angle);ctx.fillStyle='#b865f7';ctx.fillRect(-d.size/2,-d.size/2,d.size,d.size);ctx.strokeStyle='#fae5ff';ctx.lineWidth=.6;ctx.strokeRect(-d.size/2,-d.size/2,d.size,d.size);ctx.rotate(-d.angle);ctx.translate(-d.x,-d.y);}ctx.restore();
