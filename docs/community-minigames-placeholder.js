@@ -63,17 +63,17 @@ function itemHtml(item){
 function renderList(kind){
  const games=kind==="games",items=games?GAME_ITEMS:TOOL_ITEMS;
  const app=document.getElementById("app");if(!app)return;
- app.innerHTML='<div class="ca-minigames-view"><section class="card hero"><div class="ca-minigames-head"><button type="button" class="ca-minigames-back">← ミニゲーム集</button><div><span class="pill">'+(games?'GAME LIST':'TOOLS')+'</span><h1 style="margin-top:10px">'+(games?'🎮 ミニゲーム一覧':'🧰 ツール')+'</h1><p class="ca-minigames-lead">'+(games?'すぐ使えるゲームの候補です。':'ゲームづくりに使える道具の候補です。')+'</p></div></div></section><div class="ca-minigames-list">'+(games?'<button type="button" class="ca-minigames-item" data-open-zoroark style="border:2px solid #84cc16;background:linear-gradient(135deg,#f7fee7,#fff);cursor:pointer"><span class="ca-minigames-item-icon">🦊</span><span><span class="ca-minigames-item-title">ゾロアークを探せ！</span><span class="ca-minigames-item-desc">CA専用GM・42組のお題・現地プレイ</span><span class="ca-minigames-soon" style="background:#d9f99d;color:#365314">ゲームを開始</span></span></button>':'')+(games?'<button type="button" class="ca-minigames-item" data-open-suzuki style="border:2px solid #a855f7;background:linear-gradient(135deg,#f5e9ff,#fff);cursor:pointer"><span class="ca-minigames-item-icon">👾</span><span><span class="ca-minigames-item-title">SuzukiのPMレボリューション</span><span class="ca-minigames-item-desc">全国47都道府県のブーイングを集めよう！ 親指操作・自動連射</span><span class="ca-minigames-soon" style="background:#e9d5ff;color:#6b21a8">🚀 ゲームを開始</span></span></button>':'')+items.map(itemHtml).join("")+'</div></div>';
- app.querySelector(".ca-minigames-back").onclick=function(){setMiniHistory("hub",true);renderHub()};
+ app.innerHTML='<div class="ca-minigames-view" data-mini-view="'+kind+'"><section class="card hero"><div class="ca-minigames-head"><button type="button" class="ca-minigames-back">← ミニゲーム集</button><div><span class="pill">'+(games?'GAME LIST':'TOOLS')+'</span><h1 style="margin-top:10px">'+(games?'🎮 ミニゲーム一覧':'🧰 ツール')+'</h1><p class="ca-minigames-lead">'+(games?'すぐ使えるゲームの候補です。':'ゲームづくりに使える道具の候補です。')+'</p></div></div></section><div class="ca-minigames-list">'+(games?'<button type="button" class="ca-minigames-item" data-open-zoroark style="border:2px solid #84cc16;background:linear-gradient(135deg,#f7fee7,#fff);cursor:pointer"><span class="ca-minigames-item-icon">🦊</span><span><span class="ca-minigames-item-title">ゾロアークを探せ！</span><span class="ca-minigames-item-desc">CA専用GM・42組のお題・現地プレイ</span><span class="ca-minigames-soon" style="background:#d9f99d;color:#365314">ゲームを開始</span></span></button>':'')+(games?'<button type="button" class="ca-minigames-item" data-open-suzuki style="border:2px solid #a855f7;background:linear-gradient(135deg,#f5e9ff,#fff);cursor:pointer"><span class="ca-minigames-item-icon">👾</span><span><span class="ca-minigames-item-title">SuzukiのPMレボリューション</span><span class="ca-minigames-item-desc">全国47都道府県のブーイングを集めよう！ 親指操作・自動連射</span><span class="ca-minigames-soon" style="background:#e9d5ff;color:#6b21a8">🚀 ゲームを開始</span></span></button>':'')+items.map(itemHtml).join("")+'</div></div>';
+ app.querySelector(".ca-minigames-back").onclick=function(){history.back()};
  if(games){const game=app.querySelector("[data-open-zoroark]");if(game)game.onclick=function(){/* Preserve the game-list history entry for Safari Back. */location.hash="mini-games"}};
  if(games){const suzuki=app.querySelector("[data-open-suzuki]");if(suzuki)suzuki.onclick=function(){location.href="./suzuki-pm-revolution.html"};}
  window.scrollTo({top:0,behavior:"auto"});
 }
 function renderHub(){
  const app=document.getElementById("app");if(!app)return;
- app.innerHTML='<div class="ca-minigames-view"><section class="card hero"><button type="button" class="ca-minigames-back">← My Communityへ戻る</button><span class="pill" style="margin-left:8px">MINI GAMES</span><h1 style="margin-top:14px">🎮 ミニゲーム集</h1><p class="ca-minigames-lead">Meetupを、ちょっと楽しく。</p></section><div class="ca-minigames-entry-grid"><button type="button" class="ca-minigames-entry orange" data-kind="games"><div class="ca-minigames-entry-icon">🎮</div><h2>ミニゲーム一覧</h2><p>すぐ使えるゲームから選ぶ　›</p></button><button type="button" class="ca-minigames-entry green" data-kind="tools"><div class="ca-minigames-entry-icon">🧰</div><h2>ツール</h2><p>ゲームづくりに使える道具　›</p></button></div></div>';
- app.querySelector('[data-kind="games"]').onclick=function(){setMiniHistory("games",true);renderList("games")};
- app.querySelector('[data-kind="tools"]').onclick=function(){setMiniHistory("tools",true);renderList("tools")};
+ app.innerHTML='<div class="ca-minigames-view" data-mini-view="hub"><section class="card hero"><button type="button" class="ca-minigames-back">← My Communityへ戻る</button><span class="pill" style="margin-left:8px">MINI GAMES</span><h1 style="margin-top:14px">🎮 ミニゲーム集</h1><p class="ca-minigames-lead">Meetupを、ちょっと楽しく。</p></section><div class="ca-minigames-entry-grid"><button type="button" class="ca-minigames-entry orange" data-kind="games"><div class="ca-minigames-entry-icon">🎮</div><h2>ミニゲーム一覧</h2><p>すぐ使えるゲームから選ぶ　›</p></button><button type="button" class="ca-minigames-entry green" data-kind="tools"><div class="ca-minigames-entry-icon">🧰</div><h2>ツール</h2><p>ゲームづくりに使える道具　›</p></button></div></div>';
+ app.querySelector('[data-kind="games"]').onclick=function(){setMiniHistory("games",false);renderList("games")};
+ app.querySelector('[data-kind="tools"]').onclick=function(){setMiniHistory("tools",false);renderList("tools")};
  app.querySelector(".ca-minigames-back").onclick=function(){history.back()};
  window.scrollTo({top:0,behavior:"auto"});
 }
@@ -106,17 +106,28 @@ function install(){
   titleRow.appendChild(button);
 }
 ensureStyle();
-let timer=0;function schedule(){clearTimeout(timer);timer=setTimeout(install,80)}
+// Restore the overlay after reload, Safari Back, or the host page's async render.
+function reconcileMiniView(){
+ const hash=location.hash||"#my";
+ if(hash!=="#my")return;
+ const view=new URL(location.href).searchParams.get("caMini");
+ const valid=view==="hub"||view==="games"||view==="tools";
+ const app=document.getElementById("app");
+ if(!app)return;
+ if(valid){
+   // Wait for My Community's authenticated render. Never bypass its gate.
+   if(app.querySelector('.ca-minigames-view[data-mini-view="'+view+'"]'))return;
+   if(!app.querySelector("#sendaiMapHost"))return;
+   if(view==="hub")renderHub();
+   else renderList(view);
+   return;
+ }
+ install();
+}
+let timer=0;function schedule(){clearTimeout(timer);timer=setTimeout(reconcileMiniView,80)}
 new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
 window.addEventListener("hashchange",schedule);
-window.addEventListener("popstate",function(){
-  if((location.hash||"#my")!=="#my")return;
-  const view=new URL(location.href).searchParams.get("caMini");
-  if(view==="games"){renderList("games");return}
-  if(view==="tools"){renderList("tools");return}
-  if(view==="hub"){renderHub();return}
-  window.dispatchEvent(new HashChangeEvent("hashchange"));
-});
+window.addEventListener("popstate",schedule);
 // The primary home nav uses the same #my hash as the overlay. Ensure
 // pressing My Community still returns home even without a hash change.
 document.addEventListener("click",function(event){
