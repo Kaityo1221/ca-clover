@@ -350,7 +350,7 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
  /* v13-1: download a public prefecture aggregate, no private Supabase access. */
  const PM_HP_FALLBACK=1000;
  let pmHpCatalog=Object.create(null),pmHpTotal=0,pmHpRemaining=0,pmStageHp=[0,0,0],pmStageHits=[0,0,0],pmStageLanded=0;
- let pmHpIsFallback=true,pmHpFetched=false,pmHpGeneratedAt=null,pmHpSyncComplete=false,pmHpError=null;
+ let pmHpIsFallback=true,pmHpFetched=false,pmHpGeneratedAt=null,pmHpSnapshotReady=false,pmHpError=null;
  const pmHpMenuNote=document.createElement('p');pmHpMenuNote.id='pm-hp-menu-note';
  pmHpMenuNote.textContent='🍀 保存済みの都道府県HPを読み込み中…';menu.append(pmHpMenuNote);
  const pmStartButton=$('start');pmStartButton.disabled=true;resume.disabled=true;
@@ -377,7 +377,7 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
          valid[pref]={hp:entry.hp,communities:entry.communities};
      }
      if(Object.keys(valid).length===0)throw new Error('HP snapshot empty');
-     pmHpCatalog=valid;pmHpFetched=true;pmHpGeneratedAt=typeof data.generatedAt==='string'?data.generatedAt:null;pmHpSyncComplete=data.syncComplete===true;
+     pmHpCatalog=valid;pmHpFetched=true;pmHpGeneratedAt=typeof data.generatedAt==='string'?data.generatedAt:null;pmHpSnapshotReady=data.snapshotReady===true;
      pmHpMenuNote.textContent='🍀 保存済みClover人数：'+Object.keys(valid).length+'県（未取得県は仮HP 1,000）';
    }).catch(err=>{
      pmHpError=String(err?.message||err);
@@ -386,7 +386,7 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
  }
  pmLoadHp();
  window.PM_HP_ALLOCATE_TEST=hp=>({hp,neededHits:pmHitTarget(hp),stageHp:pmAllocateHp(hp),stageHits:pmAllocateHits(pmHitTarget(hp))});
- window.PM_HP_STATUS=()=>({prefecture:PREFS[prefIndex],totalHp:pmHpTotal,remainingHp:pmHpRemaining,stageHp:pmStageHp.slice(),stageHits:pmStageHits.slice(),landedHits:pmStageLanded,source:pmHpIsFallback?'fallback':'clover-aggregate',loaded:pmHpFetched,catalogCount:Object.keys(pmHpCatalog).length,generatedAt:pmHpGeneratedAt,syncComplete:pmHpSyncComplete,error:pmHpError});
+ window.PM_HP_STATUS=()=>({prefecture:PREFS[prefIndex],totalHp:pmHpTotal,remainingHp:pmHpRemaining,stageHp:pmStageHp.slice(),stageHits:pmStageHits.slice(),landedHits:pmStageLanded,source:pmHpIsFallback?'fallback':'clover-aggregate',loaded:pmHpFetched,catalogCount:Object.keys(pmHpCatalog).length,generatedAt:pmHpGeneratedAt,snapshotReady:pmHpSnapshotReady,error:pmHpError});
  const SUZUKI_INTERVALS=[8,6,4];
   let rageElapsed=0, rageWindup=0, rageSwipes=0, blockedShots=0, landDamage=0, suzukiHits=0;
   let swipeFlash=0, swipeX=0, swipeY=0, stageClearedAt=0;
