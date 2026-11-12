@@ -712,20 +712,21 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
 (() => {
  const dock=document.getElementById('fireDock'),toggle=document.getElementById('autoFireToggle'),shot=document.getElementById('tapShot'),canvas=document.getElementById('game');
  const active=()=>phase==='stage'||phase==='boss';
- let pointer=null,lastX=0,targetX=null,visible=false;
+ let pointer=null,lastX=0,targetX=null,visible=false,lastFrame=0,dragCarry=0;
  canvas.addEventListener('pointerdown',e=>{
    if(!active()||pointer!==null)return;
    if(e.cancelable)e.preventDefault();
-   pointer=e.pointerId;lastX=e.clientX;targetX=playerX;
+   pointer=e.pointerId;lastX=e.clientX;targetX=playerX;dragCarry=0;
    try{canvas.setPointerCapture(e.pointerId);}catch{}
  });
  canvas.addEventListener('pointermove',e=>{
    if(e.pointerId!==pointer||!active())return;
    if(e.cancelable)e.preventDefault();
-   targetX=clamp((targetX===null?playerX:targetX)+e.clientX-lastX,25,W-25);
+   dragCarry+=e.clientX-lastX;
+   if(Math.abs(dragCarry)>=1.2){targetX=clamp((targetX===null?playerX:targetX)+dragCarry,25,W-25);dragCarry=0;}
    lastX=e.clientX;
  });
- const end=e=>{if(e.pointerId===pointer){pointer=null;targetX=null;}};
+ const end=e=>{if(e.pointerId===pointer){pointer=null;targetX=null;dragCarry=0;}};
  for(const t of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(t,end);
  const paint=()=>{
    dock.classList.toggle('manual',!autoFireEnabled);
@@ -735,14 +736,15 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
  };
  toggle.addEventListener('click',()=>{autoFireEnabled=!autoFireEnabled;paint();});
  shot.addEventListener('click',()=>{if(!autoFireEnabled&&active()&&cooldown<=0)shoot();});
- function tick(){
+ function tick(ts){
+   const dt=lastFrame?Math.min(.05,Math.max(0,(ts-lastFrame)/1000)):1/60;lastFrame=ts;
    const v=['stage','boss','transition'].includes(phase);
    if(v!==visible){document.body.classList.toggle('pilot-active',v);visible=v;}
-   if(active()&&targetX!==null){const d=targetX-playerX;playerX=clamp(playerX+Math.sign(d)*Math.min(Math.abs(d),Math.max(1,W*.033)),25,W-25);}
+   if(active()&&targetX!==null){const d=targetX-playerX;playerX=clamp(playerX+Math.sign(d)*Math.min(Math.abs(d),Math.max(1,W*1.98*dt)),25,W-25);}
    requestAnimationFrame(tick);
  }
  paint();tick();
- window.PM_CONTROL_STATUS=()=>({autoFire:autoFireEnabled,playerX:Math.round(playerX),targetX:targetX===null?null:Math.round(targetX),width:W,phase,dockVisible:visible,dragActive:pointer!==null,mode:'canvas-delta-v10'});
+ window.PM_CONTROL_STATUS=()=>({autoFire:autoFireEnabled,playerX:Math.round(playerX),targetX:targetX===null?null:Math.round(targetX),width:W,phase,dockVisible:visible,dragActive:pointer!==null,mode:'canvas-delta-v12'});
 })();
 </script><script>
 /* v10 combat layout: compact information, visible Suzuki, clear touch playfield. */
