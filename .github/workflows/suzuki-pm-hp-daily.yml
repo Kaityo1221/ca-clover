@@ -60,6 +60,10 @@ jobs:
                | select((.created_at | fromdateiso8601 + 32400 | strftime("%Y-%m-%d")) == $today)]
               | length
             ')"
+            if ! [[ "$earlier" =~ ^[0-9]+$ ]]; then
+              echo 'ERROR: could not validate scheduled-run history; DB read denied.' >&2
+              exit 1
+            fi
             if [ "$earlier" -gt 0 ]; then
               echo 'SKIPPED: an earlier scheduled run already exists for this Japan date.'
               state='SKIP'
