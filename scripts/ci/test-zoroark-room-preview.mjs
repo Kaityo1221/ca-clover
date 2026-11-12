@@ -17,7 +17,7 @@ const invariants = [
   'crypto.getRandomValues(random)',
   '"SHA-256"',
   'zoroark_isolated.create_gm_room',
-  'joinEnabled: false',
+  'joinEnabled: process.env.ZOROARK_GUEST_LOBBY_ENABLED === "true"',
   '"Cache-Control": "no-store"',
   '"isolated_room_service_unavailable"',
 ];
@@ -31,4 +31,5 @@ assert.ok(!handler.includes("console.log"), "Credentials or invites must never b
 assert.ok(page.includes('fetch("/api/zoroark/rooms"'), "UI must use isolated Next route");
 assert.ok(page.includes("Authorization: \"Bearer \" + accessToken"), "UI sends only the Supabase access token for server verification");
 assert.ok(!page.includes('supabase.functions.invoke("zoroark-room-admin"'), "No production Edge function should be called");
+assert.ok(handler.includes('feature/zoroark-guest-invite-chat-isolated-20261113'),"Invite activation must be isolated to guest branch");
 console.log("ZOROARK_PREVIEW_ISOLATION_CONTRACT_PASS");
