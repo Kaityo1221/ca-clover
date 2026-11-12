@@ -838,6 +838,12 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
   window.PM_GAME_STATUS=()=>({v9:true,rageElapsed,rageWindup,rageSwipes,blockedShots,landDamage,suzukiHits,bossHp:boss?.hp??null,bossMax:boss?.max??null,suzukiVisible:Boolean(boss&&(phase==='stage'||phase==='transition')),prefecture:PREFS[prefIndex],outlinePrefecture:outlineOwner,geometrySynchronized:currentOutline===SHAPES[PREFS[prefIndex]],prefIndex,stage,phase,score,life,blocksRemaining:cells.filter(c=>c.alive).length,visited,booCount:collectedBoos.size,booNames:[...collectedBoos],newsVisible:news.style.display==='block',cutClock:crashClock,scene:phase==='fall'?['blackout','float','drop'][fallBeat]:phase,projectiles:bullets.length+enemyBullets.length,collectionOpen});
   // Local-file QA only: exercise the actual integer HP damage path, never bypass it.
   if(location.protocol==='file:'){
+    window.PM_GAME_TEST_HIT_ONCE=()=>{
+      if(phase!=='stage'||!boss)throw Error('No active Suzuki stage');
+      const stageBefore=stage,hpBefore=pmHpRemaining;
+      handleSuzukiHit({x:boss.x,y:boss.y});
+      return {stageBefore,hpBefore,hpAfter:pmHpRemaining,awakenTier:pmAwakenTier,phase};
+    };
     window.PM_GAME_TEST_HIT_STAGE=()=>{
       if(phase!=='stage'||!boss)throw Error('No active Suzuki stage');
       const needed=pmStageHits[stage-1]-pmStageLanded;
