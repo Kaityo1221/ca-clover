@@ -1,0 +1,173 @@
+{
+  "version": 1,
+  "source": "CA Clover stored community member totals, prefecture aggregate",
+  "generatedAt": "2026-11-12T13:17:00Z",
+  "syncComplete": false,
+  "note": "Initial isolated development snapshot. Daily refresh is not active until approved and configured.",
+  "prefectures": {
+    "三重県": {
+      "hp": 3476,
+      "communities": 1
+    },
+    "京都府": {
+      "hp": 8252,
+      "communities": 5
+    },
+    "佐賀県": {
+      "hp": 2753,
+      "communities": 3
+    },
+    "兵庫県": {
+      "hp": 29350,
+      "communities": 5
+    },
+    "北海道": {
+      "hp": 20078,
+      "communities": 12
+    },
+    "千葉県": {
+      "hp": 27682,
+      "communities": 7
+    },
+    "和歌山県": {
+      "hp": 623,
+      "communities": 1
+    },
+    "埼玉県": {
+      "hp": 16662,
+      "communities": 6
+    },
+    "大分県": {
+      "hp": 1441,
+      "communities": 2
+    },
+    "大阪府": {
+      "hp": 39246,
+      "communities": 7
+    },
+    "奈良県": {
+      "hp": 4991,
+      "communities": 3
+    },
+    "宮城県": {
+      "hp": 2703,
+      "communities": 1
+    },
+    "宮崎県": {
+      "hp": 3359,
+      "communities": 2
+    },
+    "山口県": {
+      "hp": 2481,
+      "communities": 2
+    },
+    "山形県": {
+      "hp": 465,
+      "communities": 2
+    },
+    "山梨県": {
+      "hp": 6101,
+      "communities": 3
+    },
+    "岐阜県": {
+      "hp": 10471,
+      "communities": 5
+    },
+    "岩手県": {
+      "hp": 2987,
+      "communities": 2
+    },
+    "広島県": {
+      "hp": 4157,
+      "communities": 1
+    },
+    "徳島県": {
+      "hp": 3431,
+      "communities": 5
+    },
+    "愛媛県": {
+      "hp": 1293,
+      "communities": 1
+    },
+    "愛知県": {
+      "hp": 33620,
+      "communities": 10
+    },
+    "新潟県": {
+      "hp": 7890,
+      "communities": 7
+    },
+    "東京都": {
+      "hp": 195636,
+      "communities": 14
+    },
+    "栃木県": {
+      "hp": 8731,
+      "communities": 4
+    },
+    "沖縄県": {
+      "hp": 4443,
+      "communities": 2
+    },
+    "滋賀県": {
+      "hp": 7386,
+      "communities": 4
+    },
+    "熊本県": {
+      "hp": 4477,
+      "communities": 4
+    },
+    "神奈川県": {
+      "hp": 28670,
+      "communities": 6
+    },
+    "福井県": {
+      "hp": 1913,
+      "communities": 2
+    },
+    "福岡県": {
+      "hp": 17975,
+      "communities": 3
+    },
+    "福島県": {
+      "hp": 2149,
+      "communities": 2
+    },
+    "秋田県": {
+      "hp": 493,
+      "communities": 1
+    },
+    "群馬県": {
+      "hp": 7356,
+      "communities": 4
+    },
+    "茨城県": {
+      "hp": 2412,
+      "communities": 2
+    },
+    "長崎県": {
+      "hp": 3119,
+      "communities": 1
+    },
+    "長野県": {
+      "hp": 10137,
+      "communities": 6
+    },
+    "青森県": {
+      "hp": 3019,
+      "communities": 1
+    },
+    "静岡県": {
+      "hp": 8425,
+      "communities": 4
+    },
+    "香川県": {
+      "hp": 3185,
+      "communities": 2
+    },
+    "鹿児島県": {
+      "hp": 4677,
+      "communities": 3
+    }
+  }
+}
