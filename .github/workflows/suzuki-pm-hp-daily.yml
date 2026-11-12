@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: suzuki-pm-hp-daily
@@ -47,6 +48,7 @@ jobs:
         env:
           PGURL: ${{ secrets.SUZUKI_HP_READONLY_DATABASE_URL }}
           PGOPTIONS: '-c default_transaction_read_only=on -c statement_timeout=15000'
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -64,3 +66,5 @@ jobs:
           fi
           git -C site -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'data(suzuki): daily static prefecture HP snapshot'
           git -C site push origin HEAD:pages
+          # GITHUB_TOKEN pushes do not trigger a second push workflow: dispatch Pages explicitly.
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/workflows/pages-deploy.yml/dispatches" -f ref=pages
