@@ -3,7 +3,6 @@ name: Suzuki PM prefecture HP daily snapshot
 on:
   schedule:
     - cron: '43 18 * * *' # 03:43 JST; exactly one scheduled check daily
-  workflow_dispatch:
 
 permissions:
   contents: write
