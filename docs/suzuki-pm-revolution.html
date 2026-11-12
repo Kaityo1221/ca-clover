@@ -352,7 +352,7 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
  let pmHpCatalog=Object.create(null),pmHpTotal=0,pmHpRemaining=0,pmStageHp=[0,0,0],pmStageHits=[0,0,0],pmStageLanded=0;
  let pmHpIsFallback=true,pmHpFetched=false,pmHpGeneratedAt=null,pmHpSyncComplete=false,pmHpError=null;
  const pmHpMenuNote=document.createElement('p');pmHpMenuNote.id='pm-hp-menu-note';
- pmHpMenuNote.textContent='🌐 CA Cloverの都道府県HPを読み込み中…';menu.append(pmHpMenuNote);
+ pmHpMenuNote.textContent='🍀 保存済みの都道府県HPを読み込み中…';menu.append(pmHpMenuNote);
  const pmStartButton=$('start');pmStartButton.disabled=true;resume.disabled=true;
  function pmHitTarget(hp){return hp>=100000?84:hp>=50000?72:hp>=20000?60:hp>=10000?54:hp>=5000?48:42;}
  function pmAllocateHp(hp){const a=Math.floor(hp*.25),b=Math.floor(hp*.35);return [a,b,hp-a-b];}
@@ -366,8 +366,8 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
  }
  function pmLoadHp(){
    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),4000);
-   const url=new URL('suzuki-pm-hp.json',location.href);url.searchParams.set('v',String(Date.now()));
-   fetch(url.toString(),{cache:'no-store',signal:controller.signal}).then(response=>{
+   const url=new URL('suzuki-pm-hp.json',location.href);
+   fetch(url.toString(),{cache:'force-cache',signal:controller.signal}).then(response=>{
      if(!response.ok)throw new Error('HP data HTTP '+response.status);return response.json();
    }).then(data=>{
      if(data?.version!==1||!data.prefectures||typeof data.prefectures!=='object')throw new Error('Invalid HP snapshot');
@@ -378,10 +378,10 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
      }
      if(Object.keys(valid).length===0)throw new Error('HP snapshot empty');
      pmHpCatalog=valid;pmHpFetched=true;pmHpGeneratedAt=typeof data.generatedAt==='string'?data.generatedAt:null;pmHpSyncComplete=data.syncComplete===true;
-     pmHpMenuNote.textContent='🍀 CA Clover HP連動：'+Object.keys(valid).length+'県（未取得県は仮HP 1,000）';
+     pmHpMenuNote.textContent='🍀 保存済みClover人数：'+Object.keys(valid).length+'県（未取得県は仮HP 1,000）';
    }).catch(err=>{
      pmHpError=String(err?.message||err);
-     pmHpMenuNote.textContent='⚠️ HPデータ未取得。全県、仮HP 1,000でプレイできます';
+     pmHpMenuNote.textContent='⚠️ 保存済みHPを読めません。全県、仮HP 1,000でプレイできます';
    }).finally(()=>{clearTimeout(timeout);pmStartButton.disabled=false;resume.disabled=false;});
  }
  pmLoadHp();
