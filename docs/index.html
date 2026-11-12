@@ -699,8 +699,8 @@
         app.innerHTML='<section class="card"><h2>🔒 CA専用ミニゲーム</h2><p class="muted strong">CAまたはADMINの承認が必要です。</p><button id="gameHome" class="btn section">My Communityへ戻る</button></section>';
         document.getElementById("gameHome").onclick=function(){go("my")};return;
       }
-      app.innerHTML='<section class="card"><h2>🦊 ゲームの準備中…</h2></section>';
-      const host=app;
+      app.innerHTML='<section class="card"><h2>👾 SuzukiのPMレボリューション</h2><p class="muted strong">全国47都道府県をめぐり、SuzukiPMを倒してご当地ブーイングを集めよう！ 親指スライド・自動連射対応。</p><a class="btn section" href="./suzuki-pm-revolution.html">🚀 出撃する</a></section><div id="zoroarkMiniGameHost"></div>';
+      const host=document.getElementById("zoroarkMiniGameHost");
       try{
         const module=await import("./zoroark-local.mjs?v=20261111-medals1");
         if(token!==renderToken||!host.isConnected)return;
