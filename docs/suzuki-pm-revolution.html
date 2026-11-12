@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no"><title>SuzukiのPMレボリューション | ビジュアル・操縦・BGM強化 v12</title><style>
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no"><title>SuzukiのPMレボリューション | CA Clover連動HP・AUTO改善 v13</title><style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#08031b;color:#fff;font-family:system-ui,-apple-system,'Hiragino Kaku Gothic ProN',sans-serif;touch-action:none;-webkit-user-select:none;user-select:none}#bg{background:radial-gradient(ellipse at 72% 24%,#632384 0%,transparent 38%),radial-gradient(ellipse at 21% 70%,#302b8b 0%,transparent 45%),radial-gradient(ellipse at 55% 55%,#7a185c 0%,#06091c 75%);position:fixed;inset:0;width:100%;height:100%;object-fit:cover;filter:hue-rotate(22deg) saturate(1.6) brightness(.73);opacity:.82}#veil{position:fixed;inset:0;background:linear-gradient(180deg,#06031d6b,#14082615 43%,#07021e84 95%);pointer-events:none}#game{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}#hud{position:fixed;top:calc(7px + env(safe-area-inset-top));left:10px;right:10px;display:flex;gap:6px;z-index:4;pointer-events:none;align-items:center;justify-content:space-between;font-size:clamp(10px,2.7vw,14px);font-weight:950;text-shadow:0 2px 5px #000}#hud>span{background:#1c0c4bbd;border:1px solid #ba74f774;padding:8px;border-radius:10px;white-space:nowrap}#hud b{color:#fa9dff}#controls{position:fixed;bottom:calc(8px + env(safe-area-inset-bottom));left:0;right:0;display:flex;justify-content:center;gap:10px;padding:0 10px;z-index:5;pointer-events:none}#controls button{pointer-events:auto;touch-action:none;-webkit-tap-highlight-color:transparent;border:1px solid #ca88ff90;border-radius:18px;width:30%;max-width:200px;height:65px;background:#342068cc;color:white;font-size:clamp(16px,4.5vw,22px);font-weight:900;box-shadow:0 3px 20px #04011688}#controls button.pressed{background:#8b3ce6}#controls #fire{width:37%;background:linear-gradient(120deg,#bb38ed,#f52c94)}#controls #fire.pressed{background:#fb5cce}#menu,#result{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px;background:radial-gradient(ellipse at 50% 42%,#50177bdd,#08031be9 75%);text-align:center;gap:14px}#menu h1,#result h1{font-size:clamp(27px,8vw,42px);line-height:1.25;margin:0;text-shadow:0 0 20px #d74fff}#menu p,#result p{max-width:420px;font-size:15px;font-weight:700;line-height:1.75;margin:0;color:#f1dfff}#start,#retry{border:0;border-radius:18px;padding:18px 34px;background:linear-gradient(110deg,#bf8dff,#fa53bd);color:#160523;font-weight:950;font-size:20px;box-shadow:0 5px 35px #b53fea8b;touch-action:manipulation}#result{display:none}#result img{height:min(48vw,210px);width:min(48vw,210px);border:6px solid #ffe681;box-shadow:0 0 45px #eb43dd;border-radius:50%;object-fit:cover}#topbtn{position:fixed;right:12px;top:calc(53px + env(safe-area-inset-top));z-index:5;padding:7px 11px;border-radius:9px;border:1px solid #e6b3ff66;background:#160d40b9;color:#fff;display:none}#stageNotice{position:fixed;top:17%;left:0;right:0;text-align:center;pointer-events:none;z-index:4;font-weight:950;font-size:clamp(26px,7vw,39px);color:#ffe4ff;text-shadow:0 0 21px #ff5cfa,0 4px #3d095c;opacity:0;transition:opacity .2s}#stageNotice.show{opacity:1}#sub{position:fixed;bottom:calc(84px + env(safe-area-inset-bottom));left:0;right:0;text-align:center;color:#efcaff;font-size:11px;pointer-events:none}#bossbar{position:fixed;left:9%;right:9%;top:calc(99px + env(safe-area-inset-top));height:13px;border-radius:9px;border:2px solid #ffb1f8;background:#30083f;z-index:4;overflow:hidden;display:none}#bossbar>div{height:100%;background:linear-gradient(90deg,#fb47a5,#ffea87);width:100%;transition:width .1s}#facepop{position:fixed;top:34%;left:50%;transform:translate(-50%,-50%);display:none;pointer-events:none;z-index:4;border:5px solid #fff09f;border-radius:50%;box-shadow:0 0 35px #f629e7}#credit{font-size:10px!important;opacity:.75}@media(max-height:660px){#controls button{height:50px}#sub{bottom:67px}#menu{gap:8px}}
 
 /* v4: mobile-friendly one-thumb arcade controls */
@@ -341,10 +341,53 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
   audioButton.addEventListener('click',()=>{muted=!muted;audioButton.textContent=muted?'🔇':'🎵';if(!muted){audio();tone(300,.11,'triangle',.055,180);}});
   function mapInside(x,y){let inside=false;const poly=currentOutline;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if(((a[1]>y)!==(b[1]>y))&&(x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0]))inside=!inside;}return inside;}
   inPoly = mapInside;
-  function updateBanner(){renderBoos();const el=$('round');if(phase==='boss')el.textContent=`👑 ${PREFS[prefIndex]} BOSS`;else if(isCutscene())el.textContent=`🛸 ${PREFS[prefIndex]} ${prefIndex+1}/${PREFS.length}`;else el.textContent=`🗾 ${PREFS[prefIndex]} ${stage}/3`;}
+  function updateBanner(){const el=$('round');if(phase==='boss')el.textContent=`👑 ${PREFS[prefIndex]} BOSS`;else if(isCutscene())el.textContent=`🛸 ${PREFS[prefIndex]} ${prefIndex+1}/${PREFS.length}`;else el.textContent=`🗾 ${PREFS[prefIndex]} ${stage}/3`;
+   if((phase==='stage'||phase==='transition')&&pmHpTotal>0){const line=document.createElement('small');line.id='pm-hp-hud';line.textContent='HP '+pmHpRemaining.toLocaleString('ja-JP')+' / '+pmHpTotal.toLocaleString('ja-JP')+(pmHpIsFallback?' 仮':'');el.append(line);}
+ }
   updateHUD=function(){origUpdateHUD();updateBanner();};
   // v9: SuzukiPM appears on all three stages. Prefectures shield Suzuki from player fire.
-  const SUZUKI_INTERVALS=[8,6,4];
+  
+ /* v13-1: download a public prefecture aggregate, no private Supabase access. */
+ const PM_HP_FALLBACK=1000;
+ let pmHpCatalog=Object.create(null),pmHpTotal=0,pmHpRemaining=0,pmStageHp=[0,0,0],pmStageHits=[0,0,0],pmStageLanded=0;
+ let pmHpIsFallback=true,pmHpFetched=false,pmHpGeneratedAt=null,pmHpSyncComplete=false,pmHpError=null;
+ const pmHpMenuNote=document.createElement('p');pmHpMenuNote.id='pm-hp-menu-note';
+ pmHpMenuNote.textContent='🌐 CA Cloverの都道府県HPを読み込み中…';menu.append(pmHpMenuNote);
+ const pmStartButton=$('start');pmStartButton.disabled=true;resume.disabled=true;
+ function pmHitTarget(hp){return hp>=100000?84:hp>=50000?72:hp>=20000?60:hp>=10000?54:hp>=5000?48:42;}
+ function pmAllocateHp(hp){const a=Math.floor(hp*.25),b=Math.floor(hp*.35);return [a,b,hp-a-b];}
+ function pmAllocateHits(hits){const a=Math.round(hits*.25),b=Math.round(hits*.35);return [a,b,hits-a-b];}
+ function pmStartPrefectureHp(){
+   const entry=pmHpCatalog[PREFS[prefIndex]];
+   pmHpIsFallback=!(entry&&Number.isSafeInteger(entry.hp)&&entry.hp>0);
+   pmHpTotal=pmHpIsFallback?PM_HP_FALLBACK:entry.hp;
+   pmHpRemaining=pmHpTotal;pmStageHp=pmAllocateHp(pmHpTotal);
+   pmStageHits=pmAllocateHits(pmHitTarget(pmHpTotal));pmStageLanded=0;
+ }
+ function pmLoadHp(){
+   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),4000);
+   const url=new URL('suzuki-pm-hp.json',location.href);url.searchParams.set('v',String(Date.now()));
+   fetch(url.toString(),{cache:'no-store',signal:controller.signal}).then(response=>{
+     if(!response.ok)throw new Error('HP data HTTP '+response.status);return response.json();
+   }).then(data=>{
+     if(data?.version!==1||!data.prefectures||typeof data.prefectures!=='object')throw new Error('Invalid HP snapshot');
+     const valid=Object.create(null);
+     for(const [pref,entry] of Object.entries(data.prefectures)){
+       if(PREFS.includes(pref)&&Number.isSafeInteger(entry?.hp)&&entry.hp>0&&Number.isSafeInteger(entry?.communities)&&entry.communities>0)
+         valid[pref]={hp:entry.hp,communities:entry.communities};
+     }
+     if(Object.keys(valid).length===0)throw new Error('HP snapshot empty');
+     pmHpCatalog=valid;pmHpFetched=true;pmHpGeneratedAt=typeof data.generatedAt==='string'?data.generatedAt:null;pmHpSyncComplete=data.syncComplete===true;
+     pmHpMenuNote.textContent='🍀 CA Clover HP連動：'+Object.keys(valid).length+'県（未取得県は仮HP 1,000）';
+   }).catch(err=>{
+     pmHpError=String(err?.message||err);
+     pmHpMenuNote.textContent='⚠️ HPデータ未取得。全県、仮HP 1,000でプレイできます';
+   }).finally(()=>{clearTimeout(timeout);pmStartButton.disabled=false;resume.disabled=false;});
+ }
+ pmLoadHp();
+ window.PM_HP_ALLOCATE_TEST=hp=>({hp,neededHits:pmHitTarget(hp),stageHp:pmAllocateHp(hp),stageHits:pmAllocateHits(pmHitTarget(hp))});
+ window.PM_HP_STATUS=()=>({prefecture:PREFS[prefIndex],totalHp:pmHpTotal,remainingHp:pmHpRemaining,stageHp:pmStageHp.slice(),stageHits:pmStageHits.slice(),landedHits:pmStageLanded,source:pmHpIsFallback?'fallback':'clover-aggregate',loaded:pmHpFetched,catalogCount:Object.keys(pmHpCatalog).length,generatedAt:pmHpGeneratedAt,syncComplete:pmHpSyncComplete,error:pmHpError});
+ const SUZUKI_INTERVALS=[8,6,4];
   let rageElapsed=0, rageWindup=0, rageSwipes=0, blockedShots=0, landDamage=0, suzukiHits=0;
   let swipeFlash=0, swipeX=0, swipeY=0, stageClearedAt=0;
   function positionSuzuki(){
@@ -354,7 +397,7 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
     boss.y=Math.max(162,Math.min(H*.22,213))+Math.sin(clock*1.1)*6;
   }
   function createSuzuki(){
-    const hp=[10,14,18][stage-1]+Math.min(6,Math.floor(prefIndex/10));
+    const hp=pmStageHp[stage-1]||PM_HP_FALLBACK;
     boss={x:W/2,y:Math.max(162,Math.min(H*.22,213)),hp,max:hp,t:0};
     rageElapsed=0;rageWindup=0;rageSwipes=0;swipeFlash=0;
     $('bossbar').style.display='block';
@@ -362,6 +405,8 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
     positionSuzuki();
   }
   stageData=function(n){
+   if(n===1)pmStartPrefectureHp();
+   pmStageLanded=0;
     syncOutline(PREFS[prefIndex]);
     stage=n;phase='stage';transition=0;bullets=[];enemyBullets=[];collapseDebris=[];
     bodyCut(false);audioButton.style.display='block';document.body.dataset.pmStage=String(n);
@@ -489,7 +534,12 @@ body.cutscene #pm-skip{bottom:calc(20px + env(safe-area-inset-bottom));min-width
   }
   function handleSuzukiHit(b){
     if(!boss)return;
-    boss.hp=Math.max(0,boss.hp-1);suzukiHits++;score+=75*stage;
+    const stageMax=pmStageHp[stage-1],target=pmStageHits[stage-1];
+   const before=Math.floor(pmStageLanded*stageMax/target);
+   pmStageLanded=Math.min(target,pmStageLanded+1);
+   const after=Math.floor(pmStageLanded*stageMax/target);
+   const dealt=Math.max(0,after-before);
+   boss.hp=Math.max(0,boss.hp-dealt);pmHpRemaining=Math.max(0,pmHpRemaining-dealt);suzukiHits++;score+=75*stage;
     explode(b.x,b.y,'#ffe16b',6);
     $('bosshealth').style.width=(100*boss.hp/boss.max)+'%';
     updateHUD();
