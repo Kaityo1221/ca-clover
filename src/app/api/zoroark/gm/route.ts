@@ -26,7 +26,7 @@ export async function POST(request:Request){
  }catch{return respond({error:"invalid_request"},400)}
  if(typeof input.roomId!=="string"||!/^[a-f0-9-]{36}$/i.test(input.roomId))return respond({error:"invalid_room"},400);
  const act=input.action;
- if(!["list","lock","unlock","approve","reject"].includes(String(act)))return respond({error:"invalid_action"},400);
+ if(!["list","lock","unlock","approve","reject","rotate"].includes(String(act)))return respond({error:"invalid_action"},400);
  try{
   const auth=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL??"https://wgiittrvgtiosogyhfcl.supabase.co",
    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY??"sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN",
@@ -51,6 +51,20 @@ export async function POST(request:Request){
       joinExpiresAt:room.join_expires_at},participants:players},200);
   }
   if(room.state!=="lobby")return respond({error:"lobby_closed"},409);
+  if(act==="rotate"){
+    const bytes=new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    const invite=Array.from(bytes,v=>v.toString(16).padStart(2,"0")).join("");
+    const sha=Array.from(new Uint8Array(
+      await crypto.subtle.digest("SHA-256",new TextEncoder().encode(invite))),
+      v=>v.toString(16).padStart(2,"0")).join("");
+    const [rotated]=await sql`
+      select zoroark_isolated.gm_rotate_invite(
+        ${u.user.id}::uuid,${input.roomId}::uuid,${sha}::text) as join_expires_at`;
+    if(!rotated?.join_expires_at)return respond({error:"rotate_failed"},503);
+    // Old invite is invalid immediately; only GM receives the new QR token.
+    return respond({invite,joinExpiresAt:rotated.join_expires_at},200);
+  }
   const guestId=typeof input.guestId==="string"&&/^[a-f0-9-]{36}$/i.test(input.guestId)?input.guestId:null;
   if((act==="approve"||act==="reject")&&!guestId)return respond({error:"invalid_guest"},400);
   const [result]=await sql`
