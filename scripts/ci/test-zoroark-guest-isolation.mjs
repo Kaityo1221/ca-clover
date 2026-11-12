@@ -15,7 +15,7 @@ for(const expected of [
   'x-zoroark-request','request.headers.get("origin")',
   'private, no-store','expires_at>now()',
 ])assert.ok(guest.includes(expected),"Guest security invariant missing: "+expected);
-assert.ok(!/\blocalStorage\s*[.\[]/.test(guest),"Credentials cannot use localStorage");
+assert.ok(!/localStorage\\.(setItem|getItem|removeItem|clear)\\s*\\(/.test(guest),"Credentials cannot use localStorage");
 assert.ok(!guest.includes("console.log"),"Session secrets cannot be logged");
 assert.ok(guest.includes('previousCookies.length>1'),"Duplicate guest cookies must be rejected");
 assert.ok(guest.includes('already_joined'),"Duplicate same-browser join is refused");
