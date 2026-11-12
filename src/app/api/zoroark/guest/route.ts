@@ -67,6 +67,9 @@ export async function POST(request: Request) {
   try {
     const [db] = await sql`select current_database() as name`;
     if (db?.name !== "ca_clover_test") return json({error:"wrong_isolation_database"},503);
+    // Shared, non-tracking limiter. Does not persist IP addresses or device fingerprints.
+    const [rate] = await sql`select zoroark_isolated.guest_rate_gate() as allowed`;
+    if (!rate?.allowed) return json({error:"rate_limited"},429);
 
     if (data.action === "inspect" || data.action === "join") {
       if (!isHex64(data.invite)) return json({error:"invalid_invite"},400);
