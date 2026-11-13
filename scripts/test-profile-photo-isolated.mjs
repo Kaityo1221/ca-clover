@@ -5,10 +5,16 @@ const docs=new URL('../docs/',import.meta.url);
 const get=(p)=>readFileSync(new URL(p,docs),'utf8');
 const home=get('index.html');
 const photo=get('profile-photo.mjs');
+const settings=get('settings-accordion.mjs');
+const greeting=get('exchange-message.mjs');
 const medal=get('stamp-rally.html');
 const checks=[
  ['settings entry',home.includes('id="mySettingsButton"')&&home.includes('go("settings")')],
- ['photo upload and delete controls',home.includes('id="profilePhotoSave"')&&home.includes('id="profilePhotoDelete"')],
+ ['photo upload and delete controls',settings.includes('profilePhotoSave')&&settings.includes('profilePhotoDelete')],
+ ['compact settings route',home.includes('settings-accordion.mjs')&&settings.includes('settingsPhotoToggle')&&settings.includes('settingsMessageToggle')],
+ ['exchange greeting name',settings.includes('交換時の一言')&&!settings.includes('メダル交換時の一言')],
+ ['greeting owner-only UI',greeting.includes('client.auth.getUser()')&&greeting.includes("'ca_exchange_messages'")&&greeting.includes('MAX_LENGTH=60')],
+ ['greeting medal and fallbacks',medal.includes('ca_medal_exchange_message')&&medal.includes('clearMedalExchangeMessage()')&&medal.includes('caMedalExchangeText.textContent=value')],
  ['compression bounds',photo.includes('let side = 256')&&photo.includes('50 * 1024')&&photo.includes("'image/webp'")],
  ['Safari JPEG encoder fallback',photo.includes("['image/webp', 'image/jpeg']")&&photo.includes("out.type !== format")],
  ['JPEG contentType and extension consistency',photo.includes("'image/webp' ? 'webp' : 'jpg'")&&photo.includes("cacheControl: '3600', contentType, upsert: false")],
@@ -26,6 +32,8 @@ const checks=[
  ['existing exchange metadata',medal.includes('stamp_reunions')]
 ];
 new Function(photo.replace('export function mountProfilePhoto','function mountProfilePhoto'));
+new Function(settings.replace('export function mountSettings','function mountSettings'));
+new Function(greeting.replace('export function mountExchangeMessage','function mountExchangeMessage'));
 for(const m of medal.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)){
  if(/importmap|type="application\/json"/.test(m[1]) || !m[2].trim())continue;
  new Function(m[2]);

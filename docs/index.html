@@ -46,6 +46,7 @@
     .login{max-width:470px;margin:8vh auto 0}.login .logo{margin:0 auto;width:78px;height:78px;border-radius:26px;font-size:38px}
     @media(max-width:760px){.activity-scroll-hint{display:block}.g2,.g3,.g4{grid-template-columns:1fr}.topin{align-items:flex-start}.nav{max-width:55vw;justify-content:flex-end}.brandblock{display:none}.wrap{padding-top:14px}.card{padding:18px}.community-hub-layout{display:block}.community-hub-layout>div:last-child{width:94px;right:0;bottom:-24px}.feature-grid{grid-template-columns:repeat(2,44px);gap:6px;width:94px;margin:0}.feature-app{width:44px;height:44px;border-radius:11px;padding:3px;gap:2px}.feature-app .feature-icon{font-size:15px}.feature-app .feature-label{font-size:9px}.modalback{align-items:flex-start;padding:12px}.modal{max-height:calc(100dvh - 24px);padding:18px}.modal>.row:first-child{position:sticky;top:-18px;z-index:5;background:#fff;padding:18px 0 10px}}
   </style>
+  <link rel="stylesheet" href="./settings-accordion.css?v=20261113-settings1">
 </head>
 <body>
   <header class="top"><div class="topin">
@@ -625,16 +626,19 @@
     setFlash(r.data&&r.data.communityName?r.data.communityName+" の承認申請を送りました 🍀":"承認申請を送りました 🍀","ok");
     await renderMy();
   }
-  let profilePhotoLeave = null;
+  let settingsLeave = null;
   async function renderSettings(token){
-    app.innerHTML='<section class="card"><button type="button" id="settingsBack" class="linkbtn">← My Community</button><span class="pill section">SETTINGS</span><h1 style="margin-top:12px">⚙️ 環境設定</h1><p class="muted strong section">CA Cloverの個人設定を管理する画面です。</p><section class="notice section"><h2>📸 プロフィール写真</h2><p class="muted strong section">中央で正方形に切り抜き、WebPまたはJPEG形式・最大256×256px・50KB以下に自動圧縮します。元画像や位置情報は送信しません。</p><div class="section" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><img id="profilePhotoPreview" alt="プロフィール写真のプレビュー" hidden style="height:96px;width:96px;object-fit:cover;border-radius:50%;border:2px solid #84cc16"><div style="flex:1;min-width:180px"><label for="profilePhotoInput" class="tiny strong">写真を選択（JPEG・PNG・WebP・HEIC）</label><input id="profilePhotoInput" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" class="input" style="width:100%;margin-top:8px"><div id="profilePhotoInfo" class="tiny muted" style="margin-top:6px"></div></div></div><button type="button" id="profilePhotoSave" class="btn section" disabled>プロフィール写真を保存</button><button type="button" id="profilePhotoDelete" class="btn line section" disabled>登録済み写真を削除</button><p id="profilePhotoStatus" class="tiny strong" role="status" aria-live="polite">準備中…</p></section></section>';
-    document.getElementById("settingsBack").onclick=function(){go("my")};
-    try {
-      const module=await import('./profile-photo.mjs?v=20261113-safari-jpeg1');
-      if(token!==renderToken||route()!=="settings")return;
-      profilePhotoLeave=module.mountProfilePhoto({host:app,client,session,role:profile.role});
-    } catch(_err) {
-      if(token===renderToken)document.getElementById("profilePhotoStatus").textContent='写真機能を読み込めませんでした。';
+    app.innerHTML='<section class="card"><p class="muted strong">⚙️ 環境設定を読み込んでいます…</p></section>';
+    try{
+      const module=await import('./settings-accordion.mjs?v=20261113-settings1');
+      if(token!==renderToken||route()!=='settings')return;
+      settingsLeave=module.mountSettings({
+        host:app,client,session,role:profile.role,
+        onBack:function(){go('my')},
+        onAccount:function(){go('account')}
+      });
+    }catch(_){
+      if(token===renderToken)app.innerHTML='<section class="card"><h2>環境設定を開けませんでした</h2><p>画面を再読み込みしてください。</p></section>';
     }
   }
 
@@ -694,7 +698,7 @@
     if(zoroarkLeave){zoroarkLeave();zoroarkLeave=null;}
     if(ideasLeave){ideasLeave();ideasLeave=null;}
     if(sendaiMapLeave){sendaiMapLeave();sendaiMapLeave=null;}
-    if(profilePhotoLeave){profilePhotoLeave();profilePhotoLeave=null;}
+    if(settingsLeave){settingsLeave();settingsLeave=null;}
     // Full-roster card controls are scoped to each render; no legacy raffle panel remains.
     const token=++renderToken;
     header();

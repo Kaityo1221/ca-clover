@@ -59,6 +59,12 @@ async function prep(page,mode){
    from:chain,
    rpc:async(name,args)=>{
     if(name==='stamp_rally_catalog')return {data:rows,error:null};
+    if(name==='ca_medal_exchange_message'){
+     if(mode==='race'&&args.p_ca_member_id===A)await new Promise(r=>setTimeout(r,350));
+     if(mode==='missing'||(mode==='error'&&args.p_ca_member_id===A))
+       return mode==='error'?{data:null,error:{message:'synthetic failure'}}:{data:null,error:null};
+     return {data:args.p_ca_member_id===A?'東京から来ました！\nよろしくお願いします😊':'こんにちは！ QA B',error:null};
+    }
     if(name==='ca_medal_profile_photo_path'){
      if(mode==='race'&&args.p_ca_member_id===A)await new Promise(r=>setTimeout(r,350));
      if(mode==='missing'||mode==='error'&&args.p_ca_member_id===A)
@@ -87,6 +93,8 @@ async function testMedal(browser,name){
   const page=await browser.newPage({viewport:{width,height:812},deviceScaleFactor:1});
   await prep(page,'normal');await openModal(page);
   await page.locator('#caMedalPhotoRow:not([hidden])').waitFor({timeout:12000});
+  await page.locator('#caMedalExchangeMessage:not([hidden])').waitFor({timeout:12000});
+  assert.ok((await page.locator('#caMedalExchangeText').textContent()).includes('東京から来ました！'),'greeting missing on medal');
   const boxes=await page.evaluate(()=>{
    const box=id=>{const b=document.querySelector(id).getBoundingClientRect();return{x:b.x,y:b.y,width:b.width,height:b.height,bottom:b.bottom,right:b.right}};
    return {row:box('#caMedalPhotoRow'),photo:box('#caMedalPhoto'),medal:box('#stampZoom2D'),modal:box('.stampmodal')};
@@ -98,6 +106,7 @@ async function testMedal(browser,name){
   await page.screenshot({path:join(artifacts,name+'-'+width+'.png')});
   await page.locator('#stampClose').click();
   assert.ok(await page.locator('#caMedalPhotoRow').evaluate(e=>e.hidden),'avatar not cleared on close');
+  assert.ok(await page.locator('#caMedalExchangeMessage').evaluate(e=>e.hidden),'greeting not cleared on close');
   record(name+' '+width+'px corner layout and close');
   await page.close();
  }
@@ -106,6 +115,7 @@ async function testMedal(browser,name){
   await prep(page,mode);await openModal(page);
   await page.waitForTimeout(300);
   assert.equal(await page.locator('#caMedalPhotoRow').evaluate(e=>e.hidden),true,'avatar unexpectedly visible in '+mode);
+  assert.equal(await page.locator('#caMedalExchangeMessage').evaluate(e=>e.hidden),true,'greeting unexpectedly visible in '+mode);
   assert.ok(await page.locator('#stampZoom2D').isVisible(),'medal hidden in '+mode);
   record(name+' '+mode+' fallbacks');
   await page.close();
@@ -117,9 +127,68 @@ async function testMedal(browser,name){
  await page.waitForTimeout(430);
  const src=await page.locator('#caMedalPhoto').getAttribute('src');
  assert.ok(decodeURIComponent(src).includes('/b.webp'),'old async CA photo replaced newer selection: '+src);
+ await page.locator('#caMedalExchangeMessage:not([hidden])').waitFor();
+ assert.equal(await page.locator('#caMedalExchangeText').textContent(),'こんにちは！ QA B','stale greeting replaced selected CA greeting');
  record(name+' CA switch ignores stale response');
  await page.close();
 }
+async function testSettingsAccordion(browser,name){
+ const page=await browser.newPage({viewport:{width:390,height:812}});
+ await page.goto(origin+'/qa/photo-fixture.html');
+ await page.evaluate(async()=>{
+   window.CA_PROFILE_PHOTO_UPLOAD_ENABLED=true;
+   window.confirm=()=>true;
+   const uid='qa-browser-user';
+   let saved=null;
+   const client={
+     auth:{getUser:async()=>({data:{user:{id:uid}},error:null})},
+     from:table=>{
+       let operation='read',row=null;
+       return {
+         select(){return this},eq(){return this},
+         upsert(v){operation='upsert';row=v;return this},
+         delete(){operation='delete';return this},
+         async maybeSingle(){
+           if(table==='ca_profile_photos')return {data:null,error:null};
+           if(operation==='upsert'){saved=row;return {data:{message:row.message},error:null};}
+           if(operation==='delete'){saved=null;return {data:{user_id:uid},error:null};}
+           return {data:saved,error:null};
+         }
+       };
+     },
+     storage:{from:()=>({createSignedUrl:async()=>({data:null,error:{message:'not found'}})})}
+   };
+   const module=await import('/docs/settings-accordion.mjs');
+   window.__settingsCleanup=module.mountSettings({host:document.querySelector('#testHost'),client,session:{user:{id:uid}},role:'ca',onBack:()=>{},onAccount:()=>{}});
+ });
+ assert.equal(await page.locator('#settingsPhotoPanel').evaluate(el=>el.hidden),true);
+ assert.equal(await page.locator('#settingsMessagePanel').evaluate(el=>el.hidden),true);
+ assert.equal(await page.locator('.settings-future:disabled').count(),3);
+ await page.locator('#settingsMessageToggle').click();
+ await page.locator('#exchangeMessageInput').waitFor();
+ assert.equal(await page.locator('#settingsMessageToggle').getAttribute('aria-expanded'),'true');
+ await page.locator('#exchangeMessageInput').fill('<img src=x onerror=alert(1)>');
+ assert.equal(await page.locator('#exchangeMessagePreviewText').textContent(),'<img src=x onerror=alert(1)>');
+ assert.equal(await page.locator('#exchangeMessagePreview img').count(),0,'message HTML was interpreted');
+ await page.locator('#exchangeMessageInput').fill('東京から来ました！\n気軽に声をかけてください😊');
+ await page.locator('#exchangeMessageSave').click();
+ await page.waitForFunction(()=>document.querySelector('#exchangeMessageStatus').textContent.includes('保存しました'));
+ assert.equal(await page.locator('#settingsMessageSummary').textContent(),'登録済み');
+ await page.locator('#settingsPhotoToggle').click();
+ await page.locator('#profilePhotoInput').waitFor();
+ assert.equal(await page.locator('#settingsMessagePanel').evaluate(el=>el.hidden),true);
+ assert.equal(await page.locator('#settingsPhotoPanel').evaluate(el=>el.hidden),false);
+ await page.locator('#settingsMessageToggle').click();
+ await page.waitForFunction(()=>document.querySelector('#exchangeMessageInput').value.includes('東京から来ました！'));
+ await page.locator('#exchangeMessageDelete').click();
+ await page.waitForFunction(()=>document.querySelector('#exchangeMessageStatus').textContent.includes('削除しました'));
+ assert.equal(await page.locator('#settingsMessageSummary').textContent(),'未登録');
+ assert.equal(await page.locator('#exchangeMessagePreview').evaluate(el=>el.hidden),true);
+ await page.evaluate(()=>window.__settingsCleanup());
+ record(name+' compact settings accordion, greeting CRUD and HTML-safe preview');
+ await page.close();
+}
+
 async function testCompression(browser,name){
  const page=await browser.newPage({viewport:{width:390,height:812}});
  await page.goto(origin+'/qa/photo-fixture.html');
@@ -235,7 +304,7 @@ try{
   if(!type)throw Error('Unsupported browser engine '+name);
   const options=name==='chromium'&&process.env.QA_CHROME_BIN?{executablePath:process.env.QA_CHROME_BIN}:{};
   const browser=await type.launch({headless:true,...options});
-  try{await testMedal(browser,name);await testCompression(browser,name);await testSafariJpegFallback(browser,name);await testRapidPhotoSelection(browser,name)}
+  try{await testMedal(browser,name);await testSettingsAccordion(browser,name);await testCompression(browser,name);await testSafariJpegFallback(browser,name);await testRapidPhotoSelection(browser,name)}
   finally{await browser.close()}
  }
  console.log('CA PHOTO BROWSER PASS '+pass.length+'/'+pass.length);
