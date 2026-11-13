@@ -47,17 +47,26 @@ export function mountProfilePhoto({host, client, session, role}) {
       const crop = Math.min(source.naturalWidth, source.naturalHeight);
       const left = Math.floor((source.naturalWidth - crop) / 2);
       const top = Math.floor((source.naturalHeight - crop) / 2);
+      // WebKit can decode WebP but cannot export it. Fall back to native JPEG
+      // (not PNG), keeping the private-bucket 50KB limit on both formats.
+      const formats = ['image/webp', 'image/jpeg'];
       for (; side >= 64; side = Math.floor(side * .8)) {
         const canvas = document.createElement('canvas');
         canvas.width = side;
         canvas.height = side;
         const ctx = canvas.getContext('2d');
         if (!ctx) throw Error('画像変換に対応していないブラウザです。');
+        // White backing avoids black backgrounds for transparent source PNGs.
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, side, side);
         ctx.drawImage(source, left, top, crop, crop, 0, 0, side, side);
-        for (const quality of [.8, .7, .6, .5]) {
-          const out = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality));
-          // Safari may silently fall back to PNG; never store the wrong MIME as WebP.
-          if (out && out.type === 'image/webp' && out.size <= MAX_BYTES) return out;
+        for (const format of formats) {
+          for (const quality of [.8, .7, .6, .5, .4, .3]) {
+            const out = await new Promise(resolve => canvas.toBlob(resolve, format, quality));
+            // Unsupported formats silently become PNG on Safari: never mislabel.
+            if (!out || out.type !== format) break;
+            if (out.size <= MAX_BYTES) return out;
+          }
         }
       }
       throw Error('50KB以下に圧縮できませんでした。別の画像を選択してください。');
@@ -65,7 +74,7 @@ export function mountProfilePhoto({host, client, session, role}) {
       URL.revokeObjectURL(url);
     }
   }
-  async function showStored() {
+    async function showStored() {
     if (!allowed) return;
     const {data, error} = await client.from(TABLE).select('storage_path').eq('user_id', session.user.id).maybeSingle();
     if (!active) return;
@@ -93,7 +102,7 @@ export function mountProfilePhoto({host, client, session, role}) {
       blob = compressed;
       previewUrl = URL.createObjectURL(blob);
       setImage(previewUrl);
-      info.textContent = 'WebP / ' + Math.round(blob.size / 1024 * 10) / 10 + 'KB（最大50KB）';
+      info.textContent = (blob.type === 'image/webp' ? 'WebP' : 'JPEG') + ' / ' + Math.round(blob.size / 1024 * 10) / 10 + 'KB（最大50KB）';
       save.disabled = !writeEnabled || !allowed;
       setStatus(writeEnabled ? 'プレビューを確認して保存してください。' : '圧縮プレビュー完了。保存機能は隔離試験中のため無効です。');
     } catch (err) {
@@ -112,11 +121,14 @@ export function mountProfilePhoto({host, client, session, role}) {
         throw Error('ログイン情報が確認できません。再ログインしてください。');
       const uid = auth.user.id;
       // Avoid overwriting the currently registered image until the DB reference changes.
-      path = uid + '/' + crypto.randomUUID() + '.webp';
+      const contentType = blob.type;
+      if (!['image/webp', 'image/jpeg'].includes(contentType)) throw Error('画像形式が正しくありません。');
+      const extension = contentType === 'image/webp' ? 'webp' : 'jpg';
+      path = uid + '/' + crypto.randomUUID() + '.' + extension;
       const old = await client.from(TABLE).select('storage_path').eq('user_id', uid).maybeSingle();
       if (old.error) throw Error('保存先DBを確認できません。');
       const uploaded = await client.storage.from(BUCKET).upload(path, blob, {
-        cacheControl: '3600', contentType: 'image/webp', upsert: false
+        cacheControl: '3600', contentType, upsert: false
       });
       if (uploaded.error) throw Error('写真を保存できませんでした。');
       const oldPath = old.data?.storage_path || null;
