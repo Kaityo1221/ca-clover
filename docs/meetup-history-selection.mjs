@@ -8,6 +8,7 @@ export async function mountHistorySelection({root,meetups,communityId,client,pub
   // Individual roster CSV remains available through its existing control.
   if(!endpoint)return ()=>{};
   let disposed=false,mode=false,job=null,timer=null,waiting=null;
+  const MAX_SELECTED=20;
   const userId=getIdentity()?.userId,selected=new Set();
   const current=()=>!disposed&&root.isConnected&&isCurrent()&&getIdentity()?.userId===userId;
   const authorize=async()=>{
@@ -34,7 +35,7 @@ export async function mountHistorySelection({root,meetups,communityId,client,pub
   for(const [button,id] of [[list,'history-list-tab'],[csv,'history-csv-tab']]){button.id=id;button.setAttribute('role','tab');button.setAttribute('aria-controls','meetup-history-list');}
   tabs.append(list,csv);root.querySelector('.history-controls').before(tabs);
   const panel=document.createElement('div');panel.className='batch-panel';panel.hidden=true;
-  panel.innerHTML='<div class="batch-count" aria-live="polite"></div><div class="batch-tools"><button type="button" data-select-all>全選択</button><button type="button" data-select-none>全解除</button></div><p class="batch-help">1回20件まで・10件ずつ順次取得・CSV合計8MBまで。表示やカテゴリを変えると選択はリセットされます。</p><p>15秒以上の取得間隔を維持します。20件の取得は数分かかることがあります。取得済み分はこの画面で最大70分保持し、画面を離れると破棄します。</p><progress max="20" value="0" aria-label="取得済みMeetup数"></progress><p class="batch-status" role="status"></p><button type="button" class="btn" data-batch-run></button><button type="button" class="btn batch-cancel" data-batch-cancel hidden>中止してデータを破棄</button>';
+  panel.innerHTML='<div class="batch-count" aria-live="polite"></div><div class="batch-tools"><button type="button" data-select-all>先頭20件を選択</button><button type="button" data-select-none>全解除</button></div><p class="batch-help">表示が20件を超える場合は先頭20件だけを選択します。最大20件・10件ずつ順次取得・CSV合計8MBまで。表示やカテゴリを変えると選択はリセットされます。</p><p>15秒以上の取得間隔を維持します。20件の取得は数分かかることがあります。取得済み分はこの画面で最大70分保持し、画面を離れると破棄します。</p><progress max="20" value="0" aria-label="取得済みMeetup数"></progress><p class="batch-status" role="status"></p><button type="button" class="btn" data-batch-run></button><button type="button" class="btn batch-cancel" data-batch-cancel hidden>中止してデータを破棄</button>';
   tabs.after(panel);
   const count=panel.querySelector('.batch-count'),status=panel.querySelector('.batch-status'),run=panel.querySelector('[data-batch-run]'),cancel=panel.querySelector('[data-batch-cancel]'),progress=panel.querySelector('progress');
   const checks=[];
@@ -44,7 +45,14 @@ export async function mountHistorySelection({root,meetups,communityId,client,pub
     const input=document.createElement('input');input.type='checkbox';input.value=id;
     input.setAttribute('aria-label',String(meetups.find(m=>m.id===id)?.title||'Meetup')+'を選択');
     label.append(input,document.createTextNode('このMeetupを選択'));entry.prepend(label);checks.push({input,label});
-    input.onchange=()=>{clearJob();if(input.checked)selected.add(id);else selected.delete(id);update();};
+    input.onchange=()=>{
+      if(input.checked&&selected.size>=MAX_SELECTED&&!selected.has(id)){
+        input.checked=false;
+        status.textContent='1回に選べるのは20件までです。別のMeetupのチェックを外してから選択してください。';
+        update();return;
+      }
+      clearJob();if(input.checked)selected.add(id);else selected.delete(id);update();
+    };
   }
   function clearJob(){job?.destroy();job=null;status.textContent='';}
   function update(){
@@ -54,17 +62,23 @@ export async function mountHistorySelection({root,meetups,communityId,client,pub
     panel.hidden=!mode;
     for(const {input,label} of checks){label.hidden=!mode;input.checked=selected.has(input.value);input.disabled=!!job?.busy;}
     panel.querySelectorAll('.batch-tools button').forEach(b=>b.disabled=!!job?.busy);
-    count.textContent='選択中 '+selected.size+' / 20件';
+    count.textContent='選択中 '+selected.size+' / '+MAX_SELECTED+'件'+(checks.length>MAX_SELECTED?'（表示'+checks.length+'件のうち）':'');
     const remaining=job?Math.max(0,Math.ceil((job.retryAt-Date.now())/1000)):0;
     const complete=job&&!job.destroyed&&job.files.length===job.meetups.length;
     run.disabled=!!job?.busy||selected.size===0||selected.size>20||!endpoint||(!complete&&remaining>0);
     run.textContent=selected.size>20?'20件以下に絞ってください':!endpoint?'一括保存は準備中':job?.busy?'名簿を取得中…':complete?'ZIPを保存（'+job.files.length+'件）':remaining?'再試行まで '+Math.ceil(remaining/60)+'分 '+remaining%60+'秒':job?'未取得分を再試行':'選択した'+selected.size+'件を取得';
     progress.max=job?.meetups.length||20;progress.value=job?.files.length||0;cancel.hidden=!job;
   }
-  function setMode(value){if(job?.busy)return;mode=value;clearJob();selected.clear();if(mode)checks.forEach(({input})=>selected.add(input.value));update();}
+  function selectFirstTwenty(){selected.clear();checks.slice(0,MAX_SELECTED).forEach(({input})=>selected.add(input.value));}
+  function setMode(value){
+    if(job?.busy)return;
+    mode=value;clearJob();selected.clear();
+    if(mode){selectFirstTwenty();if(checks.length>MAX_SELECTED)status.textContent='表示中の'+checks.length+'件から先頭20件を選択しました。';}
+    update();
+  }
   list.onclick=()=>setMode(false);csv.onclick=async()=>{try{await authorize();setMode(true);}catch{dispose();tabs.remove();panel.remove();}};
   tabs.onkeydown=event=>{if(['ArrowLeft','ArrowRight'].includes(event.key)){event.preventDefault();(document.activeElement===list?csv:list).focus();}};
-  panel.querySelector('[data-select-all]').onclick=()=>{clearJob();checks.forEach(({input})=>selected.add(input.value));update();};
+  panel.querySelector('[data-select-all]').onclick=()=>{clearJob();selectFirstTwenty();if(checks.length>MAX_SELECTED)status.textContent='先頭20件を選択しました。';update();};
   panel.querySelector('[data-select-none]').onclick=()=>{clearJob();selected.clear();update();};
   cancel.onclick=()=>{clearJob();if(waiting){clearTimeout(waiting.timer);waiting.resolve();waiting=null;}status.textContent='中止しました。取得済みデータを破棄しました。';update();};
   run.onclick=async()=>{
