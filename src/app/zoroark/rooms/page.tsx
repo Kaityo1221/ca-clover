@@ -209,7 +209,7 @@ export default function ZoroarkRoomCreatePage() {
     <h1 className="mt-4 text-3xl font-black text-lime-950">🦊 ゾロアークを探せ！</h1>
     <p className="mt-2 font-semibold text-slate-500">GM専用ルーム作成（隔離開発版）</p>
 
-    <section className="mt-6 space-y-3 rounded-3xl border border-lime-200 bg-white p-5 shadow-sm">
+    {!room && <section className="mt-6 space-y-3 rounded-3xl border border-lime-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-black text-lg">👑 作成済みルーム</h2>
         <button type="button" disabled={ownedBusy} onClick={()=>void loadOwned()}
@@ -235,7 +235,7 @@ export default function ZoroarkRoomCreatePage() {
             }}>このルームを管理する</button>}
         </div>;
       })}
-    </section>
+    </section>}
     {room&&<button type="button" className="mt-4 rounded-lg bg-slate-100 px-4 py-2 font-bold"
       onClick={()=>{setRoom(null);void loadOwned()}}>← 一覧へ戻る</button>}
     {!room ? <section className="mt-6 space-y-5 rounded-3xl border border-lime-200 bg-white p-5 shadow-sm">
@@ -272,13 +272,13 @@ export default function ZoroarkRoomCreatePage() {
       <p className="text-xs text-slate-500">この段階ではQR入室・ゲスト参加は未接続です。実際の参加者には共有しないでください。</p>
     </section> : <section className="mt-6 rounded-3xl border border-lime-200 bg-white p-5 shadow-sm">
       <span className="inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-900">🛠️ 入室機能は開発中</span>
-      <h2 className="mt-4 text-xl font-black">ルームを作成しました</h2>
+      <h2 className="mt-4 text-xl font-black">{room.invite ? "ルームを作成しました" : "ルーム管理"}</h2>
       <p className="mt-3 font-semibold">ルームID</p>
       <output className="mt-1 block break-all rounded-xl bg-slate-100 p-3 font-mono text-xs">{room.roomId}</output>
       <p className="mt-3 text-sm">最大 {room.maxPlayers}人・招待期限 {new Date(room.joinExpiresAt).toLocaleString("ja-JP")}</p>
       <div className="mt-5"><QRInvite key={room.roomId} room={room}
         onFinish={()=>{setRoom(null);void loadOwned()}}/></div>
-      <p className="mt-2 text-xs text-slate-500">招待資格はこの画面だけに表示され、ページを再読込すると復元できません。</p>
+      <p className="mt-2 text-xs text-slate-500">招待QRを再表示するには「招待QRを再発行」を使ってください。</p>
     </section>}
   </main>;
 }
