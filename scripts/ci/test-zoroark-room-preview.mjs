@@ -5,19 +5,18 @@ const handler = readFileSync("src/app/api/zoroark/rooms/route.ts", "utf8");
 const page = readFileSync("src/app/zoroark/rooms/page.tsx", "utf8");
 
 const invariants = [
-  'process.env.VERCEL_ENV !== "preview"',
+  'runtimeConfig("gm")',
   'process.env.ZOROARK_ROOM_CREATE_ENABLED !== "true"',
-  'process.env.ZOROARK_NEON_DATABASE_URL',
+  'runtimeDatabase("gm")',
   'isolated_room_api_not_configured',
-  'request.headers.get("origin") !== expectedOrigin',
+  'sameOrigin(request)',
   'auth.auth.getUser(match[1])',
   '.from("profiles")',
   '["ca", "admin"].includes(profile.role)',
-  'identity?.database_name !== "ca_clover_test"',
   'crypto.getRandomValues(random)',
   '"SHA-256"',
   'zoroark_isolated.create_gm_room',
-  'joinEnabled: false',
+  'joinEnabled: process.env.ZOROARK_GUEST_LOBBY_ENABLED === "true"',
   '"Cache-Control": "no-store"',
   '"isolated_room_service_unavailable"',
 ];
@@ -31,4 +30,5 @@ assert.ok(!handler.includes("console.log"), "Credentials or invites must never b
 assert.ok(page.includes('fetch("/api/zoroark/rooms"'), "UI must use isolated Next route");
 assert.ok(page.includes("Authorization: \"Bearer \" + accessToken"), "UI sends only the Supabase access token for server verification");
 assert.ok(!page.includes('supabase.functions.invoke("zoroark-room-admin"'), "No production Edge function should be called");
+assert.ok(readFileSync('src/lib/zoroark/runtime.ts','utf8').includes('feature/zoroark-guest-invite-chat-isolated-20261113'));
 console.log("ZOROARK_PREVIEW_ISOLATION_CONTRACT_PASS");

@@ -1,21 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { QRInvite, type RoomCreated } from "@/components/zoroark/gm-room-controls";
 import { useAuthProfile } from "@/lib/use-auth-profile";
 
-type RoomCreated = {
-  roomId: string;
-  status: "lobby";
-  mode: "simple" | "manual";
-  maxPlayers: number;
-  talkSeconds: number;
-  joinExpiresAt: string;
-  expiresAt: string;
-  invite: string;
-  joinEnabled: false;
+type OwnedRoom = {
+ id:string;mode:"simple"|"manual";max_players:number;talk_seconds:number;
+ state:string;join_locked:boolean;join_expires_at:string;expires_at:string;
+ created_at:string;occupied:number;
 };
-
 const readableErrors: Record<string, string> = {
   ca_role_required: "CAとして認証されているアカウントが必要です。",
   unauthorized: "ログインし直してください。",
@@ -35,9 +29,34 @@ export default function ZoroarkRoomCreatePage() {
   const [maxPlayers, setMaxPlayers] = useState(6);
   const [talkSeconds, setTalkSeconds] = useState(180);
   const [room, setRoom] = useState<RoomCreated | null>(null);
+  const [ownedRooms,setOwnedRooms]=useState<OwnedRoom[]>([]);
+  const [ownedBusy,setOwnedBusy]=useState(false);
+  const [navigatingRoomId,setNavigatingRoomId]=useState<string|null>(null);
+  const [ownedError,setOwnedError]=useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const authorized = Boolean(user && (profile?.role === "ca" || profile?.role === "admin"));
+  async function loadOwned(){
+    if(!authorized)return;
+    setOwnedBusy(true);setOwnedError("");
+    try{
+      const {data}=await supabase.auth.getSession();
+      if(!data.session?.access_token)throw Error("再ログインしてください。");
+      const response=await fetch("/api/zoroark/gm",{
+        method:"POST",cache:"no-store",
+        headers:{"Content-Type":"application/json","X-Zoroark-Request":"gm-lobby-v1",
+          Authorization:"Bearer "+data.session.access_token},
+        body:JSON.stringify({action:"mine"}),
+      });
+      const result=await response.json();
+      if(!response.ok)throw Error((result.error??"取得失敗")+
+        (typeof result.diagnosticStage==="string"?"（診断："+result.diagnosticStage+"）":""));
+      if(!Array.isArray(result.rooms))throw Error("ルーム一覧が不正です。");
+      setOwnedRooms(result.rooms);
+    }catch(error){setOwnedError((error as Error).message)}
+    finally{setOwnedBusy(false)}
+  }
+  useEffect(()=>{if(authorized)void loadOwned()},[authorized,supabase]);
 
   async function createRoom() {
     if (!authorized || busy || room) return;
@@ -55,11 +74,12 @@ export default function ZoroarkRoomCreatePage() {
         cache: "no-store",
       });
       const data = await response.json().catch(() => null);
-      if (!response.ok || !data || typeof data.roomId !== "string" || data.joinEnabled !== false) {
+      if (!response.ok || !data || typeof data.roomId !== "string" || typeof data.joinEnabled !== "boolean") {
         const code = data && typeof data.error === "string" ? data.error : "";
         throw new Error(readableErrors[code] ?? "ルーム作成サービスが準備できていません。隔離環境の接続を確認してください。");
       }
       setRoom(data as RoomCreated);
+      void loadOwned();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "ルームを作成できませんでした。");
     } finally {
@@ -79,11 +99,42 @@ export default function ZoroarkRoomCreatePage() {
     <Link href="/my" className="mt-4 inline-block underline">My Communityへ戻る</Link>
   </main>;
 
+  if(navigatingRoomId) return <main className="mx-auto max-w-xl px-4 py-8" aria-live="polite">
+    <div className="rounded-3xl border border-lime-200 bg-white p-6 text-center font-bold">🦊 ルーム管理を開いています...</div>
+  </main>;
+
   return <main className="mx-auto max-w-xl px-4 py-8">
     <Link href="/my" className="text-sm font-bold text-lime-800">← My Community</Link>
     <h1 className="mt-4 text-3xl font-black text-lime-950">🦊 ゾロアークを探せ！</h1>
     <p className="mt-2 font-semibold text-slate-500">GM専用ルーム作成（隔離開発版）</p>
 
+    {!room && <section className="mt-6 space-y-3 rounded-3xl border border-lime-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-black text-lg">👑 作成済みルーム</h2>
+        <button type="button" disabled={ownedBusy} onClick={()=>void loadOwned()}
+          className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold">{ownedBusy?"更新中":"一覧を更新"}</button>
+      </div>
+      {ownedError&&<p role="alert" className="rounded-lg bg-red-50 p-2 text-sm text-red-700">{ownedError}</p>}
+      {!ownedBusy&&ownedRooms.length===0&&!ownedError&&<p className="text-sm text-slate-500">現在表示できるルームはありません。</p>}
+      {ownedRooms.map(item=>{
+        const canManage=item.state==="lobby"&&new Date(item.expires_at).getTime()>Date.now();
+        return <div key={item.id} className="rounded-xl border border-slate-200 p-3 space-y-2">
+          <div className="flex flex-wrap justify-between gap-2">
+            <span className="font-bold">{item.mode==="manual"?"マニュアル（ミミッキュ）":"シンプル"}</span>
+            <span className="text-sm">{canManage?(item.join_locked?"受付停止中":"待機中"):"終了・期限切れ"}</span>
+          </div>
+          <p className="text-sm text-slate-600">参加 {item.occupied}/{item.max_players}人・トーク {item.talk_seconds===0?"無制限":item.talk_seconds/60+"分"}</p>
+          <p className="text-xs text-slate-500">作成 {new Date(item.created_at).toLocaleString("ja-JP")}</p>
+          {canManage&&<Link href={"/zoroark/rooms/"+encodeURIComponent(item.id)}
+            onClick={()=>setNavigatingRoomId(item.id)}
+            className="block w-full rounded-lg bg-lime-300 p-3 text-center font-bold">
+            このルームを管理する
+          </Link>}
+        </div>;
+      })}
+    </section>}
+    {room&&<button type="button" className="mt-4 rounded-lg bg-slate-100 px-4 py-2 font-bold"
+      onClick={()=>{setRoom(null);void loadOwned()}}>← 一覧へ戻る</button>}
     {!room ? <section className="mt-6 space-y-5 rounded-3xl border border-lime-200 bg-white p-5 shadow-sm">
       <div>
         <label htmlFor="zg-room-mode" className="block font-bold">ゲームモード</label>
@@ -118,14 +169,13 @@ export default function ZoroarkRoomCreatePage() {
       <p className="text-xs text-slate-500">この段階ではQR入室・ゲスト参加は未接続です。実際の参加者には共有しないでください。</p>
     </section> : <section className="mt-6 rounded-3xl border border-lime-200 bg-white p-5 shadow-sm">
       <span className="inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-900">🛠️ 入室機能は開発中</span>
-      <h2 className="mt-4 text-xl font-black">ルームを作成しました</h2>
+      <h2 className="mt-4 text-xl font-black">{room.invite ? "ルームを作成しました" : "ルーム管理"}</h2>
       <p className="mt-3 font-semibold">ルームID</p>
       <output className="mt-1 block break-all rounded-xl bg-slate-100 p-3 font-mono text-xs">{room.roomId}</output>
       <p className="mt-3 text-sm">最大 {room.maxPlayers}人・招待期限 {new Date(room.joinExpiresAt).toLocaleString("ja-JP")}</p>
-      <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-900">
-        QRコードおよび一般参加者の入室ページは次の工程で実装します。現時点では招待リンクを発行しません。
-      </p>
-      <p className="mt-2 text-xs text-slate-500">招待資格はサーバーから一度だけ発行され、この画面からは表示・保存しません。</p>
+      <div className="mt-5"><QRInvite key={room.roomId} room={room}
+        onFinish={()=>{setRoom(null);void loadOwned()}}/></div>
+      <p className="mt-2 text-xs text-slate-500">招待QRを再表示するには「招待QRを再発行」を使ってください。</p>
     </section>}
   </main>;
 }
