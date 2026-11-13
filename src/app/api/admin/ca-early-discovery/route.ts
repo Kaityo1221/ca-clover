@@ -34,11 +34,28 @@ export async function GET(request:NextRequest){
       notice:"隔離プレビューです。実Campfire連携・候補DB・通知は停止中です。"});
     const admin=createSupabaseAdminClient();
     if(!admin)return reply({error:"候補台帳の接続は未設定です。"},503);
-    const {data,error}=await admin.from("ca_early_discovery_candidates")
-      .select(fields).order("last_observed_at",{ascending:false}).limit(500);
-    if(error)return reply({error:"候補台帳を読み取れません。未確認として扱います。"},503);
-    return reply({enabled:true,candidates:data??[],checkedAt:new Date().toISOString(),
-      notice:"公開Meetupの観測候補です。正式CA認定やバッジ付与を確定する情報ではありません。"});
+    const [
+      {data,error,count},
+      {data:active,error:activeError,count:activeCount},
+      {data:history,error:historyError,count:historyCount},
+    ]=await Promise.all([
+      admin.from("ca_early_discovery_candidates")
+        .select(fields,{count:"exact"}).order("last_observed_at",{ascending:false}).range(0,499),
+      admin.from("communities").select("campfire_community_id",{count:"exact"}).range(0,1999),
+      admin.from("community_campfire_ids").select("campfire_community_id",{count:"exact"}).range(0,2999),
+    ]);
+    // Never present an old candidate as newly unregistered if the registry
+    // cannot be completely checked. Fail closed instead of showing stale data.
+    if(error||activeError||historyError||!data||!active||!history||
+      count===null||activeCount===null||historyCount===null||
+      count>data.length||activeCount>active.length||historyCount>history.length)
+      return reply({error:"候補・現役・過去コミュニティの照合が未完了です。再確認してください。"},503);
+    const known=new Set([...active,...history]
+      .map(row=>String(row.campfire_community_id??"").trim().toLowerCase()).filter(Boolean));
+    const unseen=data.filter(row=>!known.has(String(row.club_id).toLowerCase()));
+    return reply({enabled:true,candidates:unseen,checkedAt:new Date().toISOString(),
+      excludedKnownCount:data.length-unseen.length,
+      notice:"現役・過去登録IDを再照合した未登録候補です。日本所在地・正式CA認定・バッジ付与は確定していません。"});
   }catch{
     return reply({error:"候補台帳の読込に失敗しました。"},503);
   }
