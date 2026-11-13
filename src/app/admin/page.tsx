@@ -20,6 +20,8 @@ export default function Page(){
   const [watchCount,setWatchCount]=useState(0);
   const [iconReviewCount,setIconReviewCount]=useState(0);
   const [unassignedCount,setUnassignedCount]=useState<number|null>(null);
+  const [earlyPendingCount,setEarlyPendingCount]=useState(0);
+  const [earlyEnabled,setEarlyEnabled]=useState(false);
 
   useEffect(()=>{
     if(loading||authError||!user||profile?.role!=="admin") return;
@@ -44,6 +46,35 @@ export default function Page(){
     }).catch(()=>setUnassignedCount(null));
   },[authError,loading,user,profile?.role,supabase]);
 
+  // Only ADMIN sessions can fetch the candidate inbox. The server repeats
+  // user/role verification and filters current + historical registered IDs.
+  useEffect(()=>{
+    if(loading||authError||!user||profile?.role!=="admin")return;
+    let active=true;
+    void (async()=>{
+      try{
+        const {data,error}=await supabase.auth.getSession();
+        if(error||!data.session?.access_token)return;
+        const response=await fetch("/api/admin/ca-early-discovery",{
+          headers:{Authorization:`Bearer ${data.session.access_token}`},
+          cache:"no-store",
+        });
+        if(!response.ok)return;
+        const result=await response.json() as {
+          enabled?:boolean;
+          candidates?:Array<{review_status:string;report_status:string}>;
+        };
+        if(!active)return;
+        setEarlyEnabled(result.enabled===true);
+        setEarlyPendingCount((result.candidates??[]).filter(row=>
+          row.review_status==="new_candidate"&&row.report_status==="pending").length);
+      }catch{
+        if(active){setEarlyEnabled(false);setEarlyPendingCount(0);}
+      }
+    })();
+    return ()=>{active=false;};
+  },[authError,loading,user?.id,profile?.role,supabase]);
+
   if (loading) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 読み込み中...</main>;
   if (authError) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div className="max-w-md"><div className="text-5xl">⚠️</div><h1 className="mt-3 text-2xl font-black text-lime-950">認証情報を確認できませんでした</h1><p className="mt-3 text-sm font-semibold leading-6 text-slate-500">{authError}</p><button onClick={retryAuth} className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black text-lime-950">もう一度確認する</button></div></main>;
   if (!user) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div><h1 className="text-2xl font-black text-lime-950">ログインが必要です</h1><Link href="/login?next=%2Fadmin" className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black">Googleでログイン</Link></div></main>;
@@ -56,6 +87,9 @@ export default function Page(){
     ["🛎️","Community申請",pendingClaims?pendingClaims+"件の承認待ちがあります":"承認待ちはありません","/admin/claims"],
     ["🔐","Campfire接続","ADMIN tokenと接続状態を管理","/admin/campfire"],
     ["🔄","データ同期","Campfire Activityを全国更新","/admin/sync"],
+    ["🎖️","新規CA早期発見",earlyEnabled
+      ?(earlyPendingCount>0?`${earlyPendingCount}件の未確認候補があります`:"新しい報告はありません")
+      :"実観測OFF・隔離サンプルで確認","/admin/ca-early-discovery"],
     ["🔗","Community権限調整","CA Cloverユーザーへの閲覧権限を手動補正","/admin/assignments"],
     ["👀","一般ユーザーページ","一般ユーザーページを確認","/admin/preview/general-ca"],
     ["👥","CAアカウント","pending / CA / ADMINを承認・変更","/admin/accounts"],
@@ -76,7 +110,7 @@ export default function Page(){
     </Link> : null}
     <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {buttons.map(([i,t,d,href])=>{
-        const attention=(href==="/admin/meetup-watch"&&watchCount>0)||(href==="/admin/claims"&&pendingClaims>0)||(href==="/admin/icons"&&iconReviewCount>0);
+        const attention=(href==="/admin/meetup-watch"&&watchCount>0)||(href==="/admin/claims"&&pendingClaims>0)||(href==="/admin/icons"&&iconReviewCount>0)||(href==="/admin/ca-early-discovery"&&earlyPendingCount>0);
         const assignmentCard=href==="/admin/assignments";
         const iconCard=href==="/admin/icons";
         return <Link key={t} href={href} className={(attention
