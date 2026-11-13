@@ -688,7 +688,7 @@
   async function renderSettings(token){
     app.innerHTML='<section class="card"><p class="muted strong">⚙️ 環境設定を読み込んでいます…</p></section>';
     try{
-      const module=await import('./settings-accordion.mjs?v=20261113-profile-combined2');
+      const module=await import('./settings-accordion.mjs?v=20261114-message-label1');
       if(token!==renderToken||route()!=='settings')return;
       settingsLeave=module.mountSettings({
         host:app,client,session,role:profile.role,
