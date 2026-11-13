@@ -87,10 +87,13 @@ export default function EarlyDiscoveryPage(){
    try{await navigator.clipboard.writeText(text);setFeedback("報告文をコピーしました。");}
    catch{setError("コピーできません。端末のクリップボード権限を確認してください。");}
  }
- async function mark(c:Candidate,action:"hold"|"review"){
+ async function mark(c:Candidate,action:"hold"|"review"|"acknowledge"){
    if(demo){
      setRows(old=>old.map(r=>r.club_id===c.club_id?{
-       ...r,review_status:action==="hold"?"hold":"reviewed",revision:r.revision+1,
+       ...r,review_status:action==="hold"?"hold":"reviewed",
+       report_status:action==="acknowledge"?"delivered":r.report_status,
+       reported_at:action==="acknowledge"?new Date().toISOString():r.reported_at,
+       revision:r.revision+1,
      }:r));
      setFeedback("デモ画面の状態だけを変更しました。DBには保存していません。");return;
    }
@@ -200,6 +203,10 @@ export default function EarlyDiscoveryPage(){
            className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold">確認済みにする</button>
          <button disabled={busy} onClick={()=>void mark(c,"hold")}
            className="rounded-xl border border-amber-300 px-4 py-2 text-xs font-bold text-amber-800">保留にする</button>
+         {c.report_status==="pending"?<button disabled={busy} onClick={()=>void mark(c,"acknowledge")}
+           className="rounded-xl border border-lime-700 px-4 py-2 text-xs font-bold text-lime-900">
+           この報告を確認済みにする（再通知を停止）
+         </button>:null}
        </div>
      </article>)}
      {!filtered.length?<div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
