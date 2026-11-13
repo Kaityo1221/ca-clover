@@ -48,6 +48,8 @@ jobs:
           node-version: '22'
       - name: CA Photo static source regression
         run: node scripts/test-profile-photo-isolated.mjs
+      - name: Settings wording static regression
+        run: node scripts/test-settings-message-labels.mjs
       - name: CA global Clover home navigation static regression
         run: node scripts/test-clover-home-static.mjs
       - name: Install pinned Playwright
