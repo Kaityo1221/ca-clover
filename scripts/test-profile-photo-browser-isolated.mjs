@@ -100,11 +100,11 @@ async function testMedal(browser,name){
   assert.ok((await page.locator('#caMedalExchangeText').textContent()).includes('東京から来ました！'),'greeting missing on medal');
   const boxes=await page.evaluate(()=>{
    const box=id=>{const b=document.querySelector(id).getBoundingClientRect();return{x:b.x,y:b.y,width:b.width,height:b.height,bottom:b.bottom,right:b.right}};
-   return {row:box('#caMedalPhotoRow'),photo:box('#caMedalPhoto'),bubble:box('#caMedalExchangeMessage'),medal:box('#stampZoom2D'),modal:box('.stampmodal')};
+   return {row:box('#caMedalPhotoRow'),avatar:box('.ca-medal-speaker-avatar'),photo:box('#caMedalPhoto'),bubble:box('#caMedalExchangeMessage'),medal:box('#stampZoom2D'),modal:box('.stampmodal')};
   });
   assert.ok(boxes.photo.x>=boxes.modal.x&&boxes.photo.right<=boxes.modal.right,'photo leaves modal frame '+width);
   assert.ok(boxes.photo.bottom+2<=boxes.medal.y,'photo overlaps medal '+width+' '+JSON.stringify(boxes));
-  assert.ok(boxes.photo.width>=68,'portrait is not enlarged '+width);
+  assert.ok(boxes.avatar.width>=68&&boxes.photo.width>=60,'portrait is not enlarged '+width);
   assert.ok(boxes.bubble.x>=boxes.photo.right,'bubble is not to the right of portrait '+width);
   assert.ok(boxes.bubble.right<=boxes.modal.right,'bubble overflows modal '+width);
   assert.ok(boxes.bubble.bottom+2<=boxes.medal.y,'greeting bubble overlaps medal '+width);
