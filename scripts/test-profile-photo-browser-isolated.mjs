@@ -59,6 +59,12 @@ async function prep(page,mode){
    from:chain,
    rpc:async(name,args)=>{
     if(name==='stamp_rally_catalog')return {data:rows,error:null};
+    if(name==='ca_medal_exchange_message'){
+     if(mode==='race'&&args.p_ca_member_id===A)await new Promise(r=>setTimeout(r,350));
+     if(mode==='missing'||(mode==='error'&&args.p_ca_member_id===A))
+       return mode==='error'?{data:null,error:{message:'synthetic failure'}}:{data:null,error:null};
+     return {data:args.p_ca_member_id===A?'東京から来ました！\nよろしくお願いします😊':'こんにちは！ QA B',error:null};
+    }
     if(name==='ca_medal_profile_photo_path'){
      if(mode==='race'&&args.p_ca_member_id===A)await new Promise(r=>setTimeout(r,350));
      if(mode==='missing'||mode==='error'&&args.p_ca_member_id===A)
@@ -87,6 +93,8 @@ async function testMedal(browser,name){
   const page=await browser.newPage({viewport:{width,height:812},deviceScaleFactor:1});
   await prep(page,'normal');await openModal(page);
   await page.locator('#caMedalPhotoRow:not([hidden])').waitFor({timeout:12000});
+  await page.locator('#caMedalExchangeMessage:not([hidden])').waitFor({timeout:12000});
+  assert.ok((await page.locator('#caMedalExchangeText').textContent()).includes('東京から来ました！'),'greeting missing on medal');
   const boxes=await page.evaluate(()=>{
    const box=id=>{const b=document.querySelector(id).getBoundingClientRect();return{x:b.x,y:b.y,width:b.width,height:b.height,bottom:b.bottom,right:b.right}};
    return {row:box('#caMedalPhotoRow'),photo:box('#caMedalPhoto'),medal:box('#stampZoom2D'),modal:box('.stampmodal')};
@@ -98,6 +106,7 @@ async function testMedal(browser,name){
   await page.screenshot({path:join(artifacts,name+'-'+width+'.png')});
   await page.locator('#stampClose').click();
   assert.ok(await page.locator('#caMedalPhotoRow').evaluate(e=>e.hidden),'avatar not cleared on close');
+  assert.ok(await page.locator('#caMedalExchangeMessage').evaluate(e=>e.hidden),'greeting not cleared on close');
   record(name+' '+width+'px corner layout and close');
   await page.close();
  }
@@ -106,6 +115,7 @@ async function testMedal(browser,name){
   await prep(page,mode);await openModal(page);
   await page.waitForTimeout(300);
   assert.equal(await page.locator('#caMedalPhotoRow').evaluate(e=>e.hidden),true,'avatar unexpectedly visible in '+mode);
+  assert.equal(await page.locator('#caMedalExchangeMessage').evaluate(e=>e.hidden),true,'greeting unexpectedly visible in '+mode);
   assert.ok(await page.locator('#stampZoom2D').isVisible(),'medal hidden in '+mode);
   record(name+' '+mode+' fallbacks');
   await page.close();
@@ -117,6 +127,8 @@ async function testMedal(browser,name){
  await page.waitForTimeout(430);
  const src=await page.locator('#caMedalPhoto').getAttribute('src');
  assert.ok(decodeURIComponent(src).includes('/b.webp'),'old async CA photo replaced newer selection: '+src);
+ await page.locator('#caMedalExchangeMessage:not([hidden])').waitFor();
+ assert.equal(await page.locator('#caMedalExchangeText').textContent(),'こんにちは！ QA B','stale greeting replaced selected CA greeting');
  record(name+' CA switch ignores stale response');
  await page.close();
 }
