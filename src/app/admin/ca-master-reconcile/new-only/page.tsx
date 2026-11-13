@@ -60,7 +60,7 @@ export default function NewOnlyCaMasterDiff(){
       "どの画面（Pokémon GO / Campfire）で表示されないのかと、CAとして認定された日付を教えてください。",
       "必要に応じて、CAプログラムの公式窓口で反映状況を確認してください。",
       "※具体的な反映期限は公式情報で確認できていません。",
-    ].join("\\n");
+    ].join("\n");
     try{await navigator.clipboard.writeText(text);setCopied("CAバッジの案内文をコピーしました。");}
     catch{setError("コピーできませんでした。");}
   }
