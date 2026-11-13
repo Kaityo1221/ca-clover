@@ -14,10 +14,14 @@ test("history control has 25, 50, 100 and all and category selector",()=>{
  assert.match(html,/data-history-category/);
  assert.match(html,/historyCategoryModule\.MEETUP_CATEGORIES/);
 });
-test("all and category search beyond first 100, with stable ordering",()=>{
- assert.match(html,/meetupHistoryLimit===null\|\|meetupHistoryCategory!=="all"\?200:meetupHistoryLimit/);
- assert.match(html,/\.order\("starts_at",\{ascending:false\}\)\.order\("id",\{ascending:false\}\)\.range\(offset,offset\+199\)/);
- assert.match(html,/if\(next\.error\)/);
- assert.match(html,/meetups=meetups\.concat\(page\)/);
- assert.match(html,/categoryFiltered\.slice\(0,meetupHistoryLimit\)/);
+test("full-history scan and category filters are connected to verified loader",()=>{
+ assert.match(html,/historyLoaderReady\.then\(function\(module\)/);
+ assert.match(html,/module\.loadMeetupHistory\(/);
+ assert.match(html,/scanAll:meetupHistoryLimit===null\|\|meetupHistoryCategory!=="all"/);
+ assert.match(html,/historyDisplayEntries=meetupHistoryLimit===null\?categoryFiltered:categoryFiltered\.slice\(0,meetupHistoryLimit\)/);
+ assert.match(html,/if\(results\[0\]\.error\)/);
+});
+test("latest metric updates remain active for more than 120 records",()=>{
+ assert.match(html,/for\(let offset=0;offset<metricRows\.length;offset\+=100\)/);
+ assert.match(html,/metricRows\.slice\(offset,offset\+100\)/);
 });
