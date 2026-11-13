@@ -1,4 +1,4 @@
-import {MEETUP_BATCH_ENDPOINT} from './meetup-batch-config.mjs';
+import {MEETUP_BATCH_ENDPOINT} from './meetup-batch-config.mjs?v=20261114-live1';
 import {RosterBatch} from './meetup-roster-batch.mjs';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function sessionKey(token){try{return JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).session_id||null;}catch{return null;}}
