@@ -21,6 +21,7 @@ const checks=[
  ['exchange greeting name',settings.includes('一言メッセージ')&&!settings.includes('交換時の一言')&&!settings.includes('メダル表示プレビュー')],
  ['greeting owner-only UI',greeting.includes('client.auth.getUser()')&&greeting.includes("'ca_exchange_messages'")&&greeting.includes('MAX_LENGTH=60')],
  ['greeting medal and fallbacks',medal.includes('ca_medal_exchange_message')&&medal.includes('clearMedalExchangeMessage()')&&medal.includes('caMedalExchangeText.textContent=value')],
+ ['medal message title unified',medal.includes('💬 一言メッセージ')&&!medal.includes('💬 交換時の一言')],
  ['compression bounds',photo.includes('let side = 256')&&photo.includes('50 * 1024')&&photo.includes("'image/webp'")],
  ['Safari JPEG encoder fallback',photo.includes("['image/webp', 'image/jpeg']")&&photo.includes("out.type !== format")],
  ['JPEG contentType and extension consistency',photo.includes("'image/webp' ? 'webp' : 'jpg'")&&photo.includes("cacheControl: '3600', contentType, upsert: false")],
