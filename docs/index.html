@@ -251,7 +251,7 @@
       document.getElementById("loginTop").onclick=function(){login()};
       return;
     }
-    const items=[["my","My Community"],["account","アカウント"]];
+    const items=[["my","My Community"]];
     if(profile?.role==="admin")items.push(["zoroark-ideas","🦊 お題メモ"]);
     nav.innerHTML=items.map(function(x){
       return '<button data-go="'+x[0]+'" class="'+(route()===x[0]?"on":"")+'">'+x[1]+'</button>'
