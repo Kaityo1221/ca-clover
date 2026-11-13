@@ -10,6 +10,8 @@ const checks=[
  ['settings entry',home.includes('id="mySettingsButton"')&&home.includes('go("settings")')],
  ['photo upload and delete controls',home.includes('id="profilePhotoSave"')&&home.includes('id="profilePhotoDelete"')],
  ['compression bounds',photo.includes('let side = 256')&&photo.includes('50 * 1024')&&photo.includes("'image/webp'")],
+ ['Safari JPEG encoder fallback',photo.includes("['image/webp', 'image/jpeg']")&&photo.includes("out.type !== format")],
+ ['JPEG contentType and extension consistency',photo.includes("'image/webp' ? 'webp' : 'jpg'")&&photo.includes("cacheControl: '3600', contentType, upsert: false")],
  ['no public upload without gate',photo.includes('window.CA_PROFILE_PHOTO_UPLOAD_ENABLED === true')],
  ['conditional replace',photo.includes(".eq('storage_path', oldPath)")],
  ['conditional delete',photo.includes(".delete().eq('user_id', uid).eq('storage_path', path)")],

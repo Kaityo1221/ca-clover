@@ -139,6 +139,59 @@ async function testCompression(browser,name){
  record(name+' native canvas WebP compression and disabled writes');
  await page.close();
 }
+async function testSafariJpegFallback(browser,name){
+ const page=await browser.newPage({viewport:{width:390,height:812}});
+ await page.goto(origin+'/qa/photo-fixture.html');
+ await page.evaluate(async()=>{
+  window.CA_PROFILE_PHOTO_UPLOAD_ENABLED=true;
+  const nativeToBlob=HTMLCanvasElement.prototype.toBlob;
+  HTMLCanvasElement.prototype.toBlob=function(callback,type,quality){
+   if(type==='image/webp'){
+    // iOS Safari silently gives back PNG when asked to encode WebP.
+    callback(new Blob([new Uint8Array(8)],{type:'image/png'}));
+    return;
+   }
+   return nativeToBlob.call(this,callback,type,quality);
+  };
+  let stored=null;
+  window.__photoSafariUploads=[];
+  const client={
+   auth:{getUser:async()=>({data:{user:{id:'qa-browser-user'}},error:null})},
+   from:()=>({
+    select(){return this},
+    eq(){return this},
+    insert(row){stored=row;return this},
+    async maybeSingle(){return {data:stored,error:null}}
+   }),
+   storage:{from:()=>({
+    upload:async(path,bytes,options)=>{
+     window.__photoSafariUploads.push({path,mime:bytes.type,size:bytes.size,contentType:options.contentType,upsert:options.upsert});
+     return {data:{path},error:null};
+    },
+    remove:async()=>({data:[],error:null}),
+    createSignedUrl:async()=>({data:{signedUrl:'/qa/photo.svg'},error:null})
+   })}
+  };
+  const mod=await import('/docs/profile-photo.mjs');
+  mod.mountProfilePhoto({host:document.querySelector('#testHost'),role:'ca',session:{user:{id:'qa-browser-user'}},client});
+ });
+ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGMU2aL7n4GBgYGJAQoAHV8B+NIe2REAAAAASUVORK5CYII=','base64');
+ await page.locator('#profilePhotoInput').setInputFiles({name:'iphone-photo.png',mimeType:'image/png',buffer:png});
+ await page.waitForFunction(()=>document.querySelector('#profilePhotoInfo').textContent.includes('JPEG'),{timeout:10000});
+ assert.ok(await page.locator('#profilePhotoPreview').isVisible(),'Safari cannot preview JPEG fallback');
+ assert.equal(await page.locator('#profilePhotoSave').isEnabled(),true,'JPEG fallback was not enabled for upload');
+ await page.locator('#profilePhotoSave').click();
+ await page.waitForFunction(()=>window.__photoSafariUploads?.length===1,{timeout:10000});
+ const uploads=await page.evaluate(()=>window.__photoSafariUploads);
+ assert.equal(uploads[0].mime,'image/jpeg','Safari fallback stored wrong image MIME');
+ assert.equal(uploads[0].contentType,'image/jpeg','Safari fallback supplied wrong storage contentType');
+ assert.ok(uploads[0].path.endsWith('.jpg'),'Safari fallback stored wrong extension');
+ assert.ok(uploads[0].size>0&&uploads[0].size<=51200,'Safari fallback exceeds 50KiB');
+ assert.equal(uploads[0].upsert,false,'Safari fallback unexpectedly uses upsert');
+ record(name+' iOS Safari WebP unsupported: JPEG upload and MIME match');
+ await page.close();
+}
+
 async function testRapidPhotoSelection(browser,name){
  const page=await browser.newPage({viewport:{width:390,height:812}});
  await page.goto(origin+'/qa/photo-fixture.html');
@@ -152,7 +205,7 @@ async function testRapidPhotoSelection(browser,name){
     setTimeout(()=>this.onload?.(),initial?180:12);
    }
   };
-  HTMLCanvasElement.prototype.getContext=function(){return {drawImage(){}}};
+  HTMLCanvasElement.prototype.getContext=function(){return {fillRect(){},drawImage(){}}};
   HTMLCanvasElement.prototype.toBlob=function(cb){
    const size=++encoded===1?10*1024:25*1024;
    cb(new Blob([new Uint8Array(size)],{type:'image/webp'}));
@@ -182,7 +235,7 @@ try{
   if(!type)throw Error('Unsupported browser engine '+name);
   const options=name==='chromium'&&process.env.QA_CHROME_BIN?{executablePath:process.env.QA_CHROME_BIN}:{};
   const browser=await type.launch({headless:true,...options});
-  try{await testMedal(browser,name);await testCompression(browser,name);await testRapidPhotoSelection(browser,name)}
+  try{await testMedal(browser,name);await testCompression(browser,name);await testSafariJpegFallback(browser,name);await testRapidPhotoSelection(browser,name)}
   finally{await browser.close()}
  }
  console.log('CA PHOTO BROWSER PASS '+pass.length+'/'+pass.length);
