@@ -95,6 +95,7 @@
   };
   const COMMUNITY_PERIODS=[["1か月",30],["3か月",90],["6か月",180],["1年",365],["全期間",null]];
   const MEETUP_HISTORY_LIMITS=[25,50,100,null];
+  const historyLoaderReady=import('./meetup-history-loader.mjs?v=20261113-all2');
   const historyCategoriesReady=import('./meetup-history-categories.mjs?v=20261113-categories1');
   let meetupHistoryCategory="all";
   const app=document.getElementById("app");
@@ -383,13 +384,14 @@
     const meetupFields="id,title,starts_at,ends_at,location,event_url,details,is_ca_meetup,rsvp_count,checkin_count,campfire_live_event_name,fetched_at";
     // CARD_METRICS_FIELDS_END
 
-    let meetupQuery=client.from("meetups")
-      .select(meetupFields)
-      .eq("community_id",id)
-      .lte("starts_at",nowIso)
-      .order("starts_at",{ascending:false})
-      .order("id",{ascending:false})
-      .limit(meetupHistoryLimit===null||meetupHistoryCategory!=="all"?200:meetupHistoryLimit);
+    const historyLoaderPromise=historyLoaderReady.then(function(module){
+      return module.loadMeetupHistory({
+        client,communityId:id,fields:meetupFields,through:nowIso,
+        scanAll:meetupHistoryLimit===null||meetupHistoryCategory!=="all",
+        limit:meetupHistoryLimit===null?25:meetupHistoryLimit
+      });
+    }).then(function(data){return {data,error:null}},function(error){return {data:null,error}});
+
 
     const upcomingQuery=client.from("meetups")
       .select(meetupFields)
@@ -407,40 +409,29 @@
     if(memberSince)memberSnapshotQuery=memberSnapshotQuery.gte("observed_on",memberSince);
 
     const results=await Promise.all([
-      meetupQuery,
+      historyLoaderPromise,
       upcomingQuery,
       client.from("community_ca_members").select("ca_member_id").eq("community_id",id),
       client.rpc("community_activity_summary",{p_community_id:id,p_days:period}),
       client.rpc("community_activity_trend",{p_community_id:id,p_bucket:trendBucket,p_days:period}),
       memberSnapshotQuery
     ]);
-    let meetups=results[0].data||[];
+    const meetups=results[0].data||[];
     if(results[0].error){
-      app.innerHTML='<section class="card"><h2>Meetup履歴を読み込めませんでした</h2><button class="btn" id="retryHistory">再試行</button></section>';
+      app.innerHTML='<section class="card"><h2>Meetup履歴を読み込めませんでした</h2><p>全件取得が不完全な場合も表示しません。</p><button class="btn" id="retryHistory">再試行</button></section>';
       document.getElementById("retryHistory").onclick=function(){void renderCommunity(id)};
       return;
-    }
-    if(meetupHistoryLimit===null||meetupHistoryCategory!=="all"){
-      let offset=meetups.length;
-      while(offset>0&&offset%200===0){
-        const next=await client.from("meetups")
-          .select(meetupFields).eq("community_id",id).lte("starts_at",nowIso)
-          .order("starts_at",{ascending:false}).order("id",{ascending:false}).range(offset,offset+199);
-        if(next.error){
-          app.innerHTML='<section class="card"><h2>全件取得に失敗しました</h2><p>途中までの履歴は表示せず、再試行してください。</p><button class="btn" id="retryHistory">再試行</button></section>';
-          document.getElementById("retryHistory").onclick=function(){void renderCommunity(id)};
-          return;
-        }
-        const page=next.data||[];
-        meetups=meetups.concat(page);
-        if(page.length<200)break;
-        offset+=page.length;
-      }
     }
     const upcoming=results[1].data||[];
     // CARD_METRICS_APPLY_BEGIN
     const cardMetrics=await cardMetricsReady;
-    if(cardMetrics)await cardMetrics.applyLatestMetrics(client,id,meetups.concat(upcoming));
+    if(cardMetrics){
+      // Existing metrics RPC accepts at most 120 rows per call.
+      const metricRows=meetups.concat(upcoming);
+      for(let offset=0;offset<metricRows.length;offset+=100){
+        await cardMetrics.applyLatestMetrics(client,id,metricRows.slice(offset,offset+100));
+      }
+    }
     // CARD_METRICS_APPLY_END
     const links=results[2].data||[];
     const summary=(results[3].data&&results[3].data[0])||{meetup_count:0,ca_meetup_count:0,rsvp_count:0,checkin_count:0,last_event_at:null};
