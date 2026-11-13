@@ -1,0 +1,41 @@
+name: Pages ADMIN Meetup Backfill Isolated
+
+on:
+  pull_request:
+    branches: [pages]
+    paths:
+      - "docs/admin.html"
+      - "scripts/test-pages-admin-backfill.mjs"
+      - "scripts/test-pages-admin-backfill-behavior.mjs"
+      - ".github/workflows/pages-admin-backfill-guard.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pages-unchanged:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Fetch production reference
+        run: git fetch origin pages --no-tags
+      - name: Verify only intentional ADMIN additions
+        run: |
+          node scripts/test-pages-admin-backfill.mjs
+          node scripts/test-pages-admin-backfill-behavior.mjs
+      - name: Prevent accidental production/UI edits
+        run: |
+          git diff --name-only origin/pages...HEAD | tee /tmp/files.txt
+          while IFS= read -r path; do
+            case "$path" in
+              docs/admin.html|scripts/test-pages-admin-backfill.mjs|scripts/test-pages-admin-backfill-behavior.mjs|.github/workflows/pages-admin-backfill-guard.yml) ;;
+              *) echo "::error::Unexpected file: $path"; exit 1 ;;
+            esac
+          done </tmp/files.txt
