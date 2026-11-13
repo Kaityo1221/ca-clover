@@ -1,4 +1,4 @@
-// "交換時の一言" owner-controlled UI. No writes if the backend feature is absent.
+// "一言メッセージ" owner-controlled UI. No writes if the backend feature is absent.
 export function mountExchangeMessage({host,client,session,role,onChange=()=>{}}){
   const TABLE='ca_exchange_messages';
   const MAX_LENGTH=60;
@@ -64,13 +64,13 @@ export function mountExchangeMessage({host,client,session,role,onChange=()=>{}})
       input.value=text;
       exists=true;
       onChange(text);
-      showStatus('交換時の一言を保存しました。');
+      showStatus('一言メッセージを保存しました。');
     }catch(err){showStatus(err.message||'保存に失敗しました。');}
     finally{busy=false;refresh();}
   }
   async function removeCurrent(){
     if(!allowed||!active||busy||!exists)return;
-    if(!window.confirm('登録済みの「交換時の一言」を削除しますか？'))return;
+    if(!window.confirm('登録済みの「一言メッセージ」を削除しますか？'))return;
     busy=true;refresh();showStatus('削除しています…');
     try{
       const uid=await verifiedUser();
@@ -80,7 +80,7 @@ export function mountExchangeMessage({host,client,session,role,onChange=()=>{}})
       input.value='';
       exists=false;
       onChange(null);
-      showStatus('交換時の一言を削除しました。');
+      showStatus('一言メッセージを削除しました。');
     }catch(err){showStatus(err.message||'削除に失敗しました。');}
     finally{busy=false;refresh();}
   }
