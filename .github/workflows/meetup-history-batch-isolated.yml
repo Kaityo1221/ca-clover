@@ -1,0 +1,33 @@
+name: Meetup History Mobile + Batch Candidate (No Deploy)
+on:
+  pull_request:
+    paths:
+      - 'docs/index.html'
+      - 'docs/meetup-*.mjs'
+      - 'docs/meetup-history-mobile.css'
+      - 'scripts/ci/*meetup*'
+      - '.github/workflows/meetup-history-batch-isolated.yml'
+permissions:
+  contents: read
+jobs:
+  isolated-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test scripts/ci/test-meetup-batch.mjs scripts/ci/test-meetup-history-*.mjs scripts/ci/test-meetup-metrics.mjs scripts/test-meetup-roster-pages.mjs
+      - run: node scripts/ci/verify-public-boundary.mjs
+      - name: Install isolated browser tools
+        run: npm install --prefix /tmp/clover-meetup-qa --no-audit --no-fund --ignore-scripts playwright@1.62.1
+      - run: /tmp/clover-meetup-qa/node_modules/.bin/playwright install --with-deps chromium webkit
+      - run: node scripts/ci/test-meetup-mobile-browser.mjs
+        env:
+          PLAYWRIGHT_RUNTIME: /tmp/clover-meetup-qa/node_modules
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: meetup-history-mobile-isolated
+          path: qa-artifacts/meetup-mobile

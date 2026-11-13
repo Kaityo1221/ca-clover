@@ -1,5 +1,6 @@
 // CA Clover full Meetup roster: both card and overview use the SAME three-column endpoint.
 // The previous two-column raffle/check-in module remains separately stored but is not mounted.
+import {acquireExport,releaseExport,exportLocked,nextExportAt,noteExportAttempt,onExportChange} from './meetup-export-lock.mjs';
 const ENDPOINT='https://wgiittrvgtiosogyhfcl.supabase.co/functions/v1/meetup-roster';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 let inFlight=false;
@@ -26,17 +27,19 @@ const COOLDOWN_MS=15000;
 let cooldownUntil=0;
 let cooldownTimer=null;
 const controls=new Set();
+onExportChange(updateCooldown);
 const idleLabel=compact=>compact?'CSV ↓':'名簿CSVを取得';
 function updateCooldown(){
-  const seconds=Math.ceil(Math.max(0,cooldownUntil-Date.now())/1000);
+  const seconds=Math.ceil(Math.max(0,cooldownUntil-Date.now(),nextExportAt()-Date.now())/1000);
   for(const control of controls){
     if(!control.button.isConnected){controls.delete(control);continue;}
     if(control.resave)control.resave.hidden=!currentCached(control.userId,control.meetupId);
     if(control.button.classList.contains('roster-peach-loading'))continue;
-    control.button.disabled=inFlight||seconds>0;
+    control.button.disabled=inFlight||exportLocked()||seconds>0;
     control.button.textContent=seconds>0?'再試行まであと'+seconds+'秒':idleLabel(control.compact);
   }
-  if(seconds===0&&cooldownTimer!==null){clearInterval(cooldownTimer);cooldownTimer=null;}
+  if((seconds>0||exportLocked())&&cooldownTimer===null)cooldownTimer=setInterval(updateCooldown,500);
+  if(seconds===0&&!exportLocked()&&cooldownTimer!==null){clearInterval(cooldownTimer);cooldownTimer=null;}
 }
 function beginCooldown(){
   cooldownUntil=Math.max(cooldownUntil,Date.now()+COOLDOWN_MS);
@@ -159,7 +162,8 @@ function attachAction({root,container,meetup,client,getIdentity,publicKey,compac
     }finally{resave.disabled=false;updateCooldown();}
   };
   button.onclick=async()=>{
-    if(inFlight||Date.now()<cooldownUntil||!root.isConnected||getIdentity()?.userId!==userId)return;
+    if(inFlight||Date.now()<cooldownUntil||Date.now()<nextExportAt()||!root.isConnected||getIdentity()?.userId!==userId)return;
+    if(!acquireExport(button))return;
     inFlight=true;button.disabled=true;button.classList.add('roster-peach-loading');button.textContent='名簿を準備中';status.textContent='';
     guide.hidden=true;hint.hidden=true;updateCooldown();
     try{
@@ -167,6 +171,7 @@ function attachAction({root,container,meetup,client,getIdentity,publicKey,compac
       const session=data?.session;
       if(error||!session?.access_token||session?.user?.id!==userId)
         throw new Error('ログインし直してからお試しください');
+      noteExportAttempt();
       const response=await fetch(ENDPOINT,{
         method:'POST',mode:'cors',cache:'no-store',credentials:'omit',redirect:'error',
         headers:{authorization:'Bearer '+session.access_token,
@@ -197,6 +202,7 @@ function attachAction({root,container,meetup,client,getIdentity,publicKey,compac
       status.title=status.textContent;
     }finally{
       inFlight=false;
+      releaseExport(button);
       if(root.isConnected)button.classList.remove('roster-peach-loading');
       updateCooldown();
     }

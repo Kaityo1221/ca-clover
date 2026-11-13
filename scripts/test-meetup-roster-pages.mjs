@@ -24,7 +24,7 @@ test('admins see roster without D, CA still requires D and no hint visible',()=>
  assert.match(ui,/if\(initial\.role==='admin'\)return initial/);
  assert.match(ui,/if\(permission\.error\|\|permission\.data\?\.permission_code!=='D'\)return null/);
  assert.doesNotMatch(ui,/D権限が必要|D権限を確認できません|管理者も対象/);
- assert.match(page,/meetup-roster-ui\.mjs\?v=20261110-petals-always1/);
+ assert.match(page,/meetup-roster-ui\.mjs\?v=20261114-shared-batch1/);
 });
 
 test('Meetup card CSV invokes the same full-roster action as overview, not raffle CSV',()=>{
