@@ -1,0 +1,13 @@
+/* Universal CA Clover home control. Keeps standalone back links intact. */
+.ca-home-target{cursor:pointer;text-decoration:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.ca-home-target:focus-visible{outline:3px solid #65a30d;outline-offset:3px}
+.ca-home-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 44px;width:44px;height:44px;
+  font-size:25px;line-height:1;border-radius:15px;background:linear-gradient(135deg,#d9f99d,#baf36a);
+  box-shadow:0 5px 16px rgba(67,113,32,.14);color:#365314;border:1px solid #d5efaa}
+.ca-home-row{display:flex;align-items:center;min-height:48px;margin-bottom:12px}
+.ca-home-brand-link{color:inherit;display:inline-flex;align-items:center;text-decoration:none}
+.ca-home-brand-link:hover{color:#4d7c0f}
+.ca-home-game{position:fixed;z-index:1600;left:max(10px,env(safe-area-inset-left));
+  top:calc(54px + env(safe-area-inset-top));border-color:#a3e635;color:#fff;
+  background:linear-gradient(140deg,#376f20,#5a9d2b);box-shadow:0 6px 18px rgba(0,0,0,.32)}
+@media(prefers-reduced-motion:no-preference){.ca-home-icon:active{transform:scale(.96)}}

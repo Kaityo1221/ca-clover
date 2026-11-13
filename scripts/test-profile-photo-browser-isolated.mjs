@@ -227,6 +227,49 @@ async function testSettingsAccordion(browser,name){
  await page.close();
 }
 
+async function testUniversalCloverHome(browser,name){
+ const fixtures=[
+  {id:'index-logo',body:'<header class="top"><div class="topin"><div class="logo">🍀</div><nav id="nav"></nav></div></header><main></main>',expect:'header .logo'},
+  {id:'admin-logo',body:'<header><a class="logo" href="./admin.html">🍀</a></header><main></main>',expect:'header .logo'},
+  {id:'stats-mark',body:'<header><a class="mark" href="./admin.html">🍀</a></header><main></main>',expect:'header .mark'},
+  {id:'new-ca-demo',body:'<main><header><strong>🍀 CA CLOVER</strong><span>デモ</span></header></main>',expect:'main > header .ca-home-brand-link'},
+  {id:'kanto-back',body:'<header><div class="topin"><a class="back" href="./stamp-rally.html">‹</a><strong>関東CA Network</strong></div></header><main></main>',expect:'header .ca-home-icon',back:true},
+  {id:'exchange-row',body:'<main><div class="head"><a class="back" href="./stamp-rally.html">← メダル一覧</a></div></main>',expect:'main .head .ca-home-icon',back:true},
+  {id:'standalone-admin',body:'<main><a class="back" href="./admin.html">← 管理メニュー</a></main>',expect:'main .ca-home-row .ca-home-icon',back:true},
+  {id:'fullscreen-game',body:'<body data-ca-clover-game="true"><canvas id="game"></canvas></body>',expect:'body > .ca-home-game'}
+ ];
+ for(const item of fixtures){
+  const page=await browser.newPage({viewport:{width:390,height:812}});
+  await page.goto(origin+'/qa/photo-fixture.html');
+  const doc=item.body.startsWith('<body')?'<html><head></head>'+item.body+'</html>':'<html><head></head><body>'+item.body+'</body></html>';
+  await page.setContent(doc);
+  await page.addStyleTag({url:origin+'/docs/clover-global-home.css'});
+  await page.addScriptTag({url:origin+'/docs/clover-global-home.js'});
+  const home=page.locator('a[data-ca-home-link]');
+  await home.waitFor({state:'visible'});
+  assert.equal(await home.count(),1,'duplicate home Clover '+item.id);
+  assert.equal(await home.getAttribute('href'),origin+'/docs/index.html#my','wrong home target '+item.id);
+  assert.ok((await home.getAttribute('aria-label'))?.includes('トップ画面'),'home inaccessible '+item.id);
+  assert.ok(await page.locator(item.expect).isVisible(),'wrong Clover placement '+item.id);
+  if(item.back)assert.equal(await page.locator('a.back').count(),1,'standalone back link removed '+item.id);
+  await home.click({trial:true});
+  record(name+' Clover home '+item.id);
+  await page.close();
+ }
+ // Real index.html: Clover stays in the same app and changes its hash to #my.
+ const page=await browser.newPage({viewport:{width:390,height:812}});
+ await page.route('https://**/*',route=>route.abort());
+ await page.goto(origin+'/docs/index.html',{waitUntil:'domcontentloaded'});
+ const home=page.locator('header a[data-ca-home-link]');
+ await home.waitFor({state:'visible',timeout:10000});
+ assert.equal(await home.getAttribute('href'),'#my','home link should switch index hash route');
+ assert.equal(await page.locator('nav#nav button').filter({hasText:'My Community'}).count(),0,'duplicate My Community button remains');
+ await home.click();
+ assert.equal(new URL(page.url()).hash,'#my','home click did not reach top route');
+ record(name+' real index Clover removes duplicate nav and opens #my');
+ await page.close();
+}
+
 async function testCompression(browser,name){
  const page=await browser.newPage({viewport:{width:390,height:812}});
  await page.goto(origin+'/qa/photo-fixture.html');
@@ -342,7 +385,7 @@ try{
   if(!type)throw Error('Unsupported browser engine '+name);
   const options=name==='chromium'&&process.env.QA_CHROME_BIN?{executablePath:process.env.QA_CHROME_BIN}:{};
   const browser=await type.launch({headless:true,...options});
-  try{await testMedal(browser,name);await testSettingsAccordion(browser,name);await testCompression(browser,name);await testSafariJpegFallback(browser,name);await testRapidPhotoSelection(browser,name)}
+  try{await testUniversalCloverHome(browser,name);await testMedal(browser,name);await testSettingsAccordion(browser,name);await testCompression(browser,name);await testSafariJpegFallback(browser,name);await testRapidPhotoSelection(browser,name)}
   finally{await browser.close()}
  }
  console.log('CA PHOTO BROWSER PASS '+pass.length+'/'+pass.length);
