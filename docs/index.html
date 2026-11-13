@@ -381,7 +381,7 @@
     const nowIso=new Date().toISOString();
     const since=period===null?null:new Date(Date.now()-period*24*60*60*1000).toISOString();
     // CARD_METRICS_FIELDS_BEGIN
-    const meetupFields="id,title,starts_at,ends_at,location,event_url,details,is_ca_meetup,rsvp_count,checkin_count,campfire_live_event_name,fetched_at";
+    const meetupFields="id,title,starts_at,ends_at,location,event_url,details,is_ca_meetup,rsvp_count,checkin_count,campfire_live_event_name,is_passcode_reward_eligible,fetched_at";
     // CARD_METRICS_FIELDS_END
 
     const historyLoaderPromise=historyLoaderReady.then(function(module){
