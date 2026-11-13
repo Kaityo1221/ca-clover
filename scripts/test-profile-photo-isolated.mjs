@@ -18,7 +18,7 @@ const checks=[
  ['five-card settings menu',settings.includes('settingsProfileLink')&&settings.includes('settingsAccountLink')&&settings.includes('settingsMenuScreen')&&settings.includes('settingsProfileScreen')],
  ['photo and greeting combined',settings.includes('プロフィール写真・一言')&&settings.includes('登録・変更・削除')&&settings.includes('settingsPhotoPanel')&&settings.includes('settingsMessagePanel')&&!settings.includes('settingsMessageToggle')],
  ['settings module route',home.includes('settings-accordion.mjs')&&settings.includes('settingsProfileLink')],
- ['exchange greeting name',settings.includes('交換時の一言')&&!settings.includes('メダル交換時の一言')],
+ ['exchange greeting name',settings.includes('一言メッセージ')&&!settings.includes('交換時の一言')&&!settings.includes('メダル表示プレビュー')],
  ['greeting owner-only UI',greeting.includes('client.auth.getUser()')&&greeting.includes("'ca_exchange_messages'")&&greeting.includes('MAX_LENGTH=60')],
  ['greeting medal and fallbacks',medal.includes('ca_medal_exchange_message')&&medal.includes('clearMedalExchangeMessage()')&&medal.includes('caMedalExchangeText.textContent=value')],
  ['compression bounds',photo.includes('let side = 256')&&photo.includes('50 * 1024')&&photo.includes("'image/webp'")],
