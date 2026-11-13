@@ -388,6 +388,7 @@
       .eq("community_id",id)
       .lte("starts_at",nowIso)
       .order("starts_at",{ascending:false})
+      .order("id",{ascending:false})
       .limit(meetupHistoryLimit===null||meetupHistoryCategory!=="all"?200:meetupHistoryLimit);
 
     const upcomingQuery=client.from("meetups")
@@ -424,7 +425,7 @@
       while(offset>0&&offset%200===0){
         const next=await client.from("meetups")
           .select(meetupFields).eq("community_id",id).lte("starts_at",nowIso)
-          .order("starts_at",{ascending:false}).range(offset,offset+199);
+          .order("starts_at",{ascending:false}).order("id",{ascending:false}).range(offset,offset+199);
         if(next.error){
           app.innerHTML='<section class="card"><h2>全件取得に失敗しました</h2><p>途中までの履歴は表示せず、再試行してください。</p><button class="btn" id="retryHistory">再試行</button></section>';
           document.getElementById("retryHistory").onclick=function(){void renderCommunity(id)};
@@ -466,8 +467,8 @@
       return meetupHistoryCategory==="all"||historyCategoryModule.classifyMeetup(entry.m)===meetupHistoryCategory;
     });
     const historyDisplayEntries=meetupHistoryLimit===null?categoryFiltered:categoryFiltered.slice(0,meetupHistoryLimit);
-    const historyRsvp=meetups.reduce(function(sum,m){const v=Number(m.rsvp_count);return sum+(Number.isFinite(v)?v:0)},0);
-    const historyCheckin=meetups.reduce(function(sum,m){const v=Number(m.checkin_count);return sum+(Number.isFinite(v)?v:0)},0);
+    const historyRsvp=historyDisplayEntries.reduce(function(sum,entry){const v=Number(entry.m.rsvp_count);return sum+(Number.isFinite(v)?v:0)},0);
+    const historyCheckin=historyDisplayEntries.reduce(function(sum,entry){const v=Number(entry.m.checkin_count);return sum+(Number.isFinite(v)?v:0)},0);
     const periodRate=totalRsvp>0?(totalCheckin/totalRsvp*100):null;
     const periodRateText=periodRate==null?"算出不可":(Math.abs(periodRate-Math.round(periodRate))<0.05?String(Math.round(periodRate)):periodRate.toFixed(1))+"%";
     const featureMeta={
