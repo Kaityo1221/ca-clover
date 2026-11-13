@@ -22,4 +22,4 @@ jobs:
       - name: Category classification
         run: node --test scripts/ci/test-meetup-history-categories.mjs
       - name: Pagination and DOM contract
-        run: node --test scripts/ci/test-meetup-history-page.mjs
+        run: node --test scripts/ci/test-meetup-history-page.mjs scripts/ci/test-meetup-history-loader.mjs
