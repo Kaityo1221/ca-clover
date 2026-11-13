@@ -56,6 +56,7 @@ export default function Page(){
     ["🛎️","Community申請",pendingClaims?pendingClaims+"件の承認待ちがあります":"承認待ちはありません","/admin/claims"],
     ["🔐","Campfire接続","ADMIN tokenと接続状態を管理","/admin/campfire"],
     ["🔄","データ同期","Campfire Activityを全国更新","/admin/sync"],
+    ["📋","CAマスター差分チェック","公式名簿から新規CAの追加候補を検出・報告（既存変更なし）","/admin/ca-master-reconcile/new-only"],
     ["🍀","CA名簿の差分確認（隔離）","読み取り専用の照合レポートを確認","/admin/ca-master-reconcile"],
     ["🔗","Community権限調整","CA Cloverユーザーへの閲覧権限を手動補正","/admin/assignments"],
     ["👀","一般ユーザーページ","一般ユーザーページを確認","/admin/preview/general-ca"],
@@ -75,6 +76,9 @@ export default function Page(){
     {pendingClaims>0 ? <Link href="/admin/claims" className="mt-5 flex items-center justify-between rounded-3xl border border-amber-200 bg-amber-50 p-4">
       <div><div className="text-xs font-black text-amber-700">新しいCommunity申請</div><div className="mt-1 font-black text-amber-950">{pendingClaims}件の確認が必要です</div></div><div className="text-2xl">🛎️</div>
     </Link> : null}
+    <Link href="/admin/ca-master-reconcile/new-only" className="mt-5 flex items-center justify-between rounded-3xl border border-lime-300 bg-lime-50 p-4 transition hover:border-lime-600">
+      <div><div className="text-xs font-black text-lime-700">🍀 CAマスター差分確認</div><div className="mt-1 font-black text-lime-950">新規CAの追加候補をチェック・報告</div><div className="mt-1 text-xs font-semibold text-slate-500">公式名簿と照合 / 既存CAの変更・削除なし</div></div><div className="text-2xl">🔍</div>
+    </Link>
     <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {buttons.map(([i,t,d,href])=>{
         const attention=(href==="/admin/meetup-watch"&&watchCount>0)||(href==="/admin/claims"&&pendingClaims>0)||(href==="/admin/icons"&&iconReviewCount>0);
