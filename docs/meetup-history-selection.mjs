@@ -3,6 +3,10 @@ import {RosterBatch} from './meetup-roster-batch.mjs';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function sessionKey(token){try{return JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).session_id||null;}catch{return null;}}
 export async function mountHistorySelection({root,meetups,communityId,client,publicKey,getIdentity,isCurrent,endpoint=MEETUP_BATCH_ENDPOINT}){
+  // Production safety gate: do not advertise CSV batch mode until the
+  // audited Edge endpoint has passed real-auth integration and is configured.
+  // Individual roster CSV remains available through its existing control.
+  if(!endpoint)return ()=>{};
   let disposed=false,mode=false,job=null,timer=null,waiting=null;
   const userId=getIdentity()?.userId,selected=new Set();
   const current=()=>!disposed&&root.isConnected&&isCurrent()&&getIdentity()?.userId===userId;
