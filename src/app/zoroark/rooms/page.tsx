@@ -62,7 +62,7 @@ function GMLobby({roomId,onRotate}:{roomId:string;onRotate:(invite:string,deadli
     body:JSON.stringify({action,roomId,guestId}),
    });
    const result=await response.json();
-   if(!response.ok)throw Error(result.error??"ロビーの取得に失敗しました");
+   if(!response.ok)throw Error((result.error??"ロビーの取得に失敗しました")+(typeof result.diagnosticStage==="string"?"（診断："+result.diagnosticStage+"）":""));
    if(action==="list"){setParticipants(result.participants);setLocked(result.room.locked)}
    else if(action==="rotate"){
     if(!/^[a-f0-9]{64}$/.test(result.invite)||typeof result.joinExpiresAt!=="string")throw Error("招待コード更新結果が不正です");
