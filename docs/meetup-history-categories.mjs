@@ -5,7 +5,13 @@ export const MEETUP_CATEGORIES = Object.freeze([
 export function classifyMeetup(meetup) {
   // The official Campfire event name is authoritative when it describes a recognizable event.
   // Generic event names (e.g. "Mega Raid") do not imply a Raid Day.
-  for(const value of [meetup?.campfire_live_event_name,meetup?.title]){
+  // A confirmed reward-less Meetup uses the CA's own title. A reward-eligible
+  // Meetup uses its linked Campfire event name, falling back to title if absent.
+  // For legacy unknown eligibility, keep the existing official-first behavior.
+  const names=meetup?.is_passcode_reward_eligible===false
+    ? [meetup?.title]
+    : [meetup?.campfire_live_event_name,meetup?.title];
+  for(const value of names){
     const name=String(value||"").normalize("NFKC").trim();
     if(!name)continue;
     if(/community\s*day|コミュニティ[・ー\s]*(?:デイ|デー)|コミュデイ/i.test(name))return "community-day";
