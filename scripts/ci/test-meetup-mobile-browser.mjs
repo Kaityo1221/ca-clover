@@ -33,10 +33,18 @@ try{for(const [engine,type] of [['Chromium',chromium],['WebKit',webkit]]){
       if(width===390){await history.screenshot({path:join(out,engine.toLowerCase()+'-390-list.png')});await history.scrollIntoViewIfNeeded();await page.screenshot({path:join(out,engine.toLowerCase()+'-390-viewport.png')});}
       check(engine+' '+width+'px layout + 25 history + six categories');
       await history.getByRole('tab',{name:'↓ CSV選択'}).click();
-      assert.equal(await history.getByRole('checkbox',{checked:true}).count(),25);assert.equal(await history.locator('[data-batch-run]').isDisabled(),true);
+      assert.equal(await history.getByRole('checkbox',{checked:true}).count(),20);
+      assert.equal(await history.locator('[data-batch-run]').isDisabled(),false);
+      assert.equal(await history.getByRole('checkbox').nth(20).isChecked(),false);
+      await history.getByRole('checkbox').nth(20).check();
+      assert.equal(await history.getByRole('checkbox',{checked:true}).count(),20);
+      assert.equal(await history.getByRole('checkbox').nth(20).isChecked(),false);
+      await history.getByRole('checkbox').nth(0).uncheck();
+      await history.getByRole('checkbox').nth(20).check();
+      assert.equal(await history.getByRole('checkbox',{checked:true}).count(),20);
+      assert.equal(await history.getByRole('checkbox').nth(20).isChecked(),true);
       await history.getByRole('button',{name:'全解除',exact:true}).click();assert.equal(await history.getByRole('checkbox',{checked:true}).count(),0);
-      await history.getByRole('button',{name:'全選択',exact:true}).click();assert.equal(await history.getByRole('checkbox',{checked:true}).count(),25);
-      for(let i=20;i<25;i++)await history.getByRole('checkbox').nth(i).uncheck();assert.equal(await history.getByRole('checkbox',{checked:true}).count(),20);
+      await history.getByRole('button',{name:'先頭20件を選択',exact:true}).click();assert.equal(await history.getByRole('checkbox',{checked:true}).count(),20);
       if(width===390)await history.screenshot({path:join(out,engine.toLowerCase()+'-390-selection.png')});
       check(engine+' '+width+'px auto-select, individual clear, all/none, 20 cap');
       assert.equal(errors.length,0,errors.join('\n'));
@@ -68,7 +76,12 @@ try{for(const [engine,type] of [['Chromium',chromium],['WebKit',webkit]]){
       await history.locator('[data-history-limit="all"]').click();await page.waitForFunction(()=>document.querySelectorAll('.history-entry').length===120);
       await history.locator('[data-history-category="max-battle"]').click();await page.waitForFunction(()=>document.querySelectorAll('.history-entry').length===45);
       check(engine+' 25/50/100/all real pager + category filtering');
-      await history.getByRole('tab',{name:'↓ CSV選択'}).click();await history.getByRole('button',{name:'全解除',exact:true}).click();for(let i=0;i<3;i++)await history.getByRole('checkbox').nth(i).check();
+      await history.getByRole('tab',{name:'↓ CSV選択'}).click();
+      assert.equal(await history.getByRole('checkbox').count(),45);
+      assert.equal(await history.getByRole('checkbox',{checked:true}).count(),20);
+      await history.getByRole('button',{name:'先頭20件を選択',exact:true}).click();
+      assert.equal(await history.getByRole('checkbox',{checked:true}).count(),20);
+      await history.getByRole('button',{name:'全解除',exact:true}).click();for(let i=0;i<3;i++)await history.getByRole('checkbox').nth(i).check();
       await page.clock.install();await page.evaluate(()=>window.__fixture.stopAfter=1);await history.locator('[data-batch-run]').click();await page.waitForFunction(()=>document.querySelector('.batch-status').textContent.includes('取得制限'));
       assert.equal(await page.evaluate(()=>window.__fixture.calls.length),1);
       await page.evaluate(()=>window.__fixture.stopAfter=null);await page.clock.fastForward(3601000);
