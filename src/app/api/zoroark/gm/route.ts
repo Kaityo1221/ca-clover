@@ -20,9 +20,10 @@ export async function POST(request:Request){
   if(!val||Array.isArray(val)||typeof val!=="object")return respond({error:"invalid_request"},400);
   input=val as Record<string,unknown>;
  }catch(error){return respond({error:"invalid_request"},error instanceof BodyError ? error.status : 400)}
- if(typeof input.roomId!=="string"||!/^[a-f0-9-]{36}$/i.test(input.roomId))return respond({error:"invalid_room"},400);
  const act=input.action;
- if(!["list","lock","unlock","approve","reject","rotate"].includes(String(act)))return respond({error:"invalid_action"},400);
+ if(!["mine","list","lock","unlock","approve","reject","rotate","finish"].includes(String(act)))return respond({error:"invalid_action"},400);
+ if(act!=="mine"&&(typeof input.roomId!=="string"||!/^[a-f0-9-]{36}$/i.test(input.roomId)))
+   return respond({error:"invalid_room"},400);
  let stage="authentication";
  try{
   const auth=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL??"https://wgiittrvgtiosogyhfcl.supabase.co",
@@ -39,6 +40,11 @@ export async function POST(request:Request){
   stage="rate_limit";
   const [rate]=await sql`select zoroark_isolated.guest_rate_gate() as allowed`;
   if(!rate?.allowed)return respond({error:"rate_limited"},429);
+  if(act==="mine"){
+    stage="own_rooms";
+    const rooms=await sql`select * from zoroark_isolated.gm_my_rooms(${u.user.id}::uuid)`;
+    return respond({rooms},200);
+  }
   stage="room_lookup";
   const [room]=await sql`select * from zoroark_isolated.gm_room(${u.user.id}::uuid,${input.roomId}::uuid)`;
   if(!room)return respond({error:"room_not_found"},404);
@@ -49,6 +55,11 @@ export async function POST(request:Request){
       joinExpiresAt:room.join_expires_at},participants:players},200);
   }
   if(room.state!=="lobby")return respond({error:"lobby_closed"},409);
+  if(act==="finish"){
+    stage="finish_room";
+    const [finished]=await sql`select zoroark_isolated.gm_finish_room(${u.user.id}::uuid,${input.roomId}::uuid) as success`;
+    return respond({ok:finished?.success===true},finished?.success===true?200:409);
+  }
   if(act==="rotate"){
     stage="invite_rotate";
     const bytes=new Uint8Array(32);
