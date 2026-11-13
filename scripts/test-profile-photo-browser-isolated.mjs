@@ -205,7 +205,7 @@ async function testRapidPhotoSelection(browser,name){
     setTimeout(()=>this.onload?.(),initial?180:12);
    }
   };
-  HTMLCanvasElement.prototype.getContext=function(){return {drawImage(){}}};
+  HTMLCanvasElement.prototype.getContext=function(){return {fillRect(){},drawImage(){}}};
   HTMLCanvasElement.prototype.toBlob=function(cb){
    const size=++encoded===1?10*1024:25*1024;
    cb(new Blob([new Uint8Array(size)],{type:'image/webp'}));
