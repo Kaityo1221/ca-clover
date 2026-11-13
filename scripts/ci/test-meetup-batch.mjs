@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import {RosterBatch,readBatchJson,BATCH_MEMORY_TTL} from '../../docs/meetup-roster-batch.mjs';
 import {createRosterZip,rosterFilename,crc32} from '../../docs/meetup-roster-zip.mjs';
@@ -68,4 +69,11 @@ test('ZIP supports exact 8MB, protects file paths and duplicate names, standard 
   assert.throws(()=>createRosterZip([{name,bytes:new Uint8Array(8000001)}]),/BYTE_LIMIT/);
   assert.throws(()=>createRosterZip([{name:'../x.csv',bytes}]),/INVALID_FILE/);
   assert.throws(()=>createRosterZip([{name,bytes},{name,bytes}]),/INVALID_FILE/);
+});
+
+test('production release gate hides batch controls while endpoint is unconfigured',()=>{
+  const config=readFileSync(new URL('../../docs/meetup-batch-config.mjs',import.meta.url),'utf8');
+  const selection=readFileSync(new URL('../../docs/meetup-history-selection.mjs',import.meta.url),'utf8');
+  assert.match(config,/MEETUP_BATCH_ENDPOINT='';/);
+  assert.match(selection,/if\(!endpoint\)return \(\)=>\{\};/);
 });
