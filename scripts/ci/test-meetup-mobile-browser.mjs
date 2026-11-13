@@ -20,6 +20,16 @@ try{for(const [engine,type] of [['Chromium',chromium],['WebKit',webkit]]){
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
       assert.equal(await history.getByText('統計・分析',{exact:true}).count(),0);
       const date=await history.locator('.history-date').first().boundingBox(),body=await history.locator('.history-body').first().boundingBox();assert.ok(date.x<body.x);
+      const typography=await history.locator('.history-entry').first().evaluate(card=>{
+        const read=(selector)=>{const el=card.querySelector(selector),css=getComputedStyle(el);return {size:parseFloat(css.fontSize),weight:parseInt(css.fontWeight,10),color:css.color};};
+        const time=card.querySelector('.history-time');
+        const action=card.querySelector('.participant-roster-action');
+        return {year:read('.history-year'),date:read('.history-date>b'),time:read('.history-time'),title:read('.history-body h3'),location:read('.history-location'),metric:read('.history-body .tags .pill'),overview:read('.history-overview'),
+          timeHasSeparatedStart:!!time.querySelector('.history-time-start'),actionBelowCard:!action||action.getBoundingClientRect().top>=card.querySelector('.history-card').getBoundingClientRect().bottom-1};
+      });
+      assert.ok(typography.year.size>=12&&typography.date.size>=24&&typography.time.size>=12,JSON.stringify(typography));
+      assert.ok(typography.title.weight>=900&&typography.location.weight>=800&&typography.time.weight>=800,JSON.stringify(typography));
+      assert.ok(typography.metric.size>=11&&typography.overview.size>=12&&typography.timeHasSeparatedStart&&typography.actionBelowCard,JSON.stringify(typography));
       if(width===390){await history.screenshot({path:join(out,engine.toLowerCase()+'-390-list.png')});await history.scrollIntoViewIfNeeded();await page.screenshot({path:join(out,engine.toLowerCase()+'-390-viewport.png')});}
       check(engine+' '+width+'px layout + 25 history + six categories');
       await history.getByRole('tab',{name:'↓ CSV選択'}).click();
