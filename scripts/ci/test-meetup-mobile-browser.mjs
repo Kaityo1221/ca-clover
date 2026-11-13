@@ -36,7 +36,7 @@ try{for(const [engine,type] of [['Chromium',chromium],['WebKit',webkit]]){
       assert.equal(await history.getByRole('checkbox',{checked:true}).count(),20);
       assert.equal(await history.locator('[data-batch-run]').isDisabled(),false);
       assert.equal(await history.getByRole('checkbox').nth(20).isChecked(),false);
-      await history.getByRole('checkbox').nth(20).check();
+      await history.getByRole('checkbox').nth(20).click();
       assert.equal(await history.getByRole('checkbox',{checked:true}).count(),20);
       assert.equal(await history.getByRole('checkbox').nth(20).isChecked(),false);
       await history.getByRole('checkbox').nth(0).uncheck();
