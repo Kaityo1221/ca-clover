@@ -73,7 +73,7 @@ export async function mountHistorySelection({root,meetups,communityId,client,pub
   function setMode(value){
     if(job?.busy)return;
     mode=value;clearJob();selected.clear();
-    if(mode){selectFirstTwenty();if(checks.length>MAX_SELECTED)status.textContent='表示中の'+checks.length+'件から先頭20件を選択しました。';}
+    if(mode)status.textContent='未選択です。必要なMeetupにチェックを入れてください。';
     update();
   }
   list.onclick=()=>setMode(false);csv.onclick=async()=>{try{await authorize();setMode(true);}catch{dispose();tabs.remove();panel.remove();}};
