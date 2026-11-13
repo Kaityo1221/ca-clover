@@ -20,6 +20,8 @@ jobs:
           node-version: '22'
       - run: node --test scripts/ci/test-meetup-batch.mjs scripts/ci/test-meetup-history-*.mjs scripts/ci/test-meetup-metrics.mjs scripts/test-meetup-roster-pages.mjs
       - run: node scripts/ci/verify-public-boundary.mjs
+      - name: Production Edge rejects unauthenticated requests
+        run: node scripts/ci/test-meetup-batch-production-boundary.mjs
       - name: Generate synthetic 20-CSV ZIP
         run: node scripts/ci/test-meetup-zip-compat.mjs
       - name: Verify ZIP independently with Python standard library
