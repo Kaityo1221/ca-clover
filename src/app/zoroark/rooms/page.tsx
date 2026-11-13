@@ -5,6 +5,11 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { useAuthProfile } from "@/lib/use-auth-profile";
 
+type OwnedRoom = {
+ id:string;mode:"simple"|"manual";max_players:number;talk_seconds:number;
+ state:string;join_locked:boolean;join_expires_at:string;expires_at:string;
+ created_at:string;occupied:number;
+};
 type RoomCreated = {
   roomId: string;
   status: "lobby";
@@ -17,34 +22,37 @@ type RoomCreated = {
   joinEnabled: boolean;
 };
 
-function QRInvite({room}:{room:RoomCreated}){
+function QRInvite({room,onFinish}:{room:RoomCreated;onFinish:()=>void}){
  const [qr,setQr]=useState("");
  const [currentInvite,setCurrentInvite]=useState(room.invite);
  const [currentDeadline,setCurrentDeadline]=useState(room.joinExpiresAt);
  const [error,setError]=useState("");
- const enabled=room.joinEnabled&&/^[a-f0-9]{64}$/.test(currentInvite);
+ const enabled=room.joinEnabled;
+ const hasInvite=/^[a-f0-9]{64}$/.test(currentInvite);
  useEffect(()=>{
-  if(!enabled)return;
+  if(!enabled||!hasInvite)return;
   const url=window.location.origin+"/zoroark/join#invite="+currentInvite;
   // Generate QR inside the browser. Never send invite to a remote QR image provider.
   QRCode.toDataURL(url,{width:320,margin:2,errorCorrectionLevel:"M"})
    .then(setQr).catch(()=>setError("QRコードを生成できませんでした。"));
- },[currentInvite,enabled]);
+ },[currentInvite,enabled,hasInvite]);
  if(!enabled)return <p className="rounded-xl bg-amber-50 p-3 font-bold text-amber-900">
   QR招待は未有効化です。ゲストAPIとDBの安全試験が済むまで配布しないでください。
  </p>;
  return <div className="space-y-3">
-   <p className="font-bold">📱 一般トレーナーにこのQRコードを読み取ってもらいます</p>
+   {hasInvite?<p className="font-bold">📱 一般トレーナーにこのQRコードを読み取ってもらいます</p>:
+    <p className="rounded-xl bg-lime-50 p-3 font-bold">管理画面を再開しました。招待QRは保存していません。「招待QRを再発行」から新しいQRを発行できます。</p>}
    {qr&&<img alt="このゲームの招待QRコード" width={320} height={320} src={qr}
      className="mx-auto max-w-full rounded-xl border p-2" />}
    {error&&<p role="alert">{error}</p>}
    <p className="text-sm">招待期限：{new Date(currentDeadline).toLocaleString("ja-JP")}</p>
    <p className="text-sm text-amber-800">招待資格はQRの中だけに含まれます。SNSに公開せず、現地参加者だけに提示してください。</p>
-   <GMLobby roomId={room.roomId} onRotate={(invite,deadline)=>{setQr("");setCurrentInvite(invite);setCurrentDeadline(deadline)}}/>
+   <GMLobby roomId={room.roomId} onFinish={onFinish}
+     onRotate={(invite,deadline)=>{setQr("");setCurrentInvite(invite);setCurrentDeadline(deadline)}}/>
   </div>;
 }
 type Participant={id:string;display_name:string;state:"pending"|"approved"|"rejected"};
-function GMLobby({roomId,onRotate}:{roomId:string;onRotate:(invite:string,deadline:string)=>void}){
+function GMLobby({roomId,onRotate,onFinish}:{roomId:string;onRotate:(invite:string,deadline:string)=>void;onFinish:()=>void}){
  const {supabase}=useAuthProfile();
  const [participants,setParticipants]=useState<Participant[]>([]);
  const [locked,setLocked]=useState(false);
@@ -64,6 +72,10 @@ function GMLobby({roomId,onRotate}:{roomId:string;onRotate:(invite:string,deadli
    const result=await response.json();
    if(!response.ok)throw Error((result.error??"ロビーの取得に失敗しました")+(typeof result.diagnosticStage==="string"?"（診断："+result.diagnosticStage+"）":""));
    if(action==="list"){setParticipants(result.participants);setLocked(result.room.locked)}
+   else if(action==="finish"){
+    if(result.ok!==true)throw Error("ルームを終了できませんでした。");
+    onFinish();
+   }
    else if(action==="rotate"){
     if(!/^[a-f0-9]{64}$/.test(result.invite)||typeof result.joinExpiresAt!=="string")throw Error("招待コード更新結果が不正です");
     onRotate(result.invite,result.joinExpiresAt);
@@ -90,6 +102,8 @@ function GMLobby({roomId,onRotate}:{roomId:string;onRotate:(invite:string,deadli
   <button onClick={()=>request(locked?"unlock":"lock")} disabled={busy}
     className="ml-2 rounded-lg bg-yellow-200 px-3 py-2 font-bold">{locked?"受付を再開":"受付を締切"}</button>
   <button onClick={()=>request("rotate")} disabled={busy} className="ml-2 rounded-lg bg-slate-200 px-3 py-2 font-bold">招待QRを再発行</button>
+  <button onClick={()=>{if(window.confirm("このルームを終了しますか？参加者のアクセスも無効になります。"))void request("finish")}}
+    disabled={busy} className="ml-2 rounded-lg bg-rose-100 px-3 py-2 font-bold">ルームを終了</button>
   {participants.map(p=><div key={p.id} className="flex items-center justify-between gap-2 border-t py-2">
     <span className="break-all">{p.display_name} ({p.state==="pending"?"承認待ち":p.state==="approved"?"承認済み":"拒否"})</span>
     {p.state==="pending"&&<div className="flex gap-1">
@@ -121,9 +135,33 @@ export default function ZoroarkRoomCreatePage() {
   const [maxPlayers, setMaxPlayers] = useState(6);
   const [talkSeconds, setTalkSeconds] = useState(180);
   const [room, setRoom] = useState<RoomCreated | null>(null);
+  const [ownedRooms,setOwnedRooms]=useState<OwnedRoom[]>([]);
+  const [ownedBusy,setOwnedBusy]=useState(false);
+  const [ownedError,setOwnedError]=useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const authorized = Boolean(user && (profile?.role === "ca" || profile?.role === "admin"));
+  async function loadOwned(){
+    if(!authorized)return;
+    setOwnedBusy(true);setOwnedError("");
+    try{
+      const {data}=await supabase.auth.getSession();
+      if(!data.session?.access_token)throw Error("再ログインしてください。");
+      const response=await fetch("/api/zoroark/gm",{
+        method:"POST",cache:"no-store",
+        headers:{"Content-Type":"application/json","X-Zoroark-Request":"gm-lobby-v1",
+          Authorization:"Bearer "+data.session.access_token},
+        body:JSON.stringify({action:"mine"}),
+      });
+      const result=await response.json();
+      if(!response.ok)throw Error((result.error??"取得失敗")+
+        (typeof result.diagnosticStage==="string"?"（診断："+result.diagnosticStage+"）":""));
+      if(!Array.isArray(result.rooms))throw Error("ルーム一覧が不正です。");
+      setOwnedRooms(result.rooms);
+    }catch(error){setOwnedError((error as Error).message)}
+    finally{setOwnedBusy(false)}
+  }
+  useEffect(()=>{if(authorized)void loadOwned()},[authorized,supabase]);
 
   async function createRoom() {
     if (!authorized || busy || room) return;
@@ -146,6 +184,7 @@ export default function ZoroarkRoomCreatePage() {
         throw new Error(readableErrors[code] ?? "ルーム作成サービスが準備できていません。隔離環境の接続を確認してください。");
       }
       setRoom(data as RoomCreated);
+      void loadOwned();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "ルームを作成できませんでした。");
     } finally {
@@ -170,6 +209,35 @@ export default function ZoroarkRoomCreatePage() {
     <h1 className="mt-4 text-3xl font-black text-lime-950">🦊 ゾロアークを探せ！</h1>
     <p className="mt-2 font-semibold text-slate-500">GM専用ルーム作成（隔離開発版）</p>
 
+    <section className="mt-6 space-y-3 rounded-3xl border border-lime-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-black text-lg">👑 作成済みルーム</h2>
+        <button type="button" disabled={ownedBusy} onClick={()=>void loadOwned()}
+          className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold">{ownedBusy?"更新中":"一覧を更新"}</button>
+      </div>
+      {ownedError&&<p role="alert" className="rounded-lg bg-red-50 p-2 text-sm text-red-700">{ownedError}</p>}
+      {!ownedBusy&&ownedRooms.length===0&&!ownedError&&<p className="text-sm text-slate-500">現在表示できるルームはありません。</p>}
+      {ownedRooms.map(item=>{
+        const canManage=item.state==="lobby"&&new Date(item.expires_at).getTime()>Date.now();
+        return <div key={item.id} className="rounded-xl border border-slate-200 p-3 space-y-2">
+          <div className="flex flex-wrap justify-between gap-2">
+            <span className="font-bold">{item.mode==="manual"?"マニュアル（ミミッキュ）":"シンプル"}</span>
+            <span className="text-sm">{canManage?(item.join_locked?"受付停止中":"待機中"):"終了・期限切れ"}</span>
+          </div>
+          <p className="text-sm text-slate-600">参加 {item.occupied}/{item.max_players}人・トーク {item.talk_seconds===0?"無制限":item.talk_seconds/60+"分"}</p>
+          <p className="text-xs text-slate-500">作成 {new Date(item.created_at).toLocaleString("ja-JP")}</p>
+          {canManage&&<button type="button" className="w-full rounded-lg bg-lime-300 p-3 font-bold"
+            onClick={()=>{
+              setRoom({roomId:item.id,status:"lobby",mode:item.mode,
+                maxPlayers:item.max_players,talkSeconds:item.talk_seconds,
+                joinExpiresAt:item.join_expires_at,expiresAt:item.expires_at,
+                invite:"",joinEnabled:true});
+            }}>このルームを管理する</button>}
+        </div>;
+      })}
+    </section>
+    {room&&<button type="button" className="mt-4 rounded-lg bg-slate-100 px-4 py-2 font-bold"
+      onClick={()=>{setRoom(null);void loadOwned()}}>← 一覧へ戻る</button>}
     {!room ? <section className="mt-6 space-y-5 rounded-3xl border border-lime-200 bg-white p-5 shadow-sm">
       <div>
         <label htmlFor="zg-room-mode" className="block font-bold">ゲームモード</label>
@@ -208,7 +276,8 @@ export default function ZoroarkRoomCreatePage() {
       <p className="mt-3 font-semibold">ルームID</p>
       <output className="mt-1 block break-all rounded-xl bg-slate-100 p-3 font-mono text-xs">{room.roomId}</output>
       <p className="mt-3 text-sm">最大 {room.maxPlayers}人・招待期限 {new Date(room.joinExpiresAt).toLocaleString("ja-JP")}</p>
-      <div className="mt-5"><QRInvite room={room}/></div>
+      <div className="mt-5"><QRInvite key={room.roomId} room={room}
+        onFinish={()=>{setRoom(null);void loadOwned()}}/></div>
       <p className="mt-2 text-xs text-slate-500">招待資格はこの画面だけに表示され、ページを再読込すると復元できません。</p>
     </section>}
   </main>;
