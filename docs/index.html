@@ -95,6 +95,8 @@
   };
   const COMMUNITY_PERIODS=[["1か月",30],["3か月",90],["6か月",180],["1年",365],["全期間",null]];
   const MEETUP_HISTORY_LIMITS=[25,50,100,null];
+  const historyCategoriesReady=import('./meetup-history-categories.mjs?v=20261113-categories1');
+  let meetupHistoryCategory="all";
   const app=document.getElementById("app");
   const nav=document.getElementById("nav");
 
@@ -349,7 +351,7 @@
     const submit=document.getElementById("submitClaim");
     if(submit)submit.onclick=submitClaim;
     app.querySelectorAll("[data-community]").forEach(function(b){
-      b.onclick=function(){communityFeatureView="home";meetupHistoryLimit=25;go("community:"+encodeURIComponent(b.dataset.community))}
+      b.onclick=function(){communityFeatureView="home";meetupHistoryLimit=25;meetupHistoryCategory="all";go("community:"+encodeURIComponent(b.dataset.community))}
     });
   }
 
@@ -386,7 +388,7 @@
       .eq("community_id",id)
       .lte("starts_at",nowIso)
       .order("starts_at",{ascending:false})
-      .limit(meetupHistoryLimit===null?200:meetupHistoryLimit);
+      .limit(meetupHistoryLimit===null||meetupHistoryCategory!=="all"?200:meetupHistoryLimit);
 
     const upcomingQuery=client.from("meetups")
       .select(meetupFields)
@@ -417,7 +419,7 @@
       document.getElementById("retryHistory").onclick=function(){void renderCommunity(id)};
       return;
     }
-    if(meetupHistoryLimit===null){
+    if(meetupHistoryLimit===null||meetupHistoryCategory!=="all"){
       let offset=meetups.length;
       while(offset>0&&offset%200===0){
         const next=await client.from("meetups")
@@ -453,6 +455,17 @@
     const totalCheckin=Number(summary.checkin_count||0);
     const caMeetups=Number(summary.ca_meetup_count||0);
     const meetupCount=Number(summary.meetup_count||0);
+    const historyCategoryModule=await historyCategoriesReady.catch(function(){return null});
+    if(!historyCategoryModule){
+      app.innerHTML='<section class="card"><h2>イベント分類を読み込めませんでした</h2><button id="retryHistory" class="btn">再試行</button></section>';
+      document.getElementById("retryHistory").onclick=function(){void renderCommunity(id)};
+      return;
+    }
+    const historyCategoryEntries=meetups.map(function(m,index){return {m,index}});
+    const categoryFiltered=historyCategoryEntries.filter(function(entry){
+      return meetupHistoryCategory==="all"||historyCategoryModule.classifyMeetup(entry.m)===meetupHistoryCategory;
+    });
+    const historyDisplayEntries=meetupHistoryLimit===null?categoryFiltered:categoryFiltered.slice(0,meetupHistoryLimit);
     const historyRsvp=meetups.reduce(function(sum,m){const v=Number(m.rsvp_count);return sum+(Number.isFinite(v)?v:0)},0);
     const historyCheckin=meetups.reduce(function(sum,m){const v=Number(m.checkin_count);return sum+(Number.isFinite(v)?v:0)},0);
     const periodRate=totalRsvp>0?(totalCheckin/totalRsvp*100):null;
@@ -483,11 +496,12 @@
       }
       html+='</section>';
 
-      html+='<section class="card section"><div class="row between wraprow"><div><h2>🔥 Meetup履歴</h2><p class="muted small strong">RSVP '+historyRsvp.toLocaleString("ja-JP")+' / Check-in '+historyCheckin.toLocaleString("ja-JP")+' · '+(meetupHistoryLimit===null?'全'+meetups.length+'件表示':'最新'+meetupHistoryLimit+'件表示')+'</p></div><div class="periodbar" style="margin-top:0">'+MEETUP_HISTORY_LIMITS.map(function(n){return '<button type="button" class="periodbtn '+(n===meetupHistoryLimit?'active':'')+'" data-history-limit="'+(n===null?'all':n)+'">'+(n===null?'全件':n+'件')+'</button>'}).join("")+'</div></div>';
-      if(!meetups.length){
-        html+='<div class="notice section">Meetup履歴はありません。</div>';
+      html+='<section class="card section"><div class="row between wraprow"><div><h2>🔥 Meetup履歴</h2><p class="muted small strong">RSVP '+historyRsvp.toLocaleString("ja-JP")+' / Check-in '+historyCheckin.toLocaleString("ja-JP")+' · '+(meetupHistoryCategory!=="all"?'該当'+categoryFiltered.length+'件 · ':'')+(meetupHistoryLimit===null?'全'+historyDisplayEntries.length+'件表示':'最新'+historyDisplayEntries.length+'件表示')+'</p></div><div class="periodbar" style="margin-top:0">'+MEETUP_HISTORY_LIMITS.map(function(n){return '<button type="button" class="periodbtn '+(n===meetupHistoryLimit?'active':'')+'" data-history-limit="'+(n===null?'all':n)+'">'+(n===null?'全件':n+'件')+'</button>'}).join("")+'</div></div>';
+      html+='<div class="periodbar section" role="group" aria-label="Meetupイベントカテゴリ">'+historyCategoryModule.MEETUP_CATEGORIES.map(function(item){return '<button type="button" class="periodbtn '+(meetupHistoryCategory===item[0]?'active':'')+'" data-history-category="'+e(item[0])+'" aria-pressed="'+(meetupHistoryCategory===item[0]?'true':'false')+'">'+e(item[1])+'</button>'}).join("")+'</div>';
+      if(!historyDisplayEntries.length){
+        html+='<div class="notice section">該当するMeetup履歴はありません。</div>';
       }else{
-        html+='<div class="section">'+meetups.map(function(m,index){return meetupCardHtml(m,upcoming.length+index)}).join("")+'</div>';
+        html+='<div class="section">'+historyDisplayEntries.map(function(entry){return meetupCardHtml(entry.m,upcoming.length+entry.index)}).join("")+'</div>';
       }
       html+='</section>';
     }else{
@@ -520,6 +534,12 @@
     app.querySelectorAll("[data-community-period]").forEach(function(b){
       b.onclick=function(){
         communityPeriod=b.dataset.communityPeriod==="all"?null:Number(b.dataset.communityPeriod);
+        void renderCommunity(id);
+      };
+    });
+    app.querySelectorAll("[data-history-category]").forEach(function(b){
+      b.onclick=function(){
+        meetupHistoryCategory=b.dataset.historyCategory||"all";
         void renderCommunity(id);
       };
     });
