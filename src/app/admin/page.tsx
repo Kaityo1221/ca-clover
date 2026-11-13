@@ -57,6 +57,7 @@ export default function Page(){
     ["🔐","Campfire接続","ADMIN tokenと接続状態を管理","/admin/campfire"],
     ["🔄","データ同期","Campfire Activityを全国更新","/admin/sync"],
     ["📋","CAマスター差分チェック","公式名簿から新規CAの追加候補を検出・報告（既存変更なし）","/admin/ca-master-reconcile/new-only"],
+    ["🎖️","新規CA早期発見","公開Meetupで観測した未登録CA Community候補を確認","/admin/ca-early-discovery"],
     ["🍀","CA名簿の差分確認（隔離）","読み取り専用の照合レポートを確認","/admin/ca-master-reconcile"],
     ["🔗","Community権限調整","CA Cloverユーザーへの閲覧権限を手動補正","/admin/assignments"],
     ["👀","一般ユーザーページ","一般ユーザーページを確認","/admin/preview/general-ca"],
