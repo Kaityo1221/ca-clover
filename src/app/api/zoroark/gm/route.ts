@@ -24,12 +24,13 @@ export async function POST(request:Request){
  if(!["mine","list","lock","unlock","approve","reject","rotate","finish"].includes(String(act)))return respond({error:"invalid_action"},400);
  if(act!=="mine"&&(typeof input.roomId!=="string"||!/^[a-f0-9-]{36}$/i.test(input.roomId)))
    return respond({error:"invalid_room"},400);
- let stage="authentication";
+ let stage="client_initialization";
  try{
   const auth=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL??"https://wgiittrvgtiosogyhfcl.supabase.co",
    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY??"sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN",
    {auth:{persistSession:false,autoRefreshToken:false},
     global:{headers:{Authorization:"Bearer "+match[1]}}});
+  stage="auth_get_user";
   const {data:u,error:e}=await auth.auth.getUser(match[1]);
   stage="profile";
   if(e||!u.user)return respond({error:"unauthorized"},401);
