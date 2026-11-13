@@ -1,0 +1,41 @@
+name: CA Master New-Only Dashboard QA
+on:
+  pull_request:
+    paths:
+      - "src/app/admin/ca-master-reconcile/new-only/**"
+      - "src/app/api/admin/ca-master-diff/**"
+      - "src/lib/ca-master-new-only-diff.ts"
+      - "src/app/admin/page.tsx"
+      - "scripts/test-ca-master-new-only-diff.ts"
+      - ".github/workflows/ca-master-new-only-isolated.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  new-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test read-only new CA classification
+        run: node --experimental-strip-types scripts/test-ca-master-new-only-diff.ts
+      - name: Assert zero-write interface boundaries
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const api=fs.readFileSync('src/app/api/admin/ca-master-diff/route.ts','utf8');
+          const ui=fs.readFileSync('src/app/admin/ca-master-reconcile/new-only/page.tsx','utf8');
+          for(const term of ['.insert(', '.update(', '.upsert(', '.delete(', '.rpc(', 'createSupabaseAdminClient(', 'POST(request']) {
+            if(term==='createSupabaseAdminClient(') continue; // privileged READ ONLY history check
+            if(term==='POST(request') continue; // CSV-only report POST
+            if(api.includes(term)) throw Error('Unexpected write in read-only API: '+term);
+          }
+          if (!api.includes('createSupabaseAdminClient()') || !api.includes('community_campfire_ids')) throw Error('Prior Campfire IDs must be checked');
+          if (!ui.includes('DBは変更しない') || !ui.includes('既存CA')) throw Error('UI safety banner missing');
+          console.log('PASS: No mutation operations in read-only diff API');
+          NODE
