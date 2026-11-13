@@ -270,6 +270,57 @@ async function testUniversalCloverHome(browser,name){
  await page.close();
 }
 
+async function testMiniGamesDeterministicHome(browser,name){
+ const page=await browser.newPage({viewport:{width:390,height:812}});
+ await page.goto(origin+'/qa/photo-fixture.html');
+ await page.evaluate(()=>{
+   // Simulate a visitor arriving at My Community from Medal Rally.
+   // The historical history.back() handler wrongly returned to that medal page.
+   history.replaceState({from:'medal'},'','/docs/stamp-rally.html');
+   history.pushState(null,'','/docs/index.html#my');
+   const homeView=()=>'<section class="card hero"><h1 class="my-welcome-title">My Communityへようこそ。🍀</h1></section><div id="sendaiMapHost"></div>';
+   document.body.innerHTML='<header class="top"><div class="topin"><a class="logo" data-ca-home-link href="#my" aria-label="CA Cloverのトップ画面へ戻る">🍀</a></div></header><main id="app">'+homeView()+'</main>';
+   window.addEventListener('hashchange',()=>{
+     if(location.hash==='#my'&&!new URL(location.href).searchParams.has('caMini')){
+       document.querySelector('#app').innerHTML=homeView();
+     }
+   });
+ });
+ await page.addScriptTag({url:origin+'/docs/community-minigames-placeholder.js'});
+ async function checkHome(stage){
+   await page.waitForFunction(()=>new URL(location.href).searchParams.has('caMini')===false);
+   assert.equal(new URL(page.url()).pathname,'/docs/index.html',stage+' navigated to previous medal page');
+   assert.equal(new URL(page.url()).hash,'#my',stage+' lost home route');
+   await page.locator('#app .my-welcome-title').waitFor({state:'visible'});
+   record(name+' mini-games returns to My Community '+stage);
+ }
+ for(let n=0;n<2;n++){
+   await page.locator('.ca-minigames-top-btn').waitFor({state:'visible'});
+   await page.locator('.ca-minigames-top-btn').click();
+   await page.locator('[data-mini-view="hub"]').waitFor();
+   assert.equal(new URL(page.url()).searchParams.get('caMini'),'hub');
+   await page.getByRole('button',{name:'My Communityへ戻る'}).click();
+   await checkHome('repeat '+(n+1));
+ }
+ await page.locator('.ca-minigames-top-btn').click();
+ await page.locator('[data-mini-view="hub"]').waitFor();
+ await page.locator('[data-kind="games"]').click();
+ await page.locator('[data-mini-view="games"]').waitFor();
+ const beforeLength=await page.evaluate(()=>history.length);
+ await page.getByRole('button',{name:'ミニゲーム集'}).click();
+ await page.locator('[data-mini-view="hub"]').waitFor();
+ assert.equal(new URL(page.url()).searchParams.get('caMini'),'hub','list Back must return to hub');
+ assert.equal(await page.evaluate(()=>history.length),beforeLength,'list Back unexpectedly moved browser history');
+ record(name+' game list returns deterministically to mini-games hub');
+ await page.locator('[data-kind="tools"]').click();
+ await page.locator('[data-mini-view="tools"]').waitFor();
+ await page.getByRole('button',{name:'ミニゲーム集'}).click();
+ await page.locator('[data-mini-view="hub"]').waitFor();
+ await page.locator('[data-ca-home-link]').click();
+ await checkHome('Clover icon');
+ await page.close();
+}
+
 async function testCompression(browser,name){
  const page=await browser.newPage({viewport:{width:390,height:812}});
  await page.goto(origin+'/qa/photo-fixture.html');
@@ -385,7 +436,7 @@ try{
   if(!type)throw Error('Unsupported browser engine '+name);
   const options=name==='chromium'&&process.env.QA_CHROME_BIN?{executablePath:process.env.QA_CHROME_BIN}:{};
   const browser=await type.launch({headless:true,...options});
-  try{await testUniversalCloverHome(browser,name);await testMedal(browser,name);await testSettingsAccordion(browser,name);await testCompression(browser,name);await testSafariJpegFallback(browser,name);await testRapidPhotoSelection(browser,name)}
+  try{await testUniversalCloverHome(browser,name);await testMiniGamesDeterministicHome(browser,name);await testMedal(browser,name);await testSettingsAccordion(browser,name);await testCompression(browser,name);await testSafariJpegFallback(browser,name);await testRapidPhotoSelection(browser,name)}
   finally{await browser.close()}
  }
  console.log('CA PHOTO BROWSER PASS '+pass.length+'/'+pass.length);
