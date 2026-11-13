@@ -31,6 +31,7 @@ export default function ZoroarkRoomCreatePage() {
   const [room, setRoom] = useState<RoomCreated | null>(null);
   const [ownedRooms,setOwnedRooms]=useState<OwnedRoom[]>([]);
   const [ownedBusy,setOwnedBusy]=useState(false);
+  const [navigatingRoomId,setNavigatingRoomId]=useState<string|null>(null);
   const [ownedError,setOwnedError]=useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -98,6 +99,10 @@ export default function ZoroarkRoomCreatePage() {
     <Link href="/my" className="mt-4 inline-block underline">My Communityへ戻る</Link>
   </main>;
 
+  if(navigatingRoomId) return <main className="mx-auto max-w-xl px-4 py-8" aria-live="polite">
+    <div className="rounded-3xl border border-lime-200 bg-white p-6 text-center font-bold">🦊 ルーム管理を開いています...</div>
+  </main>;
+
   return <main className="mx-auto max-w-xl px-4 py-8">
     <Link href="/my" className="text-sm font-bold text-lime-800">← My Community</Link>
     <h1 className="mt-4 text-3xl font-black text-lime-950">🦊 ゾロアークを探せ！</h1>
@@ -121,6 +126,7 @@ export default function ZoroarkRoomCreatePage() {
           <p className="text-sm text-slate-600">参加 {item.occupied}/{item.max_players}人・トーク {item.talk_seconds===0?"無制限":item.talk_seconds/60+"分"}</p>
           <p className="text-xs text-slate-500">作成 {new Date(item.created_at).toLocaleString("ja-JP")}</p>
           {canManage&&<Link href={"/zoroark/rooms/"+encodeURIComponent(item.id)}
+            onClick={()=>setNavigatingRoomId(item.id)}
             className="block w-full rounded-lg bg-lime-300 p-3 text-center font-bold">
             このルームを管理する
           </Link>}
