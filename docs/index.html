@@ -290,7 +290,7 @@
     document.getElementById("google").onclick=login;
   }
   async function renderMy(token){
-    app.innerHTML='<section class="card hero"><span class="pill">MY COMMUNITY</span><h1 class="my-welcome-title" style="margin-top:12px">My Communityへ<span>ようこそ。🍀</span></h1><p class="muted strong">読み込み中...</p></section>';
+    app.innerHTML='<section class="card hero"><div class="row between wraprow" style="gap:10px"><span class="pill">MY COMMUNITY</span><button type="button" id="mySettingsButton" class="btn line" style="width:auto;padding:9px 13px;font-size:14px" aria-label="環境設定を開く">⚙️ 環境設定</button></div><h1 class="my-welcome-title" style="margin-top:12px">My Communityへ<span>ようこそ。🍀</span></h1><p class="muted strong">読み込み中...</p></section>';
     const uid=session.user.id;
     const results=await Promise.all([
       client.from("community_memberships").select("community_id").eq("user_id",uid),
@@ -305,7 +305,7 @@
       communities=cr.data||[];
     }
     const heroText=profile.role==="pending"?"CA登録が完了すると、自分に割り当てられたCommunityの活動を確認できます。":"自分に割り当てられたCommunityの活動だけを確認できます。";
-    let html='<section class="card hero"><span class="pill">MY COMMUNITY</span><h1 class="my-welcome-title" style="margin-top:12px">My Communityへ<span>ようこそ。🍀</span></h1><p class="muted strong">'+heroText+'</p>'+'<div class="my-hero-footer">'+(profile.role!=="pending"?'<div class="tags"><span class="pill">✅ 認証済み '+communities.length+' Community</span></div>':'')+((profile.role==="admin"||profile.role==="ca")?'<div id="sendaiMapHost"></div>':'')+'</div></section>';
+    let html='<section class="card hero"><div class="row between wraprow" style="gap:10px"><span class="pill">MY COMMUNITY</span><button type="button" id="mySettingsButton" class="btn line" style="width:auto;padding:9px 13px;font-size:14px" aria-label="環境設定を開く">⚙️ 環境設定</button></div><h1 class="my-welcome-title" style="margin-top:12px">My Communityへ<span>ようこそ。🍀</span></h1><p class="muted strong">'+heroText+'</p>'+'<div class="my-hero-footer">'+(profile.role!=="pending"?'<div class="tags"><span class="pill">✅ 認証済み '+communities.length+' Community</span></div>':'')+((profile.role==="admin"||profile.role==="ca")?'<div id="sendaiMapHost"></div>':'')+'</div></section>';
     html+=flashHtml();
 
     if(profile.role==="pending"){
@@ -340,6 +340,7 @@
 
     if(token!=null&&token!==renderToken)return;
     app.innerHTML=html+'<div class="version">mirror '+VERSION+'</div>';
+    const settingsButton=document.getElementById("mySettingsButton");if(settingsButton)settingsButton.onclick=function(){go("settings")};
     const toAccount=document.getElementById("toAccount");if(toAccount)toAccount.onclick=function(){go("account")};
     const submit=document.getElementById("submitClaim");
     if(submit)submit.onclick=submitClaim;
@@ -622,6 +623,11 @@
     setFlash(r.data&&r.data.communityName?r.data.communityName+" の承認申請を送りました 🍀":"承認申請を送りました 🍀","ok");
     await renderMy();
   }
+  function renderSettings(){
+    app.innerHTML='<section class="card"><button type="button" id="settingsBack" class="linkbtn">← My Community</button><span class="pill section">SETTINGS</span><h1 style="margin-top:12px">⚙️ 環境設定</h1><p class="muted strong section">CA Cloverの個人設定を管理する画面です。</p><section class="notice section"><h2>📸 プロフィール写真</h2><p class="muted strong section">写真アップロードは次の開発段階で追加します。現在はまだ写真を送信・保存できません。</p></section></section>';
+    document.getElementById("settingsBack").onclick=function(){go("my")};
+  }
+
   function renderAccount(){
     const id=profile&&profile.niantic_id?profile.niantic_id:"";
     app.innerHTML='<section class="card"><span class="pill">ACCOUNT</span><h1 style="margin-top:12px">👤 アカウント</h1><div class="section"><div class="tiny strong muted">Google account</div><div class="strong" style="margin-top:4px">'+e(session.user.email||"—")+'</div><div class="tiny strong muted" style="margin-top:18px">Role</div><span class="pill" style="margin-top:5px">'+e(profile.role||"pending")+'</span><label class="tiny strong muted" style="display:block;margin-top:20px">Pokémon GO トレーナー名</label><input id="niantic" class="input" style="margin-top:7px" value="'+e(id)+'" placeholder="Pokémon GO トレーナー名を入力"><button id="saveNiantic" class="btn section">Pokémon GO トレーナー名を保存</button><p class="tiny muted strong center">ゲーム内のトレーナー名を入力してください。先頭の「@」は保存時に自動で外します。</p>'+(profile.role==="pending"&&id?'<button id="continue" class="btn dark section">CA登録を続ける →</button>':'')+'<button id="logout" class="btn line section">ログアウト</button>'+flashHtml()+'</div></section><div class="version">mirror '+VERSION+'</div>';
@@ -708,6 +714,7 @@
       }catch(_err){if(token===renderToken)app.innerHTML='<section class="card"><h2>ゲームを起動できません</h2><p>画面を再読み込みしてください。</p><button class="btn section" id="gameBack">戻る</button></section>';const b=document.getElementById("gameBack");if(b)b.onclick=function(){go("my")}}
       return;
     }
+    if(v==="settings"){renderSettings();return}
     if(v==="account"){renderAccount();return}
     if(v==="admin"){await renderAdmin();return}
     if(v.startsWith("community:")){await renderCommunity(decodeURIComponent(v.slice("community:".length)));return}
