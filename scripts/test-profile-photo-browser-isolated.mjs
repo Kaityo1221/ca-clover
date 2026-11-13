@@ -132,6 +132,63 @@ async function testMedal(browser,name){
  record(name+' CA switch ignores stale response');
  await page.close();
 }
+async function testSettingsAccordion(browser,name){
+ const page=await browser.newPage({viewport:{width:390,height:812}});
+ await page.goto(origin+'/qa/photo-fixture.html');
+ await page.evaluate(async()=>{
+   window.CA_PROFILE_PHOTO_UPLOAD_ENABLED=true;
+   window.confirm=()=>true;
+   const uid='qa-browser-user';
+   let saved=null;
+   const client={
+     auth:{getUser:async()=>({data:{user:{id:uid}},error:null})},
+     from:table=>{
+       let operation='read',row=null;
+       return {
+         select(){return this},eq(){return this},
+         upsert(v){operation='upsert';row=v;return this},
+         delete(){operation='delete';return this},
+         async maybeSingle(){
+           if(table==='ca_profile_photos')return {data:null,error:null};
+           if(operation==='upsert'){saved=row;return {data:{message:row.message},error:null};}
+           if(operation==='delete'){saved=null;return {data:{user_id:uid},error:null};}
+           return {data:saved,error:null};
+         }
+       };
+     },
+     storage:{from:()=>({createSignedUrl:async()=>({data:null,error:{message:'not found'}})})}
+   };
+   const module=await import('/docs/settings-accordion.mjs');
+   window.__settingsCleanup=module.mountSettings({host:document.querySelector('#testHost'),client,session:{user:{id:uid}},role:'ca',onBack:()=>{},onAccount:()=>{}});
+ });
+ assert.equal(await page.locator('#settingsPhotoPanel').evaluate(el=>el.hidden),true);
+ assert.equal(await page.locator('#settingsMessagePanel').evaluate(el=>el.hidden),true);
+ assert.equal(await page.locator('.settings-future:disabled').count(),3);
+ await page.locator('#settingsMessageToggle').click();
+ await page.locator('#exchangeMessageInput').waitFor();
+ assert.equal(await page.locator('#settingsMessageToggle').getAttribute('aria-expanded'),'true');
+ await page.locator('#exchangeMessageInput').fill('<img src=x onerror=alert(1)>');
+ assert.equal(await page.locator('#exchangeMessagePreviewText').textContent(),'<img src=x onerror=alert(1)>');
+ assert.equal(await page.locator('#exchangeMessagePreview img').count(),0,'message HTML was interpreted');
+ await page.locator('#exchangeMessageInput').fill('東京から来ました！\n気軽に声をかけてください😊');
+ await page.locator('#exchangeMessageSave').click();
+ await page.waitForFunction(()=>document.querySelector('#exchangeMessageStatus').textContent.includes('保存しました'));
+ assert.equal(await page.locator('#settingsMessageSummary').textContent(),'登録済み');
+ await page.locator('#settingsPhotoToggle').click();
+ await page.locator('#profilePhotoInput').waitFor();
+ assert.equal(await page.locator('#settingsMessagePanel').evaluate(el=>el.hidden),true);
+ assert.equal(await page.locator('#settingsPhotoPanel').evaluate(el=>el.hidden),false);
+ await page.locator('#settingsMessageToggle').click();
+ await page.waitForFunction(()=>document.querySelector('#exchangeMessageInput').value.includes('東京から来ました！'));
+ await page.locator('#exchangeMessageDelete').click();
+ await page.waitForFunction(()=>document.querySelector('#exchangeMessageStatus').textContent.includes('削除しました'));
+ assert.equal(await page.locator('#settingsMessageSummary').textContent(),'未登録');
+ assert.equal(await page.locator('#exchangeMessagePreview').evaluate(el=>el.hidden),true);
+ await page.evaluate(()=>window.__settingsCleanup());
+ record(name+' compact settings accordion, greeting CRUD and HTML-safe preview');
+ await page.close();
+}
+
 async function testCompression(browser,name){
  const page=await browser.newPage({viewport:{width:390,height:812}});
  await page.goto(origin+'/qa/photo-fixture.html');
@@ -247,7 +304,7 @@ try{
   if(!type)throw Error('Unsupported browser engine '+name);
   const options=name==='chromium'&&process.env.QA_CHROME_BIN?{executablePath:process.env.QA_CHROME_BIN}:{};
   const browser=await type.launch({headless:true,...options});
-  try{await testMedal(browser,name);await testCompression(browser,name);await testSafariJpegFallback(browser,name);await testRapidPhotoSelection(browser,name)}
+  try{await testMedal(browser,name);await testSettingsAccordion(browser,name);await testCompression(browser,name);await testSafariJpegFallback(browser,name);await testRapidPhotoSelection(browser,name)}
   finally{await browser.close()}
  }
  console.log('CA PHOTO BROWSER PASS '+pass.length+'/'+pass.length);
