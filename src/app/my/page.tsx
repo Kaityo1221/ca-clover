@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useAuthProfile } from "@/lib/use-auth-profile";
+import { MeetupDeltaStatus } from "@/components/meetup-delta-status";
+import { AuthorizedMeetupDeltaPanel } from "@/components/authorized-meetup-delta-panel";
+import { assertMeetupSnapshotRows, compareMeetupSnapshot, type MeetupSnapshotRow } from "@/lib/my-community-meetup-snapshot";
+import type { DeltaStatus } from "@/lib/meetup-delta-display";
 
 type MembershipRow = { community_id: string };
 type CommunityRow = {
@@ -13,12 +17,7 @@ type CommunityRow = {
   avatar_url: string | null;
   coverage: "complete" | "partial" | "missing";
 };
-type MeetupRow = {
-  community_id: string | null;
-  starts_at: string | null;
-  rsvp_count: number | null;
-  checkin_count: number | null;
-};
+type MeetupRow = MeetupSnapshotRow;
 type ClaimRow = {
   id:string;
   meetup_title:string|null;
@@ -56,6 +55,15 @@ export default function Page() {
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
   const [dataReloadKey, setDataReloadKey] = useState(0);
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
+  // In-memory only: keyed by authenticated user, never persisted across accounts.
+  const [observed, setObserved] = useState<{
+    userId: string;
+    rows: MeetupRow[];
+    status: DeltaStatus;
+    added: number;
+    updated: number;
+  } | null>(null);
 
   async function loadClaims(){
     if(!user) return false;
@@ -100,12 +108,14 @@ export default function Page() {
         if (!ids.length) {
           setCommunities([]);
           setMeetups([]);
+          setObserved({ userId, rows: [], status: "idle", added: 0, updated: 0 });
+          setLoadedUserId(userId);
           return;
         }
 
         const [communityResult, meetupResult] = await Promise.all([
           supabase.from("communities").select("id,name,prefecture,member_count,avatar_url,coverage").in("id", ids).order("name"),
-          supabase.from("meetups").select("community_id,starts_at,rsvp_count,checkin_count").in("community_id", ids).order("starts_at", { ascending: false }),
+          supabase.from("meetups").select("id,community_id,title,starts_at,rsvp_count,checkin_count").in("community_id", ids).order("starts_at", { ascending: false }),
         ]);
 
         if (!alive) return;
@@ -113,8 +123,32 @@ export default function Page() {
           setDataError("Community詳細またはMeetup情報を取得できませんでした。表示中のデータは消さず、再取得を待っています。");
           return;
         }
+        const nextRows = ((meetupResult.data as MeetupRow[] | null) ?? []);
+        try {
+          assertMeetupSnapshotRows(nextRows, new Set(ids));
+        } catch {
+          setDataError("Meetupの取得結果に不正な所属・重複がありました。表示中の情報を保持します。");
+          return;
+        }
         setCommunities((communityResult.data as CommunityRow[]) ?? []);
-        setMeetups((meetupResult.data as MeetupRow[]) ?? []);
+        setMeetups(nextRows);
+        setLoadedUserId(userId);
+        setObserved(previous => {
+          const sameAccount = previous?.userId === userId ? previous : null;
+          if (!sameAccount || sameAccount.status === "idle") {
+            return { userId, rows: nextRows, status: "baseline", added: 0, updated: 0 };
+          }
+          // Revoked memberships are never compared or displayed as retained data.
+          const authorizedPrevious = sameAccount.rows.filter(row =>
+            row.community_id !== null && ids.includes(row.community_id)
+          );
+          const change = compareMeetupSnapshot(authorizedPrevious, nextRows, new Set(ids));
+          return {
+            userId, rows: nextRows,
+            status: change.added || change.updated ? "updated" : "unchanged",
+            added: change.added, updated: change.updated,
+          };
+        });
       } catch {
         if(!alive) return;
         setDataError("データの読み込み中にエラーが発生しました。もう一度読み込んでください。");
@@ -156,15 +190,20 @@ export default function Page() {
     setClaimBusy(false);
   }
 
+  const accountCanViewMeetups = profile?.role === "ca" || profile?.role === "admin";
+  const visibleCommunities = loadedUserId === user?.id && accountCanViewMeetups ? communities : [];
+  const visibleClaims = loadedUserId === user?.id ? claims : [];
   const metrics = useMemo(() => {
     const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const recent = meetups.filter(m => m.starts_at && new Date(m.starts_at).getTime() >= since);
+    const recent = loadedUserId === user?.id && accountCanViewMeetups
+      ? meetups.filter(m => m.starts_at && new Date(m.starts_at).getTime() >= since)
+      : [];
     return {
       meetups: recent.length,
       rsvp: recent.reduce((sum, m) => sum + (m.rsvp_count ?? 0), 0),
       checkin: recent.reduce((sum, m) => sum + (m.checkin_count ?? 0), 0),
     };
-  }, [meetups]);
+  }, [accountCanViewMeetups, loadedUserId, meetups, user?.id]);
 
   if (loading) return <main className="grid min-h-[70vh] place-items-center text-sm font-black text-lime-800">🍀 読み込み中...</main>;
   if (authError) return <main className="grid min-h-[70vh] place-items-center px-4 text-center"><div className="max-w-md"><div className="text-5xl">⚠️</div><h1 className="mt-3 text-2xl font-black text-lime-950">ログイン情報を確認できませんでした</h1><p className="mt-3 text-sm font-semibold leading-6 text-slate-500">{authError}</p><button onClick={retryAuth} className="mt-5 inline-flex rounded-full bg-lime-400 px-5 py-3 text-sm font-black text-lime-950">もう一度確認する</button></div></main>;
@@ -173,7 +212,27 @@ export default function Page() {
     <Link href="/" className="text-sm font-black text-lime-700">← CA Clover Home</Link>
     <span className="mt-4 block w-fit rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900">MY COMMUNITY</span>
     <h1 className="mt-3 text-3xl font-black text-lime-950">🍀 自分のCommunity</h1>
-    <p className="mt-2 text-sm font-semibold text-slate-500">{dataLoading ? "読み込み中..." : dataError ? "⚠️ データ取得エラー" : communities.length ? "✅ 認証済み " + communities.length + " Community" : "0 Community"}</p>
+    <p className="mt-2 text-sm font-semibold text-slate-500">{dataLoading ? "読み込み中..." : dataError ? "⚠️ データ取得エラー" : visibleCommunities.length ? "✅ 認証済み " + visibleCommunities.length + " Community" : "0 Community"}</p>
+
+    {profile?.role === "ca" || profile?.role === "admin" ? <section className="mt-5 rounded-2xl border border-lime-200 bg-white p-4">
+      <h2 className="text-sm font-black text-lime-950">Meetup再読み込み比較（試験版）</h2>
+      <MeetupDeltaStatus
+        status={dataError ? "error" : dataLoading ? "loading" : observed?.userId === user.id ? observed.status : "idle"}
+        added={observed?.userId === user.id ? observed.added : 0}
+        updated={observed?.userId === user.id ? observed.updated : 0}
+      />
+      <p className="mt-1 text-xs font-semibold text-slate-500">この画面で取得したMeetupだけを、同じログイン中に再読み込みした結果と比較します。Campfire直接同期は未接続です。画面を閉じると比較基準は消えます。</p>
+      <button onClick={() => setDataReloadKey(value => value + 1)} disabled={dataLoading}
+        className="mt-3 inline-flex rounded-full bg-lime-100 px-4 py-2 text-xs font-black text-lime-900 disabled:opacity-50">
+        {dataLoading ? "確認中..." : "読み込み結果を比較"}
+      </button>
+    </section> : null}
+
+    {process.env.NEXT_PUBLIC_CA_MEETUP_DELTA_READONLY === "enabled" &&
+      accountCanViewMeetups && loadedUserId === user.id && !dataLoading && !dataError
+        ? <AuthorizedMeetupDeltaPanel supabase={supabase} userId={user.id}
+            communityIds={visibleCommunities.map(community=>community.id)} />
+        : null}
 
     {dataError ? <section className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5">
       <div className="text-xs font-black text-amber-700">データ取得エラー</div>
@@ -199,9 +258,9 @@ export default function Page() {
       {claimMessage ? <p className="mt-3 text-center text-xs font-bold text-lime-700">{claimMessage}</p> : null}
     </section> : null}
 
-    {claims.length ? <section className="mt-6">
+    {visibleClaims.length ? <section className="mt-6">
       <h2 className="text-lg font-black text-lime-950">申請履歴</h2>
-      <div className="mt-3 space-y-3">{claims.map(c=><div key={c.id} className="clover-card p-4">
+      <div className="mt-3 space-y-3">{visibleClaims.map(c=><div key={c.id} className="clover-card p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div><div className="text-xs font-black text-lime-700">{c.community_prefecture_snapshot??"—"}</div><div className="mt-1 font-black text-lime-950">{c.community_name_snapshot}</div><div className="mt-1 text-xs font-semibold text-slate-500">{c.request_source==="community_invite"?"コミュニティ招待URLから申請":c.meetup_title??"ミートアップ共有URLから申請"}</div></div>
           <span className={c.status==="approved"?"rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900":c.status==="rejected"?"rounded-full bg-rose-100 px-3 py-1 text-xs font-black text-rose-700":"rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800"}>{c.status==="approved"?"承認済み":c.status==="rejected"?"却下":"承認待ち"}</span>
@@ -218,7 +277,7 @@ export default function Page() {
       </div>)}</div>
     </section> : null}
 
-    {!dataLoading && !dataError && communities.length === 0 ? (
+    {!dataLoading && !dataError && visibleCommunities.length === 0 ? (
       <section className="clover-card mt-6 p-8 text-center">
         <div className="text-5xl">🌱</div>
         <h2 className="mt-3 text-xl font-black text-lime-950">Community未割当です</h2>
@@ -226,7 +285,7 @@ export default function Page() {
       </section>
     ) : null}
 
-    {communities.length ? <>
+    {visibleCommunities.length ? <>
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
         <div className="clover-card p-5"><div className="text-2xl">🔥</div><div className="mt-2 text-xs font-black text-slate-500">30日Meetup</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.meetups}</div></div>
         <div className="clover-card p-5"><div className="text-2xl">📨</div><div className="mt-2 text-xs font-black text-slate-500">30日RSVP</div><div className="mt-1 text-3xl font-black text-lime-950">{metrics.rsvp}</div></div>
@@ -234,7 +293,7 @@ export default function Page() {
       </div>
       <h2 className="mt-7 text-lg font-black text-lime-950">✅ 認証済みCommunity</h2>
       <div className="mt-3 grid gap-4 sm:grid-cols-2">
-        {communities.map(c => <Link key={c.id} href={"/community/"+c.id} className="clover-card relative p-6 transition hover:-translate-y-1 hover:border-lime-300">
+        {visibleCommunities.map(c => <Link key={c.id} href={"/community/"+c.id} className="clover-card relative p-6 transition hover:-translate-y-1 hover:border-lime-300">
           <span className="absolute right-4 top-4 rounded-full bg-lime-100 px-3 py-1 text-[11px] font-black text-lime-800">✅ 認証済み</span>
           <div className="flex items-center gap-4 pr-24">
             <div className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-[22px] border border-lime-100 bg-lime-50 text-3xl shadow-sm">
