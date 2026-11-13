@@ -52,6 +52,18 @@ export default function NewOnlyCaMasterDiff(){
     if(file.size>2_000_000){setError("CSVは2MB以下にしてください。");return;}
     await run("manual",await file.text());
   }
+  async function copyBadgeHelp(){
+    const text=[
+      "🍀 新人CAのバッジについて",
+      "公式CAマスターへの掲載と、Pokémon GO・CampfireでのCAバッジ表示は別の確認事項です。",
+      "公式名簿への掲載が確認できても、こちらではバッジの反映状況や反映予定日までは確認できません。",
+      "どの画面（Pokémon GO / Campfire）で表示されないのかと、CAとして認定された日付を教えてください。",
+      "必要に応じて、CAプログラムの公式窓口で反映状況を確認してください。",
+      "※具体的な反映期限は公式情報で確認できていません。",
+    ].join("\\n");
+    try{await navigator.clipboard.writeText(text);setCopied("CAバッジの案内文をコピーしました。");}
+    catch{setError("コピーできませんでした。");}
+  }
   async function copyReport(){
     if(!result)return;
     try{
@@ -106,6 +118,15 @@ export default function NewOnlyCaMasterDiff(){
       </div>
       {error?<p role="alert" className="mt-4 rounded-xl bg-rose-50 p-3 text-sm font-bold text-rose-700">{error}</p>:null}
       {result?<p className="mt-4 text-xs leading-6 text-slate-600">照合：{new Date(result.checkedAt).toLocaleString("ja-JP")} / {result.source} / 旧ID照合：{result.historyVerified?"確認済み":"未確認（新規追加候補は保留）"}</p>:null}
+    </section>
+
+    <section className="clover-card mt-5 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div><h2 className="font-black text-lime-950">🎖️ 新人CAのバッジ相談</h2>
+          <p className="mt-2 text-xs leading-6 text-slate-600">公式CAマスターへの掲載は確認できても、Pokémon GO・Campfire側のバッジ反映とは別です。反映日数は推測せず、どの画面に付いていないのかを確認して案内します。</p>
+        </div>
+        <button onClick={copyBadgeHelp} className="rounded-xl border border-lime-600 px-4 py-3 text-sm font-black text-lime-900">案内文をコピー</button>
+      </div>
     </section>
 
     {report?<section className="mt-5">
