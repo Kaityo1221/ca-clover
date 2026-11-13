@@ -73,17 +73,26 @@ export async function POST(request:NextRequest){
     const action=body.action;
     const revision=body.revision;
     if(!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(clubId)||
-      (action!=="hold"&&action!=="review")||
+      (action!=="hold"&&action!=="review"&&action!=="acknowledge")||
       !Number.isSafeInteger(revision)||Number(revision)<0||Number(revision)>1_000_000){
       return reply({error:"入力値が不正です。"},400);
     }
     const admin=createSupabaseAdminClient();
     if(!admin)return reply({error:"候補台帳の接続は未設定です。"},503);
-    const {data,error}=await admin.from("ca_early_discovery_candidates")
-      .update({review_status:action==="hold"?"hold":"reviewed",
-        revision:Number(revision)+1,updated_at:new Date().toISOString()})
-      .eq("club_id",clubId).eq("revision",revision)
-      .select("club_id,review_status,revision").maybeSingle();
+    // Acknowledge means the ADMIN saw the in-app report, not that an email or
+    // Discord message was sent. One-time, revision-checked transition only.
+    const acknowledged=action==="acknowledge";
+    const patch=acknowledged
+      ?{review_status:"reviewed",report_status:"delivered",
+         reported_at:new Date().toISOString(),revision:Number(revision)+1,
+         updated_at:new Date().toISOString()}
+      :{review_status:action==="hold"?"hold":"reviewed",
+         revision:Number(revision)+1,updated_at:new Date().toISOString()};
+    let q=admin.from("ca_early_discovery_candidates").update(patch)
+      .eq("club_id",clubId).eq("revision",revision);
+    if(acknowledged)q=q.eq("report_status","pending");
+    const {data,error}=await q
+      .select("club_id,review_status,report_status,reported_at,revision").maybeSingle();
     if(error)return reply({error:"候補の確認状態を更新できません。"},503);
     if(!data)return reply({error:"他の管理者による更新または対象なし。再読み込みしてください。"},409);
     return reply({ok:true,candidate:data});
