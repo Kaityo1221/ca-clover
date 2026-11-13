@@ -47,7 +47,7 @@ export function mountSettings({host,client,session,role,onBack,onAccount}){
     };
     photoLeave=await mount('./profile-photo.mjs?v=20261113-safari-jpeg1','mountProfilePhoto','settingsPhotoPanel','profilePhotoStatus');
     if(!active||generation!==opening||detail.hidden){cleanupEditors();return;}
-    messageLeave=await mount('./exchange-message.mjs?v=20261113-settings1','mountExchangeMessage','settingsMessagePanel','exchangeMessageStatus');
+    messageLeave=await mount('./exchange-message.mjs?v=20261114-message-label1','mountExchangeMessage','settingsMessagePanel','exchangeMessageStatus');
   }
   function returnToMenu(){
     ++opening;
