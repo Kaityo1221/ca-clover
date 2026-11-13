@@ -26,8 +26,8 @@ export async function POST(request:Request){
    return respond({error:"invalid_room"},400);
  let stage="client_initialization";
  try{
-  const auth=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL??"https://wgiittrvgtiosogyhfcl.supabase.co",
-   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY??"sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN",
+  const auth=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "https://wgiittrvgtiosogyhfcl.supabase.co",
+   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN",
    {auth:{persistSession:false,autoRefreshToken:false},
     global:{headers:{Authorization:"Bearer "+match[1]}}});
   stage="auth_get_user";
