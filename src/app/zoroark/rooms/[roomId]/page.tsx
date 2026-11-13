@@ -76,7 +76,7 @@ export default function ZoroarkRoomManagementPage(){
  }:null;
  return <main className="mx-auto max-w-xl px-4 py-8">
    <Link href="/zoroark/rooms" className="inline-block rounded-xl bg-slate-100 px-4 py-3 font-bold">
-    ← 作成済みルーム一覧へ
+    ← ルーム選択画面へ
    </Link>
    <h1 className="mt-6 text-3xl font-black text-lime-950">🦊 ルーム管理</h1>
    <p className="mt-2 text-slate-600">ゲームマスター専用</p>
@@ -88,5 +88,9 @@ export default function ZoroarkRoomManagementPage(){
      <p className="mt-2 text-sm text-slate-500">作成日時：{new Date(room!.created_at).toLocaleString("ja-JP")}</p>
      <div className="mt-5"><QRInvite room={restored} onFinish={()=>router.replace("/zoroark/rooms")}/></div>
    </section>}
+   <Link href="/zoroark/rooms"
+     className="mt-6 block w-full rounded-xl bg-lime-300 px-5 py-4 text-center text-lg font-black text-lime-950">
+     ← ルーム選択画面へ
+   </Link>
  </main>;
 }
