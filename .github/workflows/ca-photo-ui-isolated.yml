@@ -7,6 +7,9 @@ on:
       - .github/workflows/ca-photo-ui-isolated.yml
       - docs/index.html
       - docs/profile-photo.mjs
+      - docs/settings-accordion.mjs
+      - docs/settings-accordion.css
+      - docs/exchange-message.mjs
       - docs/stamp-rally.html
       - scripts/test-profile-photo-isolated.mjs
       - scripts/test-profile-photo-browser-isolated.mjs
