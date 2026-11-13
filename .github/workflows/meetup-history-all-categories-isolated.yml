@@ -1,0 +1,25 @@
+name: Meetup History All and Categories Isolated QA
+on:
+  push:
+    branches:
+      - feature/meetup-history-all-isolated-20261113
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: node --check docs/meetup-history-categories.mjs
+      - name: Category classification
+        run: node --test scripts/ci/test-meetup-history-categories.mjs
+      - name: Pagination and DOM contract
+        run: node --test scripts/ci/test-meetup-history-page.mjs scripts/ci/test-meetup-history-loader.mjs
