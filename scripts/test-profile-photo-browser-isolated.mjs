@@ -60,12 +60,15 @@ async function prep(page,mode){
    rpc:async(name,args)=>{
     if(name==='stamp_rally_catalog')return {data:rows,error:null};
     if(name==='ca_medal_exchange_message'){
+     if(mode==='photoOnly')return {data:null,error:null};
+     if(mode==='long')return {data:'あ'.repeat(60),error:null};
      if(mode==='race'&&args.p_ca_member_id===A)await new Promise(r=>setTimeout(r,350));
      if(mode==='missing'||(mode==='error'&&args.p_ca_member_id===A))
        return mode==='error'?{data:null,error:{message:'synthetic failure'}}:{data:null,error:null};
      return {data:args.p_ca_member_id===A?'東京から来ました！\nよろしくお願いします😊':'こんにちは！ QA B',error:null};
     }
     if(name==='ca_medal_profile_photo_path'){
+     if(mode==='greetingOnly')return {data:null,error:null};
      if(mode==='race'&&args.p_ca_member_id===A)await new Promise(r=>setTimeout(r,350));
      if(mode==='missing'||mode==='error'&&args.p_ca_member_id===A)
        return mode==='error'?{data:null,error:{message:'synthetic failure'}}:{data:null,error:null};
@@ -123,6 +126,27 @@ async function testMedal(browser,name){
   assert.ok(await page.locator('#stampZoom2D').isVisible(),'medal hidden in '+mode);
   record(name+' '+mode+' fallbacks');
   await page.close();
+ }
+ for(const mode of ['greetingOnly','photoOnly','long']){
+  const special=await browser.newPage({viewport:{width:320,height:812}});
+  await prep(special,mode);await openModal(special);
+  await special.locator('#caMedalPhotoRow:not([hidden])').waitFor();
+  if(mode==='greetingOnly'){
+    await special.locator('#caMedalExchangeMessage:not([hidden])').waitFor();
+    assert.equal(await special.locator('#caMedalPhoto').evaluate(e=>e.hidden),true,'unregistered photo shown');
+    assert.equal(await special.locator('#caMedalPhotoFallback').evaluate(e=>e.hidden),false,'no avatar fallback');
+  }
+  if(mode==='photoOnly'){
+    await special.locator('#caMedalPhoto').waitFor({state:'visible'});
+    assert.equal(await special.locator('#caMedalExchangeMessage').evaluate(e=>e.hidden),true,'unexpected greeting');
+  }
+  if(mode==='long'){
+    await special.locator('#caMedalExchangeMessage:not([hidden])').waitFor();
+    const b=await special.evaluate(()=>({bubble:document.querySelector('#caMedalExchangeMessage').getBoundingClientRect().bottom,medal:document.querySelector('#stampZoom2D').getBoundingClientRect().top}));
+    assert.ok(b.bubble+2<=b.medal,'60-character bubble overlaps medal');
+  }
+  record(name+' '+mode+' portrait/greeting fallback');
+  await special.close();
  }
  const page=await browser.newPage({viewport:{width:390,height:812}});
  await prep(page,'race');await openModal(page);
