@@ -13,3 +13,13 @@ for(const [label,headers] of [
  assert.ok(!text.includes('username')&&!text.includes('display_name'),'unexpected roster fields');
  console.log('PASS '+label+' rejected HTTP='+response.status);
 }
+
+const preflight=await fetch(endpoint,{method:'OPTIONS',headers:{
+  origin:'https://kaityo1221.github.io',
+  'access-control-request-method':'POST',
+  'access-control-request-headers':'authorization, apikey, content-type'
+},signal:AbortSignal.timeout(15000),redirect:'error'});
+assert.equal(preflight.status,204,'cors preflight rejected');
+assert.equal(preflight.headers.get('access-control-allow-origin'),'https://kaityo1221.github.io','cors origin mismatch');
+assert.match(preflight.headers.get('access-control-allow-methods')||'',/POST/);
+console.log('PASS authenticated browser cors preflight accepted without participant request');
