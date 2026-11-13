@@ -1,37 +1,67 @@
-
-.settings-shell{max-width:720px;margin-inline:auto}
-.settings-caption{margin-left:10px}.settings-title{margin-top:14px}.settings-subtitle{margin:12px 0 18px}
-.settings-menu{display:grid;gap:10px}
-.settings-entry,.settings-future{border:1px solid #d9e9c1;border-radius:20px;background:linear-gradient(135deg,#fffef5,#fff);overflow:hidden;box-shadow:0 5px 15px rgba(49,90,33,.04)}
-.settings-toggle,.settings-future{width:100%;display:flex;align-items:center;gap:13px;padding:14px;text-align:left;font:inherit;color:#365314;border:0;cursor:pointer}
-.settings-toggle{background:transparent}
-.settings-entry-icon,.settings-avatar,.settings-future>span:first-child{width:54px;height:54px;flex:0 0 54px;border-radius:15px;background:#eff9d7;display:grid;place-items:center;font-size:25px}
-.settings-avatar{border-radius:50%;position:relative;overflow:hidden;border:2px solid #a3d642}
+/* CA Clover profile settings, five-card menu and separate profile detail. */
+.settings-shell{max-width:720px;margin-inline:auto;overflow:hidden}
+.settings-heading{margin-bottom:20px}
+.settings-caption{margin-left:10px;vertical-align:middle}
+.settings-title{margin:20px 0 8px;color:#365314;font-weight:950}
+.settings-subtitle{margin:12px 0 16px;line-height:1.65}
+.settings-menu{display:grid;gap:12px}
+.settings-menu-card{
+  display:flex;align-items:center;gap:15px;width:100%;padding:16px 18px;
+  color:#365314;background:linear-gradient(115deg,#fffdf5,#fff);
+  border:1px solid #e6e3cc;border-radius:20px;
+  box-shadow:0 5px 15px rgba(48,70,25,.08);
+  text-align:left;font:inherit;cursor:pointer;
+  min-height:86px;
+  transition:box-shadow .18s ease,background .18s ease;
+}
+.settings-menu-card:focus-visible,.settings-profile-card:focus-visible{outline:3px solid #84cc16;outline-offset:3px}
+.settings-menu-card:active:not(:disabled){background:#f4fbdc}
+.settings-profile-card{background:linear-gradient(120deg,#fffdf0,#fdfef5);border-color:#e6e0b7}
+.settings-entry-icon,.settings-avatar{
+  display:grid;place-items:center;width:58px;height:58px;flex:0 0 58px;
+  background:#eaf6d2;border-radius:16px;font-size:28px;color:#4d7c0f;
+}
+.settings-avatar{border:3px solid #a3d642;border-radius:50%;position:relative;overflow:hidden;background:#f5fce5}
 .settings-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.settings-entry-label,.settings-future>span:nth-child(2){min-width:0;flex:1;display:flex;flex-direction:column;gap:4px}
-.settings-entry-label strong,.settings-future strong{font-weight:950;font-size:16px;line-height:1.3}
-.settings-entry-label small,.settings-future small{color:#64748b;font-size:11px;font-weight:700}
-.settings-arrow,.settings-future>span:last-child{color:#4d7c0f;font-size:23px;line-height:1;font-weight:900}
-.settings-toggle[aria-expanded=true] .settings-arrow{transform:rotate(180deg)}
-.settings-future:disabled{opacity:.62;cursor:default;background:#f8faf5}
-.settings-panel{border-top:1px solid #e5f0d5;padding:14px 16px 18px;background:#fffef8}
-.settings-panel[hidden],.settings-message-preview[hidden],.settings-avatar img[hidden]{display:none!important}
+.settings-avatar img[hidden]{display:none!important}
+.settings-entry-label{display:flex;flex:1;flex-direction:column;gap:6px;min-width:0}
+.settings-entry-label strong{font-size:17px;font-weight:950;line-height:1.35;color:#365314}
+.settings-entry-label small{font-size:12px;font-weight:800;color:#657286;line-height:1.5}
+.settings-arrow{font-size:29px;color:#4d7c0f;line-height:1;font-weight:700}
+.settings-future{opacity:.7;cursor:not-allowed;background:#fafbf8}
+.settings-future-mark{font-size:11px;color:#788397;white-space:nowrap;font-weight:800}
+.settings-footnote{margin:20px 5px 0;font-size:12px;font-weight:800;color:#657286}
+.settings-clover-landscape{height:52px;margin:16px -17px -17px;background:
+  radial-gradient(ellipse at 14% 100%,#dff1c5 0 38%,transparent 39%),
+  radial-gradient(ellipse at 72% 115%,#eaf7d7 0 48%,transparent 49%);
+  position:relative;pointer-events:none}
+.settings-clover-landscape span{position:absolute;right:25px;bottom:6px;font-size:27px;opacity:.52}
+#settingsProfileScreen[hidden],#settingsMenuScreen[hidden]{display:none!important}
+.settings-detail-card{
+  margin:18px 0 14px;padding:17px;border-radius:20px;background:#fffef3;
+  border:1px solid #dfe9c4;box-shadow:0 4px 18px rgba(70,95,28,.05);
+}
+.settings-detail-title{font-size:20px;color:#365314;font-weight:950;margin:0 0 12px}
 .settings-photo-editor{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:15px}
-.settings-photo-editor>img{width:84px;height:84px;object-fit:cover;border-radius:50%;border:2px solid #84cc16}
-.settings-photo-editor>img[hidden]{display:none}
+.settings-photo-editor>img{width:94px;height:94px;object-fit:cover;border-radius:50%;border:2px solid #84cc16}
+.settings-photo-editor>img[hidden]{display:none!important}
 .settings-photo-file{flex:1;min-width:170px}
-.settings-photo-file input{margin-top:7px}.settings-photo-file #profilePhotoInfo{margin-top:7px}
-.settings-textarea{display:block;resize:vertical;min-height:85px;margin-top:7px;line-height:1.6;font-weight:650}
+.settings-photo-file input{margin-top:7px;max-width:100%}
+.settings-photo-file #profilePhotoInfo{margin-top:7px}
+.settings-textarea{display:block;width:100%;resize:vertical;min-height:85px;margin-top:7px;line-height:1.6;font-weight:650}
 .settings-counter{display:flex;justify-content:space-between;gap:8px;margin:7px 2px;font-size:11px;color:#64748b;font-weight:850}
 .settings-message-preview{border:1px solid #d9e999;border-radius:14px;background:#f7fee7;padding:12px;margin-top:12px}
+.settings-message-preview[hidden]{display:none!important}
 .settings-message-preview span{font-size:11px;font-weight:900;color:#4d7c0f}
 .settings-message-preview p{margin:7px 0 0;color:#365314;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65}
-.settings-button-row{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:12px}
+.settings-button-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:12px}
 .settings-button-row button:last-child{min-width:86px}
-.settings-footnote{color:#64748b;font-size:12px;font-weight:800;margin:20px 2px 0}
 @media(max-width:480px){
- .settings-shell{padding:15px}.settings-toggle,.settings-future{padding:12px}
- .settings-entry-icon,.settings-avatar,.settings-future>span:first-child{width:48px;height:48px;flex-basis:48px}
- .settings-entry-label strong,.settings-future strong{font-size:15px}
- .settings-panel{padding:12px}
+  .settings-shell{padding:15px}
+  .settings-menu{gap:10px}
+  .settings-menu-card{min-height:76px;gap:12px;padding:12px}
+  .settings-entry-icon,.settings-avatar{width:54px;height:54px;flex-basis:54px}
+  .settings-entry-label strong{font-size:16px}
+  .settings-entry-label small{font-size:11px}
+  .settings-detail-card{padding:13px}
 }
