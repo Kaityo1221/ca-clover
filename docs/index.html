@@ -47,6 +47,7 @@
     @media(max-width:760px){.activity-scroll-hint{display:block}.g2,.g3,.g4{grid-template-columns:1fr}.topin{align-items:flex-start}.nav{max-width:55vw;justify-content:flex-end}.brandblock{display:none}.wrap{padding-top:14px}.card{padding:18px}.community-hub-layout{display:block}.community-hub-layout>div:last-child{width:94px;right:0;bottom:-24px}.feature-grid{grid-template-columns:repeat(2,44px);gap:6px;width:94px;margin:0}.feature-app{width:44px;height:44px;border-radius:11px;padding:3px;gap:2px}.feature-app .feature-icon{font-size:15px}.feature-app .feature-label{font-size:9px}.modalback{align-items:flex-start;padding:12px}.modal{max-height:calc(100dvh - 24px);padding:18px}.modal>.row:first-child{position:sticky;top:-18px;z-index:5;background:#fff;padding:18px 0 10px}}
   </style>
   <link rel="stylesheet" href="./settings-accordion.css?v=20261113-profile-combined2">
+<link rel="stylesheet" href="./clover-global-home.css?v=20261113-home1">
 </head>
 <body>
   <header class="top"><div class="topin">
@@ -251,7 +252,7 @@
       document.getElementById("loginTop").onclick=function(){login()};
       return;
     }
-    const items=[["my","My Community"]];
+    const items=[]; // The top-left Clover is the My Community home action.
     if(profile?.role==="admin")items.push(["zoroark-ideas","🦊 お題メモ"]);
     nav.innerHTML=items.map(function(x){
       return '<button data-go="'+x[0]+'" class="'+(route()===x[0]?"on":"")+'">'+x[1]+'</button>'
@@ -743,5 +744,6 @@
   init();
 })();
 </script>
+<script src="./clover-global-home.js?v=20261113-home1"></script>
 </body>
 </html>

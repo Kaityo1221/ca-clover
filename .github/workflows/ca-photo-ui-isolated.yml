@@ -8,6 +8,22 @@ on:
       - docs/index.html
       - docs/profile-photo.mjs
       - docs/settings-accordion.mjs
+      - docs/clover-global-home.js
+      - docs/clover-global-home.css
+      - docs/admin.html
+      - docs/admin-stamp-events.html
+      - docs/changelog.html
+      - docs/clover-monthly-test.html
+      - docs/map.html
+      - docs/new-ca-test/index.html
+      - docs/stamp-bulk.html
+      - docs/stamp-events.html
+      - docs/stamp-exchange-community.html
+      - docs/stamp-exchange-stats.html
+      - docs/stamp-exchange.html
+      - docs/stamp-kanto.html
+      - docs/suzuki-pm-revolution.html
+      - scripts/test-clover-home-static.mjs
       - docs/settings-accordion.css
       - docs/exchange-message.mjs
       - docs/stamp-rally.html
@@ -30,6 +46,8 @@ jobs:
           node-version: '22'
       - name: CA Photo static source regression
         run: node scripts/test-profile-photo-isolated.mjs
+      - name: CA global Clover home navigation static regression
+        run: node scripts/test-clover-home-static.mjs
       - name: Install pinned Playwright
         run: npm install --no-save --package-lock=false --ignore-scripts playwright@1.56.1
       - name: Use runner Chromium when available
