@@ -47,13 +47,36 @@ async function prep(page,mode){
  await page.route('**/community-icon.js*',route=>route.fulfill({status:200,contentType:'application/javascript',body:''}));
  await page.addInitScript(({mode,rows,A,B})=>{
   window.CACommunityIcon={url:()=>'',bind:()=>{}};
+  const hasDesigns=mode==='multi-designs'||mode==='single-design';
+  const collectionId='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  const versionOne='11111111-1111-4111-8111-111111111111';
+  const versionTwo='22222222-2222-4222-8222-222222222222';
+  let pinned=null;
+  const collection={id:collectionId,stamp_ca_member_id:A,community_id:rows[0].community_id,
+   role_at_acquisition:'1st',first_acquired_at:'2026-10-10T00:00:00Z',
+   acquisition_source:'self',acquisition_icon_version_id:versionOne};
+  const versions=[{id:versionOne,community_id:rows[0].community_id,source_avatar_url:'/qa/photo.svg',
+    first_seen_at:'2026-10-10T00:00:00Z',is_current:mode==='single-design'},
+   {id:versionTwo,community_id:rows[0].community_id,source_avatar_url:'/qa/photo.svg',
+    first_seen_at:'2026-11-01T00:00:00Z',is_current:true}];
   function chain(table){
    return {
     select(){return this},eq(){return this},in(){return this},order(){return this},
+    delete(){if(table==='stamp_collection_preferences')pinned=null;return this},
+    upsert(value){if(table==='stamp_collection_preferences')pinned=value.icon_version_id;return this},
     maybeSingle:async()=>({data:table==='profiles'?{role:'ca'}:null,error:null}),
-    then(onFulfilled,onRejected){return Promise.resolve({data:[],error:null}).then(onFulfilled,onRejected)}
+    then(onFulfilled,onRejected){
+     const one=mode==='single-design';
+     const data=!hasDesigns?[]:
+      table==='stamp_collections'?[collection]:
+      table==='stamp_collection_designs'?[{collection_id:collectionId,icon_version_id:versionOne},...(!one?[{collection_id:collectionId,icon_version_id:versionTwo}]:[])]:
+      table==='community_icon_versions'?(one?versions.slice(0,1):versions):
+      table==='stamp_collection_preferences'?(pinned?[{collection_id:collectionId,icon_version_id:pinned}]:[]):[];
+     return Promise.resolve({data,error:null}).then(onFulfilled,onRejected);
+    }
    };
   }
+  window.__designTest={getPinned:()=>pinned};
   const client={
    auth:{getSession:async()=>({data:{session:{user:{id:'qa-browser-user'},access_token:'qa-only'}}})},
    from:chain,
@@ -393,6 +416,47 @@ async function testSafariJpegFallback(browser,name){
  await page.close();
 }
 
+async function testCompactMedalNav(browser,name){
+ for(const [mode,expected] of [['single-design',1],['multi-designs',2]]){
+  for(const width of [320,390]){
+   const page=await browser.newPage({viewport:{width,height:812},deviceScaleFactor:1});
+   try{
+    await prep(page,mode);await openModal(page);
+    const nav=page.locator('#stampDesignQuickNav');
+    const arrows=nav.locator('[data-design-dir]');
+    if(expected===1){
+     assert.equal(await nav.isVisible(),false,'single-design nav should be hidden');
+     assert.equal(await arrows.count(),0,'single-design arrows should be absent');
+    }else{
+     await nav.locator('.stamp-design-position').waitFor();
+     assert.equal(await arrows.count(),2);
+     assert.equal((await nav.locator('.stamp-design-position').textContent()).trim(),'2 / 2');
+     const bounds=await page.evaluate(()=>{
+      const medal=document.querySelector('#stamp3d.show')||document.querySelector('#stampZoom2D:not(.hidden)');
+      const nav=document.querySelector('#stampDesignQuickNav'),title=document.querySelector('#stampZoomTitle');
+      return {medalBottom:medal.getBoundingClientRect().bottom,navTop:nav.getBoundingClientRect().top,navBottom:nav.getBoundingClientRect().bottom,titleTop:title.getBoundingClientRect().top,
+       arrowWidth:nav.querySelector('.stamp-design-arrow').getBoundingClientRect().width,
+       scrollOverflow:document.documentElement.scrollWidth>innerWidth};
+     });
+     assert.ok(bounds.navTop>=bounds.medalBottom-2&&bounds.navBottom<=bounds.titleTop+2,'nav must follow medal and precede title '+JSON.stringify(bounds));
+     assert.ok(bounds.arrowWidth>=44&&!bounds.scrollOverflow,'touch target or overflow '+JSON.stringify(bounds));
+     await nav.locator('[data-design-dir="-1"]').click();
+     assert.equal((await nav.locator('.stamp-design-position').textContent()).trim(),'1 / 2');
+     await nav.locator('[data-pin-design]').click();
+     assert.ok((await nav.textContent()).includes('固定中'),'pin badge absent');
+     assert.equal(await page.evaluate(()=>window.__designTest.getPinned()),'11111111-1111-4111-8111-111111111111');
+     await nav.locator('[data-pin-design]').click();
+     assert.equal(await page.evaluate(()=>window.__designTest.getPinned()),null,'unpin did not persist');
+     assert.equal((await nav.locator('.stamp-design-position').textContent()).trim(),'2 / 2','unpin must revert to latest');
+    }
+    assert.equal(await page.locator('#stampDesignControls [data-design-dir]').count(),0,'old design panel remains');
+    await page.screenshot({path:join(artifacts,name+'-compact-nav-'+mode+'-'+width+'.png')});
+    record(name+' '+mode+' '+width+'px compact nav and layout');
+   }finally{await page.close();}
+  }
+ }
+}
+
 async function testRapidPhotoSelection(browser,name){
  const page=await browser.newPage({viewport:{width:390,height:812}});
  await page.goto(origin+'/qa/photo-fixture.html');
@@ -436,7 +500,7 @@ try{
   if(!type)throw Error('Unsupported browser engine '+name);
   const options=name==='chromium'&&process.env.QA_CHROME_BIN?{executablePath:process.env.QA_CHROME_BIN}:{};
   const browser=await type.launch({headless:true,...options});
-  try{await testUniversalCloverHome(browser,name);await testMiniGamesDeterministicHome(browser,name);await testMedal(browser,name);await testSettingsAccordion(browser,name);await testCompression(browser,name);await testSafariJpegFallback(browser,name);await testRapidPhotoSelection(browser,name)}
+  try{await testUniversalCloverHome(browser,name);await testMiniGamesDeterministicHome(browser,name);await testMedal(browser,name);await testCompactMedalNav(browser,name);await testSettingsAccordion(browser,name);await testCompression(browser,name);await testSafariJpegFallback(browser,name);await testRapidPhotoSelection(browser,name)}
   finally{await browser.close()}
  }
  console.log('CA PHOTO BROWSER PASS '+pass.length+'/'+pass.length);
