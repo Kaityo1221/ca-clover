@@ -71,9 +71,9 @@ test('ZIP supports exact 8MB, protects file paths and duplicate names, standard 
   assert.throws(()=>createRosterZip([{name,bytes},{name,bytes}]),/INVALID_FILE/);
 });
 
-test('production release gate hides batch controls while endpoint is unconfigured',()=>{
+test('production endpoint uses audited Supabase function and retains empty-endpoint safety gate',()=>{
   const config=readFileSync(new URL('../../docs/meetup-batch-config.mjs',import.meta.url),'utf8');
   const selection=readFileSync(new URL('../../docs/meetup-history-selection.mjs',import.meta.url),'utf8');
-  assert.match(config,/MEETUP_BATCH_ENDPOINT='';/);
+  assert.match(config,/MEETUP_BATCH_ENDPOINT='https:\/\/wgiittrvgtiosogyhfcl\.supabase\.co\/functions\/v1\/meetup-roster-batch';/);
   assert.match(selection,/if\(!endpoint\)return \(\)=>\{\};/);
 });
