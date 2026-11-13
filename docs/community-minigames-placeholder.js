@@ -64,7 +64,7 @@ function renderList(kind){
  const games=kind==="games",items=games?GAME_ITEMS:TOOL_ITEMS;
  const app=document.getElementById("app");if(!app)return;
  app.innerHTML='<div class="ca-minigames-view" data-mini-view="'+kind+'"><section class="card hero"><div class="ca-minigames-head"><button type="button" class="ca-minigames-back">← ミニゲーム集</button><div><span class="pill">'+(games?'GAME LIST':'TOOLS')+'</span><h1 style="margin-top:10px">'+(games?'🎮 ミニゲーム一覧':'🧰 ツール')+'</h1><p class="ca-minigames-lead">'+(games?'すぐ使えるゲームの候補です。':'ゲームづくりに使える道具の候補です。')+'</p></div></div></section><div class="ca-minigames-list">'+(games?'<button type="button" class="ca-minigames-item" data-open-zoroark style="border:2px solid #84cc16;background:linear-gradient(135deg,#f7fee7,#fff);cursor:pointer"><span class="ca-minigames-item-icon">🦊</span><span><span class="ca-minigames-item-title">ゾロアークを探せ！</span><span class="ca-minigames-item-desc">CA専用GM・42組のお題・現地プレイ</span><span class="ca-minigames-soon" style="background:#d9f99d;color:#365314">ゲームを開始</span></span></button>':'')+(games?'<button type="button" class="ca-minigames-item" data-open-suzuki style="border:2px solid #a855f7;background:linear-gradient(135deg,#f5e9ff,#fff);cursor:pointer"><span class="ca-minigames-item-icon">👾</span><span><span class="ca-minigames-item-title">SuzukiのPMレボリューション</span><span class="ca-minigames-item-desc">全国47都道府県のブーイングを集めよう！ 親指操作・自動連射</span><span class="ca-minigames-soon" style="background:#e9d5ff;color:#6b21a8">🚀 ゲームを開始</span></span></button>':'')+items.map(itemHtml).join("")+'</div></div>';
- app.querySelector(".ca-minigames-back").onclick=function(){history.back()};
+ app.querySelector(".ca-minigames-back").onclick=function(){setMiniHistory("hub",true);renderHub()};
  if(games){const game=app.querySelector("[data-open-zoroark]");if(game)game.onclick=function(){/* Preserve the game-list history entry for Safari Back. */location.hash="mini-games"}};
  if(games){const suzuki=app.querySelector("[data-open-suzuki]");if(suzuki)suzuki.onclick=function(){location.href="./suzuki-pm-revolution.html"};}
  window.scrollTo({top:0,behavior:"auto"});
@@ -74,7 +74,16 @@ function renderHub(){
  app.innerHTML='<div class="ca-minigames-view" data-mini-view="hub"><section class="card hero"><button type="button" class="ca-minigames-back">← My Communityへ戻る</button><span class="pill" style="margin-left:8px">MINI GAMES</span><h1 style="margin-top:14px">🎮 ミニゲーム集</h1><p class="ca-minigames-lead">Meetupを、ちょっと楽しく。</p></section><div class="ca-minigames-entry-grid"><button type="button" class="ca-minigames-entry orange" data-kind="games"><div class="ca-minigames-entry-icon">🎮</div><h2>ミニゲーム一覧</h2><p>すぐ使えるゲームから選ぶ　›</p></button><button type="button" class="ca-minigames-entry green" data-kind="tools"><div class="ca-minigames-entry-icon">🧰</div><h2>ツール</h2><p>ゲームづくりに使える道具　›</p></button></div></div>';
  app.querySelector('[data-kind="games"]').onclick=function(){setMiniHistory("games",false);renderList("games")};
  app.querySelector('[data-kind="tools"]').onclick=function(){setMiniHistory("tools",false);renderList("tools")};
- app.querySelector(".ca-minigames-back").onclick=function(){history.back()};
+ app.querySelector(".ca-minigames-back").onclick=returnToMyCommunity;
+ window.scrollTo({top:0,behavior:"auto"});
+}
+// Always return to the intended screen, never to a different Safari history page.
+function returnToMyCommunity(){
+ const url=new URL(location.href);
+ url.searchParams.delete("caMini");
+ url.hash="my";
+ history.replaceState(null,"",url.pathname+url.search+url.hash);
+ window.dispatchEvent(new Event("hashchange"));
  window.scrollTo({top:0,behavior:"auto"});
 }
 function miniUrl(view){
@@ -128,15 +137,14 @@ let timer=0;function schedule(){clearTimeout(timer);timer=setTimeout(reconcileMi
 new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
 window.addEventListener("hashchange",schedule);
 window.addEventListener("popstate",schedule);
-// The primary home nav uses the same #my hash as the overlay. Ensure
-// pressing My Community still returns home even without a hash change.
+// Clover home is a hash link: explicitly dismiss caMini on the same #my route.
 document.addEventListener("click",function(event){
   if((location.hash||"#my")!=="#my"||!new URL(location.href).searchParams.has("caMini"))return;
   const target=event.target;
-  if(!(target instanceof Element)||!target.closest('#nav [data-go="my"]'))return;
+  if(!(target instanceof Element)||!target.closest('[data-ca-home-link], #nav [data-go="my"]'))return;
+  event.preventDefault();
   event.stopImmediatePropagation();
-  history.replaceState(null,"",miniUrl(null));
-  window.dispatchEvent(new HashChangeEvent("hashchange"));
+  returnToMyCommunity();
 },true);
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",schedule,{once:true});else schedule();
 })();

@@ -22,4 +22,11 @@ check('universal link provides accessible name',shared.includes('data-ca-home-li
 check('existing logos reused and fallback added',shared.includes('body > header .logo')&&shared.includes('ca-home-icon')&&shared.includes('ca-home-row'));
 check('fullscreen game has safe alternate position',shared.includes('suzuki-pm-revolution.html')&&get('docs/clover-global-home.css').includes('top:calc(54px + env(safe-area-inset-top))'));
 check('nested demo paths resolved from asset URL',shared.includes("new URL('index.html#my',asset.src)")&&get('docs/new-ca-test/index.html').includes('../clover-global-home.js'));
+const minigames=get('docs/community-minigames-placeholder.js');
+new Function(minigames);
+check('mini-games avoids history.back() entirely',!minigames.includes('history.back()'));
+check('mini-games hub returns to fixed My Community URL',minigames.includes('function returnToMyCommunity()')&&minigames.includes('url.searchParams.delete("caMini")')&&minigames.includes('url.hash="my"'));
+check('list Back always returns to hub',minigames.includes('setMiniHistory("hub",true);renderHub()'));
+check('shared Clover click closes mini-games overlay',minigames.includes('[data-ca-home-link], #nav [data-go="my"]'));
+check('cache-busted mini-games script on Safari',get('docs/home-clover.js').includes('community-minigames-placeholder.js?v=20261113-stable-home1')&&index.includes('home-clover.js?v=20261113-minigames-home1'));
 console.log('CLOVER GLOBAL HOME STATIC PASS '+checks+'/'+checks);
