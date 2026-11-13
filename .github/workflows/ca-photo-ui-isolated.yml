@@ -9,6 +9,8 @@ on:
       - docs/profile-photo.mjs
       - docs/settings-accordion.mjs
       - docs/clover-global-home.js
+      - docs/community-minigames-placeholder.js
+      - docs/home-clover.js
       - docs/clover-global-home.css
       - docs/admin.html
       - docs/admin-stamp-events.html
