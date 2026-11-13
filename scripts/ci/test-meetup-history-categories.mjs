@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {classifyMeetup,filterMeetupsByCategory,MEETUP_CATEGORIES} from "./meetup-history-categories.mjs";
+import {classifyMeetup,filterMeetupsByCategory,MEETUP_CATEGORIES} from "../../docs/meetup-history-categories.mjs";
 const cases=[
  ["Community Day Classic","community-day"],
  ["セビエコミュニティ・デイ","community-day"],
