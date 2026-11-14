@@ -107,7 +107,7 @@ export default function Page(){
           <h2 className="mt-3 text-xl font-black text-lime-950">{row.community_name_snapshot}</h2>
           <div className="mt-2 text-sm font-bold text-slate-600">{row.request_source==="community_invite"?"コミュニティ招待URLから申請":row.meetup_title??"ミートアップ共有URLから申請"}</div>
           <div className="mt-3 text-xs font-black text-violet-700">{row.request_source==="community_invite"?"申請者":"ミートアップ主催者"}: {row.creator_display_name??"未取得"} / Scopely ID: {row.creator_username??"未取得"}</div>
-          {row.ca_map_status==="not_listed"?<div className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black text-amber-800">"日本CAマスター未掲載のため承認できません。公式CA掲載を確認してください。"</div>:null}
+          {row.ca_map_status==="not_listed"?<div className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black text-amber-800">日本CAマスター未掲載のため承認できません。公式CA掲載を確認してください。</div>:null}
           <div className="mt-3 text-xs font-semibold text-slate-500">申請者: {requester?.email??"—"} / トレーナー名: {requester?.niantic_id??"未登録"} / Scopely ID: {requester?.scopely_id??"未登録"}</div>
           {discordRequired?<div className="mt-2 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-xs font-semibold text-indigo-900">
             <div className="font-black">Discord APAC CAロール認証ID: {row.discord_user_id_snapshot??"未登録"}</div>
@@ -115,7 +115,7 @@ export default function Page(){
               <input type="checkbox" checked={Boolean(confirmedDiscord[row.id])}
                 onChange={e=>setConfirmedDiscord(v=>({...v,[row.id]:e.target.checked}))}
                 disabled={!row.discord_user_id_snapshot} className="mt-0.5 accent-indigo-700"/>
-              <span>Discordの本人プロフィールを開いて、このIDが申請者のものと確認しました。本人確認後に承認します。</span>
+              <span>Discordの本人プロフィールとAPAC CAロールを確認し、このIDが申請者本人のものと照合しました。必要に応じて申請者へ直接確認したうえで承認します。</span>
             </label>
           </div>:null}
           {staleIdentity ? <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">⚠️ 申請時のトレーナー名とScopely IDを再確認できません。旧申請を却下し、新しい2項目で申請し直してください。</div> : null}
