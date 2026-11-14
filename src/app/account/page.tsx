@@ -7,6 +7,7 @@ import { useAuthProfile } from "@/lib/use-auth-profile";
 export default function Page(){
   const { supabase, user, profile, loading } = useAuthProfile();
   const [nianticId, setNianticId] = useState("");
+  const [scopelyId, setScopelyId] = useState("");
   const [stampMessage, setStampMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -15,17 +16,19 @@ export default function Page(){
 
   useEffect(() => {
     setNianticId(profile?.niantic_id ?? "");
+    setScopelyId(profile?.scopely_id ?? "");
     setStampMessage(profile?.stamp_exchange_message ?? "");
-  }, [profile?.niantic_id, profile?.stamp_exchange_message]);
+  }, [profile?.niantic_id, profile?.scopely_id, profile?.stamp_exchange_message]);
 
   async function save(){
     if (!user) return;
     setSaving(true);
     setMessage(null);
     const value = nianticId.trim().replace(/^@+/, "");
+    const scopelyValue = scopelyId.trim().replace(/^@+/, "");
     const { error } = await supabase
       .from("profiles")
-      .update({ niantic_id: value || null } as never)
+      .update({ niantic_id: value || null, scopely_id: scopelyValue || null } as never)
       .eq("id", user.id);
 
     setSaving(false);
@@ -34,7 +37,8 @@ export default function Page(){
       return;
     }
     setNianticId(value);
-    setMessage("保存しました 🍀");
+    setScopelyId(scopelyValue);
+    setMessage("2つのIDを保存しました 🍀");
   }
 
   async function saveStampMessage(){
@@ -74,12 +78,16 @@ export default function Page(){
       <div className="mt-5 text-xs font-black text-slate-500">Role</div>
       <div className="mt-1 inline-flex rounded-full bg-lime-100 px-3 py-1 text-xs font-black text-lime-800">{profile?.role ?? "pending"}</div>
 
-      <label className="mt-6 block text-xs font-black text-slate-600" htmlFor="niantic-id">Pokémon GO トレーナー名</label>
+      <label className="mt-6 block text-xs font-black text-slate-600" htmlFor="niantic-id">① Pokémon GO トレーナー名</label>
       <input id="niantic-id" value={nianticId} onChange={e=>setNianticId(e.target.value)} placeholder="ゲーム内のトレーナー名を入力" className="mt-2 w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-lime-400" />
 
       <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">Pokémon GOのプロフィールに表示されるトレーナー名を入力してください。</p>
 
-      <button onClick={save} disabled={saving} className="mt-4 w-full rounded-2xl bg-lime-400 px-5 py-3 text-sm font-black text-lime-950 disabled:opacity-50">{saving ? "保存中..." : "トレーナー名を保存"}</button>
+      <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">日本CAマスターの「PGO Trainer Name」と照合します。</p>
+      <label className="mt-5 block text-xs font-black text-slate-600" htmlFor="scopely-id">② Scopely ID（Campfireユーザー名）</label>
+      <input id="scopely-id" value={scopelyId} onChange={e=>setScopelyId(e.target.value)} placeholder="CampfireのScopely IDを入力" autoComplete="off" className="mt-2 w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-lime-400" />
+      <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">ミートアップ共有URLから取得した主催者のScopely IDと照合します。トレーナー名と異なっていても構いません。</p>
+      <button onClick={save} disabled={saving} className="mt-4 w-full rounded-2xl bg-lime-400 px-5 py-3 text-sm font-black text-lime-950 disabled:opacity-50">{saving ? "保存中..." : "2つのIDを保存"}</button>
       {message ? <p className="mt-3 text-center text-xs font-bold text-lime-700">{message}</p> : null}
 
       <div className="mt-7 border-t border-lime-100 pt-6">
@@ -108,14 +116,14 @@ export default function Page(){
         {stampSaveMessage?<p className="mt-3 text-center text-xs font-bold text-lime-700">{stampSaveMessage}</p>:null}
       </div>
 
-      {profile?.role==="pending" && nianticId.trim() ? (
+      {profile?.role==="pending" && nianticId.trim() && scopelyId.trim() ? (
         <Link href="/my" className="mt-4 flex w-full items-center justify-center rounded-2xl bg-lime-950 px-5 py-3 text-sm font-black text-white">
           CA登録を続ける →
         </Link>
       ) : null}
 
       <p className="mt-3 text-center text-[11px] font-semibold text-slate-400">
-        先頭の「@」は保存時に自動で外します。
+        各IDの先頭の「@」は保存時に自動で外します。2つのIDを登録するとCA申請へ進めます。
       </p>
 
       <button onClick={signOut} className="mt-6 w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-600">ログアウト</button>
