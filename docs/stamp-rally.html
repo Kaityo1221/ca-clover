@@ -96,6 +96,7 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
 @media(max-width:359px){.summary{grid-template-columns:1fr 1fr}.summary-item.own-medal{grid-column:1/-1;order:3;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid #e6d9c9;padding-top:8px}.own-medal dt{min-height:0}.own-label-break{display:none}.own-medal dd{margin:0}.prefname{font-size:14px}}
 
 /* Medal catalog convenience controls: display only, no ownership mutations. */
+.medal-ca-setting-flags{font-size:8px;font-weight:800;white-space:normal;color:#517147}
 .medal-tools{margin-top:16px;padding:12px;border:1px solid #d6e2cb;background:#f8fcf5;border-radius:20px;display:grid;gap:10px}
 .medal-tools-actions{display:flex;gap:8px;flex-wrap:wrap}
 .medal-tools-actions button{flex:1;min-width:110px;border:1px solid #bacead;border-radius:12px;background:#fff;padding:10px;color:#3e6439;font-size:12px;font-weight:900}
@@ -1069,11 +1070,27 @@ async function load(){
   medalTools.id="medalListTools";
   medalTools.className="medal-tools";
   medalTools.setAttribute("aria-label","全国メダル一覧の操作");
-  medalTools.innerHTML='<div class="medal-tools-actions"><button type="button" id="medalsExpandAll">すべて開く</button><button type="button" id="medalsCollapseAll">すべて閉じる</button></div><label class="medal-tools-filter" for="medalsOwnershipFilter">表示するメダル <select id="medalsOwnershipFilter"><option value="all">すべて</option><option value="owned">取得済み</option><option value="unowned">未取得</option></select></label><div id="medalsFilterInfo" class="medal-tools-info" aria-live="polite"></div>';
+  medalTools.innerHTML='<div class="medal-tools-actions"><button type="button" id="medalsExpandAll">すべて開く</button><button type="button" id="medalsCollapseAll">すべて閉じる</button></div>'
+   +'<label class="medal-tools-filter" for="medalsOwnershipFilter">メダル取得 <select id="medalsOwnershipFilter"><option value="all">すべて</option><option value="owned">取得済み</option><option value="unowned">未取得</option></select></label>'
+   +'<label class="medal-tools-filter" for="medalsPhotoFilter">CA写真 <select id="medalsPhotoFilter" disabled><option value="all">すべて</option><option value="set">設定済み</option><option value="unset">未設定</option></select></label>'
+   +'<label class="medal-tools-filter" for="medalsMessageFilter">交換時の一言 <select id="medalsMessageFilter" disabled><option value="all">すべて</option><option value="set">設定済み</option><option value="unset">未設定</option></select></label>'
+   +'<div id="medalsFilterInfo" class="medal-tools-info" aria-live="polite"></div>'
+   +'<div id="medalsProfileInfo" class="medal-tools-info" aria-live="polite">写真・一言の設定状況を確認中…</div>';
   regionsEl.before(medalTools);
  }
  const ownershipFilter=medalTools.querySelector("#medalsOwnershipFilter");
+ const photoFilter=medalTools.querySelector("#medalsPhotoFilter");
+ const messageFilter=medalTools.querySelector("#medalsMessageFilter");
  const filterInfo=medalTools.querySelector("#medalsFilterInfo");
+ const profileInfo=medalTools.querySelector("#medalsProfileInfo");
+ const profileStatuses=new Map();
+ let profileLoaded=false;
+ const checkProfile=(community,kind,choice)=>{
+  if(choice==="all")return true;
+  // A Community has multiple CAs; "set" means at least one, "unset" means none.
+  const isSet=Boolean(community&&community.cas.some(ca=>profileStatuses.get(String(ca.id))?.[kind]));
+  return choice==="set"?isSet:!isSet;
+ };
  const applyMedalFilter=()=>{
   const choice=ownershipFilter.value;
   let visible=0;
@@ -1084,21 +1101,24 @@ async function load(){
     pref.querySelectorAll(".stamp[data-community]").forEach(btn=>{
      const community=stampCommunityById.get(btn.dataset.community);
      const owned=Boolean(community&&community.cas.some(ca=>ca.acquired));
-     const show=choice==="all"||(choice==="owned"?owned:!owned);
+     const allowedOwnership=choice==="all"||(choice==="owned"?owned:!owned);
+     const show=allowedOwnership&&(!profileLoaded||(
+      checkProfile(community,"photo_set",photoFilter.value)&&
+      checkProfile(community,"message_set",messageFilter.value)
+     ));
      btn.hidden=!show;
-     // The stamps grid uses CSS grid, so explicitly prevent hidden buttons from occupying cells.
      btn.style.display=show?"":"none";
      if(show)prefCount++;
     });
-    pref.hidden=prefCount===0&&choice!=="all";
+    pref.hidden=prefCount===0;
     if(!pref.hidden)regionCount+=prefCount;
    });
-   region.hidden=regionCount===0&&choice!=="all";
+   region.hidden=regionCount===0;
    visible+=regionCount;
   });
-  filterInfo.textContent=choice==="all"?"すべてのCommunityを表示中":visible+" Communityを表示中。取得済み判定はCommunity内のCAメダルを1枚以上所持している場合です。";
+  filterInfo.textContent=visible+" Communityを表示中。設定状況はCommunity内のいずれかのCAを基準に判定します。";
  };
- ownershipFilter.addEventListener("change",applyMedalFilter);
+ [ownershipFilter,photoFilter,messageFilter].forEach(el=>el.addEventListener("change",applyMedalFilter));
  medalTools.querySelector("#medalsExpandAll").addEventListener("click",()=>{
   regionsEl.querySelectorAll(".region:not([hidden]),.pref:not([hidden])").forEach(el=>el.classList.add("open"));
  });
@@ -1106,6 +1126,47 @@ async function load(){
   regionsEl.querySelectorAll(".region,.pref").forEach(el=>el.classList.remove("open"));
  });
  applyMedalFilter();
+ // Dependency: isolated backend batch RPC. Fail closed if absent; never label unknown as unset.
+ const caIds=[...new Set(communities.flatMap(c=>c.cas.map(ca=>String(ca.id)).filter(Boolean)))];
+ const loadProfileStatuses=async()=>{
+  try{
+   const allRows=[];
+   for(let i=0;i<caIds.length;i+=400){
+    const result=await client.rpc("ca_medal_profile_settings_status",{p_ca_member_ids:caIds.slice(i,i+400)});
+    if(result.error)throw result.error;
+    if(!Array.isArray(result.data))throw Error("Invalid profile status response");
+    allRows.push(...result.data);
+   }
+   // A result must cover all requested CAs, or an unavailable CA might falsely appear unset.
+   if(new Set(allRows.map(row=>String(row.ca_member_id))).size!==caIds.length)throw Error("Incomplete profile status response");
+   allRows.forEach(row=>profileStatuses.set(String(row.ca_member_id),{photo_set:row.photo_set===true,message_set:row.message_set===true}));
+   regionsEl.querySelectorAll(".stamp[data-community]").forEach(btn=>{
+    const community=stampCommunityById.get(btn.dataset.community);
+    if(!community)return;
+    const labels=btn.querySelectorAll(".canames .caname");
+    community.cas.slice(0,2).forEach((ca,index)=>{
+     const label=labels[index];
+     const data=profileStatuses.get(String(ca.id));
+     if(!label||!data)return;
+     const flags=document.createElement("span");
+     flags.className="medal-ca-setting-flags";
+     flags.textContent=" · 📷"+(data.photo_set?"済":"未")+" 💬"+(data.message_set?"済":"未");
+     flags.title="プロフィール写真 "+(data.photo_set?"設定済み":"未設定")+"／交換時の一言 "+(data.message_set?"設定済み":"未設定");
+     label.appendChild(flags);
+    });
+   });
+   profileLoaded=true;
+   photoFilter.disabled=false;
+   messageFilter.disabled=false;
+   profileInfo.textContent="📷 写真と💬 交換時の一言の設定状況を表示中";
+   applyMedalFilter();
+  }catch(_){
+   profileInfo.textContent="写真・一言の一括照会は未接続です。対応Backend適用後に利用可能になります。";
+   photoFilter.disabled=true;
+   messageFilter.disabled=true;
+  }
+ };
+ void loadProfileStatuses();
  document.querySelectorAll(".regionbtn").forEach(b=>b.onclick=()=>b.parentElement.classList.toggle("open"));
  document.querySelectorAll(".prefbtn").forEach(b=>b.onclick=()=>b.parentElement.classList.toggle("open"));
  window.CACommunityIcon.bind(regionsEl);
