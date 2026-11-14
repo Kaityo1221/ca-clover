@@ -1,12 +1,15 @@
 // Server-side configuration only. No generic DATABASE_URL fallback.
 import { neon } from "@neondatabase/serverless";
 
-const BRANCH = "feature/zoroark-guest-invite-chat-isolated-20261113";
+const PREVIEW_BRANCHES = new Set([
+  "feature/zoroark-guest-invite-chat-isolated-20261113",
+  "integration/zoroark-pages-current-isolated-20261114",
+]);
 export type Kind = "gm" | "guest";
 export function runtimeConfig(kind: Kind, env = process.env) {
   const target = env.VERCEL_ENV;
   if (target !== "preview" && target !== "production") return null;
-  if (target === "preview" && env.VERCEL_GIT_COMMIT_REF !== BRANCH) return null;
+  if (target === "preview" && !PREVIEW_BRANCHES.has(env.VERCEL_GIT_COMMIT_REF ?? "")) return null;
   if (target === "production" && (env.VERCEL_GIT_COMMIT_REF !== "main" ||
       env.ZOROARK_PRODUCTION_ENABLED !== "true")) return null;
   const url = kind === "gm" ? env.ZOROARK_NEON_GM_DATABASE_URL : env.ZOROARK_NEON_GUEST_DATABASE_URL;

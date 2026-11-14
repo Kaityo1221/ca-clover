@@ -6,6 +6,9 @@ const hex='a'.repeat(64);
 const deviceCookie='__Host-zg_device='+'b'.repeat(64);
 test('target/branch/endpoint/database/role/TLS/production GO gates fail closed',()=>{
  const {runtime,env}=harness();assert.ok(runtime.runtimeConfig('gm',env));
+ assert.ok(runtime.runtimeConfig('gm',{...env,VERCEL_GIT_COMMIT_REF:'feature/zoroark-guest-invite-chat-isolated-20261113'}));
+ assert.equal(runtime.runtimeConfig('gm',{...env,VERCEL_GIT_COMMIT_REF:'pages'}),null);
+ assert.equal(runtime.runtimeConfig('gm',{...env,VERCEL_GIT_COMMIT_REF:'main'}),null);
  for(const patch of [{VERCEL_ENV:'development'},{VERCEL_GIT_COMMIT_REF:'other'},{VERCEL_ENV:'production'},
  {ZOROARK_NEON_GM_DATABASE_URL:env.ZOROARK_NEON_GM_DATABASE_URL.replace('frosty-grass-betfuvsp','billowing-unit-beco2lbg')},
  {ZOROARK_NEON_GM_DATABASE_URL:env.ZOROARK_NEON_GM_DATABASE_URL.replace('zoroark_prod','ca_clover_test')},

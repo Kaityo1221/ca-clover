@@ -30,5 +30,11 @@ assert.ok(!handler.includes("console.log"), "Credentials or invites must never b
 assert.ok(page.includes('fetch("/api/zoroark/rooms"'), "UI must use isolated Next route");
 assert.ok(page.includes("Authorization: \"Bearer \" + accessToken"), "UI sends only the Supabase access token for server verification");
 assert.ok(!page.includes('supabase.functions.invoke("zoroark-room-admin"'), "No production Edge function should be called");
-assert.ok(readFileSync('src/lib/zoroark/runtime.ts','utf8').includes('feature/zoroark-guest-invite-chat-isolated-20261113'));
+const runtimeSource = readFileSync('src/lib/zoroark/runtime.ts','utf8');
+assert.ok(runtimeSource.includes('feature/zoroark-guest-invite-chat-isolated-20261113'));
+assert.ok(runtimeSource.includes('integration/zoroark-pages-current-isolated-20261114'));
+assert.ok(runtimeSource.includes('PREVIEW_BRANCHES.has(env.VERCEL_GIT_COMMIT_REF ?? "")'));
+const vercelConfig = JSON.parse(readFileSync('vercel.json','utf8'));
+assert.equal(vercelConfig.git.deploymentEnabled['integration/zoroark-pages-current-isolated-20261114'],false,
+  'Integration branch must remain NO DEPLOY until explicit preview GO');
 console.log("ZOROARK_PREVIEW_ISOLATION_CONTRACT_PASS");

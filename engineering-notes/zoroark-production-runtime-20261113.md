@@ -1,6 +1,6 @@
 # ゾロアーク工程③〜⑧：公開前の専用ランタイム
 
-本番公開は **NO-GO**。本変更はFrontend #270（工程① #256をbase）、Backend #63（工程① #62をbase）の隔離系列に限定。main/pagesへのマージ、Production設定変更、Productionフラグ有効化は実施しない。
+本番公開は **NO-GO**。本変更はFrontend #288（旧 #270 ← #256）、Backend #71（旧 #63 ← #62）の安全統合系列に限定。main/pagesへのマージ、Production設定変更、Productionフラグ有効化は実施しない。
 
 ## 接続・権限
 
@@ -11,7 +11,7 @@
 - ゲスト接続: `ZOROARK_NEON_GUEST_DATABASE_URL` / `zoroark_runtime_guest`。
 - 両ロールはテーブルへの直接アクセス不可、DDL/管理/RLS迂回権限なし。必要な関数だけEXECUTE可。関数所有者は専用NOLOGIN/NOBYPASSRLSロール、固定search_pathと明示RLSポリシーを使用。
 - 環境・Gitブランチ・DB endpoint・DB名・接続ロールを照合し、DB内target/versionも確認。汎用DATABASE_URL、旧ZOROARK_NEON_DATABASE_URLへのfallbackなし。
-- Previewは工程②専用Gitブランチのみ。Productionはmainかつ `ZOROARK_PRODUCTION_ENABLED=true` が別途必要。現時点では設定しない。
+- Previewは旧検証ブランチと新統合ブランチの正確な2ブランチのみ（ただし新統合側の自動配備は無効、環境変数は未登録）。Productionはmainかつ `ZOROARK_PRODUCTION_ENABLED=true` が別途必要。現時点では設定しない。
 - 既存開発project `ca-clover-test`、Supabase DB/Edge/Cronは変更しない。Supabaseは既存公開キーでgetUserと本人profiles.roleを読み取り検証するだけ。
 
 ## 安全境界
@@ -34,11 +34,11 @@ Origin/Sec-Fetch-Site、JSON、ゲスト/GM独自ヘッダー、ストリーム�
 
 ## 手動Previewと実機試験
 
-Vercel connectorはteam `kaityo1222` に対象projectを列挙できない。別project作成や保護解除で迂回しない。
+2026-11-14にVercel接続権限が復旧し、team `kaityo1222` の `ca-clover` / project `prj_jJMizGlljxuG8QaS9Qy8N39YjKfH` を読み取り確認済み。設定値変更・デプロイは実施しない。
 
-1. Vercel `kaityo1222/ca-clover` → Settings → Environment Variables。**PreviewかつGit branch `feature/zoroark-guest-invite-chat-isolated-20261113` 限定**で新GM/Guest接続を別々のSecretとして登録。旧汎用接続は今回のコードでは使わない。
-2. 同じ限定範囲で `ZOROARK_ROOM_CREATE_ENABLED=true` と `ZOROARK_GUEST_LOBBY_ENABLED=true`。Productionには追加・変更しない。`ZOROARK_PRODUCTION_ENABLED` は未設定/OFFのまま。
-3. PR最新コミットをPreviewとして再デプロイし、Ready/commit一致、target=Preview、Production branch=main、domain=`ca-clover.vercel.app`のままであることを照合。
+1. Vercel `kaityo1222/ca-clover` → Settings → Environment Variables。現状のGM/Guest接続は旧Preview専用ブランチ `feature/zoroark-guest-invite-chat-isolated-20261113` にのみ存在。**新統合ブランチ `integration/zoroark-pages-current-isolated-20261114` にはまだ設定しない**。隔離合成試験・ブランチ保護確認後、別の許可ゲートで当該ブランチ限定のPreview秘密情報を登録する。既存の旧ブランチ設定は変更せず、値や資格情報は報告書に書かない。
+2. プレビュー有効化時は、新統合ブランチに限定して `ZOROARK_ROOM_CREATE_ENABLED=true` と `ZOROARK_GUEST_LOBBY_ENABLED=true` を使用する。現時点で両フラグは新統合ブランチに未設定。Productionには追加・変更しない。`ZOROARK_PRODUCTION_ENABLED` は未設定/OFFのまま。
+3. `vercel.json` の新統合ブランチ用 `git.deploymentEnabled=false` は維持。実認証・QR試験の別承認が得られるまでは新統合PRをデプロイしない。将来Previewを構築する際は、対象コミット・Preview target・本番のmainとdomain=`ca-clover.vercel.app`を照合する。
 4. PCの実CAで `/zoroark/rooms` → 作成 → 新QRを別端末iPhone Safariで読取 → nickname → 承認待ち → GM承認 → 本人ページを更新。同じルームの他端末情報・秘密が表示されないことを確認。
 5. 再読込、Cookie削除、拒否、受付ロック、旧QR失効、期限切れ、異なるGM、Safariカメラからの遷移を確認。DevToolsのCookieは属性だけ記録し、生値・QRを共有しない。
 
@@ -47,3 +47,11 @@ Vercel connectorはteam `kaityo1222` に対象projectを列挙できない。別
 ## 統合時の注意
 
 2026-11-13取得時Frontend main `985d2eb` は8ファイルで競合（ci.yml/public-boundary-ci.yml/AGENTS.md/PRIVATE_BACKEND_SPLIT.md/README.md/package.json/verify-public-boundary.mjs/login/page.tsx）。pages `aeed06e` とBackend main `3349c02` は競合なし。現在のPR baseは変更しない。pagesは静的/docs公開系であり、Next APIの本番導入先はVercel main。main統合は専用候補で再レビューしてから行い、pagesへの安易なマージを本番API公開手順と扱わない。
+
+## 2026-11-14 新統合ブランチ受入追補（NO DEPLOY）
+
+- Frontend PR #288 / Backend PR #71 はDraft・未マージ、baseは各 `pages` / `main`。
+- Preview許可ブランチを旧検証ブランチと新統合ブランチの2件に限定し、それ以外はfail-closed。QA endpoint、DB名、接続ロール、TLS・DB identityチェックは不変。
+- 新統合ブランチは `vercel.json` で自動デプロイ禁止。環境変数も旧ブランチにのみ存在。ソース変更だけでは新統合Previewの実HTTP・実CA認証試験は開始されない。
+- `pages` と `main` は大幅分岐しており、安易なmainへのマージは禁止。別途Next.js API統合の競合検証が必要。
+- 新統合Preview配備、実CA認証・ゲストQR、バックアップ/復元、実機Safariをすべて別ゲートに残し、Production NO-GOを維持。

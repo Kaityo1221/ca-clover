@@ -5,7 +5,7 @@ import {webcrypto} from 'node:crypto';
 import ts from 'typescript';
 const require=createRequire(import.meta.url);
 export function harness(options={}) {
- const env={VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'feature/zoroark-guest-invite-chat-isolated-20261113',
+ const env={VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'integration/zoroark-pages-current-isolated-20261114',
   ZOROARK_ROOM_CREATE_ENABLED:'true',ZOROARK_GUEST_LOBBY_ENABLED:'true',
   ZOROARK_NEON_GM_DATABASE_URL:'postgresql://zoroark_runtime_gm:synthetic@ep-frosty-grass-betfuvsp-pooler.c-9.us-east-2.aws.neon.tech/zoroark_prod?sslmode=require',
   ZOROARK_NEON_GUEST_DATABASE_URL:'postgresql://zoroark_runtime_guest:synthetic@ep-frosty-grass-betfuvsp-pooler.c-9.us-east-2.aws.neon.tech/zoroark_prod?sslmode=require',...options.env};
