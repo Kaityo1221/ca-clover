@@ -185,17 +185,17 @@ export default function Page() {
     {profile?.role==="pending" ? <section className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5">
       <div className="text-xs font-black text-amber-700">初回CA登録</div>
       <h2 className="mt-1 text-lg font-black text-amber-950">Campfire URLでCA確認をします</h2>
-      <p className="mt-2 text-xs font-semibold leading-5 text-amber-800">トレーナー名を登録してから、コミュニティ招待URLまたは自分が主催したミートアップ共有URLを提出してください。会長が承認するとCAアカウント化とCommunity割当が同時に完了します。</p>
-      {!profile.niantic_id?<Link href="/account" className="mt-3 inline-flex rounded-full bg-amber-200 px-4 py-2 text-xs font-black text-amber-950">先にトレーナー名を登録 →</Link>:<div className="mt-3 text-xs font-black text-amber-900">トレーナー名: {profile.niantic_id} ✓</div>}
+      <p className="mt-2 text-xs font-semibold leading-5 text-amber-800">トレーナー名とScopely IDの両方を登録してから、コミュニティ招待URLまたは自分が主催したミートアップ共有URLを提出してください。会長が承認するとCAアカウント化とCommunity割当が同時に完了します。</p>
+      {!profile.niantic_id || !profile.scopely_id?<Link href="/account" className="mt-3 inline-flex rounded-full bg-amber-200 px-4 py-2 text-xs font-black text-amber-950">先にトレーナー名とScopely IDを登録 →</Link>:<div className="mt-3 text-xs font-black text-amber-900">トレーナー名: {profile.niantic_id} ✓ / Scopely ID: {profile.scopely_id} ✓</div>}
     </section> : null}
 
     {profile?.role==="pending" ? <section className="clover-card mt-6 p-6">
       <div className="flex items-start gap-3">
         <div className="text-3xl">🔥</div>
-        <div><h2 className="font-black text-lime-950">Campfire URLからCommunityを申請</h2><p className="mt-1 text-xs font-semibold text-slate-500">コミュニティ招待URL、または自分が主催したミートアップ共有URLを貼り付けてください。トレーナー名、Community、日本CA地図の1st/2ndを照合します。ミートアップ共有URLでは紫色CAバッジも確認します。</p></div>
+        <div><h2 className="font-black text-lime-950">Campfire URLからCommunityを申請</h2><p className="mt-1 text-xs font-semibold text-slate-500">コミュニティ招待URL、または自分が主催したミートアップ共有URLを貼り付けてください。トレーナー名は日本CAマスターと、Scopely IDはミートアップ主催者と照合します。Communityと1st/2ndも確認し、ミートアップ共有URLでは紫色CAバッジも確認します。</p></div>
       </div>
       <input value={claimInput} onChange={e=>setClaimInput(e.target.value)} placeholder="コミュニティ招待URL / ミートアップ共有URL" className="mt-5 w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-lime-400"/>
-      <button onClick={submitClaim} disabled={claimBusy||!claimInput.trim()||(profile?.role==="pending"&&!profile?.niantic_id)} className="mt-3 w-full rounded-2xl bg-lime-400 px-5 py-3 text-sm font-black text-lime-950 disabled:opacity-50">{claimBusy?"Communityを確認中...":"Communityを確認して申請"}</button>
+      <button onClick={submitClaim} disabled={claimBusy||!claimInput.trim()||!profile?.niantic_id||!profile?.scopely_id} className="mt-3 w-full rounded-2xl bg-lime-400 px-5 py-3 text-sm font-black text-lime-950 disabled:opacity-50">{claimBusy?"Communityを確認中...":"Communityを確認して申請"}</button>
       {claimMessage ? <p className="mt-3 text-center text-xs font-bold text-lime-700">{claimMessage}</p> : null}
     </section> : null}
 
@@ -208,8 +208,8 @@ export default function Page() {
         </div>
         <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-bold">
           {c.request_source==="meetup_share"?<span className={c.creator_ca_badge_verified===true?"rounded-full bg-violet-100 px-2.5 py-1 text-violet-700":"rounded-full bg-slate-100 px-2.5 py-1 text-slate-500"}>{c.creator_ca_badge_verified===true?"🟣 CAバッジ確認済み":"CAバッジ未確認"}</span>:<span className="rounded-full bg-lime-100 px-2.5 py-1 text-lime-800">コミュニティ招待URL</span>}
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">主催者: {c.creator_display_name??"未取得"} / {c.creator_username??"ID未取得"}</span>
-          <span className={c.creator_username_matches_profile===true?"rounded-full bg-sky-100 px-2.5 py-1 text-sky-800":"rounded-full bg-rose-100 px-2.5 py-1 text-rose-700"}>{c.creator_username_matches_profile===true?"トレーナー名一致":"トレーナー名未確認"}</span>
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">{c.request_source==="meetup_share"?"主催者":"入力済みScopely ID"}: {c.creator_display_name??"未取得"} / {c.creator_username??"ID未取得"}</span>
+          <span className={c.creator_username_matches_profile===true?"rounded-full bg-sky-100 px-2.5 py-1 text-sky-800":"rounded-full bg-rose-100 px-2.5 py-1 text-rose-700"}>{c.request_source==="community_invite"?"招待URLは主催者ID照合なし":c.creator_username_matches_profile===true?"Scopely ID一致":"Scopely ID不一致"}</span>
           <span className={c.ca_role_verified===true?"rounded-full bg-lime-100 px-2.5 py-1 text-lime-800":"rounded-full bg-rose-100 px-2.5 py-1 text-rose-700"}>{c.ca_role_verified===true?"日本CA地図 "+(c.ca_level_snapshot??"")+"確認済み":"1st/2nd未確認"}</span>
           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">日本CA地図: {c.ca_map_status==="matched"?"掲載済み":c.ca_map_status==="not_listed"?"未掲載":c.ca_map_status==="community_mismatch"?"Community要確認":c.ca_map_status==="identity_missing"?"トレーナー名未登録":c.master_match===true?"掲載済み":"要確認"}</span>
         </div>
