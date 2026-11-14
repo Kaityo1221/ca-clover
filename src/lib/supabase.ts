@@ -14,11 +14,20 @@ export function resolveBrowserSupabaseConfig(env:{
   const url=env.url?.trim()??"";
   const key=env.key?.trim()??"";
   const deploy=env.deployment??"";
-  // A Preview/unknown deployment must never use the production CA Clover DB.
-  // The release needs a deliberate review of this gate before merging.
-  if(!url || !key || (url===PROD_URL && deploy!=="production"))
+  // Compare the parsed hostname, never raw text (a trailing slash or URL
+  // encoding must not bypass the production database guard).
+  let parsed:URL;
+  try{
+    parsed=new URL(url);
+    if(parsed.protocol!=="https:" || parsed.username || parsed.password || parsed.port)
+      throw Error("Unsafe Supabase endpoint");
+  }catch{
     return {url:DISABLED_URL,key:DISABLED_KEY,isolated:false};
-  return {url,key,isolated:url!==PROD_URL};
+  }
+  const isProduction=parsed.hostname.toLowerCase()===new URL(PROD_URL).hostname;
+  if(!key || (isProduction && deploy!=="production"))
+    return {url:DISABLED_URL,key:DISABLED_KEY,isolated:false};
+  return {url:parsed.origin,key,isolated:!isProduction};
 }
 
 export function createBrowserSupabaseClient(){
