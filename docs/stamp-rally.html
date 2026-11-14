@@ -96,7 +96,7 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
 @media(max-width:359px){.summary{grid-template-columns:1fr 1fr}.summary-item.own-medal{grid-column:1/-1;order:3;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid #e6d9c9;padding-top:8px}.own-medal dt{min-height:0}.own-label-break{display:none}.own-medal dd{margin:0}.prefname{font-size:14px}}
 
 /* Medal catalog convenience controls: display only, no ownership mutations. */
-.medal-ca-setting-flags{font-size:8px;font-weight:800;white-space:normal;color:#517147}
+.medal-ca-setting-flags{display:inline;font-size:8px;font-weight:800;white-space:normal;color:#517147}.canames .caname{white-space:normal;overflow-wrap:anywhere;text-overflow:clip}
 .medal-tools{margin-top:16px;padding:12px;border:1px solid #d6e2cb;background:#f8fcf5;border-radius:20px;display:grid;gap:10px}
 .medal-tools-actions{display:flex;gap:8px;flex-wrap:wrap}
 .medal-tools-actions button{flex:1;min-width:110px;border:1px solid #bacead;border-radius:12px;background:#fff;padding:10px;color:#3e6439;font-size:12px;font-weight:900}
@@ -1052,8 +1052,8 @@ async function load(){
       const picture=!showIcon?"":coverSrc
        ?'<img data-ca-community-icon="1" data-original="'+esc(c.avatar_url||"")+'" src="'+esc(coverSrc)+'" alt="" loading="lazy">'
        :window.CACommunityIcon.img(client,c,'alt="" loading="lazy"');
-      const caLabels=c.cas.length?c.cas.slice(0,2).map(x=>'<div class="caname '+(isAdminCatalogMode||x.acquired?'on':'off')+'">'+(isAdminCatalogMode?'◇ ':x.acquired?'● ':'○ ')+esc(x.trainer_name)+'</div>').join(""):'<div class="caname off">CA未設定</div>';
-      return '<button type="button" class="stamp" data-community="'+esc(c.id)+'"><div class="medal '+(showIcon?'':'unowned')+(isGachiMonCommunity(c)?' gachimon-face-fit':'')+'"><div class="medalinner"><span class="fallback">'+(showIcon?'🍀':'？')+'</span>'+picture+'</div>'+(!isAdminCatalogMode&&allGot?'<span class="check">✓</span>':'')+'</div><div class="cname">'+esc(c.name)+'</div><div class="canames">'+caLabels+(c.cas.length>2?'<div class="caname off">+'+(c.cas.length-2)+'</div>':'')+'</div></button>';
+      const caLabels=c.cas.length?c.cas.map(x=>'<div class="caname '+(isAdminCatalogMode||x.acquired?'on':'off')+'">'+(isAdminCatalogMode?'◇ ':x.acquired?'● ':'○ ')+esc(x.trainer_name)+'</div>').join(""):'<div class="caname off">CA未設定</div>';
+      return '<button type="button" class="stamp" data-community="'+esc(c.id)+'"><div class="medal '+(showIcon?'':'unowned')+(isGachiMonCommunity(c)?' gachimon-face-fit':'')+'"><div class="medalinner"><span class="fallback">'+(showIcon?'🍀':'？')+'</span>'+picture+'</div>'+(!isAdminCatalogMode&&allGot?'<span class="check">✓</span>':'')+'</div><div class="cname">'+esc(c.name)+'</div><div class="canames">'+caLabels+'</div></button>';
     }).join(""):'<div class="empty">Communityはありません</div>';
     return '<div class="pref"><button class="prefbtn"><div><div class="prefname">'+esc(p)+'</div><div class="sub">'+rows.length+' Community</div></div><span class="progress">'+(isAdminCatalogMode?'展示 '+cas.length+'種類':'取得 '+acquired+' / '+cas.length)+'</span><span class="chev">⌄</span></button><div class="stamps">'+stamps+'</div></div>';
   }).join("");
@@ -1144,7 +1144,7 @@ async function load(){
     const community=stampCommunityById.get(btn.dataset.community);
     if(!community)return;
     const labels=btn.querySelectorAll(".canames .caname");
-    community.cas.slice(0,2).forEach((ca,index)=>{
+    community.cas.forEach((ca,index)=>{
      const label=labels[index];
      const data=profileStatuses.get(String(ca.id));
      if(!label||!data)return;
