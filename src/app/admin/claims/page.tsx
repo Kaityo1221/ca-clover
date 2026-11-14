@@ -70,6 +70,8 @@ export default function Page(){
       action,requestId:id,
       confirmedDiscordUserId:action==="approve" && confirmedDiscord[id]
         ?record.discord_user_id_snapshot:null,
+      confirmedTrainerName:action==="approve" && confirmedDiscord[id]
+        ?record.niantic_id_snapshot:null,
     }});
     if(!error && data?.ok===true){
       setConfirmedDiscord(v=>({...v,[id]:false}));
@@ -115,7 +117,7 @@ export default function Page(){
               <input type="checkbox" checked={Boolean(confirmedDiscord[row.id])}
                 onChange={e=>setConfirmedDiscord(v=>({...v,[row.id]:e.target.checked}))}
                 disabled={!row.discord_user_id_snapshot} className="mt-0.5 accent-indigo-700"/>
-              <span>Discordの本人プロフィールとAPAC CAロールを確認し、このIDが申請者本人のものと照合しました。必要に応じて申請者へ直接確認したうえで承認します。</span>
+              <span>Discordプロフィール・APAC CAロールを確認し、申請者のDiscord IDと公式CAマスターに掲載されたトレーナー名が同じ本人に属すると独立に確認しました。確認できない場合は承認しません。</span>
             </label>
           </div>:null}
           {staleIdentity ? <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">⚠️ 申請時のトレーナー名とScopely IDを再確認できません。旧申請を却下し、新しい2項目で申請し直してください。</div> : null}
