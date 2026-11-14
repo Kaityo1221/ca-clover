@@ -26,7 +26,7 @@ type ClaimRow={
   requested_at:string;
   reviewed_at:string|null;
 };
-type ProfileRow={id:string;email:string|null;niantic_id:string|null;scopely_id:string|null};
+type ProfileRow={id:string;email:string|null;niantic_id:string|null;scopely_id:string|null;role:string|null};
 
 export default function Page(){
   const {supabase,user,profile,loading}=useAuthProfile();
@@ -42,7 +42,7 @@ export default function Page(){
     setRows(claimRows);
     const ids=[...new Set(claimRows.map(row=>row.user_id))];
     if(!ids.length){setProfiles([]);return;}
-    const {data:profileRows}=await supabase.from("profiles").select("id,email,niantic_id,scopely_id").in("id",ids);
+    const {data:profileRows}=await supabase.from("profiles").select("id,email,niantic_id,scopely_id,role").in("id",ids);
     setProfiles((profileRows as ProfileRow[]|null)??[]);
   }
 
@@ -90,13 +90,14 @@ export default function Page(){
           <div className="mt-3 text-xs font-black text-violet-700">{row.request_source==="community_invite"?"申請者":"ミートアップ主催者"}: {row.creator_display_name??"未取得"} / Scopely ID: {row.creator_username??"未取得"}</div>
           {row.ca_map_status==="not_listed"?<div className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black text-amber-800">{mapFallback?"日本CA地図は未掲載ですが、本人主催Meetup・Scopely ID一致・紫CAバッジをCampfireで確認済みです。ADMIN手動審査で承認できます。":"日本CA地図に未掲載です。本人主催Meetupで追加確認してください。"}</div>:null}
           <div className="mt-3 text-xs font-semibold text-slate-500">申請者: {requester?.email??"—"} / トレーナー名: {requester?.niantic_id??"未登録"} / Scopely ID: {requester?.scopely_id??"未登録"}</div>
+          {row.request_source==="community_invite" && requester?.role==="pending" ? <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">初回登録の招待URL申請は承認できません。旧申請を却下し、本人主催Meetup共有URLで再申請してください。</div> : null}
           <div className="mt-1 text-[11px] font-black text-lime-700">承認すると、pendingアカウントはCA化され、このCommunityが同時に割り当てられます。</div>
           <div className="mt-1 text-[11px] text-slate-400">申請 {new Date(row.requested_at).toLocaleString("ja-JP")}</div>
           {(row.input_url??row.meetup_url)?<a href={row.input_url??row.meetup_url??"#"} target="_blank" rel="noreferrer" className="mt-3 inline-flex text-xs font-black text-lime-700">{row.request_source==="community_invite"?"Campfire Communityを確認 ↗":"Campfire ミートアップを確認 ↗"}</a>:null}
         </div>
         {row.status==="pending" ? <div className="flex shrink-0 gap-2">
           <button disabled={busy===row.id} onClick={()=>review(row.id,"reject")} className="rounded-full border border-rose-200 bg-white px-4 py-2 text-xs font-black text-rose-700 disabled:opacity-50">却下</button>
-          <button disabled={busy===row.id||(row.request_source==="meetup_share"&&row.creator_ca_badge_verified!==true)||row.creator_username_matches_profile!==true||(!mapFallback&&(row.ca_role_verified!==true||row.ca_map_status!=="matched"))} onClick={()=>review(row.id,"approve")} className="rounded-full bg-lime-400 px-5 py-2 text-xs font-black text-lime-950 disabled:opacity-50">{busy===row.id?"処理中...":"承認"}</button>
+          <button disabled={busy===row.id||(row.request_source==="meetup_share"&&row.creator_ca_badge_verified!==true)||row.creator_username_matches_profile!==true||(!mapFallback&&(row.ca_role_verified!==true||row.ca_map_status!=="matched"))||(row.request_source==="community_invite" && requester?.role==="pending")} onClick={()=>review(row.id,"approve")} className="rounded-full bg-lime-400 px-5 py-2 text-xs font-black text-lime-950 disabled:opacity-50">{busy===row.id?"処理中...":"承認"}</button>
         </div> : <span className={row.status==="approved"?"rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900":"rounded-full bg-rose-100 px-3 py-1 text-xs font-black text-rose-700"}>{row.status==="approved"?"承認済み":"却下"}</span>}
       </div>
     </section>;
