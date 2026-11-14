@@ -31,6 +31,8 @@ export function mountFirstCheckins({
 }={}){
   if(!root||!Array.isArray(meetups)||!UUID.test(communityId||'')||
      typeof getIdentity!=='function'||typeof isCurrent!=='function')return ()=>{};
+  // Public branch contains no source contract yet: do not render a perpetual loading badge.
+  if(!endpoint)return ()=>{};
   const ids=meetups.map(m=>m?.id).filter(x=>UUID.test(x||''));
   const unique=[...new Set(ids)];
   const labels=new Map();
