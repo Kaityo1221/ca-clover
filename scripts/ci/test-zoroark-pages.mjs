@@ -63,7 +63,7 @@ assert.ok(moduleSource.includes('esc(round.prompts[player])'),"topic escaped bef
 assert.ok(moduleSource.includes('return destroy;'),"timer and handlers cleanup");
 assert.ok(nav.includes("data-open-zoroark"),"existing game list card");
 assert.ok(nav.includes('if((location.hash||"#my")!=="#my"'),"mini-game entry is scoped to My Community home");
-assert.ok(nav.includes('app.querySelector("#sendaiMapHost")'),"top entry requires CA/ADMIN home marker");
+assert.ok(nav.includes('.my-hero-footer .tags .pill')&&index.includes('const miniGamesEntry=(profile.role==="admin"||profile.role==="ca")'),"top entry requires CA/ADMIN home marker");
 assert.ok(nav.includes('const title=hero.querySelector("h1.my-welcome-title")'),"welcome heading must be present");
 assert.ok(nav.includes('titleRow.appendChild(title);'),"welcome heading moves into one shared row");
 assert.ok(nav.includes('titleRow.appendChild(button);'),"mini-game button appears directly to the right of welcome heading");
@@ -74,7 +74,7 @@ assert.ok(nav.includes("← My Communityへ戻る"),"mini-game hub returns to My
 assert.ok(nav.includes('event.stopImmediatePropagation()'),"My Community top navigation still returns home");
 
 assert.ok(nav.includes('location.hash="mini-games"'),"routes to canonical Pages");
-assert.ok(loader.includes("20261111-welcome-right1"),"asset cache busted");
+assert.ok(loader.includes("20261114-nav1"),"asset cache busted");
 const m=await import(new URL("../../docs/zoroark-local.mjs",import.meta.url));
 assert.deepEqual(m.suspicionLeaders([0,0,0,0]),[],"zero medals have no leader");
 assert.deepEqual(m.suspicionLeaders([1,2,2,0]),[1,2],"midpoint can show multiple tied leaders");
