@@ -46,8 +46,12 @@ async function openPage(fixture = {}, width = 375) {
     };
     window.supabase = { createClient: () => ({
       auth: { getSession: async () => ({ data: { session: fixture.loggedOut ? null : { user: { id: "current-user" } } } }) },
-      rpc: async name => {
-        window.testRequests.push({ rpc: name });
+      rpc: async (name, args) => {
+        window.testRequests.push({ rpc: name, args });
+        if (name === "ca_medal_profile_settings_status") {
+          if (fixture.profileError) return { data: null, error: { message: "status unavailable" } };
+          return { data: fixture.profileRows ?? [], error: null };
+        }
         return { data: fixture.catalog || catalog, error: null };
       },
       from: table => {
@@ -145,6 +149,58 @@ try {
   assert.equal(await historicalMapPage.locator('.mapbox .prefecture[data-code="37"].acquired').count(), 1);
   assert.equal(await historicalMapPage.locator('.mapbox .prefecture[data-code="13"].acquired').count(), 0);
   await historicalMapPage.close();
+
+
+  // Controls must work with the same synthetic catalog and never depend on live RPC.
+  const profileRows = [
+    { ca_member_id: "ca-a", photo_set: true, message_set: false },
+    { ca_member_id: "ca-b", photo_set: false, message_set: true },
+    { ca_member_id: "ca-c", photo_set: false, message_set: false },
+    { ca_member_id: "ca-d", photo_set: true, message_set: true },
+  ];
+  const controlPage = await openPage({
+    identity, profileRows, collections: [collection("ca-a", "base"), collection("ca-c", "north")],
+  });
+  await controlPage.locator("#medalsPhotoFilter:not([disabled])").waitFor();
+  assert.equal(await controlPage.locator(".medal-ca-setting-flags").count(), 4,
+    "All 1st/2nd CAs must show status, including second CA of one community");
+  assert.match(await controlPage.locator('.stamp[data-community="base"]').textContent(), /📷済 💬未/);
+  assert.match(await controlPage.locator('.stamp[data-community="base"]').textContent(), /📷未 💬済/);
+  const visibleStamps = () => controlPage.locator('.stamp[data-community]:visible').count();
+  assert.equal(await visibleStamps(), 0, "All accordions should initially be closed");
+  await controlPage.locator("#medalsExpandAll").click();
+  assert.equal(await visibleStamps(), 4, "Expand opens all regions and prefectures");
+  await controlPage.locator("#medalsCollapseAll").click();
+  assert.equal(await visibleStamps(), 0, "Collapse closes all regions and prefectures");
+  await controlPage.locator("#medalsExpandAll").click();
+  await controlPage.locator("#medalsOwnershipFilter").selectOption("owned");
+  assert.equal(await visibleStamps(), 2, "Owned community rule includes either CA");
+  await controlPage.locator("#medalsOwnershipFilter").selectOption("unowned");
+  assert.equal(await visibleStamps(), 2, "Unowned shows not-yet-acquired and CA-less communities");
+  await controlPage.locator("#medalsOwnershipFilter").selectOption("all");
+  await controlPage.locator("#medalsPhotoFilter").selectOption("set");
+  assert.equal(await visibleStamps(), 2, "Photo set matches either CA in the community");
+  await controlPage.locator("#medalsMessageFilter").selectOption("set");
+  assert.equal(await visibleStamps(), 2, "Message set matches either CA in the community");
+  await controlPage.locator("#medalsPhotoFilter").selectOption("unset");
+  assert.equal(await visibleStamps(), 0, "Different CA fields are evaluated at community level");
+  await controlPage.locator("#medalsMessageFilter").selectOption("all");
+  assert.equal(await visibleStamps(), 2, "Photo unset includes CA-less community");
+  await controlPage.locator("#medalsOwnershipFilter").selectOption("owned");
+  assert.equal(await visibleStamps(), 1, "Multiple filters are combined safely");
+  assert.equal(await controlPage.locator(".region:not([hidden])").count(), 1,
+    "Regions containing no matches are hidden");
+  assert.equal(await controlPage.locator("#medalsFilterInfo").textContent().then(x=>x.includes("1 Community")), true);
+  await controlPage.close();
+
+  const unavailablePage = await openPage({ profileError: true });
+  await unavailablePage.locator("#medalsProfileInfo").waitFor();
+  assert.equal(await unavailablePage.locator("#medalsPhotoFilter").isDisabled(), true);
+  assert.equal(await unavailablePage.locator("#medalsMessageFilter").isDisabled(), true);
+  assert.equal(await unavailablePage.locator(".medal-ca-setting-flags").count(), 0,
+    "Unknown status must not be rendered as unset");
+  assert.match(await unavailablePage.locator("#medalsProfileInfo").textContent(), /未接続/);
+  await unavailablePage.close();
 
   const fixture = {
     role: "admin", identity,
