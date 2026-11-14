@@ -9,6 +9,9 @@ export default function Page(){
   const [nianticId, setNianticId] = useState("");
   const [scopelyId, setScopelyId] = useState("");
   const [savedIds, setSavedIds] = useState<{trainer: string; scopely: string} | null>(null);
+  const [discordStatus, setDiscordStatus] = useState<"loading"|"verified"|"missing"|"unavailable">("loading");
+  const [discordBusy, setDiscordBusy] = useState(false);
+  const [discordMessage, setDiscordMessage] = useState<string | null>(null);
   const [stampMessage, setStampMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -21,6 +24,34 @@ export default function Page(){
     setSavedIds(profile?.niantic_id && profile?.scopely_id ? { trainer: profile.niantic_id, scopely: profile.scopely_id } : null);
     setStampMessage(profile?.stamp_exchange_message ?? "");
   }, [profile?.niantic_id, profile?.scopely_id, profile?.stamp_exchange_message]);
+
+  useEffect(() => {
+    if (!user || profile?.role!=="pending") return;
+    let cancelled=false;
+    (async()=>{
+      const {data,error}=await supabase.functions.invoke("ca-claim-discord-oauth",{body:{action:"status"}});
+      if(cancelled)return;
+      setDiscordStatus(error||!data?.ok?"unavailable":data.verified===true?"verified":"missing");
+    })();
+    return ()=>{cancelled=true;};
+  },[user?.id,profile?.role,supabase]);
+
+  async function startDiscordVerification(){
+    setDiscordBusy(true);
+    setDiscordMessage(null);
+    const {data,error}=await supabase.functions.invoke("ca-claim-discord-oauth",{body:{action:"start"}});
+    setDiscordBusy(false);
+    if(error||typeof data?.authorizationUrl!=="string"){
+      setDiscordMessage("Discord認証を開始できません。接続環境の設定を確認してください。");
+      return;
+    }
+    try{
+      const target=new URL(data.authorizationUrl);
+      if(target.origin!=="https://discord.com"||target.pathname!=="/oauth2/authorize")
+        throw Error("Unexpected OAuth destination");
+      window.location.assign(target.toString());
+    }catch{setDiscordMessage("Discord認証先のURLを確認できませんでした。");}
+  }
 
   async function save(){
     if (!user) return;
@@ -93,6 +124,14 @@ export default function Page(){
       <div className="mt-5 text-xs font-black text-slate-500">Role</div>
       <div className="mt-1 inline-flex rounded-full bg-lime-100 px-3 py-1 text-xs font-black text-lime-800">{profile?.role ?? "pending"}</div>
 
+      {profile?.role==="pending"?<div className="mt-6 rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+        <div className="text-sm font-black text-indigo-950">🛡️ Discord APAC CAロール認証</div>
+        <p className="mt-2 text-xs font-semibold leading-5 text-indigo-800">Googleログイン中のCA Cloverアカウントに、DiscordのAPAC CAロールをOAuthで結び付けます。DiscordユーザーIDを手入力する必要はありません。</p>
+        <div className="mt-3 text-xs font-black text-indigo-900" role="status">{discordStatus==="loading"?"認証状態を確認中…":discordStatus==="verified"?"✓ APAC CAロール認証済み（15分間有効）":discordStatus==="unavailable"?"認証接続がまだ利用できません":"APAC CAロールが未確認です"}</div>
+        <button type="button" onClick={startDiscordVerification} disabled={discordBusy} className="mt-3 w-full rounded-2xl bg-indigo-700 px-4 py-3 text-sm font-black text-white disabled:opacity-50">{discordBusy?"Discordへ接続中…":discordStatus==="verified"?"Discordで再認証する":"DiscordでAPAC CAロールを確認"}</button>
+        {discordMessage?<p className="mt-2 text-xs font-semibold text-rose-700">{discordMessage}</p>:null}
+      </div>:null}
+
       <label className="mt-6 block text-xs font-black text-slate-600" htmlFor="niantic-id">① Pokémon GO トレーナー名</label>
       <input id="niantic-id" value={nianticId} onChange={e=>{setNianticId(e.target.value);setSavedIds(null);setMessage(null);}} placeholder="ゲーム内のトレーナー名を入力" className="mt-2 w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-lime-400" />
 
@@ -131,14 +170,14 @@ export default function Page(){
         {stampSaveMessage?<p className="mt-3 text-center text-xs font-bold text-lime-700">{stampSaveMessage}</p>:null}
       </div>
 
-      {profile?.role==="pending" && !saving && savedIds && savedIds.trainer===nianticId.trim().replace(/^@+/, "") && savedIds.scopely===scopelyId.trim().replace(/^@+/, "") ? (
+      {profile?.role==="pending" && discordStatus==="verified" && !saving && savedIds && savedIds.trainer===nianticId.trim().replace(/^@+/, "") && savedIds.scopely===scopelyId.trim().replace(/^@+/, "") ? (
         <Link href="/my" className="mt-4 flex w-full items-center justify-center rounded-2xl bg-lime-950 px-5 py-3 text-sm font-black text-white">
           CA登録を続ける →
         </Link>
       ) : null}
 
       <p className="mt-3 text-center text-[11px] font-semibold text-slate-400">
-        各IDの先頭の「@」は保存時に自動で外します。2つのIDを登録するとCA申請へ進めます。
+        各IDの先頭の「@」は保存時に自動で外します。2つのIDの保存とDiscord APAC CAロール認証が完了するとCA申請へ進めます。
       </p>
 
       <button onClick={signOut} className="mt-6 w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-600">ログアウト</button>
