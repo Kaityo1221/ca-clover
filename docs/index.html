@@ -101,6 +101,8 @@
   let meetupHistoryCategory="all";
   let historySelectionLeave=null,historyGeneration=0;
   const historySelectionReady=import('./meetup-history-selection.mjs?v=20261114-batch-live1').catch(function(){return null});
+  let firstCheckinLeave=null;
+  const firstCheckinReady=Promise.all([import('./meetup-first-checkin-ui.mjs?v=20261114-sonic1'),import('./meetup-first-checkin-config.mjs?v=20261114-sonic1')]).then(function(parts){return {ui:parts[0],config:parts[1]}}).catch(function(){return null});
   const app=document.getElementById("app");
   const nav=document.getElementById("nav");
 
@@ -373,6 +375,7 @@
 
   async function renderCommunity(id){
     if(historySelectionLeave){historySelectionLeave();historySelectionLeave=null;}
+    if(firstCheckinLeave){firstCheckinLeave();firstCheckinLeave=null;}
     const historyVersion=++historyGeneration;
     app.innerHTML='<section class="card hero"><button id="backMy" class="linkbtn">← My Community</button><h1 style="margin-top:12px">🍀 Community情報</h1><p class="muted strong">読み込み中...</p></section>';
     if(profile.role!=="admin"){
@@ -591,6 +594,17 @@
         isCurrent:function(){return historyVersion===historyGeneration&&route()==='community:'+id&&!!session}});
       if(historyVersion!==historyGeneration)leave();else historySelectionLeave=leave;
     }
+    const firstCheckin=await firstCheckinReady;
+    if(firstCheckin&&historyRoot&&historyVersion===historyGeneration&&session){
+      const leave=firstCheckin.ui.mountFirstCheckins({
+        root:historyRoot,meetups:historyDisplayEntries.map(function(entry){return entry.m}),
+        communityId:id,client,publicKey:SUPABASE_KEY,
+        endpoint:firstCheckin.config.FIRST_CHECKIN_ENDPOINT,
+        getIdentity:function(){return {userId:session&&session.user.id,role:profile&&profile.role}},
+        isCurrent:function(){return historyVersion===historyGeneration&&route()==='community:'+id&&!!session}
+      });
+      if(historyVersion!==historyGeneration)leave();else firstCheckinLeave=leave;
+    }
   }
 
   function meetupOverviewText(m){
@@ -758,6 +772,7 @@
   }
   async function render(){
     if(historySelectionLeave){historySelectionLeave();historySelectionLeave=null;}
+    if(firstCheckinLeave){firstCheckinLeave();firstCheckinLeave=null;}
     historyGeneration++;
     if(zoroarkLeave){zoroarkLeave();zoroarkLeave=null;}
     if(ideasLeave){ideasLeave();ideasLeave=null;}
