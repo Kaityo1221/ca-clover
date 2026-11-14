@@ -10,6 +10,7 @@ on:
       - scripts/test-medal-color-fidelity.mjs
       - scripts/test-medal-face-hires.mjs
       - scripts/test-medal-texture-webkit.mjs
+      - scripts/test-stamp-rally-ui.mjs
       - .github/workflows/medal-texture-fallback.yml
 permissions:
   contents: read
