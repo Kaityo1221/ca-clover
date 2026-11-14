@@ -7,6 +7,16 @@ const UNRELATED_LAB_REF = "azkshxjgsbtjgwbapcfw";
 // The server-side admin factory intentionally does not support this path.
 export const PC_QA_AUTH_API = "http://127.0.0.1:56321";
 export const PC_QA_UI_ORIGIN = "http://127.0.0.1:56490";
+// Only the two registration functions use the host-run local Edge adapter.
+// Auth and PostgREST remain on the fixed local Supabase API.
+export function pcQaFunctionUrl(input: string) {
+  const u=new URL(input);
+  if(u.origin!==PC_QA_AUTH_API || !u.pathname.startsWith('/functions/v1/'))return null;
+  const name=u.pathname.slice('/functions/v1/'.length);
+  if(!['community-claim','ca-claim-discord-oauth'].includes(name) || u.search || u.hash)
+    throw new Error('PC_QA_FUNCTION_NOT_ALLOWED');
+  return PC_QA_UI_ORIGIN+'/claim-pc-functions/'+name;
+}
 export function isLocalPcQaBrowserConfig(env: {
   url?: string; key?: string; deployment?: string; localPcQa?: boolean; browserOrigin?: string;
 }) {
@@ -54,3 +64,4 @@ export function isSupabaseKeyForRole(key: string, ref: string, role: "anon" | "s
     return claims.role === role && claims.ref === ref;
   } catch { return false; }
 }
+

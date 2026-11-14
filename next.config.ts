@@ -32,6 +32,15 @@ const nextConfig: NextConfig = {
       {key: "X-Robots-Tag", value: "noindex, nofollow"},
     ]}];
   },
+  async rewrites() {
+    // No hosted rewrite. Only the explicitly opted-in PC dev server can
+    // forward the two claim functions to the loopback-only Deno adapter.
+    if(!pcAuthQa)return [];
+    return ['community-claim','ca-claim-discord-oauth'].map(name=>({
+      source:'/claim-pc-functions/'+name,
+      destination:'http://127.0.0.1:56491/functions/v1/'+name,
+    }));
+  },
   async redirects() {
     if (claimPreview || pcAuthQa) return [];
     return [
@@ -45,4 +54,5 @@ const nextConfig: NextConfig = {
   },
 };
 export default nextConfig;
+
 

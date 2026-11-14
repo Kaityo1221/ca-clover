@@ -37,6 +37,9 @@ export default function Page(){
   const [profiles,setProfiles]=useState<ProfileRow[]>([]);
   const [busy,setBusy]=useState<string|null>(null);
   const [confirmedDiscord,setConfirmedDiscord]=useState<Record<string,boolean>>({});
+  const [enteredDiscordId,setEnteredDiscordId]=useState<Record<string,string>>({});
+  const [enteredTrainerName,setEnteredTrainerName]=useState<Record<string,string>>({});
+  const [reviewEvidence,setReviewEvidence]=useState<Record<string,string>>({});
   const [reviewError,setReviewError]=useState<string|null>(null);
 
   async function load(){
@@ -60,21 +63,35 @@ export default function Page(){
   async function review(id:string,action:"approve"|"reject"){
     const record=rows.find(r=>r.id===id);
     if(!record)return;
-    if(action==="approve" && record.discord_user_id_snapshot && !confirmedDiscord[id]){
-      setReviewError("Discord本人確認をチェックしてください。");
-      return;
+    const isNewCa=profileMap.get(record.user_id)?.role==="pending";
+    if(action==="approve" && isNewCa){
+      const confirmedDiscordId=(enteredDiscordId[id]??"").trim();
+      const confirmedTrainerName=(enteredTrainerName[id]??"").trim();
+      const normalize=(value:string)=>value.normalize("NFKC").trim().replace(/^@+/,"").toLowerCase();
+      if(!confirmedDiscord[id] ||
+         confirmedDiscordId!==record.discord_user_id_snapshot ||
+         normalize(confirmedTrainerName)!==normalize(record.niantic_id_snapshot??"") ||
+         (reviewEvidence[id]??"").trim().length<10 ||
+         (reviewEvidence[id]??"").trim().length>500){
+        setReviewError("別途確認したDiscord ID・トレーナー名・確認方法（10〜500字）を入力し、本人確認にチェックしてください。");
+        return;
+      }
     }
     setReviewError(null);
     setBusy(id);
     const {error,data}=await supabase.functions.invoke("community-claim",{body:{
       action,requestId:id,
-      confirmedDiscordUserId:action==="approve" && confirmedDiscord[id]
-        ?record.discord_user_id_snapshot:null,
-      confirmedTrainerName:action==="approve" && confirmedDiscord[id]
-        ?record.niantic_id_snapshot:null,
+      confirmedDiscordUserId:action==="approve" && isNewCa && confirmedDiscord[id]
+        ?(enteredDiscordId[id]??"").trim():null,
+      confirmedTrainerName:action==="approve" && isNewCa && confirmedDiscord[id]
+        ?(enteredTrainerName[id]??"").trim():null,
+      note:(reviewEvidence[id]??"").trim()||null,
     }});
     if(!error && data?.ok===true){
       setConfirmedDiscord(v=>({...v,[id]:false}));
+      setEnteredDiscordId(v=>({...v,[id]:""}));
+      setEnteredTrainerName(v=>({...v,[id]:""}));
+      setReviewEvidence(v=>({...v,[id]:""}));
       await load();
     }else{
       setReviewError(typeof data?.code==="string"?data.code:"承認APIが失敗しました。処理結果を確認してください。");
@@ -90,7 +107,14 @@ export default function Page(){
     const normalizeId=(s:string|null|undefined)=>(s??"").normalize("NFKC").trim().replace(/^@+/,"").toLowerCase();
     const staleIdentity=!row.niantic_id_snapshot || !row.scopely_id_snapshot || normalizeId(requester?.niantic_id)!==normalizeId(row.niantic_id_snapshot) || normalizeId(requester?.scopely_id)!==normalizeId(row.scopely_id_snapshot);
     const discordRequired=requester?.role==="pending";
-    const discordReady=!discordRequired || Boolean(row.discord_user_id_snapshot && confirmedDiscord[row.id]);
+    const discordReady=!discordRequired || Boolean(
+      row.discord_user_id_snapshot &&
+      confirmedDiscord[row.id] &&
+      (enteredDiscordId[row.id]??"").trim()===row.discord_user_id_snapshot &&
+      normalizeId(enteredTrainerName[row.id])===normalizeId(row.niantic_id_snapshot) &&
+      (reviewEvidence[row.id]??"").trim().length>=10 &&
+      (reviewEvidence[row.id]??"").trim().length<=500
+    );
     return <section key={row.id} className="clover-card p-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-start">
         <div className="min-w-0 flex-1">
@@ -112,12 +136,29 @@ export default function Page(){
           {row.ca_map_status==="not_listed"?<div className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black text-amber-800">日本CAマスター未掲載のため承認できません。公式CA掲載を確認してください。</div>:null}
           <div className="mt-3 text-xs font-semibold text-slate-500">申請者: {requester?.email??"—"} / トレーナー名: {requester?.niantic_id??"未登録"} / Scopely ID: {requester?.scopely_id??"未登録"}</div>
           {discordRequired?<div className="mt-2 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-xs font-semibold text-indigo-900">
-            <div className="font-black">Discord APAC CAロール認証ID: {row.discord_user_id_snapshot??"未登録"}</div>
+            <div className="font-black">申請時Discord APAC CAユーザーID: {row.discord_user_id_snapshot??"未登録"}</div>
+            <p className="mt-2">別途、管理者がDiscordプロフィールと公式CAマスターを開いて本人関係を確認してください。以下の確認値は自動入力しません。</p>
+            <label className="mt-3 block font-bold" htmlFor={`review-discord-${row.id}`}>独立確認したDiscordユーザーID</label>
+            <input id={`review-discord-${row.id}`} value={enteredDiscordId[row.id]??""}
+              onChange={e=>{setEnteredDiscordId(v=>({...v,[row.id]:e.target.value}));setConfirmedDiscord(v=>({...v,[row.id]:false}));}}
+              placeholder="別途確認したDiscord IDを手入力"
+              autoComplete="off" className="mt-1 w-full rounded-lg border border-indigo-300 bg-white px-3 py-2 text-sm"/>
+            <label className="mt-3 block font-bold" htmlFor={`review-trainer-${row.id}`}>独立確認したPokémon GOトレーナー名</label>
+            <input id={`review-trainer-${row.id}`} value={enteredTrainerName[row.id]??""}
+              onChange={e=>{setEnteredTrainerName(v=>({...v,[row.id]:e.target.value}));setConfirmedDiscord(v=>({...v,[row.id]:false}));}}
+              placeholder="公式マスターと照合したトレーナー名を手入力"
+              autoComplete="off" className="mt-1 w-full rounded-lg border border-indigo-300 bg-white px-3 py-2 text-sm"/>
+            <label className="mt-3 block font-bold" htmlFor={`review-evidence-${row.id}`}>独立本人確認の方法・証跡（10〜500字）</label>
+            <textarea id={`review-evidence-${row.id}`} value={reviewEvidence[row.id]??""}
+              onChange={e=>{setReviewEvidence(v=>({...v,[row.id]:e.target.value}));setConfirmedDiscord(v=>({...v,[row.id]:false}));}}
+              placeholder="例：公式CAマスターと本人のDiscordプロフィールを別画面で照合（確認日）。パスワード・トークン・秘密値は記載禁止"
+              rows={3} maxLength={500}
+              className="mt-1 w-full rounded-lg border border-indigo-300 bg-white px-3 py-2 text-sm"/>
             <label className="mt-3 flex cursor-pointer items-start gap-2">
               <input type="checkbox" checked={Boolean(confirmedDiscord[row.id])}
                 onChange={e=>setConfirmedDiscord(v=>({...v,[row.id]:e.target.checked}))}
                 disabled={!row.discord_user_id_snapshot} className="mt-0.5 accent-indigo-700"/>
-              <span>Discordプロフィール・APAC CAロールを確認し、申請者のDiscord IDと公式CAマスターに掲載されたトレーナー名が同じ本人に属すると独立に確認しました。確認できない場合は承認しません。</span>
+              <span>上記2つのIDと確認方法を管理者が独立確認しました。資料未確認・不一致なら承認しません。</span>
             </label>
           </div>:null}
           {staleIdentity ? <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">⚠️ 申請時のトレーナー名とScopely IDを再確認できません。旧申請を却下し、新しい2項目で申請し直してください。</div> : null}

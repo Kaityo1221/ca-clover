@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import {resolveSupabaseEndpoint, isSupabaseKeyForRole, isLocalPcQaBrowserConfig, PC_QA_AUTH_API} from "./supabase-connection";
+import {resolveSupabaseEndpoint, isSupabaseKeyForRole, isLocalPcQaBrowserConfig, PC_QA_AUTH_API, pcQaFunctionUrl} from "./supabase-connection";
 
 // Preproduction safety: never silently connect an unconfigured build to the
 // real CA Clover database. This is not an authorization control for the backend;
@@ -32,7 +32,15 @@ export function createBrowserSupabaseClient(){
     localPcQa:process.env.NEXT_PUBLIC_CA_CLOVER_PC_AUTH_QA === "true",
     browserOrigin:typeof window === "undefined" ? undefined : window.location.origin,
   });
-  browserClient=createClient(config.url,config.key);
+  const pcEdge=config.url===PC_QA_AUTH_API &&
+    process.env.NEXT_PUBLIC_CA_CLOVER_PC_AUTH_QA==='true' &&
+    typeof window!=='undefined' && window.location.origin==='http://127.0.0.1:56490';
+  browserClient=createClient(config.url,config.key,pcEdge?{global:{fetch:async(input,init)=>{
+    const original=input instanceof Request?input.url:String(input);
+    const local=pcQaFunctionUrl(original);
+    return fetch(local && input instanceof Request?new Request(local,input):local??input,init);
+  }}}:undefined);
   return browserClient;
 }
+
 

@@ -9,7 +9,7 @@ function load(path, expression, extra={}) {
     .replace(/export function/g,"function").replace(/export const/g,"const").replace(/export default nextConfig;/,""),{mode:"transform"});
   return vm.runInNewContext(js+"\n"+expression,{URL,atob,...extra},{timeout:2000});
 }
-const {resolveSupabaseEndpoint,isSupabaseKeyForRole,isLocalPcQaBrowserConfig,PC_QA_AUTH_API}=load("src/lib/supabase-connection.ts","({resolveSupabaseEndpoint,isSupabaseKeyForRole,isLocalPcQaBrowserConfig,PC_QA_AUTH_API})");
+const {resolveSupabaseEndpoint,isSupabaseKeyForRole,isLocalPcQaBrowserConfig,PC_QA_AUTH_API,pcQaFunctionUrl}=load("src/lib/supabase-connection.ts","({resolveSupabaseEndpoint,isSupabaseKeyForRole,isLocalPcQaBrowserConfig,PC_QA_AUTH_API,pcQaFunctionUrl})");
 const helpers={resolveSupabaseEndpoint,isSupabaseKeyForRole,isLocalPcQaBrowserConfig,PC_QA_AUTH_API};
 const resolve=load("src/lib/supabase.ts","resolveBrowserSupabaseConfig",helpers);
 const ref="abcdefghijabcdefghij", prodRef="wgiittrvgtiosogyhfcl";
@@ -120,12 +120,26 @@ for(const [env,expected] of [
 ]) {
   const config=load("next.config.ts","nextConfig",{process:{env}});
   assert.equal((await config.redirects()).length,expected?0:6);checks++;
+  const rewrites=await config.rewrites();
+  assert.equal(rewrites.length,expected?2:0);checks++;
+  if(expected)for(const r of rewrites){
+    assert.match(r.destination,/^http:\/\/127\.0\.0\.1:56491\/functions\/v1\/(community-claim|ca-claim-discord-oauth)$/);checks++;
+  }
   assert.equal(config.env.NEXT_PUBLIC_CA_CLOVER_PC_AUTH_QA,expected?"true":"false");checks++;
   const guard=load("src/proxy.ts","proxy",{
     process:{env:config.env},NextResponse:{json:Response.json,next:()=>null},
   });
   assert.equal(guard()?.status??null,expected?503:null);checks++;
 }
+assert.equal(pcQaFunctionUrl('http://127.0.0.1:56321/functions/v1/community-claim'),
+ 'http://127.0.0.1:56490/claim-pc-functions/community-claim');checks++;
+assert.equal(pcQaFunctionUrl('http://127.0.0.1:56321/auth/v1/token'),null);checks++;
+assert.equal(pcQaFunctionUrl(prod+'/functions/v1/community-claim'),null);checks++;
+for(const url of ['http://127.0.0.1:56321/functions/v1/other-function',
+ 'http://127.0.0.1:56321/functions/v1/community-claim?target=other']){
+ assert.throws(()=>pcQaFunctionUrl(url),/PC_QA_FUNCTION_NOT_ALLOWED/);checks++;
+}
 
 console.log("CLAIM_PREVIEW_CONNECTION_PASS checks="+checks+" network=0 client_creation_guard=PASS same_origin_routes=PASS");
+
 

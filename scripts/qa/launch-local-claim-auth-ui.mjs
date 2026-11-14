@@ -6,7 +6,7 @@ import {homedir} from "node:os";
 import {join,resolve} from "node:path";
 import {createServer} from "node:net";
 
-const EXPECTED_BRANCH="feature/claim-pc-auth-ui-local-isolated-20261114";
+const EXPECTED_BRANCH="feature/claim-admin-evidence-ui-isolated-20261115";
 const PROJECT="ca-clover-claim-pcqa-20261114";
 const API="http://127.0.0.1:56321";
 const PORT=56490;
@@ -79,9 +79,9 @@ delete env.SUPABASE_SERVICE_ROLE_KEY;
 delete env.SUPABASE_SECRET_KEY;
 console.log("PC_AUTH_QA_PREFLIGHT=PASS");
 console.log("PC_AUTH_QA_URL=http://127.0.0.1:56490/login");
-console.log("PC_AUTH_QA_SCOPE=FRONTEND_GOOGLE_ONLY");
+console.log("PC_AUTH_QA_SCOPE=FRONTEND_AND_LOCAL_EDGE_ADAPTER");
 console.log("PC_AUTH_QA_ADMIN_API=DISABLED");
-console.log("PC_AUTH_QA_REGISTRATION_EDGE=NOT_CONNECTED");
+console.log("PC_AUTH_QA_REGISTRATION_EDGE=REQUIRES_LOCAL_DENO_56491_AND_DISPOSABLE_E2E");
 console.log("PRODUCTION=NO-GO");
 const child=spawn(process.execPath,[nextBin,"dev","-H","127.0.0.1","-p",String(PORT)],{
   cwd:root,env,stdio:"inherit",windowsHide:true,
@@ -90,3 +90,4 @@ child.on("error",()=>bad("NEXT_DEV_START_FAILED"));
 process.on("SIGINT",()=>child.kill("SIGINT"));
 process.on("SIGTERM",()=>child.kill("SIGTERM"));
 child.on("exit",code=>process.exit(code??0));
+
