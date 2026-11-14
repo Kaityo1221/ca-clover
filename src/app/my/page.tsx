@@ -185,8 +185,8 @@ export default function Page() {
     {profile?.role==="pending" ? <section className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5">
       <div className="text-xs font-black text-amber-700">初回CA登録</div>
       <h2 className="mt-1 text-lg font-black text-amber-950">Campfire URLでCA確認をします</h2>
-      <p className="mt-2 text-xs font-semibold leading-5 text-amber-800">トレーナー名とScopely IDの両方を登録してから、自分が主催したミートアップ共有URLを提出してください。会長が承認するとCAアカウント化とCommunity割当が同時に完了します。</p>
-      {!profile.niantic_id || !profile.scopely_id?<Link href="/account" className="mt-3 inline-flex rounded-full bg-amber-200 px-4 py-2 text-xs font-black text-amber-950">先にトレーナー名とScopely IDを登録 →</Link>:<div className="mt-3 text-xs font-black text-amber-900">トレーナー名: {profile.niantic_id} ✓ / Scopely ID: {profile.scopely_id} ✓</div>}
+      <p className="mt-2 text-xs font-semibold leading-5 text-amber-800">トレーナー名とScopely IDを保存し、DiscordでAPAC CAロール認証を完了してから、自分が主催したミートアップ共有URLを提出してください。会長が承認するとCAアカウント化とCommunity割当が同時に完了します。</p>
+      {!profile.niantic_id || !profile.scopely_id?<Link href="/account" className="mt-3 inline-flex rounded-full bg-amber-200 px-4 py-2 text-xs font-black text-amber-950">先にトレーナー名・Scopely IDとDiscord認証を完了 →</Link>:<div className="mt-3 text-xs font-black text-amber-900">トレーナー名: {profile.niantic_id} ✓ / Scopely ID: {profile.scopely_id} ✓</div>}
     </section> : null}
 
     {profile?.role==="pending" ? <section className="clover-card mt-6 p-6">

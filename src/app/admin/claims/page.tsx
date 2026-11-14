@@ -20,6 +20,7 @@ type ClaimRow={
   creator_username_matches_profile:boolean|null;
   niantic_id_snapshot:string|null;
   scopely_id_snapshot:string|null;
+  discord_user_id_snapshot:string|null;
   creator_ca_badge_verified:boolean|null;
   ca_level_snapshot:string|null;
   ca_role_verified:boolean|null;
@@ -35,10 +36,12 @@ export default function Page(){
   const [rows,setRows]=useState<ClaimRow[]>([]);
   const [profiles,setProfiles]=useState<ProfileRow[]>([]);
   const [busy,setBusy]=useState<string|null>(null);
+  const [confirmedDiscord,setConfirmedDiscord]=useState<Record<string,boolean>>({});
+  const [reviewError,setReviewError]=useState<string|null>(null);
 
   async function load(){
     const {data:requests}=await supabase.from("community_access_requests")
-      .select("id,user_id,meetup_title,meetup_url,input_url,request_source,community_name_snapshot,community_prefecture_snapshot,is_ca_meetup,master_match,creator_display_name,creator_username,creator_username_matches_profile,niantic_id_snapshot,scopely_id_snapshot,creator_ca_badge_verified,ca_level_snapshot,ca_role_verified,ca_map_status,status,requested_at,reviewed_at")
+      .select("id,user_id,meetup_title,meetup_url,input_url,request_source,community_name_snapshot,community_prefecture_snapshot,is_ca_meetup,master_match,creator_display_name,creator_username,creator_username_matches_profile,niantic_id_snapshot,scopely_id_snapshot,discord_user_id_snapshot,creator_ca_badge_verified,ca_level_snapshot,ca_role_verified,ca_map_status,status,requested_at,reviewed_at")
       .order("requested_at",{ascending:false});
     const claimRows=(requests as ClaimRow[]|null)??[];
     setRows(claimRows);
@@ -55,9 +58,27 @@ export default function Page(){
   const history=rows.filter(row=>row.status!=="pending");
 
   async function review(id:string,action:"approve"|"reject"){
+    const record=rows.find(r=>r.id===id);
+    if(!record)return;
+    if(action==="approve" && record.discord_user_id_snapshot && !confirmedDiscord[id]){
+      setReviewError("Discord本人確認をチェックしてください。");
+      return;
+    }
+    setReviewError(null);
     setBusy(id);
-    const {error}=await supabase.functions.invoke("community-claim",{body:{action,requestId:id}});
-    if(!error) await load();
+    const {error,data}=await supabase.functions.invoke("community-claim",{body:{
+      action,requestId:id,
+      confirmedDiscordUserId:action==="approve" && confirmedDiscord[id]
+        ?record.discord_user_id_snapshot:null,
+      confirmedTrainerName:action==="approve" && confirmedDiscord[id]
+        ?record.niantic_id_snapshot:null,
+    }});
+    if(!error && data?.ok===true){
+      setConfirmedDiscord(v=>({...v,[id]:false}));
+      await load();
+    }else{
+      setReviewError(typeof data?.code==="string"?data.code:"承認APIが失敗しました。処理結果を確認してください。");
+    }
     setBusy(null);
   }
 
@@ -68,12 +89,8 @@ export default function Page(){
     const requester=profileMap.get(row.user_id);
     const normalizeId=(s:string|null|undefined)=>(s??"").normalize("NFKC").trim().replace(/^@+/,"").toLowerCase();
     const staleIdentity=!row.niantic_id_snapshot || !row.scopely_id_snapshot || normalizeId(requester?.niantic_id)!==normalizeId(row.niantic_id_snapshot) || normalizeId(requester?.scopely_id)!==normalizeId(row.scopely_id_snapshot);
-    const mapFallback=
-      row.request_source==="meetup_share" &&
-      row.ca_map_status==="not_listed" &&
-      row.creator_ca_badge_verified===true &&
-      row.creator_username_matches_profile===true &&
-      row.is_ca_meetup===true;
+    const discordRequired=requester?.role==="pending";
+    const discordReady=!discordRequired || Boolean(row.discord_user_id_snapshot && confirmedDiscord[row.id]);
     return <section key={row.id} className="clover-card p-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-start">
         <div className="min-w-0 flex-1">
@@ -92,8 +109,17 @@ export default function Page(){
           <h2 className="mt-3 text-xl font-black text-lime-950">{row.community_name_snapshot}</h2>
           <div className="mt-2 text-sm font-bold text-slate-600">{row.request_source==="community_invite"?"コミュニティ招待URLから申請":row.meetup_title??"ミートアップ共有URLから申請"}</div>
           <div className="mt-3 text-xs font-black text-violet-700">{row.request_source==="community_invite"?"申請者":"ミートアップ主催者"}: {row.creator_display_name??"未取得"} / Scopely ID: {row.creator_username??"未取得"}</div>
-          {row.ca_map_status==="not_listed"?<div className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black text-amber-800">{mapFallback?"日本CA地図は未掲載ですが、本人主催Meetup・Scopely ID一致・紫CAバッジをCampfireで確認済みです。ADMIN手動審査で承認できます。":"日本CA地図に未掲載です。本人主催Meetupで追加確認してください。"}</div>:null}
+          {row.ca_map_status==="not_listed"?<div className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black text-amber-800">日本CAマスター未掲載のため承認できません。公式CA掲載を確認してください。</div>:null}
           <div className="mt-3 text-xs font-semibold text-slate-500">申請者: {requester?.email??"—"} / トレーナー名: {requester?.niantic_id??"未登録"} / Scopely ID: {requester?.scopely_id??"未登録"}</div>
+          {discordRequired?<div className="mt-2 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-xs font-semibold text-indigo-900">
+            <div className="font-black">Discord APAC CAロール認証ID: {row.discord_user_id_snapshot??"未登録"}</div>
+            <label className="mt-3 flex cursor-pointer items-start gap-2">
+              <input type="checkbox" checked={Boolean(confirmedDiscord[row.id])}
+                onChange={e=>setConfirmedDiscord(v=>({...v,[row.id]:e.target.checked}))}
+                disabled={!row.discord_user_id_snapshot} className="mt-0.5 accent-indigo-700"/>
+              <span>Discordプロフィール・APAC CAロールを確認し、申請者のDiscord IDと公式CAマスターに掲載されたトレーナー名が同じ本人に属すると独立に確認しました。確認できない場合は承認しません。</span>
+            </label>
+          </div>:null}
           {staleIdentity ? <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">⚠️ 申請時のトレーナー名とScopely IDを再確認できません。旧申請を却下し、新しい2項目で申請し直してください。</div> : null}
           {row.request_source==="community_invite" && requester?.role==="pending" ? <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">初回登録の招待URL申請は承認できません。旧申請を却下し、本人主催Meetup共有URLで再申請してください。</div> : null}
           <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900">🔒 IDの文字列一致はアカウント所有権の証明ではありません。管理者がCampfire主催者と申請者の本人関係を別途確認してから承認してください。</div>
@@ -103,7 +129,7 @@ export default function Page(){
         </div>
         {row.status==="pending" ? <div className="flex shrink-0 gap-2">
           <button disabled={busy===row.id} onClick={()=>review(row.id,"reject")} className="rounded-full border border-rose-200 bg-white px-4 py-2 text-xs font-black text-rose-700 disabled:opacity-50">却下</button>
-          <button disabled={busy===row.id||(row.request_source==="meetup_share"&&row.creator_ca_badge_verified!==true)||row.creator_username_matches_profile!==true||(!mapFallback&&(row.ca_role_verified!==true||row.ca_map_status!=="matched"))||(row.request_source==="community_invite" && requester?.role==="pending")||staleIdentity} onClick={()=>review(row.id,"approve")} className="rounded-full bg-lime-400 px-5 py-2 text-xs font-black text-lime-950 disabled:opacity-50">{busy===row.id?"処理中...":"承認"}</button>
+          <button disabled={busy===row.id||(row.request_source==="meetup_share"&&row.creator_ca_badge_verified!==true)||row.creator_username_matches_profile!==true||(row.ca_role_verified!==true||row.ca_map_status!=="matched")||(row.request_source==="community_invite" && requester?.role==="pending")||staleIdentity||!discordReady} onClick={()=>review(row.id,"approve")} className="rounded-full bg-lime-400 px-5 py-2 text-xs font-black text-lime-950 disabled:opacity-50">{busy===row.id?"処理中...":"承認"}</button>
         </div> : <span className={row.status==="approved"?"rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900":"rounded-full bg-rose-100 px-3 py-1 text-xs font-black text-rose-700"}>{row.status==="approved"?"承認済み":"却下"}</span>}
       </div>
     </section>;
@@ -113,6 +139,7 @@ export default function Page(){
     <Link href="/admin" className="text-sm font-black text-lime-700">← 管理メニュー</Link>
     <span className="mt-4 block w-fit rounded-full bg-lime-200 px-3 py-1 text-xs font-black text-lime-900">COMMUNITY CLAIMS</span>
     <h1 className="mt-3 text-3xl font-black text-lime-950">🛎️ Community申請</h1>
+    {reviewError?<p role="alert" className="mt-2 rounded-xl bg-rose-50 p-3 text-xs font-black text-rose-700">{reviewError}</p>:null}
     <p className="mt-2 text-sm font-semibold text-slate-500">Campfireのコミュニティ招待URL / ミートアップ共有URLからCommunityを判定し、申請者が担当CAかを確認します。</p>
 
     <div className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5">
