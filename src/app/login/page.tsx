@@ -47,7 +47,7 @@ export default function Page(){
       )}
 
       {error ? <p className="mt-4 text-xs font-bold text-rose-600">{error}</p> : null}
-      <p className="mt-4 text-xs font-semibold leading-5 text-slate-400">初回ログイン後にNiantic IDを登録し、自分が主催したMeetupを提出してください。承認されるとCAアカウントとCommunityが同時に有効になります。</p>
+      <p className="mt-4 text-xs font-semibold leading-5 text-slate-400">初回ログイン後にPokémon GOトレーナー名とScopely IDをそれぞれ登録し、自分が主催したMeetup共有URLを提出してください。承認されるとCAアカウントとCommunityが同時に有効になります。</p>
     </section>
   </main>;
 }

@@ -9,6 +9,7 @@ export type AppRole = "admin" | "ca" | "pending";
 export type AuthProfile = {
   role: AppRole;
   niantic_id: string | null;
+  scopely_id: string | null;
   stamp_exchange_message: string | null;
 };
 
@@ -60,7 +61,7 @@ export function useAuthProfile() {
         const [profileResult, permissionResult] = await Promise.all([
           supabase
             .from("profiles")
-            .select("role,niantic_id,stamp_exchange_message")
+            .select("role,niantic_id,scopely_id,stamp_exchange_message")
             .eq("id", currentUser.id)
             .maybeSingle(),
           supabase
