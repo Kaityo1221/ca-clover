@@ -63,7 +63,7 @@ assert.ok(moduleSource.includes('esc(round.prompts[player])'),"topic escaped bef
 assert.ok(moduleSource.includes('return destroy;'),"timer and handlers cleanup");
 assert.ok(nav.includes("data-open-zoroark"),"existing game list card");
 assert.ok(nav.includes('if((location.hash||"#my")!=="#my"'),"mini-game entry is scoped to My Community home");
-assert.ok(nav.includes('.my-hero-footer .tags .pill')&&index.includes('const miniGamesEntry=(profile.role==="admin"||profile.role==="ca")'),"top entry requires CA/ADMIN home marker");
+assert.ok(nav.includes('app.querySelector("#sendaiMapHost")')&&index.includes('const miniGamesEntry=(profile.role==="admin"||profile.role==="ca")'),"top entry requires CA/ADMIN home marker");
 assert.ok(nav.includes('const title=hero.querySelector("h1.my-welcome-title")'),"welcome heading must be present");
 assert.ok(nav.includes('titleRow.appendChild(title);'),"welcome heading moves into one shared row");
 assert.ok(nav.includes('titleRow.appendChild(button);'),"mini-game button appears directly to the right of welcome heading");

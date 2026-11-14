@@ -36,7 +36,7 @@ check('My Community mini-game entry is native and role-gated',
   && index.includes('href="./index.html?caMini=hub#my"')
   && index.includes("const myHeading="));
 check('mini-game recovery uses a CA-only home marker',
-  minigames.includes('.my-hero-footer .tags .pill')
+  minigames.includes('app.querySelector("#sendaiMapHost")')
   && minigames.includes('if(timer)return;')
   && minigames.includes('timer=0;reconcileMiniView()'));
 let observerCallback=null;
