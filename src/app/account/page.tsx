@@ -12,6 +12,7 @@ export default function Page(){
   const [discordStatus, setDiscordStatus] = useState<"loading"|"verified"|"missing"|"unavailable">("loading");
   const [discordBusy, setDiscordBusy] = useState(false);
   const [discordMessage, setDiscordMessage] = useState<string | null>(null);
+  const [discordExpiry, setDiscordExpiry] = useState<number | null>(null);
   const [stampMessage, setStampMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -28,17 +29,30 @@ export default function Page(){
   useEffect(() => {
     if (!user || profile?.role!=="pending") return;
     let cancelled=false;
-    (async()=>{
+    async function refreshDiscordProof(){
       const {data,error}=await supabase.functions.invoke("ca-claim-discord-oauth",{body:{action:"status"}});
       if(cancelled)return;
-      setDiscordStatus(error||!data?.ok?"unavailable":data.verified===true?"verified":"missing");
-    })();
-    return ()=>{cancelled=true;};
+      const expiry=typeof data?.expiresAt==="string"?Date.parse(data.expiresAt):NaN;
+      if(error||data?.ok!==true){
+        setDiscordStatus("unavailable");setDiscordExpiry(null);
+      }else if(data.verified===true && Number.isFinite(expiry) && expiry>Date.now()){
+        setDiscordStatus("verified");setDiscordExpiry(expiry);
+      }else{
+        setDiscordStatus("missing");setDiscordExpiry(null);
+      }
+    }
+    void refreshDiscordProof();
+    const refresh=()=>{void refreshDiscordProof();};
+    const timer=window.setInterval(refresh,30_000);
+    window.addEventListener("focus",refresh);
+    return ()=>{cancelled=true;window.clearInterval(timer);window.removeEventListener("focus",refresh);};
   },[user?.id,profile?.role,supabase]);
 
   async function startDiscordVerification(){
     setDiscordBusy(true);
     setDiscordMessage(null);
+    setDiscordStatus("loading");
+    setDiscordExpiry(null);
     const {data,error}=await supabase.functions.invoke("ca-claim-discord-oauth",{body:{action:"start"}});
     setDiscordBusy(false);
     if(error||typeof data?.authorizationUrl!=="string"){
@@ -170,7 +184,7 @@ export default function Page(){
         {stampSaveMessage?<p className="mt-3 text-center text-xs font-bold text-lime-700">{stampSaveMessage}</p>:null}
       </div>
 
-      {profile?.role==="pending" && discordStatus==="verified" && !saving && savedIds && savedIds.trainer===nianticId.trim().replace(/^@+/, "") && savedIds.scopely===scopelyId.trim().replace(/^@+/, "") ? (
+      {profile?.role==="pending" && discordStatus==="verified" && discordExpiry!==null && discordExpiry>Date.now() && !saving && savedIds && savedIds.trainer===nianticId.trim().replace(/^@+/, "") && savedIds.scopely===scopelyId.trim().replace(/^@+/, "") ? (
         <Link href="/my" className="mt-4 flex w-full items-center justify-center rounded-2xl bg-lime-950 px-5 py-3 text-sm font-black text-white">
           CA登録を続ける →
         </Link>
