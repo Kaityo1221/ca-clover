@@ -94,6 +94,14 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
 .japanmaphead{flex-wrap:wrap;gap:8px}.japanmap h2{white-space:normal}.japanmaphead .sub{color:#6d7d65}
 @media(max-width:430px){.topin{gap:8px}.topin .logo{width:36px;height:36px;flex-shrink:0}.topin .btn{padding:9px 10px;font-size:11px;white-space:nowrap}.hero{padding:18px 14px}.regionbtn{padding:13px 12px;gap:9px}.leaf{width:34px;height:34px;flex-shrink:0}.prefbtn{gap:8px;padding:12px 10px}.prefbtn>div{min-width:0}.prefbtn .progress{padding:5px 8px}.prefbtn .chev{flex-shrink:0}}
 @media(max-width:359px){.summary{grid-template-columns:1fr 1fr}.summary-item.own-medal{grid-column:1/-1;order:3;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid #e6d9c9;padding-top:8px}.own-medal dt{min-height:0}.own-label-break{display:none}.own-medal dd{margin:0}.prefname{font-size:14px}}
+
+/* Medal catalog convenience controls: display only, no ownership mutations. */
+.medal-tools{margin-top:16px;padding:12px;border:1px solid #d6e2cb;background:#f8fcf5;border-radius:20px;display:grid;gap:10px}
+.medal-tools-actions{display:flex;gap:8px;flex-wrap:wrap}
+.medal-tools-actions button{flex:1;min-width:110px;border:1px solid #bacead;border-radius:12px;background:#fff;padding:10px;color:#3e6439;font-size:12px;font-weight:900}
+.medal-tools-filter{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;font-weight:850}
+.medal-tools-filter select{flex:1;min-width:135px;padding:10px;border:1px solid #bacead;border-radius:12px;background:#fff;color:#3e6439}
+.medal-tools-info{font-size:11px;color:#657d59}
 </style>
 <link rel="stylesheet" href="./clover-global-home.css?v=20261113-home1">
 </head>
@@ -1053,6 +1061,51 @@ async function load(){
 
  status.hidden=true;
  regionsEl.hidden=false;
+
+ // Catalog controls are client-side only. Source ownership and grant records stay untouched.
+ let medalTools=document.getElementById("medalListTools");
+ if(!medalTools){
+  medalTools=document.createElement("section");
+  medalTools.id="medalListTools";
+  medalTools.className="medal-tools";
+  medalTools.setAttribute("aria-label","全国メダル一覧の操作");
+  medalTools.innerHTML='<div class="medal-tools-actions"><button type="button" id="medalsExpandAll">すべて開く</button><button type="button" id="medalsCollapseAll">すべて閉じる</button></div><label class="medal-tools-filter" for="medalsOwnershipFilter">表示するメダル <select id="medalsOwnershipFilter"><option value="all">すべて</option><option value="owned">取得済み</option><option value="unowned">未取得</option></select></label><div id="medalsFilterInfo" class="medal-tools-info" aria-live="polite"></div>';
+  regionsEl.before(medalTools);
+ }
+ const ownershipFilter=medalTools.querySelector("#medalsOwnershipFilter");
+ const filterInfo=medalTools.querySelector("#medalsFilterInfo");
+ const applyMedalFilter=()=>{
+  const choice=ownershipFilter.value;
+  let visible=0;
+  regionsEl.querySelectorAll(".region").forEach(region=>{
+   let regionCount=0;
+   region.querySelectorAll(".pref").forEach(pref=>{
+    let prefCount=0;
+    pref.querySelectorAll(".stamp[data-community]").forEach(btn=>{
+     const community=stampCommunityById.get(btn.dataset.community);
+     const owned=Boolean(community&&community.cas.some(ca=>ca.acquired));
+     const show=choice==="all"||(choice==="owned"?owned:!owned);
+     btn.hidden=!show;
+     // The stamps grid uses CSS grid, so explicitly prevent hidden buttons from occupying cells.
+     btn.style.display=show?"":"none";
+     if(show)prefCount++;
+    });
+    pref.hidden=prefCount===0&&choice!=="all";
+    if(!pref.hidden)regionCount+=prefCount;
+   });
+   region.hidden=regionCount===0&&choice!=="all";
+   visible+=regionCount;
+  });
+  filterInfo.textContent=choice==="all"?"すべてのCommunityを表示中":visible+" Communityを表示中。取得済み判定はCommunity内のCAメダルを1枚以上所持している場合です。";
+ };
+ ownershipFilter.addEventListener("change",applyMedalFilter);
+ medalTools.querySelector("#medalsExpandAll").addEventListener("click",()=>{
+  regionsEl.querySelectorAll(".region:not([hidden]),.pref:not([hidden])").forEach(el=>el.classList.add("open"));
+ });
+ medalTools.querySelector("#medalsCollapseAll").addEventListener("click",()=>{
+  regionsEl.querySelectorAll(".region,.pref").forEach(el=>el.classList.remove("open"));
+ });
+ applyMedalFilter();
  document.querySelectorAll(".regionbtn").forEach(b=>b.onclick=()=>b.parentElement.classList.toggle("open"));
  document.querySelectorAll(".prefbtn").forEach(b=>b.onclick=()=>b.parentElement.classList.toggle("open"));
  window.CACommunityIcon.bind(regionsEl);
