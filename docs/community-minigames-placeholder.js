@@ -98,11 +98,11 @@ function setMiniHistory(view,replace){
 }
 function install(){
   // The home hero owns the CA-only navigation; pending/guest views
-  // have no sendaiMapHost. Never place this entry on Community details.
+  // do not have the CA verification marker. Never show this on Community details.
   if((location.hash||"#my")!=="#my"||new URL(location.href).searchParams.has("caMini"))return;
   const app=document.getElementById("app");
   const hero=app?.querySelector(":scope > section.card.hero");
-  if(!hero||!app.querySelector("#sendaiMapHost")||hero.querySelector(".ca-minigames-top-btn"))return;
+  if(!hero||!hero.querySelector(".my-hero-footer .tags .pill")||hero.querySelector(".ca-minigames-top-btn"))return;
   const title=hero.querySelector("h1.my-welcome-title");
   if(!title)return;
   ensureStyle();
@@ -126,14 +126,18 @@ function reconcileMiniView(){
  if(valid){
    // Wait for My Community's authenticated render. Never bypass its gate.
    if(app.querySelector('.ca-minigames-view[data-mini-view="'+view+'"]'))return;
-   if(!app.querySelector("#sendaiMapHost"))return;
+   if(!app.querySelector(":scope > section.card.hero .my-hero-footer .tags .pill"))return;
    if(view==="hub")renderHub();
    else renderList(view);
    return;
  }
  install();
 }
-let timer=0;function schedule(){clearTimeout(timer);timer=setTimeout(reconcileMiniView,80)}
+let timer=0;function schedule(){
+  // Continuous async My Community updates must not indefinitely delay navigation.
+  if(timer)return;
+  timer=setTimeout(function(){timer=0;reconcileMiniView()},80);
+}
 new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
 window.addEventListener("hashchange",schedule);
 window.addEventListener("popstate",schedule);
