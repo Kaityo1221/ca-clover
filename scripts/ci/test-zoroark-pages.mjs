@@ -28,7 +28,7 @@ assert.ok(moduleSource.includes('phase="play-style"'),"play-style selection is t
 assert.ok(moduleSource.includes('data-act="face-to-face"'),"face-to-face play can be selected");
 assert.ok(moduleSource.includes('data-act="remote"'),"remote play can be selected");
 assert.ok(moduleSource.includes('phase==="remote-entry"'),"remote play goes to a lobby entry");
-assert.ok(moduleSource.includes('href="'+ZOROARK_QA_ROOM_URL+'"'),"room link has fixed Preview destination");
+assert.ok(moduleSource.includes("href=\"'+ZOROARK_QA_ROOM_URL+'\"") && moduleSource.includes("ca-clover-4h7xyw0fg-kaityo1222.vercel.app/zoroark/rooms"),"room link has fixed Preview destination");
 assert.ok(moduleSource.includes('phase="mode-select"'),"game-mode selection follows play-style selection");
 assert.ok(moduleSource.includes('playStyle!=="face-to-face"'),"remote cannot call local game API");
 assert.ok(moduleSource.includes('busy||playStyle==="remote"'),"remote start is disabled");
