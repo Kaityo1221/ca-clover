@@ -11,12 +11,19 @@ const CANONICAL = "https://kaityo1221.github.io/ca-clover/";
 const claimPreview = process.env.VERCEL_ENV === "preview" &&
   process.env.VERCEL_GIT_COMMIT_REF === "feature/claim-discord-apac-ui-isolated-20261114";
 
+// Only a deliberate local PC development launch may disable canonical redirects.
+// This flag cannot be activated on any Vercel deployment or production build.
+const pcAuthQa = !process.env.VERCEL_ENV &&
+  process.env.NODE_ENV === "development" &&
+  process.env.CA_CLOVER_PC_AUTH_QA === "enabled";
+
 const nextConfig: NextConfig = {
   env: {
     // Derive from the platform; a shared public variable must not label a
     // Preview build as production and bypass browser connection selection.
     NEXT_PUBLIC_VERCEL_ENV: process.env.VERCEL_ENV ?? "development",
     NEXT_PUBLIC_CA_CLOVER_CLAIM_PREVIEW: claimPreview ? "true" : "false",
+    NEXT_PUBLIC_CA_CLOVER_PC_AUTH_QA: pcAuthQa ? "true" : "false",
   },
   async headers() {
     return [{source: "/discord-ca/callback", headers: [
@@ -26,7 +33,7 @@ const nextConfig: NextConfig = {
     ]}];
   },
   async redirects() {
-    if (claimPreview) return [];
+    if (claimPreview || pcAuthQa) return [];
     return [
       { source: "/", destination: CANONICAL, permanent: false },
       { source: "/login", destination: CANONICAL, permanent: false },
