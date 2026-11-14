@@ -27,6 +27,12 @@ assert.ok(join.includes("window.location.hash"),"Invite comes from URL fragment"
 assert.ok(join.includes("history.replaceState"),"Invite fragment must be removed");
 assert.ok(join.includes("credentials:\"same-origin\""),"Guest must use same-origin");
 assert.ok(join.includes('href="/zoroark/guest"'),"Guest handoff must use fixed safe URL");
+assert.ok(join.includes('guestCall({action:"me"})'),"Rescanned invite must check the verified cookie session");
+assert.ok(join.includes('current.roomId===result.roomId?"same":"other"'),"Existing sessions must be compared by room");
+assert.ok(join.includes('existingSession==="same"'),"Same room must be handled without duplicate application");
+assert.ok(join.includes('existingSession==="other"&&!switchConfirmed'),"Cross-room switching must require explicit consent");
+assert.ok(join.includes('setExistingSession("same")'),"409 already_joined must show a recovery link");
+assert.ok(!join.includes("localStorage"),"Guest session must not be persisted in localStorage");
 assert.ok(gmControls.includes('QRCode.toDataURL'),"QR must be rendered locally");
 assert.ok(gmControls.includes('room.joinEnabled'),"QR cannot be shown without backend enablement");
 assert.ok(owner.includes('ZOROARK_GUEST_LOBBY_ENABLED === "true"'),"Room response feature gate missing");

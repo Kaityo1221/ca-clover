@@ -77,3 +77,14 @@ test('nickname controls, duplicate joins, durable rate gate and GM IDOR',async()
  h=harness({rate:false});assert.equal((await h.route('guest').POST(request('guest',{action:'inspect',invite:hex}))).status,429);
  h=harness();assert.equal((await h.route('gm').POST(request('gm',{action:'list',roomId:room}))).status,404);
 });
+
+test('already-joined session remains intact and cannot create a duplicate slot',async()=>{
+ const h=harness({query:q=>q.includes('guest_existing')?[{present:true}]:[]});
+ const response=await h.route('guest').POST(request('guest',{
+   action:'join',invite:hex,nickname:'Second Name'
+ },{cookie:`__Host-zg_guest=${hex}; ${deviceCookie}`}));
+ assert.equal(response.status,409);
+ assert.deepEqual(await response.json(),{error:'already_joined'});
+ assert.equal(response.headers.get('set-cookie'),null);
+ assert.equal(h.calls.filter(x=>x.text.includes('guest_join(')).length,0);
+});
