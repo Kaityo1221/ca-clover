@@ -133,7 +133,11 @@ function reconcileMiniView(){
  }
  install();
 }
-let timer=0;function schedule(){clearTimeout(timer);timer=setTimeout(reconcileMiniView,80)}
+let timer=0;function schedule(){
+  // Continuous async My Community updates must not indefinitely delay navigation.
+  if(timer)return;
+  timer=setTimeout(function(){timer=0;reconcileMiniView()},80);
+}
 new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
 window.addEventListener("hashchange",schedule);
 window.addEventListener("popstate",schedule);

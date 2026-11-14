@@ -8,7 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- CA profile-photo release: private Storage/RLS and photo RPC verified 2026-11-13. -->
   <script>window.CA_PROFILE_PHOTO_UPLOAD_ENABLED = true;</script>
-  <script src="./home-clover.js?v=20261113-minigames-home1" defer></script>
+  <script src="./home-clover.js?v=20261114-minigames-nav1" defer></script>
   <script src="./community-title-fit.js?v=20261010-bracket2" defer></script>
 <script src="./clover-garden.js?v=20260926-garden-natural1" defer></script>
   <!-- Reaction v2 Phase 1: reuse analytics, replace old visible panels with Community DNA -->
@@ -323,7 +323,11 @@
       communities=cr.data||[];
     }
     const heroText=profile.role==="pending"?"CA登録が完了すると、自分に割り当てられたCommunityの活動を確認できます。":"自分に割り当てられたCommunityの活動だけを確認できます。";
-    let html='<section class="card hero"><div class="row between wraprow" style="gap:10px"><span class="pill">MY COMMUNITY</span><button type="button" id="mySettingsButton" class="btn line" style="width:auto;padding:9px 13px;font-size:14px" aria-label="環境設定を開く">⚙️ 環境設定</button></div><h1 class="my-welcome-title" style="margin-top:12px">My Communityへ<span>ようこそ。🍀</span></h1><p class="muted strong">'+heroText+'</p>'+'<div class="my-hero-footer">'+(profile.role!=="pending"?'<div class="tags"><span class="pill">✅ 認証済み '+communities.length+' Community</span></div>':'')+((profile.role==="admin"||profile.role==="ca")?'<div id="sendaiMapHost"></div>':'')+'</div></section>';
+    // My Community: this CA-only mini-game entry survives async UI enhancement failures.
+    const miniGamesEntry=(profile.role==="admin"||profile.role==="ca")
+      ?'<a class="ca-minigames-top-btn" data-ca-minigames-entry="true" href="./index.html?caMini=hub#my" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 13px;border:1px solid #fdba74;border-radius:16px;background:#fff7ed;color:#9a3412;font-weight:900;text-decoration:none;white-space:nowrap">🎮 ミニゲーム集 ›</a>':"";
+    const myHeading='<div class="ca-minigames-title-row" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:12px"><h1 class="my-welcome-title">My Communityへ<span>ようこそ。🍀</span></h1>'+miniGamesEntry+'</div>';
+    let html='<section class="card hero"><div class="row between wraprow" style="gap:10px"><span class="pill">MY COMMUNITY</span><button type="button" id="mySettingsButton" class="btn line" style="width:auto;padding:9px 13px;font-size:14px" aria-label="環境設定を開く">⚙️ 環境設定</button></div>'+myHeading+'<p class="muted strong">'+heroText+'</p>'+'<div class="my-hero-footer">'+(profile.role!=="pending"?'<div class="tags"><span class="pill">✅ 認証済み '+communities.length+' Community</span></div>':'')+((profile.role==="admin"||profile.role==="ca")?'<div id="sendaiMapHost"></div>':'')+'</div></section>';
     html+=flashHtml();
 
     if(profile.role==="pending"){
