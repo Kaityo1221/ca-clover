@@ -1087,14 +1087,22 @@ async function load(){
    stampZoomArea.style.whiteSpace="pre-line";
 
    const showMedalFace=isAdminCatalogMode||!!(selectedCa&&selectedCa.collection);
-   const src=showMedalFace?(selectedDesign?designUrl(selectedDesign):thumb(c)):"";
+   // A granted design may not yet have a stored image; use the current
+   // Community thumbnail/source without changing the acquisition record.
+   const src=showMedalFace?(designUrl(selectedDesign)||thumb(c)):"";
+   const missingIconSource=showMedalFace&&!src;
    stampZoom2D.classList.toggle("unowned",!showMedalFace);
-   stampZoom2D.querySelector(".fallback").textContent=showMedalFace?"🍀":"？";
+   const iconFallback=stampZoom2D.querySelector(".fallback");
+   iconFallback.textContent=missingIconSource?"画像\n未取得":showMedalFace?"🍀":"？";
+   iconFallback.style.fontSize=missingIconSource?"13px":"30px";
+   iconFallback.style.fontWeight=missingIconSource?"900":"normal";
+   iconFallback.style.whiteSpace=missingIconSource?"pre-line":"normal";
    stampZoomImg.style.display=src?"block":"none";
    stampZoomImg.dataset.original=c.avatar_url||"";
    stampZoomImg.dataset.caCommunityIcon="1";
    stampZoomImg.dataset.caBound="";
    if(src)stampZoomImg.src=src;
+   else stampZoomImg.removeAttribute("src");
    window.CACommunityIcon.bind(stampModalBack);
    if(selectedCa&&(selectedCa.collection||isAdminCatalogMode)){
     const engravingLines=isAdminCatalogMode
@@ -1163,7 +1171,9 @@ async function load(){
        +(pinnedId===selectedDesign.id?'📌 固定を解除':'このデザインで固定')+'</button>';
      }
     }else{
-     designHtml='<div class="notice section">デザイン履歴を準備中です。</div>';
+     designHtml='<div class="notice section">'+(missingIconSource
+      ?'公式アイコンが未取得です。メダルの取得記録は保存されています。管理者がアイコンの取得状況を確認してください。'
+      :'デザイン履歴を準備中です。')+'</div>';
     }
    }else if(selectedCa){
     designHtml='<div class="notice section">このCAメダルは未取得です。</div>';
