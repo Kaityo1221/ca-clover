@@ -5,7 +5,8 @@ import {NextResponse} from "next/server";
 // this one lab build. The flag is derived from the exact platform branch/env
 // tuple in next.config.ts, not from a request header or a shared secret.
 export function proxy() {
-  if (process.env.NEXT_PUBLIC_CA_CLOVER_CLAIM_PREVIEW === "true") {
+  if (process.env.NEXT_PUBLIC_CA_CLOVER_CLAIM_PREVIEW === "true" ||
+      process.env.NEXT_PUBLIC_CA_CLOVER_PC_AUTH_QA === "true") {
     return NextResponse.json({code: "CLAIM_LAB_API_DISABLED"}, {
       status: 503, headers: {"Cache-Control": "no-store"},
     });
