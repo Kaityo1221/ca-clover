@@ -84,7 +84,11 @@ try {
   await page.click('[data-apply-update]');
   await page.waitForFunction(()=>document.querySelector('[data-update]').hidden);
   await page.waitForFunction(()=>document.querySelector('iframe') && document.querySelector('iframe').dataset.playbackMarker!=='still-playing');
-  await page.frames().find(frame=>frame.url().includes('cloverViewer')).waitForFunction(()=>window.received?.workspace?.plans?.B?.squads?.[0]?.id==='updated');
+  // Newly replaced iframe may be attached before navigation completes.
+  await page.frameLocator('iframe').locator('body').waitFor({state:'attached',timeout:15000});
+  const updatedFrame=page.frames().find(frame=>frame.url().includes('cloverViewer'));
+  assert.ok(updatedFrame,'The renewed simulator frame must navigate before validation');
+  await updatedFrame.waitForFunction(()=>window.received?.workspace?.plans?.B?.squads?.[0]?.id==='updated');
   assert.equal(await page.locator('iframe').count(),1);
   reject=true;await page.clock.fastForward(30_001);await page.waitForFunction(()=>!document.querySelector('iframe'));
   assert.ok(calls.filter(method=>method==='GET').length>=3);
