@@ -7,13 +7,16 @@ const file="src/lib/supabase.ts";
 const raw=readFileSync(file,"utf8");
 const noImport=raw.replace(/^import[^\n]+;\r?\n/gm,"").replace(/export function/g,"function");
 const code=stripTypeScriptTypes(noImport,{mode:"transform"});
-const resolve=vm.runInNewContext(code+"\nresolveBrowserSupabaseConfig;",{process:{env:{}},createClient:()=>{throw Error("no network")}}, {timeout:2000});
+const resolve=vm.runInNewContext(code+"\nresolveBrowserSupabaseConfig;",{process:{env:{}},URL,createClient:()=>{throw Error("no network")}}, {timeout:2000});
 const prod="https://wgiittrvgtiosogyhfcl.supabase.co";
 const preview="https://isolated-preprod-only.supabase.co";
 const key="sb_publishable_test_key";
 const cases=[
  [{},false,false],
  [{url:prod,key,deployment:"preview"},false,false],
+ [{url:prod+"/",key,deployment:"preview"},false,false],
+ [{url:"HTTPS://WGIITTRVGTIOSOGYHFCL.SUPABASE.CO/",key,deployment:"preview"},false,false],
+ [{url:"http://isolated-preprod-only.supabase.co",key,deployment:"preview"},false,false],
  [{url:prod,key,deployment:"development"},false,false],
  [{url:prod,key},false,false],
  [{url:prod,key,deployment:"production"},true,false],
