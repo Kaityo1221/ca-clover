@@ -27,6 +27,8 @@ assert.ok(moduleSource.includes('visible=false'),"handoff hides prompts");
 assert.ok(moduleSource.includes('phase="play-style"'),"play-style selection is the first screen");
 assert.ok(moduleSource.includes('data-act="face-to-face"'),"face-to-face play can be selected");
 assert.ok(moduleSource.includes('data-act="remote"'),"remote play can be selected");
+assert.ok(moduleSource.includes('phase==="remote-entry"'),"remote play goes to a lobby entry");
+assert.ok(moduleSource.includes('href="'+ZOROARK_QA_ROOM_URL+'"'),"room link has fixed Preview destination");
 assert.ok(moduleSource.includes('phase="mode-select"'),"game-mode selection follows play-style selection");
 assert.ok(moduleSource.includes('playStyle!=="face-to-face"'),"remote cannot call local game API");
 assert.ok(moduleSource.includes('busy||playStyle==="remote"'),"remote start is disabled");
@@ -38,7 +40,7 @@ assert.ok(moduleSource.includes('i!==value.wolf'),"Mimikyu never receives the wo
 assert.ok(moduleSource.includes('crypto.getRandomValues'),"additional role uses secure random source");
 assert.ok(moduleSource.includes('if(name==="chooseMode")'),"player can return to mode chooser");
 assert.ok(moduleSource.includes('typeof gateway.newRound!=="function"'),"GM is required in both modes");
-assert.ok(index.includes('20261111-medals1'),"question overlay fix avoids old module caches");
+assert.ok(index.includes('20261114-room-entry1'),"new lobby entry must bypass old module cache");
 assert.ok(moduleSource.includes('phase==="card-private"'),"private question screen is present");
 assert.ok(moduleSource.includes('phase==="card-handoff"'),"private handoff mask is present");
 assert.ok(moduleSource.includes('questionHands=Array.from({length:count},()=>Array.from({length:5},drawQuestion))'),"each player gets five cards");
@@ -148,6 +150,12 @@ const fakeRound={
 };
 const gateway={async newRound(){return {round:fakeRound}}};
 const teardown=m.mountZoroark({host:fakeHost,gateway,onBack(){}});
+tap("remote");
+assert.ok(fakeHost.innerHTML.includes("ルーム作成・管理画面へ"),"remote mode shows room creation entry");
+assert.ok(fakeHost.innerHTML.includes("ca-clover-4h7xyw0fg-kaityo1222.vercel.app/zoroark/rooms"),"room link targets approved Preview");
+assert.ok(!fakeHost.innerHTML.includes("ゲームを開始する"),"remote entry does not imply full remote game");
+tap("chooseStyle");
+assert.ok(fakeHost.innerHTML.includes('data-act="face-to-face"'),"local play remains selectable");
 function tap(act){
  const node={dataset:{act},disabled:false};
  handlers.click({target:{closest(selector){return selector==="[data-act]"?node:null}}});
