@@ -30,18 +30,21 @@ assert.ok(moduleSource.includes('data-act="remote"') && moduleSource.includes('<
 assert.ok(moduleSource.includes('phase==="remote-entry"'),"remote play opens a preparation screen");
 assert.ok(moduleSource.includes("ルーム番号を発行") && moduleSource.includes("ルーム番号を入力"),"remote room-number concept is preserved");
 assert.ok(moduleSource.includes("href=\"'+ZOROARK_QA_ROOM_URL+'\"") && moduleSource.includes("ca-clover-4h7xyw0fg-kaityo1222.vercel.app/zoroark/rooms"),"room link has fixed Preview destination");
-assert.ok(moduleSource.includes('phase="mode-select"'),"game-mode selection follows play-style selection");
+assert.ok(moduleSource.includes('phase==="setup"'),"face-to-face goes directly to unified setup");
+assert.ok(moduleSource.includes('phase==="method-select"'),"start proceeds to method choice");
+assert.ok(!moduleSource.includes('data-act="simple"')&&!moduleSource.includes('data-act="manual"'),"legacy simple/manual cards removed");
 assert.ok(moduleSource.includes('playStyle!=="face-to-face"'),"remote cannot call local game API");
-assert.ok(moduleSource.includes('busy||playStyle==="remote"'),"remote start is disabled");
+assert.ok(moduleSource.includes('if(name==="remote")') && moduleSource.includes('phase="remote-entry"'),"remote remains disabled and separate");
 assert.ok(moduleSource.includes('name==="chooseStyle"'),"can return to play-style selection");
-assert.ok(moduleSource.includes('data-act="simple"'),"simple mode is selectable");
-assert.ok(moduleSource.includes('data-act="manual"'),"manual mode is selectable");
+assert.ok(moduleSource.includes('id="zg-mimikyu"')&&moduleSource.includes('id="zg-show-roles"'),"mimikyu and private role visibility remain separate choices");
+assert.ok(moduleSource.includes('showRoles=false,enableMimikyu=false'),"both advanced options default off");
+assert.ok(moduleSource.includes('gameMode=(showRoles||enableMimikyu)?"manual":"simple"'),"legacy scoring rules preserved internally");
 assert.ok(moduleSource.includes('gameMode==="manual"&&enableMimikyu'),"Mimikyu is restricted to manual mode");
 assert.ok(moduleSource.includes('i!==value.wolf'),"Mimikyu never receives the wolf role");
 assert.ok(moduleSource.includes('crypto.getRandomValues'),"additional role uses secure random source");
-assert.ok(moduleSource.includes('if(name==="chooseMode")'),"player can return to mode chooser");
+assert.ok(moduleSource.includes('if(name==="backSettings")'),"player can return to unified settings");
 assert.ok(moduleSource.includes('typeof gateway.newRound!=="function"'),"GM is required in both modes");
-assert.ok(index.includes('20261114-face-to-face-qr3'),"remote preparation screen and QR entry bypass old asset cache");
+assert.ok(index.includes('20261115-unified-game1'),"unified settings bypass old asset cache");
 assert.ok(moduleSource.includes('phase==="card-private"'),"private question screen is present");
 assert.ok(moduleSource.includes('phase==="card-handoff"'),"private handoff mask is present");
 assert.ok(moduleSource.includes('questionHands=Array.from({length:count},()=>Array.from({length:5},drawQuestion))'),"each player gets five cards");
@@ -60,8 +63,8 @@ assert.ok(moduleSource.includes('if(document.hidden&&phase==="card-private")'),"
 assert.ok(moduleSource.includes('voteFinalists=result.candidates'),"Mimikyu runoff is retained");
 assert.ok(moduleSource.includes('visible?privatePrompt()'),"manual mode role reveal is retained");
 assert.ok(moduleSource.includes('(visible?privatePrompt()'),"private roles only render after a player opens the hidden topic");
-assert.ok(moduleSource.includes('役職も本人だけに知らせます。'),"manual mode explains role disclosure");
-assert.ok(moduleSource.includes('本人には少数派だと知らせません'),"simple mode retains hidden minority role");
+assert.ok(moduleSource.includes('お題と一緒に本人の役職を表示'),"player-only role disclosure remains an option");
+assert.ok(moduleSource.includes('ゾロアーク本人にも役職を知らせない'),"default basic rule hides minority identity");
 assert.ok(moduleSource.includes('esc(round.prompts[player])'),"topic escaped before DOM");
 assert.ok(moduleSource.includes('return destroy;'),"timer and handlers cleanup");
 assert.ok(nav.includes("data-open-zoroark"),"existing game list card");
@@ -149,7 +152,7 @@ const fakeRound={
  majority:"ガーディ",minority:"ロコン",
  pair:{id:"a01",common:"犬・狐に似たポケモン",difference:"タイプと進化"}
 };
-const gateway={async newRound(){return {round:fakeRound}}};
+let roundCallCount=0;const gateway={async newRound(args){roundCallCount++;assert.equal(args.count,6);assert.equal(args.difficulty,"all");return {round:fakeRound}}};
 const teardown=m.mountZoroark({host:fakeHost,gateway,onBack(){}});
 tap("remote");
 assert.ok(fakeHost.innerHTML.includes("リモートは準備中"),"remote mode shows preparation status");
@@ -165,16 +168,24 @@ function tap(act){
  handlers.click({target:{closest(selector){return selector==="[data-act]"?node:null}}});
 }
 tap("face-to-face");
-tap("simple");
-assert.ok(fakeHost.innerHTML.includes("📱 QRルームを作成（検証版）"),"simple face-to-face mode offers a QR lobby");
-assert.ok(fakeHost.innerHTML.includes("選択したシンプル／マニュアル・人数・難易度・トーク時間はQRルームにまだ連携されません"),"unsynced room settings are explained");
-assert.ok(fakeHost.innerHTML.includes("ゲームを開始する"),"single-device simple game remains available");
-tap("chooseMode");
-tap("manual");
-assert.ok(fakeHost.innerHTML.includes("📱 QRルームを作成（検証版）"),"manual face-to-face mode offers a QR lobby");
-assert.ok(fakeHost.innerHTML.includes('href="https://ca-clover-4h7xyw0fg-kaityo1222.vercel.app/zoroark/rooms"'),"face-to-face QR link targets only fixed Preview URL");
-assert.ok(fakeHost.innerHTML.includes("ミミッキュ役を1名追加"),"manual-mode special role is preserved");
+assert.ok(fakeHost.innerHTML.includes("⚙️ ゲーム設定"),"face-to-face opens unified settings without another mode page");
+assert.ok(fakeHost.innerHTML.includes('id="zg-mimikyu" type="checkbox">'),"Mimikyu defaults off");
+assert.ok(fakeHost.innerHTML.includes('id="zg-show-roles" type="checkbox">'),"private roles default hidden");
+assert.ok(fakeHost.innerHTML.includes('value="180">3分'),"three-minute talk option exists");
+assert.ok(fakeHost.innerHTML.includes("おまかせ（42組）"),"all difficulty option available");
 tap("start");
+assert.ok(fakeHost.innerHTML.includes("プレイ方法を選ぶ"),"game start opens handoff/room choice");
+assert.equal(roundCallCount,0,"game start does not issue or reveal any round");
+assert.ok(fakeHost.innerHTML.includes("ルームを作る（検証版）"),"room option available after start");
+assert.ok(fakeHost.innerHTML.includes('href="https://ca-clover-4h7xyw0fg-kaityo1222.vercel.app/zoroark/rooms"'),"room option targets fixed QA Preview");
+assert.ok(fakeHost.innerHTML.includes("QRルームに引き継がれず"),"room setup limits are explicit");
+tap("backSettings");
+assert.ok(fakeHost.innerHTML.includes("⚙️ ゲーム設定"),"settings can be revised before starting");
+handlers.change({target:{id:"zg-mimikyu",checked:true}});
+assert.ok(fakeHost.innerHTML.includes('id="zg-show-roles" type="checkbox" checked disabled'),"Mimikyu forces private role disclosure");
+tap("start");
+assert.equal(roundCallCount,0,"choosing settings never generates a round");
+tap("handoff");
 await new Promise(resolve=>setImmediate(resolve));
 assert.ok(fakeHost.innerHTML.includes("自分のお題を確認"),"round starts with private prompts");
 for(let i=0;i<6;i++){tap("show");tap("next")}
@@ -220,7 +231,10 @@ tap("judgeVotes");
 assert.ok(fakeHost.innerHTML.includes("いよいよ正体発表！"),"correct vote total determines a winner");
 tap("reveal");
 assert.ok(fakeHost.innerHTML.includes("村人側の勝利！"),"integrated question cards do not disturb Mimikyu scoring");
-tap("reset");tap("chooseMode");tap("simple");tap("start");
+tap("reset");
+handlers.change({target:{id:"zg-mimikyu",checked:false}});
+handlers.change({target:{id:"zg-show-roles",checked:false}});
+tap("start");tap("handoff");
 await new Promise(resolve=>setImmediate(resolve));
 tap("show");
 assert.ok(!fakeHost.innerHTML.includes("あなたの役職"),"simple mode still hides role identity");
@@ -228,7 +242,9 @@ teardown();
 
 /* Suspicion medal integration: one-device handoff, irreversibility, midpoint, and final tally. */
 const teardownMedals=m.mountZoroark({host:fakeHost,gateway,onBack(){}});
-tap("face-to-face");tap("manual");tap("start");
+tap("face-to-face");
+handlers.change({target:{id:"zg-mimikyu",checked:true}});
+tap("start");tap("handoff");
 await new Promise(resolve=>setImmediate(resolve));
 for(let i=0;i<6;i++){tap("show");tap("next")}
 assert.ok(fakeHost.innerHTML.includes("疑惑メダルを投げる"),"suspicion medal button is available in talk");
