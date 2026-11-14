@@ -134,7 +134,7 @@ export default function Page() {
     setClaimMessage(null);
     const {data,error}=await supabase.functions.invoke("community-claim",{body:{action:"submit",url:value}});
     if(error){
-      let message="申請に失敗しました。コミュニティ招待URL / ミートアップ共有URLを確認してください。";
+      let message="申請に失敗しました。ミートアップ共有URLと2つのIDを確認してください。";
       try{
         const context=(error as {context?:Response}).context;
         const payload=context?await context.clone().json():null;
@@ -185,16 +185,16 @@ export default function Page() {
     {profile?.role==="pending" ? <section className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5">
       <div className="text-xs font-black text-amber-700">初回CA登録</div>
       <h2 className="mt-1 text-lg font-black text-amber-950">Campfire URLでCA確認をします</h2>
-      <p className="mt-2 text-xs font-semibold leading-5 text-amber-800">トレーナー名とScopely IDの両方を登録してから、コミュニティ招待URLまたは自分が主催したミートアップ共有URLを提出してください。会長が承認するとCAアカウント化とCommunity割当が同時に完了します。</p>
+      <p className="mt-2 text-xs font-semibold leading-5 text-amber-800">トレーナー名とScopely IDの両方を登録してから、自分が主催したミートアップ共有URLを提出してください。会長が承認するとCAアカウント化とCommunity割当が同時に完了します。</p>
       {!profile.niantic_id || !profile.scopely_id?<Link href="/account" className="mt-3 inline-flex rounded-full bg-amber-200 px-4 py-2 text-xs font-black text-amber-950">先にトレーナー名とScopely IDを登録 →</Link>:<div className="mt-3 text-xs font-black text-amber-900">トレーナー名: {profile.niantic_id} ✓ / Scopely ID: {profile.scopely_id} ✓</div>}
     </section> : null}
 
     {profile?.role==="pending" ? <section className="clover-card mt-6 p-6">
       <div className="flex items-start gap-3">
         <div className="text-3xl">🔥</div>
-        <div><h2 className="font-black text-lime-950">Campfire URLからCommunityを申請</h2><p className="mt-1 text-xs font-semibold text-slate-500">コミュニティ招待URL、または自分が主催したミートアップ共有URLを貼り付けてください。トレーナー名は日本CAマスターと、Scopely IDはミートアップ主催者と照合します。Communityと1st/2ndも確認し、ミートアップ共有URLでは紫色CAバッジも確認します。</p></div>
+        <div><h2 className="font-black text-lime-950">Campfire URLからCommunityを申請</h2><p className="mt-1 text-xs font-semibold text-slate-500">自分が主催したミートアップ共有URLを貼り付けてください。コミュニティ招待URLでは主催者のScopely IDを照合できないため、初回登録には使用できません。トレーナー名は日本CAマスターと、Scopely IDはミートアップ主催者と照合します。Communityと1st/2ndも確認し、ミートアップ共有URLでは紫色CAバッジも確認します。</p></div>
       </div>
-      <input value={claimInput} onChange={e=>setClaimInput(e.target.value)} placeholder="コミュニティ招待URL / ミートアップ共有URL" className="mt-5 w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-lime-400"/>
+      <input value={claimInput} onChange={e=>setClaimInput(e.target.value)} placeholder="本人主催のミートアップ共有URL" className="mt-5 w-full rounded-2xl border border-lime-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-lime-400"/>
       <button onClick={submitClaim} disabled={claimBusy||!claimInput.trim()||!profile?.niantic_id||!profile?.scopely_id} className="mt-3 w-full rounded-2xl bg-lime-400 px-5 py-3 text-sm font-black text-lime-950 disabled:opacity-50">{claimBusy?"Communityを確認中...":"Communityを確認して申請"}</button>
       {claimMessage ? <p className="mt-3 text-center text-xs font-bold text-lime-700">{claimMessage}</p> : null}
     </section> : null}
@@ -222,7 +222,7 @@ export default function Page() {
       <section className="clover-card mt-6 p-8 text-center">
         <div className="text-5xl">🌱</div>
         <h2 className="mt-3 text-xl font-black text-lime-950">Community未割当です</h2>
-        <p className="mt-2 text-sm font-semibold text-slate-500">{profile?.role==="pending"?"コミュニティ招待URLまたは自分が主催したミートアップ共有URLを提出し、承認されるとCAアカウントとCommunity割当が同時に有効になります。":"Community情報を確認中です。認証済みなのに表示されない場合は管理者へお問い合わせください。"}</p>
+        <p className="mt-2 text-sm font-semibold text-slate-500">{profile?.role==="pending"?"自分が主催したミートアップ共有URLを提出し、承認されるとCAアカウントとCommunity割当が同時に有効になります。":"Community情報を確認中です。認証済みなのに表示されない場合は管理者へお問い合わせください。"}</p>
       </section>
     ) : null}
 
