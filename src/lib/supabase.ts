@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import {resolveSupabaseEndpoint, isSupabaseKeyForRole} from "./supabase-connection";
+import {resolveSupabaseEndpoint, isSupabaseKeyForRole, isLocalPcQaBrowserConfig, PC_QA_AUTH_API} from "./supabase-connection";
 
 // Preproduction safety: never silently connect an unconfigured build to the
 // real CA Clover database. This is not an authorization control for the backend;
@@ -9,10 +9,13 @@ const DISABLED_KEY = "sb_publishable_disabled_no_real_database";
 
 let browserClient: ReturnType<typeof createClient> | null = null;
 export function resolveBrowserSupabaseConfig(env:{
-  url?:string;key?:string;deployment?:string;isolatedRef?:string;
+  url?:string;key?:string;deployment?:string;isolatedRef?:string;localPcQa?:boolean;browserOrigin?:string;
 }){
   const url=env.url?.trim()??"";
   const key=env.key?.trim()??"";
+  if (isLocalPcQaBrowserConfig({...env,url,key})) {
+    return {url:PC_QA_AUTH_API,key,isolated:true};
+  }
   const endpoint=resolveSupabaseEndpoint({...env,url});
   if(!endpoint || !isSupabaseKeyForRole(key,endpoint.ref,"anon"))
     return {url:DISABLED_URL,key:DISABLED_KEY,isolated:false};
@@ -26,6 +29,8 @@ export function createBrowserSupabaseClient(){
     key:process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     deployment:process.env.NEXT_PUBLIC_VERCEL_ENV,
     isolatedRef:process.env.NEXT_PUBLIC_CA_CLOVER_ISOLATED_SUPABASE_REF,
+    localPcQa:process.env.NEXT_PUBLIC_CA_CLOVER_PC_AUTH_QA === "true",
+    browserOrigin:typeof window === "undefined" ? undefined : window.location.origin,
   });
   browserClient=createClient(config.url,config.key);
   return browserClient;

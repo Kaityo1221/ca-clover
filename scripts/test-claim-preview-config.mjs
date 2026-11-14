@@ -9,8 +9,8 @@ function load(path, expression, extra={}) {
     .replace(/export function/g,"function").replace(/export const/g,"const").replace(/export default nextConfig;/,""),{mode:"transform"});
   return vm.runInNewContext(js+"\n"+expression,{URL,atob,...extra},{timeout:2000});
 }
-const {resolveSupabaseEndpoint,isSupabaseKeyForRole}=load("src/lib/supabase-connection.ts","({resolveSupabaseEndpoint,isSupabaseKeyForRole})");
-const helpers={resolveSupabaseEndpoint,isSupabaseKeyForRole};
+const {resolveSupabaseEndpoint,isSupabaseKeyForRole,isLocalPcQaBrowserConfig,PC_QA_AUTH_API}=load("src/lib/supabase-connection.ts","({resolveSupabaseEndpoint,isSupabaseKeyForRole,isLocalPcQaBrowserConfig,PC_QA_AUTH_API})");
+const helpers={resolveSupabaseEndpoint,isSupabaseKeyForRole,isLocalPcQaBrowserConfig,PC_QA_AUTH_API};
 const resolve=load("src/lib/supabase.ts","resolveBrowserSupabaseConfig",helpers);
 const ref="abcdefghijabcdefghij", prodRef="wgiittrvgtiosogyhfcl";
 const prod="https://"+prodRef+".supabase.co", preview="https://"+ref+".supabase.co";
@@ -43,6 +43,39 @@ for (const [env,allowed] of cases) {
   assert.equal(actual.url!=="https://ca-clover-no-auth.invalid",allowed,JSON.stringify({...env,key:"[redacted]"}));
   checks++;
 }
+// Local PC auth QA has a separate, narrow allowlist. It cannot weaken
+// hosted Preview/Production or accept a service-role/production JWT.
+const localJwt=(role,ref)=>"eyJhbGciOiJIUzI1NiJ9."+
+  Buffer.from(JSON.stringify({role,...(ref?{ref}:{})})).toString("base64url")+".synthetic";
+const local={
+  url:"http://127.0.0.1:56321",key:localJwt("anon"),
+  deployment:"development",localPcQa:true,browserOrigin:"http://127.0.0.1:56490",
+};
+for(const [config,expected] of [
+  [local,true],
+  [{...local,key:localJwt("anon","ca-clover-claim-pcqa-20261114")},true],
+  [{...local,key:localJwt("service_role")},false],
+  [{...local,key:localJwt("anon",prodRef)},false],
+  [{...local,key:key},false],
+  [{...local,localPcQa:false},false],
+  [{...local,localPcQa:undefined},false],
+  [{...local,deployment:"preview"},false],
+  [{...local,deployment:"production"},false],
+  [{...local,deployment:undefined},false],
+  [{...local,browserOrigin:"http://localhost:56490"},false],
+  [{...local,browserOrigin:"http://127.0.0.1:3000"},false],
+  [{...local,url:"http://127.0.0.1:55321"},false],
+  [{...local,url:"http://localhost:56321"},false],
+  [{...local,url:"http://127.0.0.1:56321/"},false],
+  [{...local,url:prod},false],
+  [{...local,url:preview},false],
+]) {
+  const actual=resolve(config);
+  assert.equal(actual.url==="http://127.0.0.1:56321",expected,
+    JSON.stringify({...config,key:"[redacted]"}));
+  checks++;
+}
+
 // Run the actual admin factory: reject before creating a network client.
 for(const [env,allowed] of [
   [{NEXT_PUBLIC_SUPABASE_URL:prod,SUPABASE_SERVICE_ROLE_KEY:jwt("service_role",prodRef),VERCEL_ENV:"preview",NEXT_PUBLIC_VERCEL_ENV:"production"},false],
@@ -77,5 +110,22 @@ for (const [env,isolated] of [
   assert.equal(headers.source,"/discord-ca/callback");
   assert.ok(headers.headers.some(h=>h.key==="Referrer-Policy"&&h.value==="no-referrer")); checks++;
 }
+// The PC switch is build-time and never available to Vercel deployments.
+for(const [env,expected] of [
+  [{NODE_ENV:"development",CA_CLOVER_PC_AUTH_QA:"enabled"},true],
+  [{NODE_ENV:"production",CA_CLOVER_PC_AUTH_QA:"enabled"},false],
+  [{NODE_ENV:"development",CA_CLOVER_PC_AUTH_QA:"disabled"},false],
+  [{NODE_ENV:"development",CA_CLOVER_PC_AUTH_QA:"enabled",VERCEL_ENV:"preview"},false],
+  [{NODE_ENV:"development",CA_CLOVER_PC_AUTH_QA:"enabled",VERCEL_ENV:"production"},false],
+]) {
+  const config=load("next.config.ts","nextConfig",{process:{env}});
+  assert.equal((await config.redirects()).length,expected?0:6);checks++;
+  assert.equal(config.env.NEXT_PUBLIC_CA_CLOVER_PC_AUTH_QA,expected?"true":"false");checks++;
+  const guard=load("src/proxy.ts","proxy",{
+    process:{env:config.env},NextResponse:{json:Response.json,next:()=>null},
+  });
+  assert.equal(guard()?.status??null,expected?503:null);checks++;
+}
+
 console.log("CLAIM_PREVIEW_CONNECTION_PASS checks="+checks+" network=0 client_creation_guard=PASS same_origin_routes=PASS");
 
