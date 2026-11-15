@@ -1,0 +1,39 @@
+name: Zoroark Official 42 ADMIN UI Isolated QA (No Deploy)
+on:
+  push:
+    branches:
+      - feature/zoroark-official42-review-ui-no-deploy-20261115
+    paths:
+      - docs/zoroark-ideas.mjs
+      - docs/zoroark-idea-library.mjs
+      - docs/index.html
+      - scripts/ci/test-zoroark-admin-ideas.mjs
+      - scripts/ci/test-zoroark-json-library.mjs
+      - .github/workflows/zoroark-official42-isolated-qa.yml
+  pull_request:
+    branches:
+      - feature/zoroark-catalog-ui-staged-isolated-20261115
+    paths:
+      - docs/zoroark-ideas.mjs
+      - docs/zoroark-idea-library.mjs
+      - docs/index.html
+      - scripts/ci/test-zoroark-admin-ideas.mjs
+      - scripts/ci/test-zoroark-json-library.mjs
+      - .github/workflows/zoroark-official42-isolated-qa.yml
+permissions:
+  contents: read
+concurrency:
+  group: zoroark-official42-isolated-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  ui-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Validate ADMIN UI and browser-safe inline JS
+        run: node scripts/ci/test-zoroark-admin-ideas.mjs
+      - name: Validate 42 official pairs, filters and local memo retention
+        run: node scripts/ci/test-zoroark-json-library.mjs
