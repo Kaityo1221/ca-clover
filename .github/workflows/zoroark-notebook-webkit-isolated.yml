@@ -1,0 +1,42 @@
+name: Zoroark Notebook Mobile WebKit Isolated (No Deploy)
+on:
+  push:
+    branches: [feature/zoroark-notebook-soft-delete-isolated-20261115]
+    paths:
+      - docs/zoroark-ideas.mjs
+      - docs/zoroark-notebook.mjs
+      - docs/zoroark-official42.mjs
+      - scripts/test-zoroark-notebook-webkit-isolated.mjs
+      - .github/workflows/zoroark-notebook-webkit-isolated.yml
+  pull_request:
+    branches: [pages]
+    paths:
+      - docs/zoroark-ideas.mjs
+      - docs/zoroark-notebook.mjs
+      - docs/zoroark-official42.mjs
+      - scripts/test-zoroark-notebook-webkit-isolated.mjs
+      - .github/workflows/zoroark-notebook-webkit-isolated.yml
+permissions:
+  contents: read
+jobs:
+  webkit-mobile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - run: npm install --no-save --package-lock=false --ignore-scripts playwright@1.56.1
+      - run: npx playwright install --with-deps webkit
+      - run: node scripts/test-zoroark-notebook-webkit-isolated.mjs
+      - name: Upload synthetic WebKit captures
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zoroark-mobile-webkit-synthetic
+          path: qa-artifacts/zoroark-notebook/*.png
+          if-no-files-found: ignore
+          retention-days: 3
