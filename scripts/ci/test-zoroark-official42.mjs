@@ -102,6 +102,7 @@ try{
  apiFailure=false;
  click("[data-game-refresh]");await flush();
  assert.ok(host.innerHTML.includes("ゲームの出題から停止"),"reconnected control still available");
+ click("[data-official-cancel]");
 
  // Self-created memos are not in game, so their trash works locally.
  click("[data-book-kind]",{bookKind:"memo"});
