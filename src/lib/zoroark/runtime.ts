@@ -4,6 +4,7 @@ import { neon } from "@neondatabase/serverless";
 const PREVIEW_BRANCHES = new Set([
   "feature/zoroark-guest-invite-chat-isolated-20261113",
   "integration/zoroark-pages-current-isolated-20261114",
+  "feature/zoroark-qr-gameplay-preprod-20261115",
 ]);
 export type Kind = "gm" | "guest";
 export function runtimeConfig(kind: Kind, env = process.env) {
