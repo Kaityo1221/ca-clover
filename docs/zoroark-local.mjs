@@ -69,7 +69,7 @@ function ensureStyle(){
  const el=document.createElement("style");el.id="zoroark-pages-v1-style";el.textContent=styles;document.head.appendChild(el);
 }
 function fmt(sec){const v=Math.max(0,Math.ceil(sec));return String(Math.floor(v/60)).padStart(2,"0")+":"+String(v%60).padStart(2,"0")}
-function recentLoad(){try{const v=JSON.parse(sessionStorage.getItem("ca-zoroark-recent-v3")||"[]");return Array.isArray(v)?v.filter(x=>typeof x==="string"&&/^[a-z][0-9]{2}$/.test(x)).slice(-6):[]}catch{return []}}
+function recentLoad(){try{const v=JSON.parse(sessionStorage.getItem("ca-zoroark-recent-v3")||"[]");return Array.isArray(v)?v.filter(x=>typeof x==="string"&&/^[a-z][0-9]{2,4}$/.test(x)).slice(-6):[]}catch{return []}}
 function recentSave(history){try{sessionStorage.setItem("ca-zoroark-recent-v3",JSON.stringify(history.slice(-6)))}catch{}}
 export function mountZoroark({host,gateway,onBack}){
  if(!host||!gateway||typeof gateway.newRound!=="function")throw Error("GM権限を確認できません");

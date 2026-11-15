@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+// Catalog integration must retain x0001-style published topic IDs in recent history.
 import {readFileSync} from "node:fs";
 import {Script} from "node:vm";
 import {fileURLToPath} from "node:url";
