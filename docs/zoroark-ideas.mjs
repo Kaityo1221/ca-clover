@@ -238,7 +238,7 @@ export function mountIdeaMemo({host,role,onBack,gameCatalogGateway}){
  }
  function exportData(){
   try{
-   if(trashError)throw Error(trashError);
+   if(entryReadError||officialError||trashError)throw Error("保存データを読み取れません。元データ保護のため不完全なバックアップを作成しません。");
    const data=notebookBackup(entries,officialDrafts,gameTrash());
    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
    const url=URL.createObjectURL(blob);
