@@ -16,8 +16,8 @@ function harness(options={}){
  const env={VERCEL_ENV:"preview",VERCEL_GIT_COMMIT_REF:"feature/zoroark-qr-gameplay-preprod-20261115",
   ZOROARK_GAMEPLAY_ENABLED:"true",NEXT_PUBLIC_SUPABASE_URL:"https://example.supabase.co",
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:"sb_publishable_synthetic",
-  ZOROARK_NEON_GM_DATABASE_URL:"postgresql://zoroark_runtime_gm:synthetic@ep-frosty-grass-betfuvsp-pooler.c-9.us-east-2.aws.neon.tech/zoroark_prod?sslmode=require",
-  ZOROARK_NEON_GUEST_DATABASE_URL:"postgresql://zoroark_runtime_guest:synthetic@ep-frosty-grass-betfuvsp-pooler.c-9.us-east-2.aws.neon.tech/zoroark_prod?sslmode=require",
+  ZOROARK_NEON_GM_DATABASE_URL:"postgresql://zoroark_runtime_gm:synthetic@ep-patient-wildflower-becnjy57-pooler.c-9.us-east-2.aws.neon.tech/zoroark_prod?sslmode=require",
+  ZOROARK_NEON_GUEST_DATABASE_URL:"postgresql://zoroark_runtime_guest:synthetic@ep-patient-wildflower-becnjy57-pooler.c-9.us-east-2.aws.neon.tech/zoroark_prod?sslmode=require",
   ...options.env};
  const calls=[];let canonicalCalls=0;
  const neon=url=>async(strings,...args)=>{
