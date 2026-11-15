@@ -19,7 +19,7 @@ assert.deepEqual(parseNotebookImport(JSON.stringify(notebookBackup([],{},{
 
 const index=readFileSync("docs/index.html","utf8");
 const ui=readFileSync("docs/zoroark-ideas.mjs","utf8");
-assert.ok(index.includes("zoroark-ideas.mjs?v=20261115-notebook-integration2"));
+assert.ok(index.includes("zoroark-ideas.mjs?v=20261115-management-compat3"));
 assert.ok(index.includes("gameCatalogGateway:zoroarkOfficialGateway"));
 assert.ok(index.includes("/api/zoroark/official"));
 assert.ok(ui.includes("data-official-delete")&&ui.includes("data-official-restore"));
