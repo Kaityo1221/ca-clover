@@ -74,10 +74,10 @@ function recentSave(history){try{sessionStorage.setItem("ca-zoroark-recent-v3",J
 export function mountZoroark({host,gateway,onBack}){
  if(!host||!gateway||typeof gateway.newRound!=="function")throw Error("GM権限を確認できません");
  ensureStyle();
- let destroyed=false,phase="play-style",playStyle=null,gameMode=null,enableMimikyu=true,mimikyuIndex=-1,count=6,level="all",duration=180,mode="free",round=null,player=0,visible=false,
+ let destroyed=false,phase="play-style",playStyle=null,gameMode="simple",showRoles=false,enableMimikyu=false,playMethod=null,gmJoins=false,mimikyuIndex=-1,count=6,level="all",duration=180,mode="free",round=null,player=0,visible=false,
   remaining=duration,running=false,deadline=0,topic=0,talkRound=1,vote=0,voteCounts=[],voteFinalists=null,voteRound=1,voteDecision=null,reveal=false,roundNo=0,
   busy=false,error="",history=recentLoad(),questionHands=[],questionUsed=[],cardPlayer=-1,cardCooldownUntil=0,cardAnnouncement=null,cardAnnouncementUntil=0,cardWasRunning=false,medalTotals=[],medalUsed=[],medalActor=-1,medalTarget=-1,medalWasRunning=false,midpointFired=false,midpointUntil=0,midpointNotice=null,talkElapsedMs=0,talkResumeAt=0;
- const panel=()=>'<div class="zg"><section class="card hero"><div class="zg-head"><button data-act="back" type="button" class="zg-btn secondary">← My Communityへ戻る</button><span class="pill">🦊 CA専用GM</span></div><h1 style="margin-top:13px">🎭 ゾロアークを探せ！</h1><p class="muted strong">対面かリモートを選んでから、ゲームモードを決めよう。</p></section><section class="zg-panel">'+body()+'</section>'+questionOverlay()+midpointOverlay()+'</div>';
+ const panel=()=>'<div class="zg"><section class="card hero"><div class="zg-head"><button data-act="back" type="button" class="zg-btn secondary">← My Communityへ戻る</button><span class="pill">🦊 CA主催者専用</span></div><h1 style="margin-top:13px">🎭 ゾロアークを探せ！</h1><p class="muted strong">対面ならゲーム設定後に手渡し／ルーム作成を選ぼう。リモートは準備中。</p></section><section class="zg-panel">'+body()+'</section>'+questionOverlay()+midpointOverlay()+'</div>';
  function action(text,id,other=false,disabled=false){return '<button type="button" data-act="'+id+'" class="zg-btn'+(other?' secondary':'')+' zg-full"'+(disabled?' disabled':'')+'>'+text+'</button>'}
  function questionOverlay(){
   if(phase!=="talk"||!cardAnnouncement||Date.now()>=cardAnnouncementUntil)return '';
@@ -122,11 +122,11 @@ export function mountZoroark({host,gateway,onBack}){
   return '<div class="zg-suspicion-popup"><article role="dialog" aria-modal="true"><span class="zg-medal-circle zg-medal-large">?</span><h2>📣 疑惑速報！</h2><p style="font-size:23px;font-weight:950">'+esc(midpointNotice)+'</p><p>投票者・獲得枚数は秘密</p>'+action('会話に戻る',"closeMidpoint",true)+'</article></div>';
  }
  function medalScreen(){
-  if(phase==="medal-owner")return '<span class="pill">🪙 疑惑メダル</span><h2>誰が投げる？</h2><p class="zg-medal-warning">1人3枚。本人だけが投票先を確認してください。</p><div class="zg-medal-grid">'+Array.from({length:count},(_,i)=>'<button type="button" class="zg-btn secondary" data-act="medalActor:'+i+'">'+(i+1)+'番</button>').join("")+'</div>'+action('会話に戻る',"medalClose",true);
-  if(phase==="medal-handoff")return '<span class="pill">🔒 非公開操作</span><h2>プレイヤー'+(medalActor+1)+'番</h2><div class="zg-secret"><strong>本人だけが開いてね</strong><span>ほかの人には見せないでください</span></div>'+action('メダルを確認する',"medalOpen")+action('投げずに戻る',"medalClose",true);
-  if(phase==="medal-private")return '<span class="pill">🪙 疑惑メダル</span><h2>プレイヤー'+(medalActor+1)+'番</h2><p class="zg-medal-warning">残り '+(3-medalUsed[medalActor])+' / 3枚。同じ相手に複数枚投げてもOK！</p>'+(medalUsed[medalActor]===3?'<p>すべて使用しました。</p>':'<p>怪しい相手を選んでください</p><div class="zg-medal-grid">'+Array.from({length:count},(_,i)=>i===medalActor?'':'<button type="button" class="zg-btn secondary" data-act="medalTarget:'+i+'">'+(i+1)+'番</button>').join("")+'</div>')+action('画面を隠して戻る',"medalClose",true);
+  if(phase==="medal-owner")return '<span class="pill">🪙 疑惑メダル</span><h2>メダルを投げる人は自分の番号を選んでね</h2><p class="zg-medal-warning">参加者本人が操作します。自分の番号を選んでから画面を隠し、投票先を誰にも見せずに確定してください。1人3枚まで、同じ相手への複数枚もOK。</p><div class="zg-medal-grid">'+Array.from({length:count},(_,i)=>'<button type="button" class="zg-btn secondary" data-act="medalActor:'+i+'">'+(i+1)+'番</button>').join("")+'</div>'+action('会話に戻る',"medalClose",true);
+  if(phase==="medal-handoff")return '<span class="pill">🔒 非公開操作</span><h2>プレイヤー'+(medalActor+1)+'番</h2><div class="zg-secret"><strong>本人だけが開いてね</strong><span>選んだ番号が自分の番号か確認し、周囲から画面を隠して開いてください</span></div>'+action('自分のメダルを開く',"medalOpen")+action('投げずに戻る',"medalClose",true);
+  if(phase==="medal-private")return '<span class="pill">🪙 疑惑メダル</span><h2>プレイヤー'+(medalActor+1)+'番</h2><p class="zg-medal-warning">残り '+(3-medalUsed[medalActor])+' / 3枚。同じ相手に複数枚投げてもOK！</p>'+(medalUsed[medalActor]===3?'<p>すべて使用しました。</p>':'<p>自分が怪しいと思う相手の番号を選んでください。投票先は他の人に見せないでね。</p><div class="zg-medal-grid">'+Array.from({length:count},(_,i)=>i===medalActor?'':'<button type="button" class="zg-btn secondary" data-act="medalTarget:'+i+'">'+(i+1)+'番</button>').join("")+'</div>')+action('画面を隠して戻る',"medalClose",true);
   if(phase==="medal-confirm")return '<span class="pill">⚠️ 最終確認</span><h2>メダルを投げる？</h2><div class="zg-medal-warning" style="font-size:22px;text-align:center">🪙 '+(medalTarget+1)+'番へ1枚<br>確定後は取消・変更できません！</div>'+action('確定して投げる',"medalCommit")+action('キャンセル',"medalCancel",true);
-  if(phase==="medal-done")return '<span class="pill">🪙 投票完了</span><h2>メダルを投げました</h2><div class="zg-secret"><strong>投票先は非公開</strong><span>画面を伏せてGMに返してください。</span></div>'+action('画面を隠して会話へ',"medalClose");
+  if(phase==="medal-done")return '<span class="pill">🪙 投票完了</span><h2>メダルを投げました</h2><div class="zg-secret"><strong>投票先は非公開</strong><span>画面を隠してから全員の会話画面に戻してください。GMへ投票先を知らせる必要はありません。</span></div>'+action('画面を隠して会話へ',"medalClose");
   return '';
  }
  function medalsResult(){
@@ -141,7 +141,7 @@ export function mountZoroark({host,gateway,onBack}){
   const ready=total===count;
   const allowed=voteFinalists===null?Array.from({length:count},(_,i)=>i):voteFinalists;
   return '<span class="pill">🗳️ '+(voteRound===1?'最終投票':'決選投票 '+voteRound+'回目')+'</span>'+
-   '<h2>ゾロアークは誰だ？</h2><p>GMが指差し投票の票数を入力します。プレイヤー全員が各1票、GMは投票しません。</p>'+
+   '<h2>ゾロアークは誰だ？</h2><p>「せーの！」で全員が一斉に怪しい人を指差そう。プレイヤーは全員1票。'+(gmJoins?'主催者も1票を投じ、参加者の誰か1人が票数を入力します。':'専任GMは投票せず、票数を入力します。')+'</p>'+
    (voteRound>1?'<div class="zg-hint">同数最多だった参加者だけで決選投票します。前回の票数は引き継ぎません。</div>':'')+
    '<div class="zg-tally-grid">'+allowed.map(i=>'<div class="zg-tally-item"><strong>'+(i+1)+'番</strong><div class="zg-tally-buttons"><button type="button" data-act="subtractVote:'+i+'" class="zg-btn secondary" aria-label="'+(i+1)+'番を1票減らす"'+(voteCounts[i]===0?' disabled':'')+'>−</button><span class="zg-tally-count">'+voteCounts[i]+'</span><button type="button" data-act="addVote:'+i+'" class="zg-btn secondary" aria-label="'+(i+1)+'番を1票増やす"'+(total>=count?' disabled':'')+'>＋</button></div></div>').join("")+'</div>'+
    '<div class="zg-vote-progress">入力済み '+total+' / '+count+'票'+(ready?' ✓':'')+'</div>'+
@@ -164,22 +164,23 @@ export function mountZoroark({host,gateway,onBack}){
    (voteRound>1?'<p>決選投票：'+voteRound+'回目で決着</p>':'')+
    '<p>多数派：<strong>'+esc(round.majority)+'</strong><br>少数派：<strong>'+esc(round.minority)+'</strong></p>'+
    '<div class="zg-hint"><strong>共通点：</strong>'+esc(round.pair.common)+'<br><strong>違い：</strong>'+esc(round.pair.difference)+'</div>'+
-   action(busy?'CA権限を確認中…':'次のゲームへ',"start",false,busy)+action('🪙 疑惑メダル集計へ →',"medalResults")+action('人数設定に戻る',"reset",true);
+   action('次のゲームへ',"start",false,busy)+(playMethod==="handoff"?'':action('🪙 疑惑メダル集計へ →',"medalResults"))+action('人数設定に戻る',"reset",true);
  }
  function body(){
   if(phase.startsWith("medal-")&&phase!=="medal-summary")return medalScreen();
   if(phase==="medal-summary")return medalsResult();
   if(phase==="card-owner"||phase==="card-handoff"||phase==="card-private")return cardScreen();
- if(phase==="play-style")return '<span class="pill">PLAY STYLE</span><h2 style="margin-top:12px">遊び方を選ぶ</h2><p class="muted strong">どちらもGMが必要です。</p><div class="zg-mode-grid"><button type="button" class="zg-mode-card" data-act="face-to-face"><span class="mode-icon">🤝</span><strong>対面</strong><span class="mode-desc">会場で集まる対面プレイ。シンプル／マニュアルを選び、1台プレイかQRルームを利用。</span></button><button type="button" class="zg-mode-card manual" data-act="remote"><span class="mode-icon">🌐</span><strong>リモート</strong><span class="mode-desc">離れた場所から参加。ルーム番号を発行・入力して参加する方式を開発予定。現在は準備中。</span></button></div>';
+ if(phase==="play-style")return '<span class="pill">PLAY STYLE</span><h2 style="margin-top:12px">遊び方を選ぶ</h2><p class="muted strong">どちらもCA主催者が必要です。対面手渡しでは専任GMなしも選択できます。</p><div class="zg-mode-grid"><button type="button" class="zg-mode-card" data-act="face-to-face"><span class="mode-icon">🤝</span><strong>対面</strong><span class="mode-desc">会場で集まる対面プレイ。設定後に手渡し、またはQRルームを選択。</span></button><button type="button" class="zg-mode-card manual" data-act="remote"><span class="mode-icon">🌐</span><strong>リモート</strong><span class="mode-desc">離れた場所から参加。ルーム番号を発行・入力して参加する方式を開発予定。現在は準備中。</span></button></div>';
  if(phase==="remote-entry")return '<span class="pill">🌐 REMOTE</span><h2 style="margin-top:12px">リモートは準備中</h2><div class="zg-hint" role="status">今後はGMが<strong>ルーム番号を発行</strong>し、離れた場所の参加者が<strong>ルーム番号を入力</strong>して入室する方式を予定しています。現在は番号発行・入室・リモートゲームを利用できません。</div>'+action('← 遊び方を選ぶ',"chooseStyle",true);
- if(phase==="mode-select")return '<span class="pill">'+(playStyle==="remote"?"🌐 リモート":"🤝 対面")+'</span><h2 style="margin-top:12px">モードを選ぶ</h2><p class="muted strong">どちらもGMが必要です。人数・難易度・トーク時間・進行操作は共通です。</p><div class="zg-mode-grid"><button type="button" class="zg-mode-card" data-act="simple"><span class="mode-icon">🎮</span><strong>シンプルモード</strong><span class="mode-desc">村人とゾロアークだけで遊ぶ基本ルール。</span></button><button type="button" class="zg-mode-card manual" data-act="manual"><span class="mode-icon">🎭</span><strong>マニュアルモード</strong><span class="mode-desc">基本ルールにミミッキュなどの追加役職を組み込む。</span></button></div>'+action('← 対面・リモート選択へ',"chooseStyle",true);
- if(phase==="setup")return '<span class="pill">'+(playStyle==="remote"?"🌐 リモート":"🤝 対面")+' · '+(gameMode==="manual"?"🎭 マニュアルモード":"🎮 シンプルモード")+' · ROUND '+(roundNo+1)+'</span><h2 style="margin-top:12px">ゲームを準備する</h2><div class="zg-hint">'+(gameMode==="manual"?'多数派とは異なるお題を受け取る人が1人います。役職も本人だけに知らせます。<br>役職とポケモン名は秘密。嘘やブラフもOK！':'多数派とは異なるお題を受け取る人が1人います。本人には少数派だと知らせません。<br>ポケモン名を言わずに話そう。嘘やブラフもOK！')+'</div><label class="zg-label">人数（GMを除く）</label><div class="zg-controls"><button class="zg-btn secondary" data-act="minus">−</button><strong>'+count+'</strong><button class="zg-btn secondary" data-act="plus">＋</button></div><p class="muted small center">推奨6〜8人（3〜12人）</p><label for="zg-level" class="zg-label">難易度</label><select class="zg-select" id="zg-level"><option value="all">おまかせ（42組）</option><option value="easy">初級（12組）</option><option value="normal">中級（15組）</option><option value="hard">上級（15組）</option></select><label for="zg-mode" class="zg-label">会話形式</label><select class="zg-select" id="zg-mode"><option value="free">自由トーク</option><option value="rounds">順番に2周</option></select><label for="zg-duration" class="zg-label">トーク時間</label><select class="zg-select" id="zg-duration"><option value="120">2分</option><option value="180">3分</option><option value="300">5分</option><option value="0">制限なし</option></select>'+(gameMode==="manual"?'<label class="zg-role-option"><input id="zg-mimikyu" type="checkbox"'+(enableMimikyu?' checked':'')+'>👻 ミミッキュ役を1名追加</label><div class="zg-hint">ミミッキュは多数派のお題を受け取り、自分が特別役職であることを知っています。誤って選ばれると単独勝利します。</div>':'')+(playStyle==="remote"?'<div class="zg-hint" role="status">🌐 リモート通信・個別のお題配布・遠隔投票は現在開発準備中です。まだゲームは開始できません。</div>':'')+(error?'<div class="notice err" role="alert">'+esc(error)+'</div>':'')+action(playStyle==="remote"?'リモート機能は準備中':busy?'CA権限を確認中…':'ゲームを開始する',"start",false,busy||playStyle==="remote")+(playStyle==="face-to-face"?'<div class="zg-hint" role="note"><strong>📱 対面QRルーム（検証版）</strong><br>参加者が各自のスマホから入室してGM承認を受けられます。<strong>選択したシンプル／マニュアル・人数・難易度・トーク時間はQRルームにまだ連携されません。</strong> 役職配布・投票などのゲーム本編も未接続です。</div><a class="zg-btn secondary zg-full" href="'+ZOROARK_QA_ROOM_URL+'">📱 QRルームを作成（検証版）</a>':'')+action('← モード選択へ',"chooseMode",true);
- if(phase==="pass")return '<span class="pill">お題配布 '+(player+1)+' / '+round.count+'</span><h2 style="margin-top:12px">自分のお題を確認</h2><div class="zg-hint">プレイヤー'+(player+1)+'番だけが画面を見てください。次の人へ渡すときは必ず隠してください。</div><div class="zg-secret">'+(visible?privatePrompt():'<div style="font-size:56px">🔒</div><strong>本人だけが開いてね</strong>')+'</div>'+action(visible?'確認した・お題を隠す':'お題を見る',visible?'next':'show')+action('最初からやり直す','reset',true);
- if(phase==="talk")return '<span class="pill">🎤 '+(mode==="free"?"自由トーク":"順番に2周・"+talkRound+"周目")+'</span><h2 style="margin-top:12px">会話で探り合おう！</h2><p class="muted strong">全員に発言の機会を。うまく嘘を混ぜるのも作戦！</p><div class="zg-timer" data-clock>'+ (duration===0?'∞':fmt(remaining))+'</div><div class="zg-grid"><button data-act="timer" class="zg-btn secondary"'+(!duration?' disabled':'')+'>'+(running?'⏸ 一時停止':'▶ タイマー')+'</button><button data-act="extend" class="zg-btn secondary"'+(!duration?' disabled':'')+'>＋30秒</button><button data-act="topic" class="zg-btn secondary">🎤 別の話題</button><button data-act="talkRound" class="zg-btn secondary">🔁 次の周へ</button></div><div class="zg-hint">GM向けトーク補助：<strong>'+esc(topics[topic])+'</strong></div>'+
+ if(phase==="setup")return '<span class="pill">🤝 対面 · GAME SETTINGS</span><h2 style="margin-top:12px">⚙️ ゲーム設定</h2><div class="zg-hint">人数・難易度・会話形式・時間を設定します。<strong>「ゲーム開始」ではまだお題や役職は配りません。</strong> 次に手渡し／ルーム作成を選択します。</div><label class="zg-label">プレイヤー人数（GMなしなら主催者も含む）</label><div class="zg-controls"><button class="zg-btn secondary" data-act="minus">−</button><strong>'+count+'</strong><button class="zg-btn secondary" data-act="plus">＋</button></div><p class="muted small center">推奨6〜8人（3〜12人）。専任GMありでは司会役を除き、GMなしでは主催者も1人に数えます。</p><label for="zg-level" class="zg-label">難易度</label><select class="zg-select" id="zg-level"><option value="all">おまかせ（42組）</option><option value="easy">初級（12組）</option><option value="normal">中級（15組）</option><option value="hard">上級（15組）</option></select><label for="zg-mode" class="zg-label">会話形式</label><select class="zg-select" id="zg-mode"><option value="free">自由トーク</option><option value="rounds">順番に2周</option></select><label for="zg-duration" class="zg-label">トーク時間</label><select class="zg-select" id="zg-duration"><option value="120">2分</option><option value="180">3分</option><option value="300">5分</option><option value="0">制限なし</option></select><h3 style="margin-top:20px">🎭 追加役職と公開ルール</h3><label class="zg-role-option"><input id="zg-mimikyu" type="checkbox"'+(enableMimikyu?' checked':'')+'>👻 ミミッキュ役を1名追加</label><p class="muted small">ミミッキュがゾロアークと誤認されて選ばれると単独勝利。ミミッキュ追加時は本人への役職表示が必須です。</p><label class="zg-role-option"><input id="zg-show-roles" type="checkbox"'+(showRoles?' checked':'')+(enableMimikyu?' disabled':'')+'>🔐 お題と一緒に本人の役職を表示</label><p class="muted small">OFFならゾロアーク本人にも役職を知らせない基本ルール。ONなら本人だけに役職を表示します。</p>'+(error?'<div class="notice err" role="alert">'+esc(error)+'</div>':'')+action('🎮 ゲーム開始',"start",false,busy)+action('← 遊び方へ戻る',"chooseStyle",true);
+ if(phase==="method-select")return '<span class="pill">🤝 対面 · PLAY METHOD</span><h2 style="margin-top:12px">プレイ方法を選ぶ</h2><div class="zg-hint">プレイヤー '+count+'人 ／ 難易度：'+esc(level==="all"?"おまかせ":level==="easy"?"初級":level==="normal"?"中級":"上級")+' ／ トーク '+(duration===0?"制限なし":Math.floor(duration/60)+"分")+' ／ ミミッキュ '+(enableMimikyu?"あり":"なし")+'</div>'+action('📱 手渡しで遊ぶ',"chooseHandoff")+action('📲 ルームを作る（検証版）',"chooseRoom",true)+'<div class="zg-hint">どちらも次に<strong>専任GMあり／なし</strong>を選びます。QRルームの「GMなし」は認証・参加管理の開発中のため、まだ利用できません。</div>'+action('← ゲーム設定に戻る',"backSettings",true);
+ if(phase==="gm-choice")return '<span class="pill">🤝 対面 · GM</span><h2 style="margin-top:12px">専任GMを置きますか？</h2>'+(playMethod==="handoff"?'<div class="zg-hint">手渡し方式ではどちらも利用できます。<strong>GMなし</strong>ならCA主催者もプレイヤーに含めてお題を確認・投票します。主催者はプレイヤー1番を担当してください。</div>'+action('👑 GMあり：主催者は司会専任',"gmDedicated")+action('🙌 GMなし：主催者も参加',"gmPlaying",true)+'<p class="muted small">GMなしでも認証済みのCA主催者は必要です。進行は参加者が協力して行い、他人のお題・役職を開かないでください。</p>':'<div class="zg-hint">QRルームの管理権限は現在CA主催者にのみ付与されます。GMなしでの主催者参加と秘密情報の保護は未実装です。</div><a class="zg-btn zg-full" href="'+ZOROARK_QA_ROOM_URL+'">👑 GMあり：ルームを作る（検証版）</a><button type="button" class="zg-btn secondary zg-full" disabled aria-disabled="true">🙌 GMなし：準備中</button><p class="muted small">QRルームへの設定引き継ぎ、お題配布、参加者各自のスマホからのメダル投票・遠隔投票もまだ未接続です。</p>')+action('← 手渡し／ルーム選択に戻る',"backMethod",true);
+ if(phase==="pass")return '<span class="pill">お題配布 '+(player+1)+' / '+round.count+'</span><h2 style="margin-top:12px">自分のお題を確認</h2><div class="zg-hint">'+(gmJoins&&player===0?'🙌 専任GMなし：CA主催者はプレイヤー1番として参加します。自分のお題だけを確認し、次の人へ渡す前に必ず隠してください。':'プレイヤー'+(player+1)+'番だけが画面を見てください。次の人へ渡すときは必ず隠してください。')+'</div><div class="zg-secret">'+(visible?privatePrompt():'<div style="font-size:56px">🔒</div><strong>本人だけが開いてね</strong>')+'</div>'+action(visible?'確認した・お題を隠す':'お題を見る',visible?'next':'show')+action('最初からやり直す','reset',true);
+ if(phase==="talk")return '<span class="pill">🎤 '+(mode==="free"?"自由トーク":"順番に2周・"+talkRound+"周目")+'</span><h2 style="margin-top:12px">会話で探り合おう！</h2><p class="muted strong">全員に発言の機会を。うまく嘘を混ぜるのも作戦！</p><div class="zg-timer" data-clock>'+ (duration===0?'∞':fmt(remaining))+'</div><div class="zg-grid"><button data-act="timer" class="zg-btn secondary"'+(!duration?' disabled':'')+'>'+(running?'⏸ 一時停止':'▶ タイマー')+'</button><button data-act="extend" class="zg-btn secondary"'+(!duration?' disabled':'')+'>＋30秒</button><button data-act="topic" class="zg-btn secondary">🎤 別の話題</button><button data-act="talkRound" class="zg-btn secondary">🔁 次の周へ</button></div><div class="zg-hint">トーク補助：<strong>'+esc(topics[topic])+'</strong></div>'+
 
    action(cardCooldownUntil>Date.now()?'🍂 質問カード（クールダウン中）':'🍂 質問カードを使う',"cardChoose",true,cardCooldownUntil>Date.now())+
    (questionUsed.length?'<h3>使用済みの質問</h3>'+questionUsed.map(q=>'<div class="zg-question-history">プレイヤー'+(q.owner+1)+'番：'+esc(q.text)+'</div>').join(""):'')+
-   action('🪙 疑惑メダルを投げる',"medalChoose",true)+(duration===0?'<p class="muted small">制限時間なし：中間疑惑速報はありません。</p>':'')+action('指差し投票へ','vote');
+   '<div class="zg-hint">📣 全員で「せーの！」と一斉に指差そう。最終投票が始まるまでは誰にも正体を明かさないでね。</div>'+action('🗳️ 「せーの！」指差し投票へ','vote');
   if(phase==="vote")return voteView();
   if(phase==="results")return resultView();
  return '<p>ゲームを準備してください</p>';
@@ -190,14 +191,14 @@ export function mountZoroark({host,gateway,onBack}){
    if(!destroyed&&phase==="talk"&&midpointNotice&&Date.now()>=midpointUntil){midpointNotice=null;render()}
    if(!destroyed&&phase==="talk"&&running&&duration){
     tickTalk();
-    if(!midpointFired&&talkElapsedMs>=duration*500&&!cardAnnouncement){
+    if(playMethod!=="handoff"&&!midpointFired&&talkElapsedMs>=duration*500&&!cardAnnouncement){
       midpointFired=true;const leaders=suspicionLeaders(medalTotals);
       midpointNotice=leaders.length?'最も疑われているのは '+leaders.map(i=>(i+1)+'番').join('・')+'！':'まだ疑惑メダルは投げられていません';
       midpointUntil=Date.now()+8000;render();
     }
     remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));const el=host.querySelector("[data-clock]");if(el)el.textContent=fmt(remaining);if(!remaining){running=false;render()}}},250);
  async function begin(){
-  if(busy||destroyed||playStyle!=="face-to-face")return;
+  if(busy||destroyed||playStyle!=="face-to-face"||phase!=="gm-choice"||playMethod!=="handoff")return;
   busy=true;error="";render();
   try{
    const result=await gateway.newRound({count,difficulty:level,recent:history});
@@ -214,12 +215,13 @@ export function mountZoroark({host,gateway,onBack}){
    questionHands=Array.from({length:count},()=>Array.from({length:5},drawQuestion));questionUsed=[];cardPlayer=-1;cardCooldownUntil=0;cardAnnouncement=null;cardAnnouncementUntil=0;cardWasRunning=false;
     medalTotals=Array(count).fill(0);medalUsed=Array(count).fill(0);medalActor=-1;medalTarget=-1;medalWasRunning=false;midpointFired=false;midpointNotice=null;midpointUntil=0;talkElapsedMs=0;talkResumeAt=0;
     phase="pass";player=0;visible=false;remaining=duration;running=false;talkRound=1;topic=(topic+1)%topics.length;vote=0;voteCounts=Array(count).fill(0);voteFinalists=null;voteRound=1;voteDecision=null;reveal=false;
-  }catch(e){if(!destroyed){error=e instanceof Error?e.message:"お題を取得できませんでした";phase="setup"}}
+  }catch(e){if(!destroyed){error=e instanceof Error?e.message:"お題を取得できませんでした";phase="gm-choice"}}
   finally{busy=false;render()}
  }
- function reset(){medalTotals=[];medalUsed=[];medalActor=-1;medalTarget=-1;medalWasRunning=false;midpointFired=false;midpointNotice=null;midpointUntil=0;talkElapsedMs=0;talkResumeAt=0;questionHands=[];questionUsed=[];cardPlayer=-1;cardCooldownUntil=0;cardAnnouncement=null;cardAnnouncementUntil=0;cardWasRunning=false;phase="setup";round=null;mimikyuIndex=-1;player=0;visible=false;running=false;vote=0;voteCounts=[];voteFinalists=null;voteRound=1;voteDecision=null;reveal=false;error="";render()}
- function chooseMode(){if(busy)return;phase="mode-select";gameMode=null;round=null;mimikyuIndex=-1;running=false;visible=false;error="";render()}
- function chooseStyle(){if(busy)return;phase="play-style";playStyle=null;gameMode=null;round=null;mimikyuIndex=-1;running=false;visible=false;error="";render()}
+ function reset(){medalTotals=[];medalUsed=[];medalActor=-1;medalTarget=-1;medalWasRunning=false;midpointFired=false;midpointNotice=null;midpointUntil=0;talkElapsedMs=0;talkResumeAt=0;questionHands=[];questionUsed=[];cardPlayer=-1;cardCooldownUntil=0;cardAnnouncement=null;cardAnnouncementUntil=0;cardWasRunning=false;phase="setup";playMethod=null;gmJoins=false;round=null;mimikyuIndex=-1;player=0;visible=false;running=false;vote=0;voteCounts=[];voteFinalists=null;voteRound=1;voteDecision=null;reveal=false;error="";render()}
+ function backSettings(){if(busy)return;phase="setup";playMethod=null;gmJoins=false;round=null;mimikyuIndex=-1;running=false;visible=false;error="";render()}
+  function backMethod(){if(busy)return;phase="method-select";playMethod=null;gmJoins=false;round=null;mimikyuIndex=-1;running=false;visible=false;error="";render()}
+ function chooseStyle(){if(busy)return;phase="play-style";playStyle=null;playMethod=null;gmJoins=false;round=null;mimikyuIndex=-1;running=false;visible=false;error="";render()}
  function act(name){
   if(destroyed)return;
   if(name==="closeQuestionOverlay"){if(phase==="talk"&&cardAnnouncement){cardAnnouncement=null;cardAnnouncementUntil=0;render()}return}
@@ -228,17 +230,20 @@ export function mountZoroark({host,gateway,onBack}){
   if(phase==="talk"&&cardAnnouncement&&Date.now()<cardAnnouncementUntil)return;
   if(name==="back"){destroy();onBack();return}
   if(name==="remote"){playStyle="remote";phase="remote-entry";render();return}
-  if(name==="face-to-face"){playStyle="face-to-face";phase="mode-select";render();return}
+  if(name==="face-to-face"){playStyle="face-to-face";phase="setup";render();return}
   if(name==="chooseStyle"){chooseStyle();return}
-  if(name==="simple"||name==="manual"){gameMode=name;enableMimikyu=name==="manual";phase="setup";error="";render();return}
-  if(name==="chooseMode"){chooseMode();return}
+  if(name==="backSettings"){backSettings();return}
   if(name==="minus"){count=Math.max(3,count-1);render();return}
   if(name==="plus"){count=Math.min(12,count+1);render();return}
-  if(name==="start"){void begin();return}
+  if(name==="start"){if(phase!=="setup"&&phase!=="results")return;gameMode=(showRoles||enableMimikyu)?"manual":"simple";playMethod=null;gmJoins=false;phase="method-select";error="";render();return}
+  if(name==="chooseHandoff"&&phase==="method-select"){playMethod="handoff";phase="gm-choice";render();return}
+  if(name==="chooseRoom"&&phase==="method-select"){playMethod="room";phase="gm-choice";render();return}
+  if(name==="backMethod"){backMethod();return}
+  if((name==="gmDedicated"||name==="gmPlaying")&&phase==="gm-choice"&&playMethod==="handoff"){gmJoins=name==="gmPlaying";void begin();return}
   if(name==="show"){visible=true;render();return}
   if(name==="next"){visible=false;if(player+1===round.count){phase="talk"}else player++;render();return}
   if(name==="medalChoose"){
-    if(phase!=="talk")return;
+    if(phase!=="talk"||playMethod==="handoff")return;
     medalWasRunning=Boolean(running);
     if(running){remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));pauseTalk()}
     phase="medal-owner";medalActor=-1;medalTarget=-1;render();return;
@@ -260,7 +265,7 @@ export function mountZoroark({host,gateway,onBack}){
     if(medalWasRunning)resumeTalk();
     medalWasRunning=false;medalActor=-1;medalTarget=-1;phase="talk";render();return;
    }
-   if(name==="medalResults"&&phase==="results"&&reveal){phase="medal-summary";render();return}
+   if(name==="medalResults"&&playMethod!=="handoff"&&phase==="results"&&reveal){phase="medal-summary";render();return}
    if(name==="backResults"&&phase==="medal-summary"){phase="results";render();return}
    if(name==="cardChoose"){
     if(phase!=="talk"||Date.now()<cardCooldownUntil)return;
@@ -319,10 +324,10 @@ export function mountZoroark({host,gateway,onBack}){
   if(name==="reset"){reset()}
  }
  let swipeStart=null;
- const onTouchStart=event=>{if((phase==="results"&&reveal)||phase==="medal-summary"){const t=event.touches?.[0];if(t)swipeStart={x:t.clientX,y:t.clientY}}};
- const onTouchEnd=event=>{if(!swipeStart)return;const t=event.changedTouches?.[0],start=swipeStart;swipeStart=null;if(!t)return;const dx=t.clientX-start.x,dy=t.clientY-start.y;if(Math.abs(dx)<70||Math.abs(dy)>85)return;if(phase==="results"&&reveal&&dx<0){phase="medal-summary";render()}else if(phase==="medal-summary"&&dx>0){phase="results";render()}};
+ const onTouchStart=event=>{if(playMethod!=="handoff"&&((phase==="results"&&reveal)||phase==="medal-summary")){const t=event.touches?.[0];if(t)swipeStart={x:t.clientX,y:t.clientY}}};
+ const onTouchEnd=event=>{if(!swipeStart)return;const t=event.changedTouches?.[0],start=swipeStart;swipeStart=null;if(!t)return;const dx=t.clientX-start.x,dy=t.clientY-start.y;if(Math.abs(dx)<70||Math.abs(dy)>85)return;if(playMethod!=="handoff"&&phase==="results"&&reveal&&dx<0){phase="medal-summary";render()}else if(playMethod!=="handoff"&&phase==="medal-summary"&&dx>0){phase="results";render()}};
  const click=event=>{const b=event.target.closest("[data-act]");if(b&&host.contains(b)&&!b.disabled)act(b.dataset.act)};
- const change=event=>{if(event.target.id==="zg-level")level=event.target.value;if(event.target.id==="zg-mode")mode=event.target.value;if(event.target.id==="zg-duration"){duration=Number(event.target.value);remaining=duration}if(event.target.id==="zg-mimikyu")enableMimikyu=Boolean(event.target.checked)};
+ const change=event=>{if(event.target.id==="zg-level")level=event.target.value;if(event.target.id==="zg-mode")mode=event.target.value;if(event.target.id==="zg-duration"){duration=Number(event.target.value);remaining=duration}if(event.target.id==="zg-mimikyu"){enableMimikyu=Boolean(event.target.checked);if(enableMimikyu)showRoles=true;render()}if(event.target.id==="zg-show-roles"&&!enableMimikyu){showRoles=Boolean(event.target.checked);render()}};
  const hidden=()=>{if(document.hidden&&phase==="pass"&&visible){visible=false;render()}if(document.hidden&&phase==="card-private"){phase="card-handoff";render()}if(document.hidden&&(phase==="medal-private"||phase==="medal-confirm")){medalTarget=-1;phase="medal-handoff";render()}};
  host.addEventListener("click",click);host.addEventListener("touchstart",onTouchStart);host.addEventListener("touchend",onTouchEnd);host.addEventListener("change",change);document.addEventListener("visibilitychange",hidden);
  function destroy(){if(destroyed)return;destroyed=true;clearInterval(timer);host.removeEventListener("click",click);host.removeEventListener("touchstart",onTouchStart);host.removeEventListener("touchend",onTouchEnd);host.removeEventListener("change",change);document.removeEventListener("visibilitychange",hidden)}
