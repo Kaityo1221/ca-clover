@@ -53,8 +53,9 @@ export function chooseZoroarkPair(
   level: DifficultyChoice,
   recent: readonly string[],
   choose: (max: number) => number = max => randomInt(max),
+  additional: readonly Pair[] = [],
 ): Pair {
-  const matching = PAIRS.filter(p => level === "all" || p.level === level);
+  const matching = [...PAIRS, ...additional].filter(p => level === "all" || p.level === level);
   if (!matching.length) throw new Error("No catalog entries");
   const newPairs = matching.filter(p => !recent.includes(p.id));
   const pool = newPairs.length ? newPairs : matching;
