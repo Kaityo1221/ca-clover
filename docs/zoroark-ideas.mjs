@@ -14,7 +14,7 @@ export function mountIdeaMemo({host,role,onBack,gameCatalogGateway}){
  const dialog=document.createElement("dialog");dialog.className="zim-dlg";document.body.append(dialog);
  let destroyed=false,mode="book",kind="all",level="all",query="",editIndex=-1,editOfficialId=null,error="",message="";
  let chosen=[null,null],which=0,gen=1,all=[],term="",loadId=0,searchMode=false;
- let draftCommon="",draftDifference="",draftLevel="";
+ let draftCommon="",draftDifference="",draftLevel="",officialFormDraft=null;
  const genCache=new Map();
  let entries=[],entryReadError=null;
  try{const raw=JSON.parse(localStorage.getItem(KEY)||"[]");if(!Array.isArray(raw))throw Error("invalid");entries=raw.slice(0,500).map(normalizeEntry)}
@@ -32,7 +32,7 @@ export function mountIdeaMemo({host,role,onBack,gameCatalogGateway}){
  function canChangeGame(){return !!gameCatalogGateway&&gameStatusReady&&gameWritesReady&&!gameBusy}
  async function refreshGameStatus(){
   if(!gameCatalogGateway){draw();return}
-  gameBusy=true;draw();
+  gameBusy=true;rememberForm();rememberOfficialForm();draw();
   try{
    const data=await gameCatalogGateway.listStates();
    if(!data||!Array.isArray(data.states)||data.states.length>42)throw Error("管理APIの応答が不正です");
@@ -46,7 +46,7 @@ export function mountIdeaMemo({host,role,onBack,gameCatalogGateway}){
    gameStates=states;gameStatusReady=true;gameWritesReady=data.writeEnabled===true;
    gameError=gameWritesReady?"":"ゲームの出題停止操作は現在無効です。";
   }catch(e){gameStatusReady=false;gameWritesReady=false;gameError="ゲーム出題状態を確認できません："+(e.message||"接続エラー")}
-  gameBusy=false;if(!destroyed)draw();
+  gameBusy=false;if(!destroyed){rememberForm();rememberOfficialForm();draw()}
  }
  async function changeGameState(id,disabled){
   if(!canChangeGame()){error=gameError||"ゲームとの接続が確認できません";draw();return}
@@ -55,17 +55,17 @@ export function mountIdeaMemo({host,role,onBack,gameCatalogGateway}){
   if(prior.disabled===disabled)return;
   if(!window.confirm("「"+row.a+" × "+row.b+"」を"+(disabled?"ゲームの今後の出題から停止":"ゲームの今後の出題に復帰")+
       "しますか？\nすでに開始したラウンドは変更されません。"))return;
-  gameBusy=true;error="";message="";draw();
+  gameBusy=true;error="";message="";rememberForm();rememberOfficialForm();draw();
   try{
    const result=await gameCatalogGateway.setState(id,disabled,prior.revision);
    const v=result?.state;
    if(!result?.gameConfirmed||!v||v.topic_id!==id||v.disabled!==disabled||v.revision!==prior.revision+1)
     throw Error("ゲーム側の反映確認に失敗しました");
-   gameStates.set(id,v);editOfficialId=null;
+   gameStates.set(id,v);editOfficialId=null;officialFormDraft=null;
    message=disabled?"ゲームの次回以降の出題から停止しました。削除済みから戻せます。":"ゲームの次回以降の出題対象に戻しました。";
   }catch(e){error="ゲームへの反映に失敗しました："+(e.message||"接続エラー")+
    "。実状態を再確認してください。";gameStatusReady=false;gameWritesReady=false}
-  gameBusy=false;if(!destroyed)draw();
+  gameBusy=false;if(!destroyed){rememberForm();rememberOfficialForm();draw()}
  }
  const countLocal=()=>entries.length;
  function nav(){
@@ -103,7 +103,7 @@ export function mountIdeaMemo({host,role,onBack,gameCatalogGateway}){
  function officialEditor(){
   const base=OFFICIAL_ZOROARK_42.find(x=>x.id===editOfficialId);
   if(!base)return '';
-  const row={...base,...(officialDrafts[base.id]||{})};
+  const row={...base,...(officialDrafts[base.id]||{}),...(officialFormDraft||{})};
   return '<section class="card section zim-form"><h2>✏️ 正式お題 #'+clean(base.id)+' を編集</h2>'+
    '<p class="zim-msg">ここで保存する変更は、この端末の<strong>編集下書き</strong>です。ゲーム本編の正式42組は変わりません。</p>'+
    '<div class="zim-grid"><div><label class="zim-label" for="zim-official-a">ポケモンA</label><input id="zim-official-a" class="zim-input" maxlength="80" value="'+clean(row.a)+'"></div>'+
@@ -173,6 +173,14 @@ export function mountIdeaMemo({host,role,onBack,gameCatalogGateway}){
   const diff=host.querySelector("#zim-difference");if(diff)draftDifference=diff.value;
   const lvl=host.querySelector("#zim-level");if(lvl)draftLevel=lvl.value;
  }
+ function rememberOfficialForm(){
+  if(mode!=="book"||!editOfficialId)return;
+  const a=host.querySelector("#zim-official-a"),b=host.querySelector("#zim-official-b");
+  const common=host.querySelector("#zim-official-common"),difference=host.querySelector("#zim-official-difference");
+  const level=host.querySelector("#zim-official-level");
+  if(a&&b&&common&&difference&&level)
+   officialFormDraft={a:a.value,b:b.value,common:common.value,difference:difference.value,level:level.value};
+ }
  function persist(next){
   if(entryReadError)throw Error(entryReadError);
   const normalized=next.map(normalizeEntry);
@@ -208,7 +216,7 @@ export function mountIdeaMemo({host,role,onBack,gameCatalogGateway}){
    };
    const checked=normalizeOfficialDraft(value,id);
    officialDrafts=saveOfficialDrafts(localStorage,{...officialDrafts,[id]:checked});
-   editOfficialId=null;error="";message="編集下書きを保存しました。ゲーム本編にはまだ反映されません。";
+   editOfficialId=null;officialFormDraft=null;error="";message="編集下書きを保存しました。ゲーム本編にはまだ反映されません。";
   }catch(e){error="保存できません："+(e.message||"不明なエラー")}
   draw();
  }
@@ -326,7 +334,7 @@ export function mountIdeaMemo({host,role,onBack,gameCatalogGateway}){
   const tab=e.target.closest("[data-catalog-view]");
   if(tab){rememberForm();const nextMode=tab.dataset.catalogView==="create"?"create":"book";
    if(nextMode==="create"&&mode!=="create"){editIndex=-1;chosen=[null,null];draftCommon="";draftDifference="";draftLevel=""}
-   mode=nextMode;if(mode==="book")editOfficialId=null;error=entryReadError||"";message="";draw();return}
+   mode=nextMode;if(mode==="book"){editOfficialId=null;officialFormDraft=null}error=entryReadError||"";message="";draw();return}
   const group=e.target.closest("[data-book-kind]");
   if(group){query=host.querySelector("#zim-book-search")?.value||query;kind=group.dataset.bookKind;draw();return}
   const lvl=e.target.closest("[data-book-level]");
@@ -334,7 +342,7 @@ export function mountIdeaMemo({host,role,onBack,gameCatalogGateway}){
   if(e.target.closest("[data-book-search]")){query=host.querySelector("#zim-book-search")?.value||"";draw();return}
   if(e.target.closest("[data-book-clear]")){query="";draw();return}
   const off=e.target.closest("[data-official-edit]");
-  if(off){editOfficialId=off.dataset.officialEdit;error="";message="";draw();window.scrollTo(0,0);return}
+  if(off){editOfficialId=off.dataset.officialEdit;officialFormDraft=null;error="";message="";draw();window.scrollTo(0,0);return}
   if(e.target.closest("[data-official-save]")){saveOfficial();return}
   if(e.target.closest("[data-game-refresh]")){void refreshGameStatus();return}
   const offDelete=e.target.closest("[data-official-delete]");
@@ -346,12 +354,12 @@ export function mountIdeaMemo({host,role,onBack,gameCatalogGateway}){
   const memoRestore=e.target.closest("[data-memo-restore]");
   if(memoRestore){const row=entries[Number(memoRestore.dataset.memoRestore)];
    if(row)restoreDeleted("memo",pairKey(row));return}
-  if(e.target.closest("[data-official-cancel]")){editOfficialId=null;error="";draw();return}
+  if(e.target.closest("[data-official-cancel]")){editOfficialId=null;officialFormDraft=null;error="";draw();return}
   if(e.target.closest("[data-official-revert]")){
    if(officialError||!editOfficialId)return;
    if(!window.confirm("この端末の正式お題の編集下書きを破棄し、元の内容に戻しますか？"))return;
    try{const next={...officialDrafts};delete next[editOfficialId];
-    officialDrafts=saveOfficialDrafts(localStorage,next);editOfficialId=null;error="";message="元の正式お題に戻しました。"}
+    officialDrafts=saveOfficialDrafts(localStorage,next);editOfficialId=null;officialFormDraft=null;error="";message="元の正式お題に戻しました。"}
    catch(e){error="元に戻せません："+e.message}
    draw();return;
   }
