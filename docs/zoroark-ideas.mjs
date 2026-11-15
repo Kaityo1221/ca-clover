@@ -91,6 +91,7 @@ export function mountIdeaMemo({host,role,onBack}){
   draw();
  }
  const onClick=e=>{
+  const memo=host.querySelector("#zim-note");if(memo)editNote=memo.value;
   if(e.target.closest("[data-back]")){destroy();onBack();return}
   const c=e.target.closest("[data-choose]");if(c){which=Number(c.dataset.choose);term="";showPicker();dialog.showModal();void changeGen(gen)}
   if(e.target.closest("[data-save]")){save();return}

@@ -15,6 +15,7 @@ assert.ok(module.includes('data-save'));
 assert.ok(module.includes('localStorage.setItem(KEY'));
 assert.ok(module.includes("ゲームとの接続：未実装"));
 assert.ok(module.includes("data-view")&&module.includes("data-archive"));
+assert.ok(module.includes("editNote=memo.value"),"unsaved note text survives filters and picker");
 assert.ok(module.includes("＋ お題を追加・編集")&&module.includes("chosen.some(Boolean)"),"new idea form is collapsed in the default review view and opens during editing");
 assert.ok(module.includes('data-export'));
 assert.ok(module.includes('raw.githubusercontent.com/Kaityo1221/Global-EN-Trainer/main/data/'));
