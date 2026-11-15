@@ -1,19 +1,48 @@
 import {pairKey,normalizeEntry,mergeEntries,parseImport,exportDocument} from "./zoroark-idea-library.mjs";
+import {OFFICIAL_ZOROARK_42,OFFICIAL_ZOROARK_LEVELS,findOfficialZoroarkPairs} from "./zoroark-official42.mjs?v=20261115-v1";
 const URL_ROOT="https://raw.githubusercontent.com/Kaityo1221/Global-EN-Trainer/main/data/";
 const KEY="ca-zoroark-admin-ideas-v1";
 const clean=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 export function mountIdeaMemo({host,role,onBack}){
  if(role!=="admin")throw Error("ADMIN only");
  const style=document.createElement("style");
- style.textContent=".zim{max-width:700px;margin:auto}.zim-pair{display:grid;grid-template-columns:1fr 26px 1fr;gap:8px;align-items:center;margin:20px 0}.zim-poke{min-width:0;min-height:115px;border:2px solid #bef264;border-radius:20px;background:#f7fee7;font-size:clamp(20px,5vw,30px);font-weight:950;color:#365314;word-break:keep-all}.zim-poke small{display:block;font-size:11px;margin-bottom:8px}.zim-dlg{border:none;border-radius:20px;max-width:650px;width:95%;max-height:94dvh;padding:0}.zim-dlg::backdrop{background:#0f172a99}.zim-top{position:sticky;top:0;background:#fff;padding:15px}.zim-top input{width:100%;font-size:16px;padding:12px;border:2px solid #bef264;border-radius:10px}.zim-tabs{display:flex;gap:5px;overflow:auto;padding:10px}.zim-tabs button{white-space:nowrap;border:1px solid #bef264;padding:10px;background:#fff;border-radius:10px}.zim-tabs button[aria-selected=true]{background:#a3e635}.zim-list{padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:49dvh;overflow-y:auto}.zim-list button{border:1px solid #bef264;border-radius:10px;padding:12px 5px;background:#f7fee7;color:#365314;font-size:15px;font-weight:850}.zim-list small{display:block;font-size:10px;color:#64748b}.zim-note{width:100%;min-height:90px;font:inherit;border:1px solid #bef264;border-radius:12px;padding:12px}.zim-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.zim-act{border:0;border-radius:12px;padding:12px;background:#84cc16;color:#365314;font-weight:900}.zim-entry{border-bottom:1px solid #d9f99d;padding:10px 0}";
+ style.textContent=".zim{max-width:700px;margin:auto}.zim-pair{display:grid;grid-template-columns:1fr 26px 1fr;gap:8px;align-items:center;margin:20px 0}.zim-poke{min-width:0;min-height:115px;border:2px solid #bef264;border-radius:20px;background:#f7fee7;font-size:clamp(20px,5vw,30px);font-weight:950;color:#365314;word-break:keep-all}.zim-poke small{display:block;font-size:11px;margin-bottom:8px}.zim-dlg{border:none;border-radius:20px;max-width:650px;width:95%;max-height:94dvh;padding:0}.zim-dlg::backdrop{background:#0f172a99}.zim-top{position:sticky;top:0;background:#fff;padding:15px}.zim-top input{width:100%;font-size:16px;padding:12px;border:2px solid #bef264;border-radius:10px}.zim-tabs{display:flex;gap:5px;overflow:auto;padding:10px}.zim-tabs button{white-space:nowrap;border:1px solid #bef264;padding:10px;background:#fff;border-radius:10px}.zim-tabs button[aria-selected=true]{background:#a3e635}.zim-list{padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:49dvh;overflow-y:auto}.zim-list button{border:1px solid #bef264;border-radius:10px;padding:12px 5px;background:#f7fee7;color:#365314;font-size:15px;font-weight:850}.zim-list small{display:block;font-size:10px;color:#64748b}.zim-note{width:100%;min-height:90px;font:inherit;border:1px solid #bef264;border-radius:12px;padding:12px}.zim-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.zim-act{border:0;border-radius:12px;padding:12px;background:#84cc16;color:#365314;font-weight:900}.zim-entry{border-bottom:1px solid #d9f99d;padding:10px 0}.zim-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.zim-tabs button{border:1px solid #bef264;border-radius:11px;padding:10px 12px;background:#f7fee7;font:inherit;font-weight:850;color:#365314;cursor:pointer}.zim-tabs button[aria-pressed=true]{background:#a3e635}.zim-official-card{border:1px solid #d9f99d;border-radius:13px;background:#fff;margin:9px 0;padding:12px}.zim-official-card summary{cursor:pointer;font-weight:800}.zim-official-card summary:focus-visible{outline:3px solid #65a30d;outline-offset:3px}.zim-official-meta{color:#64748b;font-size:12px;margin-top:7px}.zim-official-card p{margin:9px 0}.zim-official-search{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.zim-official-search input{flex:1;min-width:145px;padding:11px;border:1px solid #bef264;border-radius:10px;font:inherit}.zim-act:focus-visible{outline:3px solid #365314;outline-offset:2px}";
  document.head.append(style);
  const dialog=document.createElement("dialog");dialog.className="zim-dlg";document.body.append(dialog);
  let chosen=[null,null],which=0,gen=1,all=[],term="",error="",destroyed=false,loadId=0,searchMode=false;
  const genCache=new Map();
- let editIndex=-1,editNote="";
+ let editIndex=-1,editNote="",officialMode=false,officialLevel="all",officialQuery="";
  let entries=[];try{const x=JSON.parse(localStorage.getItem(KEY)||"[]");if(Array.isArray(x))entries=x.slice(0,500).map(normalizeEntry)}catch{}
+ function officialNavigation(){
+  return '<div class="zim-tabs" role="group" aria-label="お題帳の種類">'+
+   '<button type="button" data-catalog-view="memo" aria-pressed="'+String(!officialMode)+'">✏️ 新規お題メモ</button>'+
+   '<button type="button" data-catalog-view="official" aria-pressed="'+String(officialMode)+'">📚 正式42組</button></div>';
+ }
+ function officialScreen(){
+  const levels=[["all","すべて"],["easy","初級"],["normal","中級"],["hard","上級"]];
+  const counts={all:OFFICIAL_ZOROARK_42.length,easy:0,normal:0,hard:0};
+  for(const row of OFFICIAL_ZOROARK_42)counts[row.level]++;
+  const found=findOfficialZoroarkPairs({level:officialLevel,query:officialQuery});
+  return '<main class="zim"><section class="card hero"><button data-back class="zim-act">← 戻る</button>'+
+   '<h1>🦊 お題管理</h1><p>ADMIN専用・正式42組（閲覧専用）</p>'+officialNavigation()+'</section>'+
+   '<section class="card section"><h2>📚 ゲームの正式お題 '+counts.all+'組</h2>'+
+   '<p class="muted small">現在のゲーム側の正式カタログから取得した2026年11月15日時点の読み取り専用一覧です。変更・削除・公開操作はできません。</p>'+
+   '<div class="zim-tabs" role="group" aria-label="難易度を選択">'+
+   levels.map(([k,label])=>'<button type="button" data-official-level="'+k+'" aria-pressed="'+String(officialLevel===k)+'">'+label+' '+counts[k]+'</button>').join("")+'</div>'+
+   '<div class="zim-official-search"><input id="zim-official-query" type="search" aria-label="正式お題を検索" placeholder="ポケモン名・共通点・違い" value="'+clean(officialQuery)+'">'+
+   '<button type="button" class="zim-act" data-official-search>検索</button>'+
+   '<button type="button" class="zim-act" data-official-clear>解除</button></div>'+
+   '<p class="muted small" role="status">表示 '+found.length+' / '+counts.all+' 組</p>'+
+   (found.map(row=>'<article class="zim-official-card"><details>'+
+    '<summary>'+clean(row.a)+' × '+clean(row.b)+'</summary>'+
+    '<div class="zim-official-meta">#'+clean(row.id)+' · '+clean(OFFICIAL_ZOROARK_LEVELS[row.level])+'</div>'+
+    '<p><b>似ている部分：</b>'+clean(row.common)+'</p>'+
+    '<p><b>違う部分：</b>'+clean(row.difference)+'</p></details></article>').join("")||
+    '<p class="muted">条件に一致するお題はありません。</p>')+'</section></main>';
+ }
  function draw(){
-  host.innerHTML='<main class="zim"><section class="card hero"><button data-back class="zim-act">← 戻る</button><h1>🦊 お題ひらめきメモ</h1><p>ADMIN専用：2匹を選んで特徴をメモ</p><p class="small muted">この段階では端末内に保存します。CA共有・端末間同期は未対応です。</p></section><section class="card section"><div class="zim-pair">'+chosen.map((p,i)=>'<button class="zim-poke" data-choose="'+i+'"><small>ポケモン'+(i?'B':'A')+'</small>'+clean(p?.jp||"選択する")+'</button>').join('<b style="text-align:center;font-size:23px">×</b>')+'</div><label for="zim-note">似てる部分</label><textarea id="zim-note" class="zim-note" placeholder="例：人気ポケモン">'+clean(editNote)+'</textarea><div class="zim-actions"><button class="zim-act" data-save>'+(editIndex>=0?'編集を保存':'下書き保存')+'</button><button class="zim-act" data-export>JSONバックアップ</button><label class="zim-act">JSON読み込み<input data-import type="file" accept=".json,application/json" style="max-width:120px;font-size:12px"></label></div><p role="status">'+clean(error)+'</p></section><section class="card section"><h2>記録 '+entries.length+'件</h2>'+entries.slice().reverse().map((x,i)=>'<div class="zim-entry"><b>'+clean(x.a)+' × '+clean(x.b)+'</b><div>'+clean(x.note)+'</div><small>'+(x.status==='adopted'?'✅ 採用済み':'📝 下書き')+'</small><div class="zim-actions"><button class="zim-act" data-edit="'+(entries.length-1-i)+'">編集</button><button class="zim-act" data-adopt="'+(entries.length-1-i)+'">'+(x.status==='adopted'?'採用を解除':'採用する')+'</button></div></div>').join("")+'</section></main>';
+  if(officialMode){host.innerHTML=officialScreen();return}
+  host.innerHTML='<main class="zim"><section class="card hero"><button data-back class="zim-act">← 戻る</button><h1>🦊 お題ひらめきメモ</h1><p>ADMIN専用：2匹を選んで特徴をメモ</p><p class="small muted">この段階では端末内に保存します。CA共有・端末間同期は未対応です。</p>'+officialNavigation()+'</section><section class="card section"><div class="zim-pair">'+chosen.map((p,i)=>'<button class="zim-poke" data-choose="'+i+'"><small>ポケモン'+(i?'B':'A')+'</small>'+clean(p?.jp||"選択する")+'</button>').join('<b style="text-align:center;font-size:23px">×</b>')+'</div><label for="zim-note">似てる部分</label><textarea id="zim-note" class="zim-note" placeholder="例：人気ポケモン">'+clean(editNote)+'</textarea><div class="zim-actions"><button class="zim-act" data-save>'+(editIndex>=0?'編集を保存':'下書き保存')+'</button><button class="zim-act" data-export>JSONバックアップ</button><label class="zim-act">JSON読み込み<input data-import type="file" accept=".json,application/json" style="max-width:120px;font-size:12px"></label></div><p role="status">'+clean(error)+'</p></section><section class="card section"><h2>記録 '+entries.length+'件</h2>'+entries.slice().reverse().map((x,i)=>'<div class="zim-entry"><b>'+clean(x.a)+' × '+clean(x.b)+'</b><div>'+clean(x.note)+'</div><small>'+(x.status==='adopted'?'✅ 採用済み':'📝 下書き')+'</small><div class="zim-actions"><button class="zim-act" data-edit="'+(entries.length-1-i)+'">編集</button><button class="zim-act" data-adopt="'+(entries.length-1-i)+'">'+(x.status==='adopted'?'採用を解除':'採用する')+'</button></div></div>').join("")+'</section></main>';
  }
  function renderChoices(){
   const choices=all.filter(x=>!term||x.jp.includes(term)||(x.en||"").toLowerCase().includes(term.toLowerCase())||x.no.includes(term)).slice(0,200);
@@ -88,6 +117,14 @@ export function mountIdeaMemo({host,role,onBack}){
  }
  const onClick=e=>{
   if(e.target.closest("[data-back]")){destroy();onBack();return}
+  const viewTab=e.target.closest("[data-catalog-view]");
+  if(viewTab){if(!officialMode){const note=host.querySelector("#zim-note");if(note)editNote=note.value}
+   officialMode=viewTab.dataset.catalogView==="official";draw();return}
+  const difficulty=e.target.closest("[data-official-level]");
+  if(difficulty){officialLevel=difficulty.dataset.officialLevel;draw();return}
+  if(e.target.closest("[data-official-search]")){
+   officialQuery=host.querySelector("#zim-official-query")?.value||"";draw();return}
+  if(e.target.closest("[data-official-clear]")){officialQuery="";draw();return}
   const c=e.target.closest("[data-choose]");if(c){which=Number(c.dataset.choose);term="";showPicker();dialog.showModal();void changeGen(gen)}
   if(e.target.closest("[data-save]"))save();
   const ed=e.target.closest("[data-edit]");if(ed){editIndex=Number(ed.dataset.edit);const x=entries[editIndex];chosen=[{jp:x.a,no:x.aNo},{jp:x.b,no:x.bNo}];editNote=x.note;error="編集中";draw();window.scrollTo(0,0);return}
