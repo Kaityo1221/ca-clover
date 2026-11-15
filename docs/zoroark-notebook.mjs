@@ -4,7 +4,7 @@ import {parseImport,mergeEntries,exportDocument} from "./zoroark-idea-library.mj
 export const OFFICIAL_DRAFTS_KEY="ca-zoroark-official42-drafts-v1";
 export const NOTEBOOK_FORMAT="ca-zoroark-notebook-v1";
 const BASE=new Map(OFFICIAL_ZOROARK_42.map(row=>[row.id,row]));
-const valid=(x,max)=>typeof x==="string"&&x.trim().length>0&&x.length<=max&&!/[\u0000-\u001F]/.test(x);
+const valid=(x,max)=>typeof x==="string"&&x.trim().length>0&&x.length<=max&&!/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(x);
 const normalizeName=x=>String(x).normalize("NFKC").trim().toLocaleLowerCase("ja-JP");
 export const pairNamesKey=(a,b)=>[normalizeName(a),normalizeName(b)].sort().join("|");
 export function normalizeOfficialDraft(value,id){
