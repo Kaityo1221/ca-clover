@@ -30,6 +30,11 @@ export default function MiniGamesPage() {
        <h2 className="mt-4 text-2xl font-black text-lime-950">🦊 ゾロアークを探せ！</h2>
        <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">6〜8名推奨。GMのスマホを回して秘密のお題を確認し、会話と指差し投票で少数派を探します。</p>
        <Link href="/mini-games/zoroark" className="mt-5 inline-flex rounded-2xl bg-lime-400 px-5 py-3 text-base font-black text-lime-950">現地版を開く →</Link>
+       <div className="mt-5 border-t border-lime-100 pt-5">
+         <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-black text-sky-900">新登場・QRルーム版</span>
+         <p className="mt-3 text-sm font-semibold leading-6 text-slate-700">参加者はそれぞれのスマホからQRで入室。役職・お題の配布から質問、投票、結果発表まで進行できます。</p>
+         <Link href="/zoroark/rooms" className="mt-3 inline-flex rounded-2xl bg-sky-600 px-5 py-3 text-base font-black text-white">📱 QRルーム版を開く →</Link>
+       </div>
      </div>}
     <p className="mt-6 text-xs font-semibold leading-5 text-slate-500">ゲーム開始時にサーバーでCA権限を確認します。現地参加者のログインは不要です。</p>
   </main>;
