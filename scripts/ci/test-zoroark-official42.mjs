@@ -30,7 +30,7 @@ assert.ok(ui.includes("保存する変更は、この端末の"));
 assert.ok(!ui.includes("ZOROARK_CATALOG_QA_URL"));
 assert.ok(!ui.includes("zoroark_topic_submit"));
 assert.ok(!engine.includes("localStorage"));
-assert.ok(html.includes("zoroark-ideas.mjs?v=20261115-notebook-editor1"));
+assert.ok(html.includes("zoroark-ideas.mjs?v=20261115-notebook-trash1"));
 
 const globals={document:globalThis.document,window:globalThis.window,localStorage:globalThis.localStorage,fetch:globalThis.fetch};
 try{
