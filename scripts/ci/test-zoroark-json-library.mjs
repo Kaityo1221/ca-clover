@@ -22,7 +22,7 @@ assert.ok(ui.includes("data-edit"));
 assert.ok(ui.includes("data-adopt"));
 assert.ok(ui.includes("mergeEntries(entries,incoming)"));
 assert.ok(ui.includes("localStorage.setItem(KEY"));
-assert.ok(html.includes("zoroark-ideas.mjs?v=20261115-management1"));
+assert.ok(html.includes("zoroark-ideas.mjs?v=20261115-catalog-stage1"));
 const check=[rows[0],next.entries[1],{...rows[0],a:"コラッタ",b:"ラッタ",status:"archived"}];
 assert.deepEqual(ideaStatusCounts(check),{total:3,draft:1,adopted:1,archived:1});
 assert.deepEqual(ideaVisibleIndexes(check,"draft"),[0]);
@@ -30,7 +30,9 @@ assert.deepEqual(ideaVisibleIndexes(check,"all","ラッタ"),[2]);
 assert.equal(parseImport(JSON.stringify(exportDocument([check[2]])))[0].status,"archived");
 assert.equal(normalizeEntry({...check[0],status:"something"}).status,"draft");
 assert.throws(()=>ideaVisibleIndexes(check,"invalid"));
-assert.ok(ui.includes("ゲームとの接続：未実装")&&ui.includes("採用候補・ゲーム未反映"));
+assert.ok(ui.includes("ゲームとの接続：未実装")&&ui.includes("compareServerCatalog"),"server is source of truth for game publication");
+assert.ok(ui.includes("data-catalog-check"),"admin has explicit catalog status refresh");
+assert.ok(html.includes("ZOROARK_CATALOG_QA_URL")&&html.includes("catalogGateway:zoroarkCatalogGateway"),"catalog gateway targets a fixed isolated preview");
 assert.ok(ui.includes("data-archive")&&ui.includes("data-restore"));
 
 /* Synthetic mobile-host review flow: preserve all local entries, hide handled items, archive reversibly. */
