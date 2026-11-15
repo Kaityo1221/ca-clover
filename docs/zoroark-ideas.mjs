@@ -1,6 +1,6 @@
 import {pairKey,normalizeEntry,mergeEntries} from "./zoroark-idea-library.mjs";
 import {OFFICIAL_ZOROARK_42,OFFICIAL_ZOROARK_LEVELS} from "./zoroark-official42.mjs?v=20261115-v1";
-import {loadOfficialDrafts,saveOfficialDrafts,normalizeOfficialDraft,notebookRows,notebookBackup,parseNotebookImport,safeMergeNotebook,OFFICIAL_DRAFTS_KEY} from "./zoroark-notebook.mjs?v=20261115-editor1";
+import {loadOfficialDrafts,saveOfficialDrafts,normalizeOfficialDraft,notebookRows,notebookBackup,parseNotebookImport,safeMergeNotebook,OFFICIAL_DRAFTS_KEY,loadNotebookTrash,saveNotebookTrash,NOTEBOOK_TRASH_KEY} from "./zoroark-notebook.mjs?v=20261115-trash1";
 
 const URL_ROOT="https://raw.githubusercontent.com/Kaityo1221/Global-EN-Trainer/main/data/";
 const KEY="ca-zoroark-admin-ideas-v1";
@@ -21,6 +21,8 @@ export function mountIdeaMemo({host,role,onBack}){
  catch{entryReadError="保存済みメモを読み取れません。元データ保護のため書き込みを停止しています。";error=entryReadError}
  const loaded=loadOfficialDrafts(localStorage);
  let officialDrafts=loaded.drafts,officialError=loaded.error;
+ const loadedTrash=loadNotebookTrash(localStorage);
+ let trash=loadedTrash.trash,trashError=loadedTrash.error;
  const countLocal=()=>entries.length;
  function nav(){
   return '<div class="zim-tabs" role="group" aria-label="お題の操作モード">'+
@@ -34,7 +36,8 @@ export function mountIdeaMemo({host,role,onBack}){
  function alerts(){
   return (error?'<p class="zim-msg" role="alert">'+clean(error)+'</p>':"")+
    (message?'<p class="zim-msg" role="status">'+clean(message)+'</p>':"")+
-   (officialError?'<p class="zim-msg" role="alert">'+clean(officialError)+'</p>':"");
+   (officialError?'<p class="zim-msg" role="alert">'+clean(officialError)+'</p>':"")+
+   (trashError?'<p class="zim-msg" role="alert">'+clean(trashError)+'</p>':"");
  }
  function creationScreen(){
   const editing=editIndex>=0;
@@ -49,6 +52,7 @@ export function mountIdeaMemo({host,role,onBack}){
    '<label class="zim-label" for="zim-level">難易度</label>'+
    '<select id="zim-level" class="zim-input">'+levelOptions.map(([v,t])=>'<option value="'+v+'"'+(draftLevel===v?' selected':'')+'>'+t+'</option>').join("")+'</select>'+
    '<div class="zim-actions"><button class="zim-act" data-save>'+(editing?"編集を保存":"ネタ帳へ保存")+'</button>'+
+   (editing?'<button class="zim-act danger" data-memo-delete="'+editIndex+'">🗑 このメモを削除</button>':"")+
    '<button class="zim-act alt" data-catalog-view="book">ネタ帳に戻る</button></div>'+alerts()+'</section></main>';
  }
  function officialEditor(){
@@ -64,27 +68,30 @@ export function mountIdeaMemo({host,role,onBack}){
    '<label class="zim-label" for="zim-official-level">難易度</label><select id="zim-official-level" class="zim-input">'+levelOptions.filter(x=>x[0]).map(([v,t])=>'<option value="'+v+'"'+(row.level===v?' selected':'')+'>'+t+'</option>').join("")+'</select>'+
    '<div class="zim-actions"><button class="zim-act" data-official-save>編集下書きを保存</button>'+
    (officialDrafts[base.id]?'<button class="zim-act danger" data-official-revert>元の42組に戻す</button>':"")+
+   '<button class="zim-act danger" data-official-delete>🗑 ネタ帳から削除</button>'+
    '<button class="zim-act alt" data-official-cancel>キャンセル</button></div>'+
    alerts()+'</section>';
  }
  function bookScreen(){
-  const rows=notebookRows(entries,officialDrafts,{kind,level,query});
+  const rows=notebookRows(entries,officialDrafts,{kind,level,query,trash});
   const changed=Object.keys(officialDrafts).length;
+  const hiddenCount=trash.officialIds.length+trash.memoKeys.length;
+  const activeCount=notebookRows(entries,officialDrafts,{kind:"all",trash}).length;
   const levels=[["all","すべて"],["easy","初級"],["normal","中級"],["hard","上級"]];
-  const groups=[["all","全件"],["official","正式42組"],["memo","自作メモ"]];
+  const groups=[["all","全件"],["official","正式42組"],["memo","自作メモ"],["trash","🗑 削除済み "+hiddenCount]];
   return '<main class="zim">'+header("登録したお題を確認・編集")+
    (editOfficialId?officialEditor():
    '<section class="card section"><h2>📚 ネタ帳</h2>'+
-   '<p class="muted small">正式42組と自作メモをまとめて確認できます。正式お題を編集した場合は端末内に下書き保存し、ゲームにはまだ反映しません。</p>'+
-   '<p class="zim-count">正式 '+OFFICIAL_ZOROARK_42.length+'組 ／ 自作 '+countLocal()+'件 ／ 正式の編集下書き '+changed+'件</p>'+
+   '<p class="muted small">正式42組と自作メモをまとめて確認できます。編集・削除はこの端末のネタ帳にのみ反映します。ゲーム本編は変わりません。削除した項目は「削除済み」から復元できます。</p>'+
+   '<p class="zim-count">正式 '+OFFICIAL_ZOROARK_42.length+'組 ／ 自作 '+countLocal()+'件 ／ 編集下書き '+changed+'件 ／ 削除済み '+hiddenCount+'件</p>'+
    '<div class="zim-tabs" role="group" aria-label="お題の種類">'+groups.map(([v,label])=>'<button data-book-kind="'+v+'" aria-pressed="'+String(kind===v)+'">'+label+'</button>').join("")+'</div>'+
    '<div class="zim-tabs" role="group" aria-label="難易度">'+levels.map(([v,label])=>'<button data-book-level="'+v+'" aria-pressed="'+String(level===v)+'">'+label+'</button>').join("")+'</div>'+
    '<div class="zim-search"><input id="zim-book-search" class="zim-input" type="search" aria-label="ネタ帳を検索" placeholder="ポケモン名・共通点・違い" value="'+clean(query)+'">'+
    '<button class="zim-act" data-book-search>検索</button><button class="zim-act alt" data-book-clear>解除</button></div>'+
-   '<p class="muted small" role="status">表示 '+rows.length+' / '+(OFFICIAL_ZOROARK_42.length+entries.length)+'件</p>'+
+   '<p class="muted small" role="status">表示 '+rows.length+' / '+(kind==="trash"?hiddenCount:activeCount)+'件</p>'+
    '<details><summary>📁 バックアップ・復元</summary><div class="zim-actions"><button class="zim-act alt" data-export>ネタ帳をJSON保存</button>'+
    '<label class="zim-act alt">JSON読み込み <input type="file" data-import accept=".json,application/json" style="max-width:130px"></label></div>'+
-   '<p class="muted small">自作メモと正式42組の編集下書きだけを書き出します。旧形式のメモJSONも読み込めます。</p></details>'+alerts()+'</section>')+
+   '<p class="muted small">自作メモ・正式42組の編集下書き・削除済み状態を保存します。旧形式のメモJSONも読み込めます。</p></details>'+alerts()+'</section>')+
    (!editOfficialId?'<section class="card section"><h2>お題一覧</h2>'+
    (rows.map(row=>{
     const isOfficial=row.source==="official";
@@ -92,14 +99,19 @@ export function mountIdeaMemo({host,role,onBack}){
     const note=isOfficial?row.common:row.note;
     const desc=row.difference||"未記入";
     return '<article class="zim-list-card"><details><summary>'+clean(row.a)+' × '+clean(row.b)+'</summary>'+
-     '<div class="zim-meta">'+(isOfficial?"正式 #"+clean(row.id):"自作メモ")+' · '+label+(row.localDraft?" · ✏️ 編集下書きあり":"")+'</div>'+
+     '<div class="zim-meta">'+(isOfficial?"正式 #"+clean(row.id):"自作メモ")+' · '+label+(row.localDraft?" · ✏️ 編集下書きあり":"")+(row.deleted?" · 🗑 ネタ帳から削除済み":"")+'</div>'+
      '<p><b>似ている部分：</b>'+clean(note||"未記入")+'</p><p><b>違う部分：</b>'+clean(desc)+'</p>'+
-     '</details><div class="zim-actions">'+(isOfficial?
-      '<button class="zim-act alt" data-official-edit="'+clean(row.id)+'">✏️ 編集</button>'+
-      (row.localDraft?'<span class="muted small">ゲーム未反映</span>':""):
-      '<button class="zim-act alt" data-edit="'+row.index+'">✏️ 編集</button>'+
-      '<button class="zim-act alt" data-adopt="'+row.index+'">'+(row.status==="adopted"?"採用候補を解除":"採用候補にする")+'</button>'+
-      (row.status==="adopted"?'<span class="muted small">ゲーム未反映</span>':""))+'</div></article>';
+     '</details><div class="zim-actions">'+(row.deleted?
+       (isOfficial?'<button class="zim-act alt" data-official-restore="'+clean(row.id)+'">↩ ネタ帳に復元</button>':
+       '<button class="zim-act alt" data-memo-restore="'+row.index+'">↩ ネタ帳に復元</button>'):
+       isOfficial?
+       '<button class="zim-act alt" data-official-edit="'+clean(row.id)+'">✏️ 編集</button>'+
+       '<button class="zim-act danger" data-official-delete="'+clean(row.id)+'">🗑 削除</button>'+
+       (row.localDraft?'<span class="muted small">ゲーム未反映</span>':""):
+       '<button class="zim-act alt" data-edit="'+row.index+'">✏️ 編集</button>'+
+       '<button class="zim-act danger" data-memo-delete="'+row.index+'">🗑 削除</button>'+
+       '<button class="zim-act alt" data-adopt="'+row.index+'">'+(row.status==="adopted"?"採用候補を解除":"採用候補にする")+'</button>'+
+       (row.status==="adopted"?'<span class="muted small">ゲーム未反映</span>':""))+'</div></article>';
    }).join("")||'<p class="muted">該当するお題はありません。</p>')+'</section>':"")+'</main>';
  }
  function draw(){host.innerHTML=mode==="create"?creationScreen():bookScreen()}
@@ -148,9 +160,47 @@ export function mountIdeaMemo({host,role,onBack}){
   }catch(e){error="保存できません："+(e.message||"不明なエラー")}
   draw();
  }
+
+ function deleteOfficial(id){
+  const row=OFFICIAL_ZOROARK_42.find(x=>x.id===id);
+  if(!row)return;
+  if(trashError){error=trashError;draw();return}
+  if(trash.officialIds.includes(id))return;
+  if(!window.confirm("「"+row.a+" × "+row.b+"」をネタ帳から削除（非表示）しますか？\nゲームの正式42組からは消えません。「削除済み」から復元できます。"))return;
+  try{
+   trash=saveNotebookTrash(localStorage,{...trash,officialIds:[...trash.officialIds,id]});
+   editOfficialId=null;error="";message="ネタ帳から削除しました。削除済みから復元できます。ゲームは未変更です。";
+  }catch(e){error="削除できません："+e.message}
+  draw();
+ }
+ function deleteMemo(index){
+  if(!Number.isSafeInteger(index)||index<0||index>=entries.length)return;
+  if(trashError){error=trashError;draw();return}
+  const row=entries[index],id=pairKey(row);
+  if(trash.memoKeys.includes(id))return;
+  if(!window.confirm("自作メモ「"+row.a+" × "+row.b+"」をネタ帳から削除しますか？\n「削除済み」から元に戻せます。"))return;
+  try{
+   trash=saveNotebookTrash(localStorage,{...trash,memoKeys:[...trash.memoKeys,id]});
+   editIndex=-1;mode="book";error="";message="自作メモを削除済みに移しました。復元可能です。";
+  }catch(e){error="削除できません："+e.message}
+  draw();
+ }
+ function restoreDeleted(type,value){
+  if(trashError){error=trashError;draw();return}
+  if(type==="official"&&!OFFICIAL_ZOROARK_42.some(x=>x.id===value))return;
+  if(type==="memo"&&!entries.some(x=>pairKey(x)===value))return;
+  try{
+   trash=saveNotebookTrash(localStorage,type==="official"?
+    {...trash,officialIds:trash.officialIds.filter(id=>id!==value)}:
+    {...trash,memoKeys:trash.memoKeys.filter(id=>id!==value)});
+   error="";message="ネタ帳に復元しました。";
+  }catch(e){error="復元できません："+e.message}
+  draw();
+ }
  function exportData(){
   try{
-   const data=notebookBackup(entries,officialDrafts);
+   if(trashError)throw Error(trashError);
+   const data=notebookBackup(entries,officialDrafts,trash);
    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
    const url=URL.createObjectURL(blob);
    const link=document.createElement("a");link.href=url;link.download="zoroark-notebook-backup.json";link.click();
@@ -160,17 +210,18 @@ export function mountIdeaMemo({host,role,onBack}){
  async function importData(file){
   if(!file)return;
   try{
-   if(officialError||entryReadError)throw Error("保存データに読み取りエラーがあるため、安全のため復元できません");
+   if(officialError||entryReadError||trashError)throw Error("保存データに読み取りエラーがあるため、安全のため復元できません");
    if(file.size>2000000)throw Error("JSONは2MB以内にしてください");
    const incoming=parseNotebookImport(await file.text());
-   const merged=safeMergeNotebook(entries,officialDrafts,incoming);
+   const merged=safeMergeNotebook(entries,officialDrafts,incoming,trash);
    const label="新規メモ"+merged.addedMemo+"件・正式の編集下書き"+merged.addedOfficial+
-    "件を追加します。既存の編集は上書きしません。実行しますか？";
+    "件・削除済み状態"+merged.addedDeleted+"件を追加します。既存の編集は上書きしません。実行しますか？";
    if(!window.confirm(label))return;
-   // Save drafts first; if memo save fails, drafts remain recoverable and are not lost.
+   // Preserve a full JSON backup before import. Each existing storage key remains recoverable.
+   trash=saveNotebookTrash(localStorage,merged.trash);
    officialDrafts=saveOfficialDrafts(localStorage,merged.drafts);
    persist(merged.entries);
-   error="";message="復元しました。メモ"+merged.addedMemo+"件、正式編集"+merged.addedOfficial+"件を追加。";
+   error="";message="復元しました。メモ"+merged.addedMemo+"件、正式編集"+merged.addedOfficial+"件、削除済み状態"+merged.addedDeleted+"件を追加。";
   }catch(e){error="読み込み失敗："+e.message}
   draw();
  }
@@ -230,6 +281,15 @@ export function mountIdeaMemo({host,role,onBack}){
   const off=e.target.closest("[data-official-edit]");
   if(off){editOfficialId=off.dataset.officialEdit;error="";message="";draw();window.scrollTo(0,0);return}
   if(e.target.closest("[data-official-save]")){saveOfficial();return}
+  const offDelete=e.target.closest("[data-official-delete]");
+  if(offDelete){deleteOfficial(offDelete.dataset.officialDelete||editOfficialId);return}
+  const memoDelete=e.target.closest("[data-memo-delete]");
+  if(memoDelete){deleteMemo(Number(memoDelete.dataset.memoDelete));return}
+  const offRestore=e.target.closest("[data-official-restore]");
+  if(offRestore){restoreDeleted("official",offRestore.dataset.officialRestore);return}
+  const memoRestore=e.target.closest("[data-memo-restore]");
+  if(memoRestore){const row=entries[Number(memoRestore.dataset.memoRestore)];
+   if(row)restoreDeleted("memo",pairKey(row));return}
   if(e.target.closest("[data-official-cancel]")){editOfficialId=null;error="";draw();return}
   if(e.target.closest("[data-official-revert]")){
    if(officialError||!editOfficialId)return;
