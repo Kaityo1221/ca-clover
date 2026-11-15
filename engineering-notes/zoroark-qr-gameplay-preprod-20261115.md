@@ -11,6 +11,7 @@ Frontend PR [#303](https://github.com/Kaityo1221/ca-clover/pull/303) / Backend P
 - ログイン不要の一般参加者は、自分のHttpOnlyセッションで自分の役職・お題を取得。秘密は本人が開くまで非表示。参加者本人の画面を離れると再び隠す。
 - 質問カードは12種類から選択、1人最大5回。投票は1人1票、自己投票禁止、同票は決選投票、結果公開時にのみ全員の秘密を公開。
 - 初期人数6人、3分、ミミッキュOFF。ルーム内の`mode`は既存DB/API互換のため維持。新規QR作成画面から旧シンプル/マニュアル選択を取り下げ、ミミッキュ任意選択に変更。
+- GM・ゲストの画面は10秒間隔で状態を自動更新。手動更新もでき、通信エラー時に最後の表示状態を不用意に破棄しない。
 - 最新の対面手渡し（GMあり／なし、指差し投票、本人役職表示）と別系統。**QR方式は専任GMありのみ**。リモート番号入室は引き続き準備中。
 
 ## API・プライバシー境界
@@ -28,7 +29,7 @@ Frontend PR [#303](https://github.com/Kaityo1221/ca-clover/pull/303) / Backend P
 - ロール/プロンプト秘匿、4人試合の開始→質問→投票→結果→終了、同票からの決選投票、終了後のセッション遮断が実DB PASS。
 - 同時試合開始4リクエスト: 成功1、拒否3、DB作成ルーム用ゲーム1。並列同一投票12件: 成功1、残り11を拒否、実DBの票1。
 - `zoroark_runtime_guest`と`zoroark_runtime_gm`のロールテーブル直接参照、およびゲスト→GM RPC呼出しは42501で拒否。
-- Front CI（8テスト、TypeScript、Next build、境界試験）は動作確認済み。追加のChromium/WebKit模擬iPhoneブラウザー試験はCI結果を個別に確認し、実機Safari試験と混同しない。
+- Front CI（8テスト、TypeScript、Next build、境界試験）は動作確認済み。Chromium/WebKitともに390×844のゲスト模擬試験（秘密・質問・投票・結果）PASS、Actions run 43672638686。最新UI修正後のCIは個別確認が必要であり、実機Safari試験とは区別する。
 - Backend GitHub Actionsはランナーが割り当たる前に失敗（ジョブのsteps空、ログが取得不可）。**CI PASSと扱わない**。同一SQLはNeon子ブランチで実動作確認。
 - 本番リハーサル専用Neon子ブランチ `br-long-unit-bej0x7iu` でproductionターゲットガード版のSQLを適用PASS。RLS 4/4、GM/guest直接SELECT権限なし、各RPCの許可を確認。**本番mainではない。**
 - QA SQL `20261115_gameplay_preprod.sql` と本番候補 `20261115_gameplay_production_candidate.sql` はコメントと環境ガード以外で完全一致。差分検査スクリプトをBackend PRに配置。
@@ -41,4 +42,4 @@ Frontend PR [#303](https://github.com/Kaityo1221/ca-clover/pull/303) / Backend P
 4. 本番反映のGOが出るまでFrontend/Backend PRをDraftのまま保持し、`ZOROARK_GAMEPLAY_ENABLED`をOFF。本番Pages、Neon main、Supabase Auth/Edge/Cron、Vercel本番、既存ユーザーデータには触れない。
 5. 本番反映時はDB候補適用後もフラグOFFで読取検証し、アプリの本番環境整合を検証してからゲートを開く。障害時はフラグをOFFに戻し新規入室・ゲーム開始を閉じる。データを消す自動SQL rollbackは設けない。
 
-**残りの主なゲート**: WebKit模拟CI成功、Backend CI環境障害解消、実CA Auth/QR別端末E2E、最終統合競合確認、ユーザーの個別公開GO。Vercel公開は依頼により省略。
+**残りの主なゲート**: 最新HEADのCI確認、Backend CI環境障害解消、実CA Auth/QR別端末E2E、最終統合競合確認、ユーザーの個別公開GO。Vercel公開は依頼により省略。
