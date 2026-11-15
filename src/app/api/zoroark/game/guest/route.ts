@@ -58,7 +58,12 @@ export async function POST(request:Request){
   const [result]=await sql`select zoroark_isolated.guest_game_question(
     ${sessionHash}::text,${deviceHash}::text,${questionId}::integer) as ok`;
   return response({ok:result?.ok===true},result?.ok===true?200:409);
- }catch{
+ }catch(error){
+  const details=error as {code?:string;message?:string};
+  const reason=String(details?.message??"").split("\n")[0];
+  if(details?.code==="42501")return response({error:"session_not_approved_or_expired"},403);
+  if(details?.code==="P0001" && ["vote_not_allowed","question_not_allowed"].includes(reason))
+   return response({error:reason},409);
   return response({error:"game_service_unavailable"},503);
  }
 }
