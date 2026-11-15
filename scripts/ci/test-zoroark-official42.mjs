@@ -93,6 +93,7 @@ try{
  click("[data-catalog-view]",{catalogView:"book"});
  click("[data-book-kind]",{bookKind:"memo"});
  click("[data-book-level]",{bookLevel:"all"});
+ click("[data-book-clear]");
  assert.equal((host.innerHTML.match(/class="zim-list-card"/g)||[]).length,1);
  click("[data-edit]",{edit:"0"});
  assert.ok(host.innerHTML.includes("自作メモを編集"));
