@@ -80,7 +80,7 @@ test("GM requires current Auth identity, role, and owned room",async()=>{
 test("GM start fetches canonical round once; never returns prompts or role indices",async()=>{
  const h=harness();
  const res=await h.route("gm").POST(request("gm",{action:"start",roomId:room,difficulty:"all",enableMimikyu:false}));
- assert.equal(res.status,200);assert.deepEqual(await res.json(),{ok:true,phase:"talk"});
+ assert.equal(res.status,200,JSON.stringify({body:await res.clone().json(),calls:h.calls.map(x=>x.q)}));assert.deepEqual(await res.json(),{ok:true,phase:"talk"});
  assert.equal(h.getCanonicalCalls(),1);
  const start=h.calls.find(x=>x.q.includes("gm_game_start"));
  assert.ok(start);assert.equal(start.args[2],"a01");assert.equal(start.args[3],"ピカチュウ");assert.equal(start.args[4],"イーブイ");
