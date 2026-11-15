@@ -1,5 +1,5 @@
 "use client";
-import {useEffect,useState} from "react";
+import {useEffect,useRef,useState} from "react";
 
 type Player={id:string;number:number;name:string;role?:string;prompt?:string};
 type Question={id:number;playerId:string};
@@ -23,11 +23,14 @@ export default function GuestPage(){
  const [game,setGame]=useState<Game|null>(null),[busy,setBusy]=useState(false);
  const [message,setMessage]=useState("認証を確認中..."),[showSecret,setShowSecret]=useState(false);
  const [questionId,setQuestionId]=useState(0);
+ const phaseRef=useRef<string|null>(null);
  async function refresh(){
   setBusy(true);
   try{
    const data=await api("state");
    if(!data.game||typeof data.game.phase!=="string")throw Error("ゲーム情報を確認できません");
+   if(phaseRef.current!==null&&phaseRef.current!==data.game.phase)setShowSecret(false);
+   phaseRef.current=data.game.phase;
    setGame(data.game as Game);setMessage("");
   }catch(e){
    const error=e instanceof Error?e.message:"通信エラー";
@@ -56,6 +59,18 @@ export default function GuestPage(){
   finally{setBusy(false)}
  }
  useEffect(()=>{void refresh()},[]);
+ useEffect(()=>{
+  const timer=setInterval(()=>{
+   if(document.visibilityState!=="visible"||phaseRef.current==="reveal")return;
+   void api("state").then(value=>{
+    if(!value.game||typeof value.game.phase!=="string")return;
+    if(phaseRef.current!==null&&phaseRef.current!==value.game.phase)setShowSecret(false);
+    phaseRef.current=value.game.phase;
+    setGame(value.game as Game);
+   }).catch(()=>{}); // A transient polling error never clears valid session information.
+  },10000);
+  return ()=>clearInterval(timer);
+ },[]);
  useEffect(()=>{
   const hide=()=>setShowSecret(false);
   const visibility=()=>{if(document.hidden)hide()};
