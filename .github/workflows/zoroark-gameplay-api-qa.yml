@@ -1,0 +1,36 @@
+name: Zoroark QR Gameplay API QA (No Deploy)
+on:
+  push:
+    branches: [feature/zoroark-qr-gameplay-preprod-20261115]
+    paths:
+      - 'src/app/api/zoroark/game/**'
+      - 'src/app/zoroark/**'
+      - 'src/components/zoroark/**'
+      - 'src/lib/zoroark/**'
+      - 'scripts/ci/test-zoroark-gameplay-route.mjs'
+      - '.github/workflows/zoroark-gameplay-api-qa.yml'
+  pull_request:
+    branches: [integration/zoroark-pages-current-isolated-20261114]
+permissions:
+  contents: read
+jobs:
+  api-and-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Test gameplay API without network or production DB
+        run: node --test scripts/ci/test-zoroark-gameplay-route.mjs
+      - name: TypeScript and Next app compile
+        run: |
+          npx tsc --noEmit
+          npm run build
+      - name: Verify public/private boundary
+        run: node scripts/ci/verify-public-boundary.mjs
