@@ -114,6 +114,7 @@ export function mountIdeaMemo({host,role,onBack,gameCatalogGateway}){
    '<div class="zim-actions"><button class="zim-act" data-official-save>編集下書きを保存</button>'+
    (officialDrafts[base.id]?'<button class="zim-act danger" data-official-revert>元の42組に戻す</button>':"")+
    '<button class="zim-act danger" data-official-delete '+(canChangeGame()?'':'disabled aria-disabled="true"')+'>🗑 ゲームの出題から停止</button>'+
+   '<button class="zim-act alt" data-game-refresh '+(gameBusy?'disabled':'')+'>🔄 ゲーム状態を再確認</button>'+ 
    '<button class="zim-act alt" data-official-cancel>キャンセル</button></div>'+
    alerts()+'</section>';
  }
