@@ -21,7 +21,7 @@ assert.ok(ui.includes("data-edit"));
 assert.ok(ui.includes("data-adopt"));
 assert.ok(ui.includes("safeMergeNotebook(entries,officialDrafts,incoming,"));
 assert.ok(ui.includes("localStorage.setItem(KEY"));
-assert.ok(html.includes("zoroark-ideas.mjs?v=20261115-notebook-integration2"));
+assert.ok(html.includes("zoroark-ideas.mjs?v=20261115-management-compat3"));
 assert.ok(ui.includes("data-export-adopted"),"adopted-only JSON export is exposed");
 assert.ok(ui.includes("entryReadError||officialError||trashError"),"full JSON export must reject corrupt local state");
 assert.ok(ui.includes('zoroark-candidates-NOT-LIVE.json'),"exports must never imply game publication");
