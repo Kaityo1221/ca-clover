@@ -51,7 +51,15 @@ try {
  globalThis.window={scrollTo(){}};
  let searchValue="";
  const host={innerHTML:"",addEventListener(k,v){handlers[k]=v},removeEventListener(){},querySelector(k){if(k==="#zim-query")return {value:searchValue};return null}};
- const destroy=mountIdeaMemo({host,role:"admin",onBack(){}});
+ let serviceDown=false,serviceCalls=0;
+ const catalogGateway={async getStatus(){
+  serviceCalls++;
+  if(serviceDown)throw Error("QA server disabled");
+  return {baseCount:42,baseKeys:[topicNameKey("ピカチュウ","イーブイ")],
+   catalogVersion:7,runtimeEnabled:false,entries:[
+    {id:6,a:"ヤクデ",b:"マルヤクデ",status:"published",version:7,activeInGame:false}]};
+ }};
+ const destroy=mountIdeaMemo({host,role:"admin",catalogGateway,onBack(){}});
  const click=(selector,dataset={})=>handlers.click({target:{closest(k){return k===selector?{dataset}:null}}});
  assert.ok(host.innerHTML.includes("ゲームとの接続：未実装"),"memo is not claimed to be live");
  assert.ok(host.innerHTML.includes("採用候補 1"),"existing adopted memo counted");
@@ -70,6 +78,19 @@ try {
  assert.ok(host.innerHTML.includes("ピカチュウ × イーブイ"),"name search finds an item");
  assert.ok(!host.innerHTML.includes("ヤクデ × マルヤクデ"),"search filters non-matching item");
  assert.equal(JSON.parse(store.get(k)).length,3,"no stored memo is deleted by filters");
+ click("[data-filter-clear]");
+ click("[data-catalog-check]");
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(serviceCalls,1,"server lookup requires a direct user click");
+ assert.ok(host.innerHTML.includes("正式42組で利用中"),"exact built-in pair is confirmed live by server");
+ click("[data-view]",{view:"adopted"});
+ assert.ok(host.innerHTML.includes("公開済み・ゲーム出題OFF"),"DB publication alone is not game availability");
+ serviceDown=true;
+ click("[data-catalog-check]");
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.ok(host.innerHTML.includes("照合できません"),"connection failure is visible");
+ assert.ok(host.innerHTML.includes("サーバー未照合"),"connection failure never claims publication");
+ assert.equal(JSON.parse(store.get(k)).length,3,"catalog checks do not modify local memo data");
  destroy();
 } finally {
  for(const [k,v] of Object.entries(savedGlobals)){if(v===undefined)delete globalThis[k];else globalThis[k]=v}
