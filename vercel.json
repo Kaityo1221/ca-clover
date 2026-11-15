@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "feature/zoroark-official42-admin-api-no-deploy-20261115": false
+    }
+  }
+}
