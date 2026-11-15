@@ -16,11 +16,15 @@ for(const value of [
 for(const row of [{...base,id:27,status:"pending"},{...base,id:10000,status:"published"},
  {...base,id:27,status:"published",difference:""}])
  assert.throws(()=>publishedTopicToPair(row));
-import { readFileSync } from "node:fs";
-const sql=readFileSync(new URL("../supabase/migrations/20261115080000_zoroark_topic_catalog_isolated.sql",import.meta.url),"utf8");
-for(const token of ["ENABLE ROW LEVEL SECURITY","zoroark_topic_is_admin","auth.uid()","GRANT EXECUTE",
- "pg_advisory_xact_lock","zoroark_topic_audit","FOR UPDATE","invalid transition",
- "REVOKE ALL ON public.zoroark_topic_candidates","zoroark_topic_catalog_version"])
- assert.ok(sql.includes(token),"security migration token "+token);
-assert.ok(!sql.includes("service_role"),"migration must not rely on service role secrets");
+import {readFileSync} from "node:fs";
+const management=readFileSync(new URL("../src/lib/zoroark-catalog-management.server.ts",import.meta.url),"utf8");
+const route=readFileSync(new URL("../src/app/api/zoroark/catalog/route.ts",import.meta.url),"utf8");
+const round=readFileSync(new URL("../src/app/api/zoroark/round/route.ts",import.meta.url),"utf8");
+for(const token of ["ZOROARK_CATALOG_MANAGEMENT_ENABLED","ZOROARK_CATALOG_PUBLISH_ENABLED",
+ "ZOROARK_CATALOG_RUNTIME_ENABLED","VERCEL_ENV","runtimePublishedPairs"])
+ assert.ok(management.includes(token),"feature gate "+token);
+for(const token of ["profiles","admin","allowedZoroarkOrigin","published","runtimeEnabled",
+ "auth.getUser","publishing_disabled","already_in_base_catalog"])
+ assert.ok(route.includes(token),"admin API boundary "+token);
+assert.ok(round.includes("catalogRuntimeEnabled() ? await runtimePublishedPairs"),"round uses staged catalog only when gated");
 console.log("ZOROARK_CATALOG_REVIEW_PASS");
