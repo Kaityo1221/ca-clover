@@ -46,7 +46,7 @@ export default function ZoroarkRoomManagementPage(){
     if(!response.ok||!Array.isArray(result.rooms))throw new Error("ルーム一覧を取得できませんでした。");
     const selected=(result.rooms as OwnedRoom[]).find(item=>item.id===roomId);
     if(!selected)throw new Error("このルームは見つからないか、管理する権限がありません。");
-    if(selected.state!=="lobby"||new Date(selected.expires_at).getTime()<=Date.now())
+    if(!["lobby","talk","vote","reveal"].includes(selected.state)||new Date(selected.expires_at).getTime()<=Date.now())
      throw new Error("このルームは終了または期限切れです。");
     if(active)setRoom(selected);
    }catch(cause){if(active)setError(cause instanceof Error?cause.message:"ルームを開けませんでした。")}
