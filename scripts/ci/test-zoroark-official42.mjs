@@ -32,7 +32,7 @@ assert.ok(!ui.includes("zoroark_topic_submit"));
 assert.ok(!engine.includes("localStorage"));
 assert.ok(html.includes("zoroark-ideas.mjs?v=20261115-notebook-editor1"));
 
-const globals={document:globalThis.document,window:globalThis.window,localStorage:globalThis.localStorage};
+const globals={document:globalThis.document,window:globalThis.window,localStorage:globalThis.localStorage,fetch:globalThis.fetch};
 try{
  const key="ca-zoroark-admin-ideas-v1";
  const sample=[normalizeEntry({a:"ピカチュウ",b:"イーブイ",aNo:"025",bNo:"133",note:"端末内の既存メモ",status:"draft"})];
@@ -45,6 +45,10 @@ try{
  };
  globalThis.document={createElement(type){return type==="style"?style:dialog},head:{append(){}},body:{append(){}}};
  globalThis.window={scrollTo(){},confirm(){return true}};
+ globalThis.fetch=async(url)=>({ok:true,json:async()=>[
+  {jp:"ピカチュウ",no:"025",en:"Pikachu",gen:1},
+  {jp:"ニャース",no:"052",en:"Meowth",gen:1}
+ ]});
  const handlers={},inputs={};
  const host={innerHTML:"",addEventListener(k,v){handlers[k]=v},removeEventListener(){},
   querySelector(s){return Object.hasOwn(inputs,s)?{value:inputs[s]}:null}};
@@ -105,6 +109,19 @@ try{
  assert.equal(stored[0].level,"normal");
  assert.equal(stored.length,1);
  assert.equal(parseImport(JSON.stringify(exportDocument(stored)))[0].difference,"新しい相違点");
+ // Creating a fresh pair still works after switching modes; the Gen1 selector is retained.
+ click("[data-catalog-view]",{catalogView:"create"});
+ click("[data-choose]",{choose:"0"});await new Promise(resolve=>setImmediate(resolve));
+ dialogHandlers.click({target:{closest(k){return k==="[data-id]"?{dataset:{id:"025"}}:null}}});
+ click("[data-choose]",{choose:"1"});await new Promise(resolve=>setImmediate(resolve));
+ dialogHandlers.click({target:{closest(k){return k==="[data-id]"?{dataset:{id:"052"}}:null}}});
+ Object.assign(inputs,{"#zim-note":"新規ペア共通点","#zim-difference":"新規ペア相違点","#zim-level":"easy"});
+ click("[data-save]");
+ const latest=JSON.parse(values.get(key));
+ assert.equal(latest.length,2,"new pair added without dropping prior memo");
+ assert.equal(latest[1].a,"ピカチュウ");
+ assert.equal(latest[1].b,"ニャース");
+ assert.equal(latest[1].note,"新規ペア共通点");
  destroy();
  // Corrupt existing storage cannot be silently overwritten.
  const corruptStorage={getItem(k){return k===key?"not-json":null},setItem(){throw Error("must not overwrite")}};
