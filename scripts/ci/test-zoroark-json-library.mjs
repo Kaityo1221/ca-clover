@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {pairKey,normalizeEntry,mergeEntries,parseImport,exportDocument,ideaStatusCounts,ideaVisibleIndexes} from "../../docs/zoroark-idea-library.mjs";
+import {pairKey,normalizeEntry,mergeEntries,parseImport,exportDocument,ideaStatusCounts,ideaVisibleIndexes,candidateForServer,compareServerCatalog,topicNameKey} from "../../docs/zoroark-idea-library.mjs";
 import {mountIdeaMemo} from "../../docs/zoroark-ideas.mjs";
 const legacy=[{a:"ピカチュウ",b:"イーブイ",aNo:"025",bNo:"133",note:"人気",at:"2026-10-31"}];
 const rows=parseImport(JSON.stringify(legacy));
@@ -73,4 +73,19 @@ try {
  for(const [k,v] of Object.entries(savedGlobals)){if(v===undefined)delete globalThis[k];else globalThis[k]=v}
 }
 
+const completed=normalizeEntry({...legacy[0],difference:"進化のしかたが違う",level:"easy"});
+assert.equal(candidateForServer(completed).common,"人気","completed candidate forwards the reviewed common feature");
+assert.equal(candidateForServer(legacy[0]),null,"old 8 memo records are not published before completing review");
+assert.equal(parseImport(JSON.stringify(exportDocument([completed])))[0].level,"easy","new review fields survive old JSON backup format");
+assert.equal(topicNameKey("イーブイ","ピカチュウ"),topicNameKey("ピカチュウ","イーブイ"),"pair status is order-independent");
+const statusFixture={baseKeys:[topicNameKey("デデンネ","エモンガ")],
+ entries:[{id:3,a:"ピカチュウ",b:"イーブイ",status:"published",version:2,activeInGame:false},
+ {id:4,a:"ガーディ",b:"ヒスイガーディ",status:"approved",version:0,activeInGame:false},
+ {id:5,a:"ヤクデ",b:"マルヤクデ",status:"published",version:3,activeInGame:true}]};
+assert.equal(compareServerCatalog({a:"デデンネ",b:"エモンガ"},statusFixture).state,"live","server-confirmed built-in is truly live");
+assert.equal(compareServerCatalog(completed,statusFixture).state,"queued","published DB topic is not called live while runtime gate is off");
+assert.equal(compareServerCatalog({a:"ガーディ",b:"ヒスイガーディ"},statusFixture).state,"approved","approved not live");
+assert.equal(compareServerCatalog({a:"ヤクデ",b:"マルヤクデ"},statusFixture).state,"live","server-confirmed active published topic");
+assert.equal(compareServerCatalog({a:"マッギョ",b:"カイリキー"},statusFixture).state,"missing","unregistered pair is not live");
+assert.equal(compareServerCatalog(completed,null).state,"unchecked","network error never implies publication");
 console.log("ZOROARK_JSON_LIBRARY_PASS");
