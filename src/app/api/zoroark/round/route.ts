@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createZoroarkRound, chooseZoroarkPair } from "@/lib/zoroark-catalog.server";
 import { allowedZoroarkOrigin, allowedZoroarkRole, validateRoundRequest } from "@/lib/zoroark-api-policy";
 import { OFFICIAL_TOPIC_CONTROL_ENABLED,validateOfficialTopicState } from "@/lib/zoroark-official-control.server";
+import { catalogRuntimeEnabled, runtimePublishedPairs } from "@/lib/zoroark-catalog-management.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -89,7 +90,9 @@ export async function POST(request: NextRequest) {
       if(stateError)throw new Error("official state unavailable");
       disabledIds=new Set(validateOfficialTopicState(state).filter(row=>row.disabled).map(row=>row.topic_id));
     }
-    const pair = chooseZoroarkPair(input.difficulty,input.recent,undefined,disabledIds);
+    // Preview-only candidate publication is independent of the official disable list.
+    const published = catalogRuntimeEnabled() ? await runtimePublishedPairs(supabase) : [];
+    const pair = chooseZoroarkPair(input.difficulty,input.recent,undefined,published,disabledIds);
     const round = createZoroarkRound(input.count,pair);
     return response(request,{round},200);
   } catch {
