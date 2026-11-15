@@ -1,0 +1,37 @@
+name: Zoroark Official 42 Production Candidate QA
+on:
+  pull_request:
+    branches: [pages]
+    paths:
+      - docs/zoroark-ideas.mjs
+      - docs/zoroark-official42.mjs
+      - docs/index.html
+      - scripts/ci/test-zoroark-official42.mjs
+      - scripts/ci/test-zoroark-admin-ideas.mjs
+      - scripts/ci/test-zoroark-json-library.mjs
+      - .github/workflows/zoroark-official42-pages.yml
+  push:
+    branches: [release/zoroark-official42-pages-20261115]
+permissions:
+  contents: read
+jobs:
+  readonly-catalog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Browser-safe UI and official 42 read-only regression
+        run: |
+          node scripts/ci/test-zoroark-official42.mjs
+          node scripts/ci/test-zoroark-admin-ideas.mjs
+          node scripts/ci/test-zoroark-json-library.mjs
+      - name: JavaScript syntax
+        run: |
+          node --check docs/zoroark-official42.mjs
+          node --check docs/zoroark-ideas.mjs
+          node --check docs/zoroark-idea-library.mjs
