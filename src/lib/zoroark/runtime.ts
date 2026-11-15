@@ -17,7 +17,9 @@ export function runtimeConfig(kind: Kind, env = process.env) {
   if (!url) return null;
   try {
     const parsed = new URL(url);
-    const expectedHost = target === "preview" ? QA_HOST : PROD_HOST;
+    const expectedHost = target === "preview"
+      ? (env.VERCEL_GIT_COMMIT_REF === "feature/zoroark-qr-gameplay-preprod-20261115" ? GAMEPLAY_QA_HOST : QA_HOST)
+      : PROD_HOST;
     if (!["postgres:","postgresql:"].includes(parsed.protocol) ||
         parsed.hostname.replace("-pooler.", ".") !== expectedHost ||
         parsed.pathname !== "/zoroark_prod" || parsed.username !== `zoroark_runtime_${kind}` ||
@@ -27,6 +29,8 @@ export function runtimeConfig(kind: Kind, env = process.env) {
 }
 // Hosts are non-secret identifiers pinned to silent-sea-07101633 endpoints.
 const QA_HOST = "ep-frosty-grass-betfuvsp.c-9.us-east-2.aws.neon.tech";
+// Gameplay QA is an isolated child of the room/lobby preview; never reuse its credentials or data.
+const GAMEPLAY_QA_HOST = "ep-patient-wildflower-becnjy57.c-9.us-east-2.aws.neon.tech";
 const PROD_HOST = "ep-billowing-unit-beco2lbg.c-9.us-east-2.aws.neon.tech";
 
 export async function runtimeDatabase(kind: Kind) {
