@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { createZoroarkRound, chooseZoroarkPair } from "@/lib/zoroark-catalog.server";
 import { allowedZoroarkOrigin, allowedZoroarkRole, validateRoundRequest } from "@/lib/zoroark-api-policy";
+import { OFFICIAL_TOPIC_CONTROL_ENABLED,validateOfficialTopicState } from "@/lib/zoroark-official-control.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -79,7 +80,16 @@ export async function POST(request: NextRequest) {
     const input = validateRoundRequest(body);
     if (!input) return response(request,{error:"人数または難易度が不正です。"},400);
 
-    const pair = chooseZoroarkPair(input.difficulty,input.recent);
+    // Server-authoritative, shared across every CA game. No client-provided deletion list.
+    // Fail closed when the feature is active but the status DB is unavailable.
+    let disabledIds=new Set<string>();
+    if(OFFICIAL_TOPIC_CONTROL_ENABLED){
+      const {data:state,error:stateError}=await supabase.from("zoroark_official_topic_state")
+        .select("topic_id,disabled,revision").limit(43);
+      if(stateError)throw new Error("official state unavailable");
+      disabledIds=new Set(validateOfficialTopicState(state).filter(row=>row.disabled).map(row=>row.topic_id));
+    }
+    const pair = chooseZoroarkPair(input.difficulty,input.recent,undefined,disabledIds);
     const round = createZoroarkRound(input.count,pair);
     return response(request,{round},200);
   } catch {

@@ -116,6 +116,31 @@ try {
     "CREATE POLICY self_select ON public.profiles FOR SELECT TO authenticated USING (id=(SELECT auth.uid()));",
     "CREATE POLICY self_update ON public.profiles FOR UPDATE TO authenticated USING (id=(SELECT auth.uid())) WITH CHECK(id=(SELECT auth.uid()));",
   ].join("\n"));
+  // Local-only miniature contract fixture. The *actual* private SQL is separately
+  // tested in the isolated Neon database; never import private SQL into this public repo.
+  sql(db,[
+    "CREATE TABLE public.zoroark_official_topic_state(topic_id text PRIMARY KEY, disabled boolean NOT NULL, revision integer NOT NULL, changed_by uuid NOT NULL REFERENCES auth.users(id));",
+    "ALTER TABLE public.zoroark_official_topic_state ENABLE ROW LEVEL SECURITY;",
+    "REVOKE ALL ON public.zoroark_official_topic_state FROM PUBLIC,anon,authenticated;",
+    "GRANT SELECT (topic_id,disabled,revision) ON public.zoroark_official_topic_state TO authenticated;",
+    "GRANT INSERT (topic_id,disabled,revision,changed_by) ON public.zoroark_official_topic_state TO authenticated;",
+    "GRANT UPDATE (disabled,revision,changed_by) ON public.zoroark_official_topic_state TO authenticated;",
+    "CREATE POLICY official_read ON public.zoroark_official_topic_state FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=(SELECT auth.uid()) AND p.role IN ('ca','admin')));",
+    "CREATE POLICY official_insert ON public.zoroark_official_topic_state FOR INSERT TO authenticated WITH CHECK (changed_by=(SELECT auth.uid()) AND EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=(SELECT auth.uid()) AND p.role='admin'));",
+    "CREATE POLICY official_update ON public.zoroark_official_topic_state FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=(SELECT auth.uid()) AND p.role='admin')) WITH CHECK (changed_by=(SELECT auth.uid()) AND EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=(SELECT auth.uid()) AND p.role='admin'));",
+    "CREATE SCHEMA zoroark_fixture_private;",
+    "REVOKE ALL ON SCHEMA zoroark_fixture_private FROM PUBLIC,anon,authenticated;",
+    "CREATE TABLE zoroark_fixture_private.gate(writes_enabled boolean NOT NULL DEFAULT false);",
+    "INSERT INTO zoroark_fixture_private.gate DEFAULT VALUES;",
+    "REVOKE ALL ON zoroark_fixture_private.gate FROM PUBLIC,anon,authenticated;",
+    "CREATE TABLE public.zoroark_fixture_audit(topic_id text, disabled boolean, revision integer, actor uuid);",
+    "ALTER TABLE public.zoroark_fixture_audit ENABLE ROW LEVEL SECURITY;",
+    "REVOKE ALL ON public.zoroark_fixture_audit FROM PUBLIC,anon,authenticated;",
+    "CREATE FUNCTION zoroark_fixture_private.guard() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $fixture$ BEGIN IF NOT EXISTS(SELECT 1 FROM zoroark_fixture_private.gate WHERE writes_enabled) THEN RAISE EXCEPTION 'DB gate disabled' USING errcode='42501'; END IF; IF NEW.changed_by<>auth.uid() THEN RAISE EXCEPTION 'actor mismatch'; END IF; IF TG_OP='INSERT' AND NEW.revision<>1 THEN RAISE EXCEPTION 'version mismatch'; END IF; IF TG_OP='UPDATE' AND (NEW.revision<>OLD.revision+1 OR NEW.disabled=OLD.disabled) THEN RAISE EXCEPTION 'version mismatch'; END IF; INSERT INTO public.zoroark_fixture_audit VALUES(NEW.topic_id,NEW.disabled,NEW.revision,auth.uid()); RETURN NEW; END; $fixture$;",
+    "REVOKE ALL ON FUNCTION zoroark_fixture_private.guard() FROM PUBLIC,anon,authenticated;",
+    "CREATE TRIGGER zoroark_fixture_guard BEFORE INSERT OR UPDATE ON public.zoroark_official_topic_state FOR EACH ROW EXECUTE FUNCTION zoroark_fixture_private.guard();",
+    "NOTIFY pgrst, 'reload schema';"
+  ].join("\n"));
   const admin=createClient(api,service,{auth:{persistSession:false,autoRefreshToken:false}});
   const password="Synthetic-"+randomBytes(10).toString("hex")+"!";
   const people={};
@@ -135,7 +160,8 @@ try {
     people[role]={id,token,client};
   }
   const localPort=await port(),base="http://127.0.0.1:"+localPort;
-  const nextEnv={...env,NEXT_PUBLIC_SUPABASE_URL:api,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:anon};
+  const nextEnv={...env,NEXT_PUBLIC_SUPABASE_URL:api,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:anon,
+   ZOROARK_OFFICIAL_CONTROL_ENABLED:"true",ZOROARK_OFFICIAL_WRITE_ENABLED:"true"};
   next=spawn(process.execPath,["node_modules/next/dist/bin/next","dev",
     "--hostname","127.0.0.1","--port",String(localPort)],{
       cwd:root,env:nextEnv,stdio:["ignore","pipe","pipe"]
@@ -182,6 +208,68 @@ try {
   assert.equal(other.error,null,"pending RLS read");
   assert.equal(other.data?.length,1,"pending can only read own row");
   assert.equal(other.data[0].id,people.pending.id,"pending self identity");
+  // Real signed JWT + actual PostgREST permission checks for the NEW official
+  // topic stop/restore API. The SQL above is a local TEST fixture, not production.
+  const manage=async(token,method="GET",body)=>{
+    const headers={"Origin":"https://kaityo1221.github.io"};
+    if(token)headers.Authorization="Bearer "+token;
+    if(body)headers["Content-Type"]="application/json";
+    const r=await fetch(base+"/api/zoroark/official",{
+      method,headers,...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(12000)
+    });
+    return {status:r.status,body:await r.json()};
+  };
+  assert.equal((await manage(null)).status,401,"official API unauthenticated");
+  assert.equal((await manage(people.ca.token)).status,403,"CA cannot manage official topics");
+  assert.equal((await manage(people.pending.token)).status,403,"pending cannot manage official topics");
+  assert.equal((await manage(people.revoked.token)).status,403,"revoked CA cannot manage");
+  const initial=await manage(people.admin.token);
+  assert.equal(initial.status,200,"ADMIN reads real PostgREST official rows");
+  assert.equal(initial.body.states.length,0);
+  assert.equal(initial.body.writeEnabled,true);
+  const deniedGate=await manage(people.admin.token,"POST",{topicId:"e01",disabled:true,expectedRevision:0});
+  assert.equal(deniedGate.status,409,"private DB gate OFF blocks valid ADMIN");
+  const emptyAfterDeny=await manage(people.admin.token);
+  assert.equal(emptyAfterDeny.body.states.length,0,"no phantom success with DB gate OFF");
+  sql(db,"UPDATE zoroark_fixture_private.gate SET writes_enabled=true;");
+  // Public game policy intentionally limits recent to 6. Seed the OTHER five
+  // candidates as disabled to make e01 selection deterministic without violating it.
+  for(let i=2;i<=6;i++){
+    const id="e"+String(i).padStart(2,"0");
+    const seed=await manage(people.admin.token,"POST",{topicId:id,disabled:true,expectedRevision:0});
+    assert.equal(seed.status,200,"fixture seed "+id+" through real ADMIN API");
+  }
+  const onlyE01=Array.from({length:6},(_,i)=>"e"+String(i+7).padStart(2,"0"));
+  const beforeDisable=await request(base,people.ca.token,{count:6,difficulty:"easy",recent:onlyE01});
+  assert.equal(beforeDisable.code,200,"deterministic e01 allowed");
+  assert.equal(beforeDisable.json.round.pair.id,"e01");
+  const deniedCA=await manage(people.ca.token,"POST",{topicId:"e01",disabled:true,expectedRevision:0});
+  assert.equal(deniedCA.status,403,"CA cannot disable topics even when DB gate ON");
+  const stopped=await manage(people.admin.token,"POST",{topicId:"e01",disabled:true,expectedRevision:0});
+  assert.equal(stopped.status,200,"real ADMIN POST stops topic");
+  assert.equal(stopped.body.gameConfirmed,true);
+  assert.equal(stopped.body.state.revision,1);
+  const stale=await manage(people.admin.token,"POST",{topicId:"e01",disabled:true,expectedRevision:0});
+  assert.equal(stale.status,409,"replayed version cannot update");
+  const changed=await request(base,people.ca.token,{count:6,difficulty:"easy",recent:onlyE01});
+  assert.equal(changed.code,200);
+  assert.notEqual(changed.json.round.pair.id,"e01","disabled e01 never selected by another CA");
+  const restored=await manage(people.admin.token,"POST",{topicId:"e01",disabled:false,expectedRevision:1});
+  assert.equal(restored.status,200,"ADMIN restores the same topic");
+  assert.equal(restored.body.state.revision,2);
+  const afterRestore=await request(base,people.ca.token,{count:6,difficulty:"easy",recent:onlyE01});
+  assert.equal(afterRestore.code,200);
+  assert.equal(afterRestore.json.round.pair.id,"e01","restored e01 eligible for next round");
+  const audit=await admin.from("zoroark_fixture_audit").select("topic_id,disabled,revision,actor").eq("topic_id","e01").order("revision");
+  assert.equal(audit.error,null);
+  assert.deepEqual(audit.data?.map(x=>[x.topic_id,x.disabled,x.revision,x.actor]),[
+    ["e01",true,1,people.admin.id],["e01",false,2,people.admin.id]
+  ]);
+  sql(db,"UPDATE zoroark_fixture_private.gate SET writes_enabled=false;");
+  const deniedAfterOff=await manage(people.admin.token,"POST",{topicId:"e01",disabled:true,expectedRevision:2});
+  assert.equal(deniedAfterOff.status,409,"gate OFF after restoration protects next round");
+  console.log("ZOROARK_OFFICIAL_REAL_AUTH_LOCAL_PASS real_gotrue=true admin_ca_rls=true live_exclusion=true restore=true audit=true private_fixture=true");
+
   // Actual expiration: never forge or re-sign an ES256 JWT.
   // Wait beyond GoTrue's 60-second local JWT TTL, then call the real Auth API.
   console.log("ZOROARK_REAL_AUTH_EXPIRY: validating real GoTrue token expiry");
