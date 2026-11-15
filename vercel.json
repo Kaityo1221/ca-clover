@@ -3,7 +3,8 @@
   "git": {
     "deploymentEnabled": {
       "release/zoroark-qr-gameplay-main-20261115": false,
-      "feature/zoroark-official-live-disable-isolated-20261115": false
+      "feature/zoroark-official-live-disable-isolated-20261115": false,
+      "feature/zoroark-catalog-official-conflict-resolution-20261115": false
     }
   }
 }
