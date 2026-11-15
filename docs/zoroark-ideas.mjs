@@ -1,4 +1,4 @@
-import {pairKey,normalizeEntry,mergeEntries,parseImport,exportDocument,ideaStatusCounts,ideaVisibleIndexes,compareServerCatalog} from "./zoroark-idea-library.mjs?v=20261115-catalog-stage1";
+import {pairKey,normalizeEntry,mergeEntries,parseImport,exportDocument,ideaStatusCounts,ideaVisibleIndexes,compareServerCatalog,candidateForServer} from "./zoroark-idea-library.mjs?v=20261115-catalog-stage1";
 const URL_ROOT="https://raw.githubusercontent.com/Kaityo1221/Global-EN-Trainer/main/data/";
 const KEY="ca-zoroark-admin-ideas-v1";
 const clean=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -10,12 +10,12 @@ export function mountIdeaMemo({host,role,onBack,catalogGateway=null}){
  const dialog=document.createElement("dialog");dialog.className="zim-dlg";document.body.append(dialog);
  let chosen=[null,null],which=0,gen=1,all=[],term="",error="",destroyed=false,loadId=0,searchMode=false;
  const genCache=new Map();
- let editIndex=-1,editNote="",view="draft",query="",serverCatalog=null,serverError="",serverBusy=false;
+ let editIndex=-1,editNote="",editDifference="",editLevel="",view="draft",query="",serverCatalog=null,serverError="",serverBusy=false;
  let entries=[];try{const x=JSON.parse(localStorage.getItem(KEY)||"[]");if(Array.isArray(x))entries=x.slice(0,500).map(normalizeEntry)}catch{}
  function draw(){
   const counts=ideaStatusCounts(entries);
   const visible=ideaVisibleIndexes(entries,view,query).map(i=>({...entries[i],rowIndex:i}));
-  host.innerHTML='<main class="zim"><section class="card hero"><button data-back class="zim-act">← 戻る</button><h1>🦊 お題管理</h1><button class="zim-act" data-catalog-check>🔎 ゲーム反映状況を照合</button><p role="status">'+clean(serverError||(serverCatalog?'検証サーバー版 '+serverCatalog.catalogVersion+' ／ 正式42組＋公開候補':'サーバー未照合。採用候補は正式公開ではありません。'))+'</p><p>ADMIN専用：2匹を選んで特徴をメモ</p><div class="zim-alert"><strong>⚠️ ゲームとの接続：未実装</strong><div>この画面で「採用候補」にしてもゲームには反映されません。ゲームは別APIから出題します。重複や実際の使用状況もここでは判定できません。</div></div><div class="zim-counts"><span>📝 未処理 '+counts.draft+'</span><span>⭐ 採用候補 '+counts.adopted+'</span><span>📦 非採用 '+counts.archived+'</span></div><p class="small muted">この端末内に保存。CA共有・端末間同期は未対応です。</p></section><details class="card section zim-create"'+(editIndex>=0||chosen.some(Boolean)?' open':'')+'><summary>＋ お題を追加・編集</summary><div class="zim-pair">'+chosen.map((p,i)=>'<button class="zim-poke" data-choose="'+i+'"><small>ポケモン'+(i?'B':'A')+'</small>'+clean(p?.jp||"選択する")+'</button>').join('<b style="text-align:center;font-size:23px">×</b>')+'</div><label for="zim-note">似てる部分</label><textarea id="zim-note" class="zim-note" placeholder="例：人気ポケモン">'+clean(editNote)+'</textarea><div class="zim-actions"><button class="zim-act" data-save>'+(editIndex>=0?'編集を保存':'下書き保存')+'</button><details class="zim-files"><summary>📁 バックアップ・開発者向け</summary><button class="zim-act" data-export>JSONバックアップ</button><button class="zim-act" data-export-adopted>採用候補JSON（未反映）</button><label class="zim-act">JSON読み込み<input data-import type="file" accept=".json,application/json" style="max-width:120px;font-size:12px"></label></details></div><p role="status">'+clean(error)+'</p></details><section class="card section"><h2>お題一覧（全'+entries.length+'件）</h2><div class="zim-tabs">'+[["draft","未処理",counts.draft],["adopted","採用候補",counts.adopted],["archived","非採用",counts.archived],["all","全件",counts.total]].map(([v,label,n])=>'<button data-view="'+v+'" aria-pressed="'+String(view===v)+'">'+label+' '+n+'</button>').join("")+'</div><input id="zim-query" class="zim-filter-query" placeholder="ポケモン名・メモで検索" value="'+clean(query)+'"><button class="zim-act" data-filter-search>検索</button><button class="zim-act" data-filter-clear>解除</button><p class="small muted">表示 '+visible.length+'件。採用候補はゲーム未反映です。</p>'+visible.map((x,i)=>'<div class="zim-entry"><b>'+clean(x.a)+' × '+clean(x.b)+'</b><div>'+clean(x.note)+'</div><small>'+(x.status==='adopted'?'⭐ 採用候補・サーバー未承認':x.status==='archived'?'📦 非採用・保管':'📝 未処理')+'</small><div class="zim-alert">'+clean(compareServerCatalog(x,serverCatalog).label)+'</div><div class="zim-actions"><button class="zim-act" data-edit="'+x.rowIndex+'">編集</button>'+(x.status==='archived'?'<button class="zim-act" data-restore="'+x.rowIndex+'">未処理に戻す</button>':'<button class="zim-act" data-adopt="'+x.rowIndex+'">'+(x.status==='adopted'?'候補を解除':'採用候補へ')+'</button><button class="zim-act zim-archive" data-archive="'+x.rowIndex+'">非採用へ</button>')+'</div></div>').join("")+'</section></main>';
+  host.innerHTML='<main class="zim"><section class="card hero"><button data-back class="zim-act">← 戻る</button><h1>🦊 お題管理</h1><button class="zim-act" data-catalog-check>🔎 ゲーム反映状況を照合</button><p role="status">'+clean(serverError||(serverCatalog?'検証サーバー版 '+serverCatalog.catalogVersion+' ／ 正式42組＋公開候補':'サーバー未照合。採用候補は正式公開ではありません。'))+'</p><p>ADMIN専用：2匹を選んで特徴をメモ</p><div class="zim-alert"><strong>⚠️ ゲームとの接続：未実装</strong><div>この画面で「採用候補」にしてもゲームには反映されません。ゲームは別APIから出題します。重複や実際の使用状況もここでは判定できません。</div></div><div class="zim-counts"><span>📝 未処理 '+counts.draft+'</span><span>⭐ 採用候補 '+counts.adopted+'</span><span>📦 非採用 '+counts.archived+'</span></div><p class="small muted">この端末内に保存。CA共有・端末間同期は未対応です。</p></section><details class="card section zim-create"'+(editIndex>=0||chosen.some(Boolean)?' open':'')+'><summary>＋ お題を追加・編集</summary><div class="zim-pair">'+chosen.map((p,i)=>'<button class="zim-poke" data-choose="'+i+'"><small>ポケモン'+(i?'B':'A')+'</small>'+clean(p?.jp||"選択する")+'</button>').join('<b style="text-align:center;font-size:23px">×</b>')+'</div><label for="zim-note">似てる部分</label><textarea id="zim-note" class="zim-note" placeholder="例：人気ポケモン">'+clean(editNote)+'</textarea><label for="zim-difference">違う部分（正式追加前に必須）</label><textarea id="zim-difference" class="zim-note" placeholder="例：タイプや進化が違う">'+clean(editDifference)+'</textarea><label for="zim-level">難易度（正式追加前に必須）</label><select id="zim-level" class="zim-note">'+[["","未設定"],["easy","初級"],["normal","中級"],["hard","上級"]].map(([v,title])=>'<option value="'+v+'"'+(editLevel===v?' selected':'')+'>'+title+'</option>').join("")+'</select><div class="zim-actions"><button class="zim-act" data-save>'+(editIndex>=0?'編集を保存':'下書き保存')+'</button><details class="zim-files"><summary>📁 バックアップ・開発者向け</summary><button class="zim-act" data-export>JSONバックアップ</button><button class="zim-act" data-export-adopted>採用候補JSON（未反映）</button><label class="zim-act">JSON読み込み<input data-import type="file" accept=".json,application/json" style="max-width:120px;font-size:12px"></label></details></div><p role="status">'+clean(error)+'</p></details><section class="card section"><h2>お題一覧（全'+entries.length+'件）</h2><div class="zim-tabs">'+[["draft","未処理",counts.draft],["adopted","採用候補",counts.adopted],["archived","非採用",counts.archived],["all","全件",counts.total]].map(([v,label,n])=>'<button data-view="'+v+'" aria-pressed="'+String(view===v)+'">'+label+' '+n+'</button>').join("")+'</div><input id="zim-query" class="zim-filter-query" placeholder="ポケモン名・メモで検索" value="'+clean(query)+'"><button class="zim-act" data-filter-search>検索</button><button class="zim-act" data-filter-clear>解除</button><p class="small muted">表示 '+visible.length+'件。採用候補はゲーム未反映です。</p>'+visible.map((x,i)=>'<div class="zim-entry"><b>'+clean(x.a)+' × '+clean(x.b)+'</b><div>'+clean(x.note)+'</div><small>'+(x.status==='adopted'?'⭐ 採用候補・サーバー未承認':x.status==='archived'?'📦 非採用・保管':'📝 未処理')+'</small><div class="zim-alert">'+clean(compareServerCatalog(x,serverCatalog).label)+'</div>'+(x.status==="adopted"?(candidateForServer(x)?'<button class="zim-act" data-catalog-submit="'+x.rowIndex+'"'+(serverBusy?' disabled':'')+'>隔離サーバーへ候補を申請</button>':'<p class="small muted">送信前に「違う部分」「難易度」を編集してください。</p>'):'')+'<div class="zim-actions"><button class="zim-act" data-edit="'+x.rowIndex+'">編集</button>'+(x.status==='archived'?'<button class="zim-act" data-restore="'+x.rowIndex+'">未処理に戻す</button>':'<button class="zim-act" data-adopt="'+x.rowIndex+'">'+(x.status==='adopted'?'候補を解除':'採用候補へ')+'</button><button class="zim-act zim-archive" data-archive="'+x.rowIndex+'">非採用へ</button>')+'</div></div>').join("")+'</section></main>';
  }
  function renderChoices(){
   const choices=all.filter(x=>!term||x.jp.includes(term)||(x.en||"").toLowerCase().includes(term.toLowerCase())||x.no.includes(term)).slice(0,200);
@@ -64,13 +64,15 @@ export function mountIdeaMemo({host,role,onBack,catalogGateway=null}){
  }
  function save(){
   const note=host.querySelector("#zim-note").value.trim();
+  const difference=(host.querySelector("#zim-difference")?.value||editDifference).trim();
+  const level=host.querySelector("#zim-level")?.value||editLevel;
   if(!chosen[0]||!chosen[1]){error="2匹を選択してください";editNote=note;draw();return}
   let candidate;
-  try{candidate=normalizeEntry({a:chosen[0].jp,b:chosen[1].jp,aNo:chosen[0].no,bNo:chosen[1].no,note,at:new Date().toISOString(),status:editIndex>=0?entries[editIndex].status:"draft"})}
+  try{candidate=normalizeEntry({a:chosen[0].jp,b:chosen[1].jp,aNo:chosen[0].no,bNo:chosen[1].no,note,difference,level,at:new Date().toISOString(),status:editIndex>=0?entries[editIndex].status:"draft"})}
   catch(e){error=e.message;editNote=note;draw();return}
   if(entries.some((item,i)=>i!==editIndex&&pairKey(item)===pairKey(candidate))){error="この組み合わせは登録済みです";editNote=note;draw();return}
   const next=[...entries];if(editIndex>=0)next[editIndex]=candidate;else next.push(candidate);
-  try{persist(next);error="端末内に保存しました";editIndex=-1;editNote="";chosen=[null,null]}catch(e){error="保存できません："+e.message;editNote=note}
+  try{persist(next);error="端末内に保存しました";editIndex=-1;editNote="";editDifference="";editLevel="";chosen=[null,null]}catch(e){error="保存できません："+e.message;editNote=note}
   draw();
  }
  function exportData(adoptedOnly=false){
@@ -104,16 +106,32 @@ export function mountIdeaMemo({host,role,onBack,catalogGateway=null}){
   }catch(e){if(!destroyed){serverCatalog=null;serverError="照合できません："+(e instanceof Error?e.message:"接続エラー");}}
   finally{serverBusy=false;if(!destroyed)draw()}
  }
+ async function submitCandidate(i){
+  if(destroyed||serverBusy||entries[i]?.status!=="adopted")return;
+  const topic=candidateForServer(entries[i]);
+  if(!topic){serverError="公開前に違いと難易度を入力してください";draw();return}
+  if(!catalogGateway||typeof catalogGateway.submit!=="function"){
+   serverError="検証サーバーへの申請は準備中です";draw();return}
+  serverBusy=true;serverError="";draw();
+  try{
+   await catalogGateway.submit(topic);
+   if(!destroyed){serverCatalog=null;serverError="候補をサーバーに申請しました。正式公開前に審査が必要です。";}
+  }catch(e){if(!destroyed)serverError="送信できません："+(e instanceof Error?e.message:"通信エラー")}
+  finally{serverBusy=false;if(!destroyed)draw()}
+ }
  const onClick=e=>{
   const memo=host.querySelector("#zim-note");if(memo)editNote=memo.value;
+  const diff=host.querySelector("#zim-difference");if(diff)editDifference=diff.value;
+  const lev=host.querySelector("#zim-level");if(lev)editLevel=lev.value;
   if(e.target.closest("[data-back]")){destroy();onBack();return}
   const c=e.target.closest("[data-choose]");if(c){which=Number(c.dataset.choose);term="";showPicker();dialog.showModal();void changeGen(gen)}
   if(e.target.closest("[data-save]")){save();return}
   if(e.target.closest("[data-catalog-check]")){void checkCatalog();return}
+  const sub=e.target.closest("[data-catalog-submit]");if(sub){void submitCandidate(Number(sub.dataset.catalogSubmit));return}
   const tab=e.target.closest("[data-view]");if(tab){view=tab.dataset.view;draw();return}
   if(e.target.closest("[data-filter-search]")){query=host.querySelector("#zim-query")?.value||"";draw();return}
   if(e.target.closest("[data-filter-clear]")){query="";draw();return}
-  const ed=e.target.closest("[data-edit]");if(ed){editIndex=Number(ed.dataset.edit);const x=entries[editIndex];chosen=[{jp:x.a,no:x.aNo},{jp:x.b,no:x.bNo}];editNote=x.note;error="編集中";draw();window.scrollTo(0,0);return}
+  const ed=e.target.closest("[data-edit]");if(ed){editIndex=Number(ed.dataset.edit);const x=entries[editIndex];chosen=[{jp:x.a,no:x.aNo},{jp:x.b,no:x.bNo}];editNote=x.note;editDifference=x.difference||"";editLevel=x.level||"";error="編集中";draw();window.scrollTo(0,0);return}
   const ad=e.target.closest("[data-adopt]");if(ad){const i=Number(ad.dataset.adopt);if(!entries[i]||entries[i].status==="archived")return;const next=entries.map((x,j)=>j===i?{...x,status:x.status==="adopted"?"draft":"adopted"}:x);try{persist(next);error="採用候補を変更しました。ゲームには未反映です"}catch{error="保存に失敗しました"}draw();return}
   const ar=e.target.closest("[data-archive]");if(ar){const i=Number(ar.dataset.archive);if(!entries[i]||entries[i].status==="archived")return;try{persist(entries.map((x,j)=>i===j?{...x,status:"archived"}:x));error="非採用として保管しました。あとから戻せます"}catch{error="保存に失敗しました"}draw();return}
   const rs=e.target.closest("[data-restore]");if(rs){const i=Number(rs.dataset.restore);if(entries[i]?.status!=="archived")return;try{persist(entries.map((x,j)=>i===j?{...x,status:"draft"}:x));error="未処理へ戻しました"}catch{error="保存に失敗しました"}draw();return}
