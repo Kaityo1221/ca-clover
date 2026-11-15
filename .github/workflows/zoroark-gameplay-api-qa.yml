@@ -8,6 +8,7 @@ on:
       - 'src/components/zoroark/**'
       - 'src/lib/zoroark/**'
       - 'scripts/ci/test-zoroark-gameplay-route.mjs'
+      - 'scripts/ci/test-zoroark-gameplay-mobile.mjs'
       - '.github/workflows/zoroark-gameplay-api-qa.yml'
   pull_request:
     branches: [integration/zoroark-pages-current-isolated-20261114]
@@ -32,5 +33,22 @@ jobs:
         run: |
           npx tsc --noEmit
           npm run build
+      - name: Install pinned browser QA tooling
+        run: |
+          npm ci --prefix scripts/ci/participant-runtime --no-audit --no-fund
+          node scripts/ci/participant-runtime/node_modules/playwright/cli.js install chromium webkit
+      - name: Mobile-sized Chromium and WebKit QR game flow (localhost only)
+        run: |
+          set -euo pipefail
+          npm run start -- -p 3111 > /tmp/zoroark-next.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3111/zoroark/guest > /dev/null; then ready=1; break; fi
+            sleep 1
+          done
+          if [ "$ready" != 1 ]; then tail -60 /tmp/zoroark-next.log; exit 1; fi
+          node scripts/ci/test-zoroark-gameplay-mobile.mjs
       - name: Verify public/private boundary
         run: node scripts/ci/verify-public-boundary.mjs
