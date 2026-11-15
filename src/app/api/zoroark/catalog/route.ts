@@ -55,7 +55,8 @@ export async function GET(req:NextRequest){
    .select("id,a,b,a_no,b_no,common,difference,level,status,version,submitted_at,reviewed_at,published_at")
    .order("id",{ascending:false}).limit(500);
   if(error||!Array.isArray(data))return response(req,{error:"catalog_unavailable"},503);
-  return response(req,{baseCount:PAIRS.length,catalogVersion:Math.max(0,...data.map(x=>Number(x.version)||0)),
+  return response(req,{baseCount:PAIRS.length,baseKeys:PAIRS.map(x=>topicPairKey(x.a,x.b)),
+   catalogVersion:Math.max(0,...data.map(x=>Number(x.version)||0)),
    runtimeEnabled:catalogRuntimeEnabled(),publishEnabled:catalogPublishEnabled(),
    entries:data.map(x=>({...x,activeInGame:catalogRuntimeEnabled()&&x.status==="published"}))},200);
  }catch{return response(req,{error:"catalog_unavailable"},503)}

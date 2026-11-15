@@ -36,7 +36,7 @@ export function publishedTopicToPair(value:unknown):Pair {
  const candidate=validateTopicCandidate(value);
  const record=value as Partial<PublishedTopicRecord>|null;
  const id=record?.id;
- if(!candidate||record?.status!=="published"||!Number.isSafeInteger(id)||Number(id)<1||Number(id)>9999)
+ if(!candidate||record?.status!=="published"||typeof id!=="number"||!Number.isSafeInteger(id)||id<1||id>9999)
   throw new Error("Invalid published topic");
  return {id:"x"+String(id).padStart(4,"0"),...candidate};
 }

@@ -26,5 +26,6 @@ for(const token of ["ZOROARK_CATALOG_MANAGEMENT_ENABLED","ZOROARK_CATALOG_PUBLIS
 for(const token of ["profiles","admin","allowedZoroarkOrigin","published","runtimeEnabled",
  "auth.getUser","publishing_disabled","already_in_base_catalog"])
  assert.ok(route.includes(token),"admin API boundary "+token);
+assert.ok(route.includes("baseKeys:PAIRS.map"),"ADMIN statuses cover baseline 42 exact pairs");
 assert.ok(round.includes("catalogRuntimeEnabled() ? await runtimePublishedPairs"),"round uses staged catalog only when gated");
 console.log("ZOROARK_CATALOG_REVIEW_PASS");
