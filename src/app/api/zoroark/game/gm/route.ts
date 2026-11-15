@@ -93,7 +93,12 @@ export async function POST(request:Request){
   const act=input.action;
   const [record]=await sql`select zoroark_isolated.gm_game_advance(${gm}::uuid,${roomId}::uuid,${act}::text) as phase`;
   return reply({phase:record?.phase??"unknown"});
- }catch{
+ }catch(error){
+  const details=error as {code?:string;message?:string};
+  const name=String(details?.message??"").split("\n")[0];
+  if(details?.code==="P0001" && ["roster_not_ready","votes_incomplete","invalid_transition",
+    "game_not_started","runoff_limit"].includes(name))return reply({error:name},409);
+  if(details?.code==="42501")return reply({error:"room_state_changed"},409);
   return reply({error:"game_service_unavailable"},503);
  }
 }
