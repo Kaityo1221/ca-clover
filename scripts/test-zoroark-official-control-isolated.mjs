@@ -7,7 +7,7 @@ const UID="00000000-0000-4000-8000-000000000001";
 const TOKENS={admin:"synthetic-official-admin-token-000001",ca:"synthetic-official-ca-token-00000001",
  pending:"synthetic-official-pending-token-01",invalid:"synthetic-official-invalid-token-01"};
 const roles=new Map([[TOKENS.admin,"admin"],[TOKENS.ca,"ca"],[TOKENS.pending,"pending"]]);
-let unavailable=false,dbWrites=0,wrongWrites=0;
+let unavailable=false,dbWrites=0,wrongWrites=0,dbWriteEnabled=false;
 const status=new Map();
 function reply(res,n,obj){
  res.writeHead(n,{"content-type":"application/json"});
@@ -33,6 +33,7 @@ const mock=http.createServer(async(req,res)=>{
    return reply(res,200,rows);
   }
   if(roles.get(token)!=="admin"){wrongWrites++;return reply(res,403,{message:"forbidden"})}
+  if(!dbWriteEnabled)return reply(res,403,{code:"42501",message:"official topic DB write gate disabled"});
   let raw="";for await(const chunk of req){raw+=chunk.toString()}
   const input=JSON.parse(raw||"{}");
   const key=req.method==="PATCH"?String(url.searchParams.get("topic_id")||"").replace("eq.",""):input.topic_id;
@@ -97,6 +98,11 @@ try{
   {topicId:"wrong",disabled:true,expectedRevision:0})).status,400);
  assert.equal((await query("/api/zoroark/official",TOKENS.admin,
   {topicId:"e01",disabled:false,expectedRevision:0})).status,409);
+ const gateBlocked=await query("/api/zoroark/official",TOKENS.admin,
+  {topicId:"e01",disabled:true,expectedRevision:0});
+ assert.equal(gateBlocked.status,409,"DB gate OFF rejects direct writes even if Next flags permit");
+ assert.equal(status.size,0,"no state leaked through the disabled DB gate");
+ dbWriteEnabled=true;
  const first=await query("/api/zoroark/official",TOKENS.admin,
   {topicId:"e01",disabled:true,expectedRevision:0});
  assert.equal(first.status,200);assert.equal(first.data.state.revision,1);assert.equal(first.data.gameConfirmed,true);
@@ -119,11 +125,16 @@ try{
  assert.equal(restored.data.state.revision,2);
  const newRound=await query("/api/zoroark/round",TOKENS.ca,{count:6,difficulty:"easy",recent:[]});
  assert.equal(newRound.status,200);assert.equal(newRound.data.round.pair.id,"e01");
+ dbWriteEnabled=false;
+ const disabledAgain=await query("/api/zoroark/official",TOKENS.admin,
+  {topicId:"e01",disabled:true,expectedRevision:2});
+ assert.equal(disabledAgain.status,409,"DB gate OFF refuses to disable an active game question");
+ assert.equal(status.get("e01").disabled,false,"the previously restored game question stays active");
  unavailable=true;
  assert.equal((await query("/api/zoroark/round",TOKENS.ca,{count:6,difficulty:"easy"})).status,503);
  assert.equal((await query("/api/zoroark/official",TOKENS.admin)).status,503);
  assert.equal(wrongWrites,0);assert.equal(dbWrites,3);
- console.log("ZOROARK_OFFICIAL_ISOLATED_HTTP_PASS round exclusion restore admin RLS proxy fail_closed");
+ console.log("ZOROARK_OFFICIAL_ISOLATED_HTTP_PASS round exclusion restore DB-gate-off admin proxy fail_closed");
 }catch(e){
  console.error("ZOROARK_OFFICIAL_ISOLATED_HTTP_FAIL",e?.message||e);
  console.error("NEXT_LOG_TAIL",logs.slice(-2000));process.exitCode=1;
