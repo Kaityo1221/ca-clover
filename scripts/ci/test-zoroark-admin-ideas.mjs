@@ -13,6 +13,8 @@ assert.ok(module.includes('data-gen'));
 assert.ok(module.includes('data-choose'));
 assert.ok(module.includes('data-save'));
 assert.ok(module.includes('localStorage.setItem(KEY'));
+assert.ok(module.includes("ゲームとの接続：未実装"));
+assert.ok(module.includes("data-view")&&module.includes("data-archive"));
 assert.ok(module.includes('data-export'));
 assert.ok(module.includes('raw.githubusercontent.com/Kaityo1221/Global-EN-Trainer/main/data/'));
 assert.ok(!module.includes('service_role'));
