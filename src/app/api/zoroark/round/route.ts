@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { createZoroarkRound, chooseZoroarkPair } from "@/lib/zoroark-catalog.server";
 import { allowedZoroarkOrigin, allowedZoroarkRole, validateRoundRequest } from "@/lib/zoroark-api-policy";
+import { catalogRuntimeEnabled, runtimePublishedPairs } from "@/lib/zoroark-catalog-management.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -79,7 +80,11 @@ export async function POST(request: NextRequest) {
     const input = validateRoundRequest(body);
     if (!input) return response(request,{error:"人数または難易度が不正です。"},400);
 
-    const pair = chooseZoroarkPair(input.difficulty,input.recent);
+    // Production defaults to the original 42. On an explicitly enabled
+    // nonproduction preview, a catalog DB error must fail closed, not silently
+    // fall back and falsely claim that candidate publication succeeded.
+    const published = catalogRuntimeEnabled() ? await runtimePublishedPairs(supabase) : [];
+    const pair = chooseZoroarkPair(input.difficulty,input.recent,undefined,published);
     const round = createZoroarkRound(input.count,pair);
     return response(request,{round},200);
   } catch {

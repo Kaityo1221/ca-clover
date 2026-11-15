@@ -19,6 +19,6 @@ export function validateRoundRequest(input: unknown): {
   if (!["all", "easy", "normal", "hard"].includes(String(difficulty))) return null;
   if (typeof difficulty !== "string") return null;
   if (!Array.isArray(recent) || recent.length > 6 ||
-      !recent.every(v => typeof v === "string" && /^[a-z][0-9]{2}$/.test(v))) return null;
+      !recent.every(v => typeof v === "string" && /^[a-z][0-9]{2,4}$/.test(v))) return null;
   return {count: count as number, difficulty: difficulty as DifficultyChoice, recent: [...new Set(recent)]};
 }

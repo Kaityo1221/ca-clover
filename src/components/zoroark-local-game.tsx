@@ -43,7 +43,7 @@ export function ZoroarkLocalGame() {
     try {
       const data: unknown = JSON.parse(sessionStorage.getItem("clover-zoroark-pairs-v1") || "[]");
       history.current = Array.isArray(data)
-        ? [...new Set(data.filter((v): v is string => typeof v === "string" && /^[a-z][0-9]{2}$/.test(v)))].slice(-6)
+        ? [...new Set(data.filter((v): v is string => typeof v === "string" && /^[a-z][0-9]{2,4}$/.test(v)))].slice(-6)
         : [];
     } catch { history.current = []; }
   }, []);
