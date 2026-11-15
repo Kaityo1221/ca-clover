@@ -14,7 +14,7 @@ export function GmGameControls({roomId,mode,approved,pending,onFinish}:{
 }){
  const {supabase}=useAuthProfile();
  const [game,setGame]=useState<Game|null>(null),[difficulty,setDifficulty]=useState("all");
- const [mimikyu,setMimikyu]=useState(false),[busy,setBusy]=useState(false),[message,setMessage]=useState("");
+ const [mimikyu,setMimikyu]=useState(mode==="manual"),[busy,setBusy]=useState(false),[message,setMessage]=useState("");
  async function invoke(action:"status"|"start"|"vote"|"tally"|"finish"){
   const {data}=await supabase.auth.getSession();
   if(!data.session?.access_token)throw Error("CAとして再ログインしてください。");
