@@ -1,7 +1,7 @@
 name: Zoroark Notebook Mobile WebKit Isolated (No Deploy)
 on:
   push:
-    branches: [feature/zoroark-notebook-soft-delete-isolated-20261115]
+    branches: [feature/zoroark-notebook-soft-delete-isolated-20261115, feature/zoroark-notebook-management-conflict-resolution-20261115]
     paths:
       - docs/zoroark-ideas.mjs
       - docs/zoroark-notebook.mjs
@@ -9,7 +9,7 @@ on:
       - scripts/test-zoroark-notebook-webkit-isolated.mjs
       - .github/workflows/zoroark-notebook-webkit-isolated.yml
   pull_request:
-    branches: [pages]
+    branches: [pages, feature/zoroark-notebook-soft-delete-isolated-20261115]
     paths:
       - docs/zoroark-ideas.mjs
       - docs/zoroark-notebook.mjs
