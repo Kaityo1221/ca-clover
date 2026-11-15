@@ -36,7 +36,7 @@ jobs:
       - name: Install pinned browser QA tooling
         run: |
           npm ci --prefix scripts/ci/participant-runtime --no-audit --no-fund
-          node scripts/ci/participant-runtime/node_modules/playwright/cli.js install chromium webkit
+          node scripts/ci/participant-runtime/node_modules/playwright/cli.js install --with-deps chromium webkit
       - name: Mobile-sized Chromium and WebKit QR game flow (localhost only)
         run: |
           set -euo pipefail
