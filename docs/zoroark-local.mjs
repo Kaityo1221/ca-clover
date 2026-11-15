@@ -141,7 +141,7 @@ export function mountZoroark({host,gateway,onBack}){
   const ready=total===count;
   const allowed=voteFinalists===null?Array.from({length:count},(_,i)=>i):voteFinalists;
   return '<span class="pill">🗳️ '+(voteRound===1?'最終投票':'決選投票 '+voteRound+'回目')+'</span>'+
-   '<h2>ゾロアークは誰だ？</h2><p>GMが指差し投票の票数を入力します。プレイヤー全員が各1票、GMは投票しません。</p>'+
+   '<h2>ゾロアークは誰だ？</h2><p>「せーの！」で全員が一斉に怪しい人を指差そう。プレイヤーは全員1票。'+(gmJoins?'主催者も1票を投じ、参加者の誰か1人が票数を入力します。':'専任GMは投票せず、票数を入力します。')+'</p>'+
    (voteRound>1?'<div class="zg-hint">同数最多だった参加者だけで決選投票します。前回の票数は引き継ぎません。</div>':'')+
    '<div class="zg-tally-grid">'+allowed.map(i=>'<div class="zg-tally-item"><strong>'+(i+1)+'番</strong><div class="zg-tally-buttons"><button type="button" data-act="subtractVote:'+i+'" class="zg-btn secondary" aria-label="'+(i+1)+'番を1票減らす"'+(voteCounts[i]===0?' disabled':'')+'>−</button><span class="zg-tally-count">'+voteCounts[i]+'</span><button type="button" data-act="addVote:'+i+'" class="zg-btn secondary" aria-label="'+(i+1)+'番を1票増やす"'+(total>=count?' disabled':'')+'>＋</button></div></div>').join("")+'</div>'+
    '<div class="zg-vote-progress">入力済み '+total+' / '+count+'票'+(ready?' ✓':'')+'</div>'+
@@ -164,7 +164,7 @@ export function mountZoroark({host,gateway,onBack}){
    (voteRound>1?'<p>決選投票：'+voteRound+'回目で決着</p>':'')+
    '<p>多数派：<strong>'+esc(round.majority)+'</strong><br>少数派：<strong>'+esc(round.minority)+'</strong></p>'+
    '<div class="zg-hint"><strong>共通点：</strong>'+esc(round.pair.common)+'<br><strong>違い：</strong>'+esc(round.pair.difference)+'</div>'+
-   action('次のゲームへ',"start",false,busy)+action('🪙 疑惑メダル集計へ →',"medalResults")+action('人数設定に戻る',"reset",true);
+   action('次のゲームへ',"start",false,busy)+(playMethod==="handoff"?'':action('🪙 疑惑メダル集計へ →',"medalResults"))+action('人数設定に戻る',"reset",true);
  }
  function body(){
   if(phase.startsWith("medal-")&&phase!=="medal-summary")return medalScreen();
@@ -180,7 +180,7 @@ export function mountZoroark({host,gateway,onBack}){
 
    action(cardCooldownUntil>Date.now()?'🍂 質問カード（クールダウン中）':'🍂 質問カードを使う',"cardChoose",true,cardCooldownUntil>Date.now())+
    (questionUsed.length?'<h3>使用済みの質問</h3>'+questionUsed.map(q=>'<div class="zg-question-history">プレイヤー'+(q.owner+1)+'番：'+esc(q.text)+'</div>').join(""):'')+
-   action('🪙 参加者が自分でメダルを投げる',"medalChoose",true)+(duration===0?'<p class="muted small">制限時間なし：中間疑惑速報はありません。</p>':'')+action('指差し投票へ','vote');
+   '<div class="zg-hint">📣 全員で「せーの！」と一斉に指差そう。最終投票が始まるまでは誰にも正体を明かさないでね。</div>'+action('🗳️ 「せーの！」指差し投票へ','vote');
   if(phase==="vote")return voteView();
   if(phase==="results")return resultView();
  return '<p>ゲームを準備してください</p>';
@@ -191,7 +191,7 @@ export function mountZoroark({host,gateway,onBack}){
    if(!destroyed&&phase==="talk"&&midpointNotice&&Date.now()>=midpointUntil){midpointNotice=null;render()}
    if(!destroyed&&phase==="talk"&&running&&duration){
     tickTalk();
-    if(!midpointFired&&talkElapsedMs>=duration*500&&!cardAnnouncement){
+    if(playMethod!=="handoff"&&!midpointFired&&talkElapsedMs>=duration*500&&!cardAnnouncement){
       midpointFired=true;const leaders=suspicionLeaders(medalTotals);
       midpointNotice=leaders.length?'最も疑われているのは '+leaders.map(i=>(i+1)+'番').join('・')+'！':'まだ疑惑メダルは投げられていません';
       midpointUntil=Date.now()+8000;render();
@@ -243,7 +243,7 @@ export function mountZoroark({host,gateway,onBack}){
   if(name==="show"){visible=true;render();return}
   if(name==="next"){visible=false;if(player+1===round.count){phase="talk"}else player++;render();return}
   if(name==="medalChoose"){
-    if(phase!=="talk")return;
+    if(phase!=="talk"||playMethod==="handoff")return;
     medalWasRunning=Boolean(running);
     if(running){remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));pauseTalk()}
     phase="medal-owner";medalActor=-1;medalTarget=-1;render();return;
@@ -265,7 +265,7 @@ export function mountZoroark({host,gateway,onBack}){
     if(medalWasRunning)resumeTalk();
     medalWasRunning=false;medalActor=-1;medalTarget=-1;phase="talk";render();return;
    }
-   if(name==="medalResults"&&phase==="results"&&reveal){phase="medal-summary";render();return}
+   if(name==="medalResults"&&playMethod!=="handoff"&&phase==="results"&&reveal){phase="medal-summary";render();return}
    if(name==="backResults"&&phase==="medal-summary"){phase="results";render();return}
    if(name==="cardChoose"){
     if(phase!=="talk"||Date.now()<cardCooldownUntil)return;
@@ -324,8 +324,8 @@ export function mountZoroark({host,gateway,onBack}){
   if(name==="reset"){reset()}
  }
  let swipeStart=null;
- const onTouchStart=event=>{if((phase==="results"&&reveal)||phase==="medal-summary"){const t=event.touches?.[0];if(t)swipeStart={x:t.clientX,y:t.clientY}}};
- const onTouchEnd=event=>{if(!swipeStart)return;const t=event.changedTouches?.[0],start=swipeStart;swipeStart=null;if(!t)return;const dx=t.clientX-start.x,dy=t.clientY-start.y;if(Math.abs(dx)<70||Math.abs(dy)>85)return;if(phase==="results"&&reveal&&dx<0){phase="medal-summary";render()}else if(phase==="medal-summary"&&dx>0){phase="results";render()}};
+ const onTouchStart=event=>{if(playMethod!=="handoff"&&((phase==="results"&&reveal)||phase==="medal-summary")){const t=event.touches?.[0];if(t)swipeStart={x:t.clientX,y:t.clientY}}};
+ const onTouchEnd=event=>{if(!swipeStart)return;const t=event.changedTouches?.[0],start=swipeStart;swipeStart=null;if(!t)return;const dx=t.clientX-start.x,dy=t.clientY-start.y;if(Math.abs(dx)<70||Math.abs(dy)>85)return;if(playMethod!=="handoff"&&phase==="results"&&reveal&&dx<0){phase="medal-summary";render()}else if(playMethod!=="handoff"&&phase==="medal-summary"&&dx>0){phase="results";render()}};
  const click=event=>{const b=event.target.closest("[data-act]");if(b&&host.contains(b)&&!b.disabled)act(b.dataset.act)};
  const change=event=>{if(event.target.id==="zg-level")level=event.target.value;if(event.target.id==="zg-mode")mode=event.target.value;if(event.target.id==="zg-duration"){duration=Number(event.target.value);remaining=duration}if(event.target.id==="zg-mimikyu"){enableMimikyu=Boolean(event.target.checked);if(enableMimikyu)showRoles=true;render()}if(event.target.id==="zg-show-roles"&&!enableMimikyu){showRoles=Boolean(event.target.checked);render()}};
  const hidden=()=>{if(document.hidden&&phase==="pass"&&visible){visible=false;render()}if(document.hidden&&phase==="card-private"){phase="card-handoff";render()}if(document.hidden&&(phase==="medal-private"||phase==="medal-confirm")){medalTarget=-1;phase="medal-handoff";render()}};
