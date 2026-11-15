@@ -49,6 +49,15 @@ export function GmGameControls({roomId,mode,approved,pending,onFinish}:{
   }finally{setBusy(false)}
  }
  useEffect(()=>{void run("status")},[]);
+ useEffect(()=>{
+  const id=setInterval(()=>{
+   if(document.visibilityState!=="visible")return;
+   void invoke("status").then(state=>{
+    if(state.game&&typeof state.game.phase==="string")setGame(state.game as Game);
+   }).catch(()=>{}); // Keep the last verified state during transient network errors.
+  },10000);
+  return ()=>clearInterval(id);
+ },[]);
  const players=Array.isArray(game?.players)?game.players:[];
  const questions=Array.isArray(game?.questions)?game.questions:[];
  const ready=approved>=3&&pending===0;
