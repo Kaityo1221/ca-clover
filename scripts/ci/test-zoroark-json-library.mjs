@@ -21,5 +21,7 @@ assert.ok(ui.includes("data-edit"));
 assert.ok(ui.includes("data-adopt"));
 assert.ok(ui.includes("mergeEntries(entries,incoming)"));
 assert.ok(ui.includes("localStorage.setItem(KEY"));
-assert.ok(html.includes("zoroark-ideas.mjs?v=20261031-library1"));
+assert.ok(html.includes("zoroark-ideas.mjs?v=20261115-readonly42-v1"));
+assert.ok(ui.includes("OFFICIAL_ZOROARK_42"),"official catalog list exists");
+assert.ok(ui.includes("正式42組"),"official 42 tab exists");
 console.log("ZOROARK_JSON_LIBRARY_PASS");
