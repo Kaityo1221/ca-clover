@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "release/zoroark-qr-gameplay-main-20261115": false
+    }
+  }
+}
