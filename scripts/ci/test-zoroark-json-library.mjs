@@ -83,7 +83,7 @@ try {
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(serviceCalls,1,"server lookup requires a direct user click");
  assert.ok(host.innerHTML.includes("正式42組で利用中"),"exact built-in pair is confirmed live by server");
- click("[data-view]",{view:"adopted"});
+ click("[data-view]",{view:"all"});
  assert.ok(host.innerHTML.includes("公開済み・ゲーム出題OFF"),"DB publication alone is not game availability");
  serviceDown=true;
  click("[data-catalog-check]");
