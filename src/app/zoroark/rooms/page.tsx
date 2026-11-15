@@ -25,7 +25,8 @@ const readableErrors: Record<string, string> = {
 
 export default function ZoroarkRoomCreatePage() {
   const { supabase, user, profile, loading } = useAuthProfile();
-  const [mode, setMode] = useState<"simple" | "manual">("manual");
+  const [enableMimikyu, setEnableMimikyu] = useState(false);
+  const mode: "simple" | "manual" = enableMimikyu ? "manual" : "simple";
   const [maxPlayers, setMaxPlayers] = useState(6);
   const [talkSeconds, setTalkSeconds] = useState(180);
   const [room, setRoom] = useState<RoomCreated | null>(null);
@@ -120,7 +121,7 @@ export default function ZoroarkRoomCreatePage() {
         const canManage=["lobby","talk","vote","reveal"].includes(item.state)&&new Date(item.expires_at).getTime()>Date.now();
         return <div key={item.id} className="rounded-xl border border-slate-200 p-3 space-y-2">
           <div className="flex flex-wrap justify-between gap-2">
-            <span className="font-bold">{item.mode==="manual"?"マニュアル（ミミッキュ）":"シンプル"}</span>
+            <span className="font-bold">{item.mode==="manual"?"ミミッキュ追加あり":"基本ルール"}</span>
             <span className="text-sm">{canManage?(item.join_locked?"受付停止中":"待機中"):"終了・期限切れ"}</span>
           </div>
           <p className="text-sm text-slate-600">参加 {item.occupied}/{item.max_players}人・トーク {item.talk_seconds===0?"無制限":item.talk_seconds/60+"分"}</p>
@@ -136,13 +137,14 @@ export default function ZoroarkRoomCreatePage() {
     {room&&<button type="button" className="mt-4 rounded-lg bg-slate-100 px-4 py-2 font-bold"
       onClick={()=>{setRoom(null);void loadOwned()}}>← 一覧へ戻る</button>}
     {!room ? <section className="mt-6 space-y-5 rounded-3xl border border-lime-200 bg-white p-5 shadow-sm">
-      <div>
-        <label htmlFor="zg-room-mode" className="block font-bold">ゲームモード</label>
-        <select id="zg-room-mode" className="mt-2 w-full rounded-xl border border-slate-300 p-3"
-          value={mode} onChange={e => setMode(e.target.value as "simple" | "manual")}>
-          <option value="simple">シンプル</option>
-          <option value="manual">マニュアル（ミミッキュ）</option>
-        </select>
+      <div className="space-y-2">
+        <h2 className="font-bold">追加役職</h2>
+        <label htmlFor="zg-room-mimikyu" className="flex items-center gap-3 rounded-xl border p-3 font-bold">
+          <input id="zg-room-mimikyu" type="checkbox" checked={enableMimikyu}
+            onChange={e => setEnableMimikyu(e.target.checked)}/>
+          👻 ミミッキュを追加（初期OFF）
+        </label>
+        <p className="text-xs text-slate-600">ルーム作成時に確定します。ミミッキュを追加する場合は4人以上の参加が必要です。役職は本人だけに必ず表示します。</p>
       </div>
       <div>
         <label htmlFor="zg-room-count" className="block font-bold">参加人数（GMを除く）</label>
@@ -162,7 +164,7 @@ export default function ZoroarkRoomCreatePage() {
         </select>
       </div>
       {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}
-      <button type="button" onClick={createRoom} disabled={busy}
+      <button type="button" onClick={createRoom} disabled={busy||(enableMimikyu&&maxPlayers<4)}
         className="w-full rounded-xl bg-lime-400 px-5 py-4 text-lg font-black text-lime-950 disabled:opacity-50">
         {busy ? "ルーム作成中..." : "🍀 新しいルームを作る"}
       </button>
