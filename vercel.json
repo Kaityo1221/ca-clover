@@ -2,8 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "git": {
     "deploymentEnabled": {
-      "feature/meetup-history-mobile-batch-isolated-20261114": false,
-      "feature/zoroark-notebook-editor-isolated-20261115": false
+      "feature/meetup-history-mobile-batch-isolated-20261114": false
     }
   }
 }
