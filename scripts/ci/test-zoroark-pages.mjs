@@ -48,7 +48,7 @@ assert.ok(moduleSource.includes('i!==value.wolf'),"Mimikyu never receives the wo
 assert.ok(moduleSource.includes('crypto.getRandomValues'),"additional role uses secure random source");
 assert.ok(moduleSource.includes('if(name==="backSettings")'),"player can return to unified settings");
 assert.ok(moduleSource.includes('typeof gateway.newRound!=="function"'),"CA auth remains mandatory without a dedicated GM");
-assert.ok(index.includes('20261115-gm-participation1'),"GM participation settings bypass old asset cache");
+assert.ok(index.includes('20261115-self-medals1'),"participant-driven medals bypass old module cache");
 assert.ok(moduleSource.includes('phase==="card-private"'),"private question screen is present");
 assert.ok(moduleSource.includes('phase==="card-handoff"'),"private handoff mask is present");
 assert.ok(moduleSource.includes('questionHands=Array.from({length:count},()=>Array.from({length:5},drawQuestion))'),"each player gets five cards");
@@ -91,6 +91,9 @@ assert.deepEqual(m.suspicionLeaders([1,2,2,0]),[1,2],"midpoint can show multiple
 assert.deepEqual(m.suspicionLeaders([3,1,2,0]),[0],"unique suspicion leader is found");
 assert.deepEqual(m.suspicionLeaders([0,-1,0]),[],"invalid counts cannot be published");
 assert.ok(moduleSource.includes('medalUsed[medalActor]<3'),"three medals per player cannot be exceeded");
+assert.ok(moduleSource.includes('参加者本人が操作します'),"medal actor is instructed to self-select instead of GM choosing");
+assert.ok(moduleSource.includes('GMへ投票先を知らせる必要はありません'),"medal completion does not require revealing private target");
+assert.ok(moduleSource.includes('参加者各自のスマホからのメダル投票・遠隔投票もまだ未接続'),"QR device voting is not falsely claimed as working");
 assert.ok(moduleSource.includes('medalActor!==medalTarget'),"players cannot vote for themselves");
 assert.ok(moduleSource.includes('medalUsed[medalActor]++'),"commits spend a medal");
 assert.ok(moduleSource.includes('medalTotals[medalTarget]++'),"commits update only recipient aggregate");
@@ -259,9 +262,9 @@ handlers.change({target:{id:"zg-mimikyu",checked:true}});
 tap("start");tap("chooseHandoff");tap("gmDedicated");
 await new Promise(resolve=>setImmediate(resolve));
 for(let i=0;i<6;i++){tap("show");tap("next")}
-assert.ok(fakeHost.innerHTML.includes("疑惑メダルを投げる"),"suspicion medal button is available in talk");
+assert.ok(fakeHost.innerHTML.includes("参加者が自分でメダルを投げる"),"players can initiate their own medal vote from talk");
 tap("medalChoose");
-assert.ok(fakeHost.innerHTML.includes("誰が投げる？"),"public screen selects private medal player");
+assert.ok(fakeHost.innerHTML.includes("自分の番号を選んでね"),"participants select their own number, no GM pick required");
 assert.ok(!fakeHost.innerHTML.includes("残り 3 / 3枚"),"public screen does not show an individual's remaining medals");
 tap("medalActor:0");
 assert.ok(fakeHost.innerHTML.includes("本人だけが開いてね"),"medal target remains hidden at handoff");
@@ -274,7 +277,7 @@ tap("medalCancel");
 assert.ok(fakeHost.innerHTML.includes("残り 3 / 3枚"),"cancel does not spend a medal");
 for(let i=0;i<3;i++){
  tap("medalTarget:2");tap("medalCommit");
- assert.ok(fakeHost.innerHTML.includes("投票先は非公開"),"public handoff does not disclose medal recipient");
+ assert.ok(fakeHost.innerHTML.includes("投票先は非公開"),"return screen hides participant choice");
  tap("medalClose");
  if(i<2){tap("medalChoose");tap("medalActor:0");tap("medalOpen")}
 }
@@ -283,6 +286,15 @@ assert.ok(fakeHost.innerHTML.includes("残り 0 / 3枚"),"all three medals are c
 assert.ok(!fakeHost.innerHTML.includes('data-act="medalTarget:2"'),"a fourth medal cannot be selected");
 tap("medalTarget:2");
 assert.ok(!fakeHost.innerHTML.includes("最終確認"),"direct click cannot bypass the three-medal limit");
+tap("medalClose");
+tap("medalChoose");tap("medalActor:1");tap("medalOpen");
+assert.ok(fakeHost.innerHTML.includes("残り 3 / 3枚"),"another participant independently has three medals");
+assert.ok(!fakeHost.innerHTML.includes('data-act="medalTarget:1"'),"another participant cannot throw a medal at themselves");
+tap("medalTarget:4");tap("medalCommit");
+assert.ok(fakeHost.innerHTML.includes("投票先は非公開"),"second participant's target stays secret");
+tap("medalClose");
+tap("medalChoose");tap("medalActor:1");tap("medalOpen");
+assert.ok(fakeHost.innerHTML.includes("残り 2 / 3枚"),"second participant's own used count is tracked separately");
 globalThis.document.hidden=true;
 documentHandlers.visibilitychange();
 globalThis.document.hidden=false;
