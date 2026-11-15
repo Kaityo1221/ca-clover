@@ -73,3 +73,31 @@ export function compareServerCatalog(row,result){
  if(matching.status==="retired")return {state:"retired",label:"📦 公開停止・ゲーム対象外",id};
  return {state:"unchecked",label:"🔍 状態を確認できません"};
 }
+
+/** ADMIN-only, full baseline snapshot returned by the authenticated QA catalog API. */
+export function officialCatalogRows(result){
+ if(!result||!Array.isArray(result.basePairs)||!Array.isArray(result.baseKeys))return null;
+ const count=result.baseCount;
+ if(!Number.isSafeInteger(count)||count<1||count>500||count!==result.basePairs.length||count!==result.baseKeys.length)return null;
+ const keys=new Set(result.baseKeys),seenKeys=new Set(),seenIds=new Set(),rows=[];
+ if(keys.size!==count)return null;
+ for(const entry of result.basePairs){
+  if(!entry||typeof entry!=="object"||Array.isArray(entry))return null;
+  const {id,level,a,b,common,difference}=entry;
+  if(typeof id!=="string"||!(/^[emh]\d{2}$/).test(id)||seenIds.has(id))return null;
+  if(!["easy","normal","hard"].includes(level))return null;
+  if([a,b,common,difference].some(x=>typeof x!=="string"||!x.trim()||x.length>500))return null;
+  const key=topicNameKey(a,b);
+  if(a.trim()===b.trim()||!keys.has(key)||seenKeys.has(key))return null;
+  seenKeys.add(key);seenIds.add(id);rows.push({id,level,a:a.trim(),b:b.trim(),common:common.trim(),difference:difference.trim()});
+ }
+ return rows;
+}
+export function filterOfficialCatalog(rows,level="all",query=""){
+ if(!["all","easy","normal","hard"].includes(level))throw Error("難易度フィルターが不正です");
+ if(!Array.isArray(rows))throw Error("正式お題一覧が不正です");
+ const q=String(query||"").normalize("NFKC").trim().toLocaleLowerCase("ja-JP");
+ return rows.filter(x=>(level==="all"||x.level===level)&&
+  (!q||[x.id,x.a,x.b,x.common,x.difference].some(v=>
+   String(v).normalize("NFKC").toLocaleLowerCase("ja-JP").includes(q))));
+}
