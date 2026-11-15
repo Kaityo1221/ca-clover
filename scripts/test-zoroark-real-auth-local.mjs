@@ -227,15 +227,22 @@ try {
   assert.equal(initial.status,200,"ADMIN reads real PostgREST official rows");
   assert.equal(initial.body.states.length,0);
   assert.equal(initial.body.writeEnabled,true);
-  const onlyE01=Array.from({length:11},(_,i)=>"e"+String(i+2).padStart(2,"0"));
-  const beforeDisable=await request(base,people.ca.token,{count:6,difficulty:"easy",recent:onlyE01});
-  assert.equal(beforeDisable.code,200);
-  assert.equal(beforeDisable.json.round.pair.id,"e01");
   const deniedGate=await manage(people.admin.token,"POST",{topicId:"e01",disabled:true,expectedRevision:0});
   assert.equal(deniedGate.status,409,"private DB gate OFF blocks valid ADMIN");
   const emptyAfterDeny=await manage(people.admin.token);
   assert.equal(emptyAfterDeny.body.states.length,0,"no phantom success with DB gate OFF");
   sql(db,"UPDATE zoroark_fixture_private.gate SET writes_enabled=true;");
+  // Public game policy intentionally limits recent to 6. Seed the OTHER five
+  // candidates as disabled to make e01 selection deterministic without violating it.
+  for(let i=2;i<=6;i++){
+    const id="e"+String(i).padStart(2,"0");
+    const seed=await manage(people.admin.token,"POST",{topicId:id,disabled:true,expectedRevision:0});
+    assert.equal(seed.status,200,"fixture seed "+id+" through real ADMIN API");
+  }
+  const onlyE01=Array.from({length:6},(_,i)=>"e"+String(i+7).padStart(2,"0"));
+  const beforeDisable=await request(base,people.ca.token,{count:6,difficulty:"easy",recent:onlyE01});
+  assert.equal(beforeDisable.code,200,"deterministic e01 allowed");
+  assert.equal(beforeDisable.json.round.pair.id,"e01");
   const deniedCA=await manage(people.ca.token,"POST",{topicId:"e01",disabled:true,expectedRevision:0});
   assert.equal(deniedCA.status,403,"CA cannot disable topics even when DB gate ON");
   const stopped=await manage(people.admin.token,"POST",{topicId:"e01",disabled:true,expectedRevision:0});
@@ -253,7 +260,7 @@ try {
   const afterRestore=await request(base,people.ca.token,{count:6,difficulty:"easy",recent:onlyE01});
   assert.equal(afterRestore.code,200);
   assert.equal(afterRestore.json.round.pair.id,"e01","restored e01 eligible for next round");
-  const audit=await admin.from("zoroark_fixture_audit").select("topic_id,disabled,revision,actor").order("revision");
+  const audit=await admin.from("zoroark_fixture_audit").select("topic_id,disabled,revision,actor").eq("topic_id","e01").order("revision");
   assert.equal(audit.error,null);
   assert.deepEqual(audit.data?.map(x=>[x.topic_id,x.disabled,x.revision,x.actor]),[
     ["e01",true,1,people.admin.id],["e01",false,2,people.admin.id]
