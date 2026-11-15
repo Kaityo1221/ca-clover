@@ -12,7 +12,7 @@ const checks=[
  ['account button omitted from top nav',home.includes('const items=[]; // The top-left Clover is the My Community home action.')&&!home.includes('const items=[["my","My Community"]]')&&!home.includes('const items=[["my","My Community"],["account","アカウント"]]')],
  ['account still reachable from settings',settings.includes('settingsAccountLink')&&home.includes("onAccount:function(){go('account')}")&&home.includes('if(v==="account"){renderAccount();return}')],
  ['first-time CA can still register trainer name',home.includes('id="toAccount"')&&home.includes('go("account")')],
- ['admin navigation preserved',home.includes('items.push(["zoroark-ideas","🦊 お題メモ"])')&&home.includes('admin.html?v=20260921-1815')],
+ ['admin navigation preserved',home.includes('items.push(["zoroark-ideas","🦊 お題管理"])')&&home.includes('admin.html?v=20260921-1815')],
  ['settings entry',home.includes('id="mySettingsButton"')&&home.includes('go("settings")')],
  ['photo upload and delete controls',settings.includes('profilePhotoSave')&&settings.includes('profilePhotoDelete')],
  ['five-card settings menu',settings.includes('settingsProfileLink')&&settings.includes('settingsAccountLink')&&settings.includes('settingsMenuScreen')&&settings.includes('settingsProfileScreen')],
