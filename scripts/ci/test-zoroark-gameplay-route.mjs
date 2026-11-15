@@ -47,7 +47,7 @@ function harness(options={}){
   const localRequire=x=>x==="@neondatabase/serverless"?{neon}:x==="@supabase/supabase-js"?{createClient:()=>auth}:
    x==="@/lib/zoroark/runtime"?load("src/lib/zoroark/runtime.ts"):require(x);
   vm.runInNewContext(js,{module,exports:module.exports,require:localRequire,process:{env},Request,Response,
-   Headers,URL,TextEncoder,TextDecoder,Uint8Array,crypto:webcrypto,setTimeout,clearTimeout,console,
+   Headers,URL,TextEncoder,TextDecoder,Uint8Array,AbortController,crypto:webcrypto,setTimeout,clearTimeout,console,
    fetch:async()=>{canonicalCalls++;return Response.json(options.official??official)}},{filename:path});
   return module.exports;
  }
