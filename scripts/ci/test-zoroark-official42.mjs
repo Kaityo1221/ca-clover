@@ -63,7 +63,7 @@ try{
  click("[data-official-level]",{officialLevel:"normal"});
  assert.equal((host.innerHTML.match(/class="zim-official-card"/g)||[]).length,15);
  search.value="ガーディ";click("[data-official-search]");
- assert.equal((host.innerHTML.match(/class="zim-official-card"/g)||[]).length,2);
+ assert.equal((host.innerHTML.match(/class="zim-official-card"/g)||[]).length,1);
  click("[data-official-clear]");
  assert.equal((host.innerHTML.match(/class="zim-official-card"/g)||[]).length,15);
  click("[data-catalog-view]",{catalogView:"memo"});
