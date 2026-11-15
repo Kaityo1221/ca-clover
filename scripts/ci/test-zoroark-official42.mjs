@@ -4,7 +4,8 @@ import {OFFICIAL_ZOROARK_42,findOfficialZoroarkPairs} from "../../docs/zoroark-o
 import {normalizeEntry,parseImport,exportDocument} from "../../docs/zoroark-idea-library.mjs";
 import {
  loadOfficialDrafts,saveOfficialDrafts,notebookRows,notebookBackup,parseNotebookImport,
- safeMergeNotebook,OFFICIAL_DRAFTS_KEY,verifyOfficialDrafts
+ safeMergeNotebook,OFFICIAL_DRAFTS_KEY,verifyOfficialDrafts,
+ loadNotebookTrash,saveNotebookTrash,verifyNotebookTrash,NOTEBOOK_TRASH_KEY
 } from "../../docs/zoroark-notebook.mjs";
 import {mountIdeaMemo} from "../../docs/zoroark-ideas.mjs";
 
@@ -19,6 +20,16 @@ assert.throws(()=>verifyOfficialDrafts({bad:{a:"A",b:"B",common:"x",difference:"
 assert.equal(notebookRows([],{},{}).length,42);
 assert.equal(notebookRows([],{},{kind:"official",level:"easy"}).length,12);
 assert.equal(notebookRows([],{},{kind:"official",query:"ﾃﾞﾃﾞﾝﾈ"}).length,1);
+const officialDeleted={officialIds:["e01"],memoKeys:[]};
+assert.equal(notebookRows([],{},{kind:"official",trash:officialDeleted}).length,41);
+assert.equal(notebookRows([],{},{kind:"trash",trash:officialDeleted}).length,1);
+assert.equal(notebookRows([],{},{kind:"trash",level:"hard",trash:officialDeleted}).length,0);
+assert.throws(()=>verifyNotebookTrash({officialIds:["invalid"],memoKeys:[]}));
+assert.throws(()=>verifyNotebookTrash({officialIds:["e01","e01"],memoKeys:[]}));
+const archived=notebookBackup([],{},officialDeleted);
+assert.deepEqual(parseNotebookImport(JSON.stringify(archived)).trash,officialDeleted);
+assert.equal(safeMergeNotebook([],{},parseNotebookImport(JSON.stringify(archived))).addedDeleted,1);
+assert.deepEqual(parseNotebookImport(JSON.stringify(notebookBackup([],{}))).trash,{officialIds:[],memoKeys:[]});
 
 const html=readFileSync("docs/index.html","utf8");
 const ui=readFileSync("docs/zoroark-ideas.mjs","utf8");
@@ -44,7 +55,8 @@ try{
   querySelector(){return null},querySelectorAll(){return []}
  };
  globalThis.document={createElement(type){return type==="style"?style:dialog},head:{append(){}},body:{append(){}}};
- globalThis.window={scrollTo(){},confirm(){return true}};
+ let approveDelete=true;
+ globalThis.window={scrollTo(){},confirm(){return approveDelete}};
  globalThis.fetch=async(url)=>({ok:true,json:async()=>[
   {jp:"ピカチュウ",no:"025",en:"Pikachu",gen:1},
   {jp:"ニャース",no:"052",en:"Meowth",gen:1}
@@ -122,6 +134,57 @@ try{
  assert.equal(latest[1].a,"ピカチュウ");
  assert.equal(latest[1].b,"ニャース");
  assert.equal(latest[1].note,"新規ペア共通点");
+ // Official entries are hidden locally, never removed from source PAIRS or legacy memo storage.
+ inputs["#zim-book-search"]="";
+ click("[data-book-kind]",{bookKind:"official"});
+ click("[data-book-level]",{bookLevel:"all"});
+ click("[data-book-clear]");
+ assert.equal((host.innerHTML.match(/class="zim-list-card"/g)||[]).length,42);
+ click("[data-official-edit]",{officialEdit:"e01"});
+ assert.ok(host.innerHTML.includes("data-official-delete"),"Delete exists on the official edit screen");
+ approveDelete=false;
+ click("[data-official-delete]",{});
+ assert.equal(loadNotebookTrash(globalThis.localStorage).trash.officialIds.length,0,"cancel does not delete");
+ approveDelete=true;
+ click("[data-official-delete]",{});
+ assert.deepEqual(loadNotebookTrash(globalThis.localStorage).trash.officialIds,["e01"]);
+ assert.equal((host.innerHTML.match(/class="zim-list-card"/g)||[]).length,41);
+ assert.equal(OFFICIAL_ZOROARK_42.length,42,"game catalog remains unchanged");
+ assert.equal(OFFICIAL_ZOROARK_42[0].id,"e01","canonical official ID remains");
+ assert.equal(JSON.parse(values.get(key)).length,2,"existing memo entries remain untouched");
+
+ // Import/export round-trip preserves deletions and can reconstruct the hidden state.
+ const stateAfterDelete=loadNotebookTrash(globalThis.localStorage).trash;
+ const archive=notebookBackup(latest,loadOfficialDrafts(globalThis.localStorage).drafts,stateAfterDelete);
+ const restored=parseNotebookImport(JSON.stringify(archive));
+ assert.deepEqual(restored.trash,stateAfterDelete);
+ assert.equal(safeMergeNotebook(latest,{},restored,{officialIds:[],memoKeys:[]}).addedDeleted,1);
+
+ click("[data-book-kind]",{bookKind:"trash"});
+ assert.equal((host.innerHTML.match(/class="zim-list-card"/g)||[]).length,1);
+ assert.ok(host.innerHTML.includes("data-official-restore"));
+ click("[data-official-restore]",{officialRestore:"e01"});
+ assert.deepEqual(loadNotebookTrash(globalThis.localStorage).trash.officialIds,[]);
+ click("[data-book-kind]",{bookKind:"official"});
+ assert.equal((host.innerHTML.match(/class="zim-list-card"/g)||[]).length,42,"official restore shows all 42");
+
+ // Custom memo is also soft-deleted, without rewriting the 2 stored notes.
+ click("[data-book-kind]",{bookKind:"memo"});
+ assert.equal((host.innerHTML.match(/class="zim-list-card"/g)||[]).length,2);
+ approveDelete=false;
+ click("[data-memo-delete]",{memoDelete:"0"});
+ assert.equal((host.innerHTML.match(/class="zim-list-card"/g)||[]).length,2,"memo cancel leaves list unchanged");
+ approveDelete=true;
+ click("[data-memo-delete]",{memoDelete:"0"});
+ assert.equal((host.innerHTML.match(/class="zim-list-card"/g)||[]).length,1);
+ assert.equal(JSON.parse(values.get(key)).length,2,"custom deletion keeps original storage");
+ assert.equal(loadNotebookTrash(globalThis.localStorage).trash.memoKeys.length,1);
+ click("[data-book-kind]",{bookKind:"trash"});
+ assert.equal((host.innerHTML.match(/class="zim-list-card"/g)||[]).length,1);
+ click("[data-memo-restore]",{memoRestore:"0"});
+ assert.equal(loadNotebookTrash(globalThis.localStorage).trash.memoKeys.length,0);
+ click("[data-book-kind]",{bookKind:"memo"});
+ assert.equal((host.innerHTML.match(/class="zim-list-card"/g)||[]).length,2);
  destroy();
  // Corrupt existing storage cannot be silently overwritten.
  const corruptStorage={getItem(k){return k===key?"not-json":null},setItem(){throw Error("must not overwrite")}};
@@ -130,6 +193,12 @@ try{
  const close=mountIdeaMemo({host:other,role:"admin",onBack(){}});
  assert.ok(other.innerHTML.includes("書き込みを停止"));
  close();
+ const trashStore={getItem(k){return k===NOTEBOOK_TRASH_KEY?"{broken":null},setItem(){throw Error("must not overwrite corrupt trash")}};
+ globalThis.localStorage=trashStore;
+ const broken={...host,innerHTML:"",querySelector(){return null}};
+ const stop=mountIdeaMemo({host:broken,role:"admin",onBack(){}});
+ assert.ok(broken.innerHTML.includes("削除済みデータを読み取れません"),"corrupt trash preserves originals");
+ stop();
 }finally{
  for(const [k,v] of Object.entries(globals)){if(v===undefined)delete globalThis[k];else globalThis[k]=v}
 }
