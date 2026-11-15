@@ -205,6 +205,7 @@ export function mountIdeaMemo({host,role,onBack,gameCatalogGateway}){
  }
  function saveOfficial(){
   if(!editOfficialId||officialError)return;
+  rememberOfficialForm(); // Preserve user changes if validation or localStorage write fails.
   const id=editOfficialId;
   try{
    const value={
