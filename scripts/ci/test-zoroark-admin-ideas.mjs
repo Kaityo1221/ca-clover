@@ -25,7 +25,7 @@ assert.ok(module.includes('all=results.filter'));
 assert.ok(module.includes('if(first){gen=Number(first.gen)||gen}'));
 assert.ok(module.includes('gen=Number(x.gen)||gen'));
 assert.ok(module.includes('searchMode=false;term=""'));
-assert.ok(html.includes("zoroark-ideas.mjs?v=20261115-notebook-trash1"));
+assert.ok(html.includes("zoroark-ideas.mjs?v=20261115-live-control1"));
 assert.ok(module.includes('data-catalog-view="book"')&&module.includes('data-catalog-view="create"'),"two authoring modes exist");
 assert.ok(module.includes("notebookRows"),"official and custom topics share notebook view");
 assert.ok(module.includes("data-book-level")&&module.includes("data-book-search"),"notebook filters and search exist");
