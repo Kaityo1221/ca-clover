@@ -31,7 +31,7 @@ assert.ok(route.includes("basePairs:PAIRS.map"),"ADMIN response includes officia
 for(const field of ["id:x.id","level:x.level","a:x.a","b:x.b","common:x.common","difference:x.difference"])
  assert.ok(route.includes(field),"official field "+field);
 const officialSource=readFileSync(new URL("../src/lib/zoroark-catalog.server.ts",import.meta.url),"utf8");
-assert.equal((officialSource.match(/\\{ id: "[emh]\\d{2}"/g)||[]).length,42,"canonical game catalog stays 42 pairs");
+assert.equal((officialSource.match(/\{ id: "[emh]\d{2}"/g)||[]).length,42,"canonical game catalog stays 42 pairs");
 assert.equal((officialSource.match(/level: "easy"/g)||[]).length,12);
 assert.equal((officialSource.match(/level: "normal"/g)||[]).length,15);
 assert.equal((officialSource.match(/level: "hard"/g)||[]).length,15);
