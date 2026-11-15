@@ -8,7 +8,9 @@ export function normalizeEntry(x){
  if(bNo&&!/^\d{1,4}$/.test(bNo))throw Error("図鑑番号が不正です");
  if(x.a===x.b||(aNo&&bNo&&Number(aNo)===Number(bNo)))throw Error("同じポケモンは登録できません");
  if(x.note!=null&&!validString(x.note,2000))throw Error("メモが長すぎます");
- return {a:x.a.trim(),b:x.b.trim(),aNo,bNo,note:(x.note||"").trim(),at:validString(x.at,60)?x.at:"",status:x.status==="adopted"?"adopted":"draft"};
+ if(x.difference!=null&&!validString(x.difference,500))throw Error("違いの説明が長すぎます");
+ if(x.level!=null&& !["","easy","normal","hard"].includes(x.level))throw Error("難易度が不正です");
+ return {a:x.a.trim(),b:x.b.trim(),aNo,bNo,note:(x.note||"").trim(),difference:(x.difference||"").trim(),level:x.level||"",at:validString(x.at,60)?x.at:"",status:x.status==="adopted"?"adopted":"draft"};
 }
 export function mergeEntries(existing,incoming){
  const output=existing.map(normalizeEntry),seen=new Set(output.map(pairKey));let added=0,skipped=0;

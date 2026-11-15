@@ -267,7 +267,7 @@
       return;
     }
     const items=[]; // The top-left Clover is the My Community home action.
-    if(profile?.role==="admin")items.push(["zoroark-ideas","🦊 お題メモ"]);
+    if(profile?.role==="admin")items.push(["zoroark-ideas","🦊 お題管理"]);
     nav.innerHTML=items.map(function(x){
       return '<button data-go="'+x[0]+'" class="'+(route()===x[0]?"on":"")+'">'+x[1]+'</button>'
     }).join("")+(profile&&profile.role==="admin"?'<a href="./admin.html?v=20260921-1815" style="border:0;border-radius:999px;padding:9px 13px;background:#ede9fe;color:#6d28d9;font-weight:900;text-decoration:none">管理画面</a>':"");
@@ -775,7 +775,7 @@
     if(v==="zoroark-ideas"){
       if(profile?.role!=="admin"){app.innerHTML='<section class="card"><h2>🔒 ADMIN専用</h2><p>この画面は管理者だけが利用できます。</p></section>';return}
       app.innerHTML='<section class="card">お題メモを読み込み中...</section>';
-      try{const module=await import("./zoroark-ideas.mjs?v=20261115-readonly42-v1");if(token!==renderToken)return;ideasLeave=module.mountIdeaMemo({host:app,role:profile.role,onBack:function(){go("my")}})}
+      try{const module=await import("./zoroark-ideas.mjs?v=20261115-notebook-editor1");if(token!==renderToken)return;ideasLeave=module.mountIdeaMemo({host:app,role:profile.role,onBack:function(){go("my")}})}
       catch(err){if(token===renderToken)app.innerHTML='<section class="card"><h2>読み込みに失敗しました</h2><p>再読み込みをお試しください。</p></section>'}
       return;
     }

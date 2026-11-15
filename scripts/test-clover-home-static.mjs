@@ -16,7 +16,7 @@ const index=get('docs/index.html');
 check('right My Community navigation removed',index.includes('const items=[]; // The top-left Clover is the My Community home action.')&&!index.includes('const items=[["my","My Community"]];'));
 check('account still reachable via Settings',index.includes("onAccount:function(){go('account')}")&&index.includes('if(v==="account"){renderAccount();return}'));
 check('settings and profile photo remain enabled',index.includes('id="mySettingsButton"')&&index.includes('CA_PROFILE_PHOTO_UPLOAD_ENABLED = true'));
-check('administrator navigation preserved',index.includes('items.push(["zoroark-ideas","🦊 お題メモ"])')&&index.includes('admin.html?v=20260921-1815'));
+check('administrator navigation preserved',index.includes('items.push(["zoroark-ideas","🦊 お題管理"])')&&index.includes('admin.html?v=20260921-1815'));
 const shared=get('docs/clover-global-home.js');
 new Function(shared);
 check('universal link provides accessible name',shared.includes('data-ca-home-link')&&shared.includes('aria-label')&&shared.includes('index.html#my'));
