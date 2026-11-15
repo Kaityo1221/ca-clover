@@ -72,13 +72,13 @@ async function testAt(width){
   assert.equal(await page.evaluate(()=>window.__qa.mutations.length),0,"cancel has no write");
   await page.evaluate(()=>window.__qa.allow=true);
   await stop.click();
-  await page.waitForFunction(()=>window.__qa.states[0]?.disabled===true);
+  await page.waitForFunction(()=>window.__qa.states[0]?.disabled===true&&document.querySelectorAll(".zim-list-card").length===41);
   assert.equal(await page.locator(".zim-list-card").count(),41,"42→41 active official");
   assert.equal(await page.evaluate(()=>localStorage.getItem("ca-zoroark-notebook-trash-v1")),null,"official not faked locally");
   await page.locator('[data-book-kind="trash"]').click();
   assert.equal(await page.locator(".zim-list-card").count(),1,"trash contains stopped official");
   await page.locator('[data-official-restore="e01"]').click();
-  await page.waitForFunction(()=>window.__qa.states[0]?.disabled===false);
+  await page.waitForFunction(()=>window.__qa.states[0]?.disabled===false&&document.querySelectorAll(".zim-list-card").length===0);
   assert.equal(await page.locator(".zim-list-card").count(),0,"restored official removed from trash");
   await page.locator('[data-book-kind="official"]').click();
   assert.equal(await page.locator(".zim-list-card").count(),42);
