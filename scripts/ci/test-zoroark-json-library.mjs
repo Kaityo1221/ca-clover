@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {pairKey,normalizeEntry,mergeEntries,parseImport,exportDocument,ideaStatusCounts,ideaVisibleIndexes,candidateForServer,compareServerCatalog,topicNameKey} from "../../docs/zoroark-idea-library.mjs";
+import {pairKey,normalizeEntry,mergeEntries,parseImport,exportDocument,ideaStatusCounts,ideaVisibleIndexes,candidateForServer,compareServerCatalog,topicNameKey,officialCatalogRows,filterOfficialCatalog} from "../../docs/zoroark-idea-library.mjs";
 import {mountIdeaMemo} from "../../docs/zoroark-ideas.mjs";
 const legacy=[{a:"ピカチュウ",b:"イーブイ",aNo:"025",bNo:"133",note:"人気",at:"2026-10-31"}];
 const rows=parseImport(JSON.stringify(legacy));
@@ -22,7 +22,7 @@ assert.ok(ui.includes("data-edit"));
 assert.ok(ui.includes("data-adopt"));
 assert.ok(ui.includes("mergeEntries(entries,incoming)"));
 assert.ok(ui.includes("localStorage.setItem(KEY"));
-assert.ok(html.includes("zoroark-ideas.mjs?v=20261115-catalog-stage1"));
+assert.ok(html.includes("zoroark-ideas.mjs?v=20261115-official42-v1"));
 const check=[rows[0],next.entries[1],{...rows[0],a:"コラッタ",b:"ラッタ",status:"archived"}];
 assert.deepEqual(ideaStatusCounts(check),{total:3,draft:1,adopted:1,archived:1});
 assert.deepEqual(ideaVisibleIndexes(check,"draft"),[0]);
@@ -34,6 +34,24 @@ assert.ok(ui.includes("ゲームとの接続：未実装")&&ui.includes("compare
 assert.ok(ui.includes("data-catalog-check"),"admin has explicit catalog status refresh");
 assert.ok(html.includes("ZOROARK_CATALOG_QA_URL")&&html.includes("catalogGateway:zoroarkCatalogGateway"),"catalog gateway targets a fixed isolated preview");
 assert.ok(ui.includes("data-archive")&&ui.includes("data-restore"));
+
+const OFFICIAL=Array.from({length:42},(_,i)=>{
+ const level=i<12?"easy":i<27?"normal":"hard";
+ const id=(i<12?"e":i<27?"m":"h")+String(i<12?i+1:i<27?i-11:i-26).padStart(2,"0");
+ return {id,level,a:i===0?"ピカチュウ":"公式A"+i,b:i===0?"イーブイ":"公式B"+i,
+  common:"共通点"+i,difference:"相違点"+i};
+});
+const OFFICIAL_RESULT={baseCount:42,baseKeys:OFFICIAL.map(x=>topicNameKey(x.a,x.b)),basePairs:OFFICIAL};
+assert.equal(officialCatalogRows(OFFICIAL_RESULT).length,42);
+assert.equal(filterOfficialCatalog(OFFICIAL,"easy").length,12);
+assert.equal(filterOfficialCatalog(OFFICIAL,"normal").length,15);
+assert.equal(filterOfficialCatalog(OFFICIAL,"hard").length,15);
+assert.equal(filterOfficialCatalog(OFFICIAL,"all","ピカチュウ").length,1);
+assert.equal(filterOfficialCatalog(OFFICIAL,"all","相違点2").length,11,"description search works");
+assert.equal(officialCatalogRows({...OFFICIAL_RESULT,baseCount:41}),null,"partial catalog is not displayed");
+assert.equal(officialCatalogRows({...OFFICIAL_RESULT,basePairs:[OFFICIAL[0],...OFFICIAL.slice(1,41),OFFICIAL[0]]}),null,"duplicate catalog row refused");
+assert.equal(officialCatalogRows({...OFFICIAL_RESULT,baseKeys:["mismatch",...OFFICIAL_RESULT.baseKeys.slice(1)]}),null,"incorrect official key refused");
+assert.throws(()=>filterOfficialCatalog(OFFICIAL,"invalid"));
 
 /* Synthetic mobile-host review flow: preserve all local entries, hide handled items, archive reversibly. */
 const savedGlobals={document:globalThis.document,window:globalThis.window,localStorage:globalThis.localStorage};
@@ -49,13 +67,13 @@ try {
  const handlers={},style={remove(){}},dialog={addEventListener(){},removeEventListener(){},close(){},remove(){}};
  globalThis.document={createElement(n){return n==="style"?style:dialog},head:{append(){}},body:{append(){}}};
  globalThis.window={scrollTo(){}};
- let searchValue="";
- const host={innerHTML:"",addEventListener(k,v){handlers[k]=v},removeEventListener(){},querySelector(k){if(k==="#zim-query")return {value:searchValue};return null}};
+ let searchValue="",officialSearchValue="";
+ const host={innerHTML:"",addEventListener(k,v){handlers[k]=v},removeEventListener(){},querySelector(k){if(k==="#zim-query")return {value:searchValue};if(k==="#zim-official-query")return {value:officialSearchValue};return null}};
  let serviceDown=false,serviceCalls=0;
  const catalogGateway={async getStatus(){
   serviceCalls++;
   if(serviceDown)throw Error("QA server disabled");
-  return {baseCount:42,baseKeys:[topicNameKey("ピカチュウ","イーブイ")],
+  return {baseCount:42,baseKeys:OFFICIAL_RESULT.baseKeys,basePairs:OFFICIAL_RESULT.basePairs,
    catalogVersion:7,runtimeEnabled:false,entries:[
     {id:6,a:"ヤクデ",b:"マルヤクデ",status:"published",version:7,activeInGame:false}]};
  }};
@@ -85,6 +103,19 @@ try {
  assert.ok(host.innerHTML.includes("正式42組で利用中"),"exact built-in pair is confirmed live by server");
  click("[data-view]",{view:"all"});
  assert.ok(host.innerHTML.includes("公開済み・ゲーム出題OFF"),"DB publication alone is not game availability");
+ click("[data-library]",{library:"official"});
+ assert.ok(host.innerHTML.includes("正式登録のお題（42組）"),"ADMIN sees all 42 official pairs");
+ assert.equal((host.innerHTML.match(/class="zim-official-card"/g)||[]).length,42,"all rows visible before filtering");
+ assert.ok(host.innerHTML.includes("閲覧専用です。ここから既存42組の編集・削除・公開変更はできません。"));
+ click("[data-official-level]",{officialLevel:"easy"});
+ assert.equal((host.innerHTML.match(/class="zim-official-card"/g)||[]).length,12,"easy shows 12");
+ officialSearchValue="ピカチュウ";click("[data-official-search]");
+ assert.equal((host.innerHTML.match(/class="zim-official-card"/g)||[]).length,1,"search narrows official rows");
+ click("[data-official-clear]");
+ assert.equal((host.innerHTML.match(/class="zim-official-card"/g)||[]).length,12);
+ click("[data-library]",{library:"memo"});
+ assert.ok(host.innerHTML.includes("未処理"),"return to editable memo");
+ assert.equal(JSON.parse(store.get(k)).length,3,"official review never overwrites local entries");
  serviceDown=true;
  click("[data-catalog-check]");
  await new Promise(resolve=>setImmediate(resolve));
