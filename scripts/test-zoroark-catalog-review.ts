@@ -16,4 +16,11 @@ for(const value of [
 for(const row of [{...base,id:27,status:"pending"},{...base,id:10000,status:"published"},
  {...base,id:27,status:"published",difference:""}])
  assert.throws(()=>publishedTopicToPair(row));
+import { readFileSync } from "node:fs";
+const sql=readFileSync(new URL("../supabase/migrations/20261115080000_zoroark_topic_catalog_isolated.sql",import.meta.url),"utf8");
+for(const token of ["ENABLE ROW LEVEL SECURITY","zoroark_topic_is_admin","auth.uid()","GRANT EXECUTE",
+ "pg_advisory_xact_lock","zoroark_topic_audit","FOR UPDATE","invalid transition",
+ "REVOKE ALL ON public.zoroark_topic_candidates","zoroark_topic_catalog_version"])
+ assert.ok(sql.includes(token),"security migration token "+token);
+assert.ok(!sql.includes("service_role"),"migration must not rely on service role secrets");
 console.log("ZOROARK_CATALOG_REVIEW_PASS");
