@@ -117,7 +117,7 @@ export default function ZoroarkRoomCreatePage() {
       {ownedError&&<p role="alert" className="rounded-lg bg-red-50 p-2 text-sm text-red-700">{ownedError}</p>}
       {!ownedBusy&&ownedRooms.length===0&&!ownedError&&<p className="text-sm text-slate-500">現在表示できるルームはありません。</p>}
       {ownedRooms.map(item=>{
-        const canManage=item.state==="lobby"&&new Date(item.expires_at).getTime()>Date.now();
+        const canManage=["lobby","talk","vote","reveal"].includes(item.state)&&new Date(item.expires_at).getTime()>Date.now();
         return <div key={item.id} className="rounded-xl border border-slate-200 p-3 space-y-2">
           <div className="flex flex-wrap justify-between gap-2">
             <span className="font-bold">{item.mode==="manual"?"マニュアル（ミミッキュ）":"シンプル"}</span>
@@ -166,7 +166,7 @@ export default function ZoroarkRoomCreatePage() {
         className="w-full rounded-xl bg-lime-400 px-5 py-4 text-lg font-black text-lime-950 disabled:opacity-50">
         {busy ? "ルーム作成中..." : "🍀 新しいルームを作る"}
       </button>
-      <p className="text-xs text-slate-500">この段階ではQR入室・ゲスト参加は未接続です。実際の参加者には共有しないでください。</p>
+      <p className="text-xs text-slate-500">QRの参加申請・承認は検証可能です。ゲーム本編は独立した機能ゲートが有効になるまで利用できません。</p>
     </section> : <section className="mt-6 rounded-3xl border border-lime-200 bg-white p-5 shadow-sm">
       <span className="inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-900">🛠️ 入室機能は開発中</span>
       <h2 className="mt-4 text-xl font-black">{room.invite ? "ルームを作成しました" : "ルーム管理"}</h2>
