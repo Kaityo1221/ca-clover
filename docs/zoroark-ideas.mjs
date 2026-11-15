@@ -16,9 +16,9 @@ export function mountIdeaMemo({host,role,onBack}){
  let chosen=[null,null],which=0,gen=1,all=[],term="",loadId=0,searchMode=false;
  let draftCommon="",draftDifference="",draftLevel="";
  const genCache=new Map();
- let entries=[];
- try{const raw=JSON.parse(localStorage.getItem(KEY)||"[]");if(Array.isArray(raw))entries=raw.slice(0,500).map(normalizeEntry)}
- catch{error="保存済みメモを読み取れません。元の保存データは変更していません。"}
+ let entries=[],entryReadError=null;
+ try{const raw=JSON.parse(localStorage.getItem(KEY)||"[]");if(!Array.isArray(raw))throw Error("invalid");entries=raw.slice(0,500).map(normalizeEntry)}
+ catch{entryReadError="保存済みメモを読み取れません。元データ保護のため書き込みを停止しています。";error=entryReadError}
  const loaded=loadOfficialDrafts(localStorage);
  let officialDrafts=loaded.drafts,officialError=loaded.error;
  const countLocal=()=>entries.length;
@@ -110,6 +110,7 @@ export function mountIdeaMemo({host,role,onBack}){
   const lvl=host.querySelector("#zim-level");if(lvl)draftLevel=lvl.value;
  }
  function persist(next){
+  if(entryReadError)throw Error(entryReadError);
   const normalized=next.map(normalizeEntry);
   if(normalized.length>500)throw Error("登録上限500件です");
   localStorage.setItem(KEY,JSON.stringify(normalized));entries=normalized;
@@ -159,7 +160,7 @@ export function mountIdeaMemo({host,role,onBack}){
  async function importData(file){
   if(!file)return;
   try{
-   if(officialError)throw Error("既存の編集下書きが読み取れないため、安全のため復元できません");
+   if(officialError||entryReadError)throw Error("保存データに読み取りエラーがあるため、安全のため復元できません");
    if(file.size>2000000)throw Error("JSONは2MB以内にしてください");
    const incoming=parseNotebookImport(await file.text());
    const merged=safeMergeNotebook(entries,officialDrafts,incoming);
@@ -217,11 +218,13 @@ export function mountIdeaMemo({host,role,onBack}){
  const onClick=e=>{
   if(e.target.closest("[data-back]")){destroy();onBack();return}
   const tab=e.target.closest("[data-catalog-view]");
-  if(tab){rememberForm();mode=tab.dataset.catalogView==="create"?"create":"book";if(mode==="book")editOfficialId=null;error="";message="";draw();return}
+  if(tab){rememberForm();const nextMode=tab.dataset.catalogView==="create"?"create":"book";
+   if(nextMode==="create"&&mode!=="create"){editIndex=-1;chosen=[null,null];draftCommon="";draftDifference="";draftLevel=""}
+   mode=nextMode;if(mode==="book")editOfficialId=null;error=entryReadError||"";message="";draw();return}
   const group=e.target.closest("[data-book-kind]");
-  if(group){kind=group.dataset.bookKind;draw();return}
+  if(group){query=host.querySelector("#zim-book-search")?.value||query;kind=group.dataset.bookKind;draw();return}
   const lvl=e.target.closest("[data-book-level]");
-  if(lvl){level=lvl.dataset.bookLevel;draw();return}
+  if(lvl){query=host.querySelector("#zim-book-search")?.value||query;level=lvl.dataset.bookLevel;draw();return}
   if(e.target.closest("[data-book-search]")){query=host.querySelector("#zim-book-search")?.value||"";draw();return}
   if(e.target.closest("[data-book-clear]")){query="";draw();return}
   const off=e.target.closest("[data-official-edit]");
