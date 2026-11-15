@@ -66,6 +66,13 @@ async function testAt(width){
     "unsaved official text survives remote refresh");
   assert.equal(await page.evaluate(()=>localStorage.getItem("ca-zoroark-official42-drafts-v1")),null,
     "refresh must not silently persist the draft");
+  await page.locator("#zim-official-b").fill("デデンネ");
+  await page.locator("[data-official-save]").click();
+  assert.equal(await page.locator("#zim-official-b").inputValue(),"デデンネ",
+    "failed validation does not erase entered text");
+  assert.ok((await page.locator("#testHost").textContent()).includes("保存できません"),
+    "invalid pair is refused");
+  await page.locator("#zim-official-b").fill("エモンガ");
   await page.locator("[data-official-save]").click();
   await page.locator('[data-official-edit="e01"]').waitFor();
   assert.ok((await page.locator("#testHost").textContent()).includes("WebKitで編集した共通点"),"local draft visible");
