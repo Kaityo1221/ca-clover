@@ -25,6 +25,7 @@ assert.equal(allowedZoroarkOrigin("https://evil.example","https://ca-clover.verc
 assert.deepEqual(validateRoundRequest({count:6,difficulty:"easy",recent:["e01","e02","e01"]}),
   {count:6,difficulty:"easy",recent:["e01","e02"]});
 assert.deepEqual(validateRoundRequest({count:8}),{count:8,difficulty:"all",recent:[]});
+assert.deepEqual(validateRoundRequest({count:6,recent:["x0001"]}),{count:6,difficulty:"all",recent:["x0001"]},"published topic ID remains eligible for recent-round exclusion");
 for (const value of [{count:2},{count:13},{count:6.5},{count:6,difficulty:"other"},
   {count:6,recent:"e01"},{count:6,recent:["not-valid"]},
   {count:6,recent:Array(7).fill("e01")},null,[]]) {
