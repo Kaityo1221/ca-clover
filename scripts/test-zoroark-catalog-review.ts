@@ -27,5 +27,14 @@ for(const token of ["profiles","admin","allowedZoroarkOrigin","published","runti
  "auth.getUser","publishing_disabled","already_in_base_catalog"])
  assert.ok(route.includes(token),"admin API boundary "+token);
 assert.ok(route.includes("baseKeys:PAIRS.map"),"ADMIN statuses cover baseline 42 exact pairs");
+assert.ok(route.includes("basePairs:PAIRS.map"),"ADMIN response includes official pair details");
+for(const field of ["id:x.id","level:x.level","a:x.a","b:x.b","common:x.common","difference:x.difference"])
+ assert.ok(route.includes(field),"official field "+field);
+const officialSource=readFileSync(new URL("../src/lib/zoroark-catalog.server.ts",import.meta.url),"utf8");
+assert.equal((officialSource.match(/\\{ id: "[emh]\\d{2}"/g)||[]).length,42,"canonical game catalog stays 42 pairs");
+assert.equal((officialSource.match(/level: "easy"/g)||[]).length,12);
+assert.equal((officialSource.match(/level: "normal"/g)||[]).length,15);
+assert.equal((officialSource.match(/level: "hard"/g)||[]).length,15);
+assert.ok(route.indexOf("const auth=await authorize(req)")<route.indexOf("basePairs:PAIRS.map"),"ADMIN auth precedes list serialization");
 assert.ok(round.includes("catalogRuntimeEnabled() ? await runtimePublishedPairs"),"round uses staged catalog only when gated");
 console.log("ZOROARK_CATALOG_REVIEW_PASS");
