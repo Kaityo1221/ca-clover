@@ -2,6 +2,7 @@
 import {useEffect,useState} from "react";
 import QRCode from "qrcode";
 import {useAuthProfile} from "@/lib/use-auth-profile";
+import {GmGameControls} from "@/components/zoroark/gm-game-controls";
 
 export type RoomCreated = {
   roomId: string;
@@ -40,12 +41,12 @@ export function QRInvite({room,onFinish}:{room:RoomCreated;onFinish:()=>void}){
    {error&&<p role="alert">{error}</p>}
    <p className="text-sm">招待期限：{new Date(currentDeadline).toLocaleString("ja-JP")}</p>
    <p className="text-sm text-amber-800">招待資格はQRの中だけに含まれます。SNSに公開せず、現地参加者だけに提示してください。</p>
-   <GMLobby roomId={room.roomId} onFinish={onFinish}
+   <GMLobby roomId={room.roomId} mode={room.mode} onFinish={onFinish}
      onRotate={(invite,deadline)=>{setQr("");setCurrentInvite(invite);setCurrentDeadline(deadline)}}/>
   </div>;
 }
 type Participant={id:string;display_name:string;state:"pending"|"approved"|"rejected"};
-function GMLobby({roomId,onRotate,onFinish}:{roomId:string;onRotate:(invite:string,deadline:string)=>void;onFinish:()=>void}){
+function GMLobby({roomId,mode,onRotate,onFinish}:{roomId:string;mode:"simple"|"manual";onRotate:(invite:string,deadline:string)=>void;onFinish:()=>void}){
  const {supabase}=useAuthProfile();
  const [participants,setParticipants]=useState<Participant[]>([]);
  const [locked,setLocked]=useState(false);
@@ -106,6 +107,8 @@ function GMLobby({roomId,onRotate,onFinish}:{roomId:string;onRotate:(invite:stri
         className="rounded bg-rose-200 p-2">拒否</button>
     </div>}
   </div>)}
+  <GmGameControls roomId={roomId} mode={mode} approved={participants.filter(p=>p.state==="approved").length}
+    pending={participants.filter(p=>p.state==="pending").length} onFinish={onFinish}/>
   {message&&<p role="alert" className="text-rose-700">{message}</p>}
  </div>;
 }
