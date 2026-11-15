@@ -19,7 +19,7 @@ const html=readFileSync("docs/index.html","utf8");
 assert.ok(ui.includes("data-import"));
 assert.ok(ui.includes("data-edit"));
 assert.ok(ui.includes("data-adopt"));
-assert.ok(ui.includes("safeMergeNotebook(entries,officialDrafts,incoming)"));
+assert.ok(ui.includes("safeMergeNotebook(entries,officialDrafts,incoming,"));
 assert.ok(ui.includes("localStorage.setItem(KEY"));
 assert.ok(html.includes("zoroark-ideas.mjs?v=20261115-live-control1"));
 assert.ok(ui.includes("OFFICIAL_ZOROARK_42"),"official catalog list exists");
