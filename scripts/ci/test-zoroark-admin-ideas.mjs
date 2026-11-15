@@ -27,5 +27,5 @@ assert.ok(module.includes('all=results.filter'));
 assert.ok(module.includes('if(first){gen=Number(first.gen)||gen}'));
 assert.ok(module.includes('gen=Number(x.gen)||gen'));
 assert.ok(module.includes('searchMode=false;term=""'));
-assert.ok(html.includes("zoroark-ideas.mjs?v=20261031-library1"));
+assert.ok(html.includes("zoroark-ideas.mjs?v=20261115-management1"));
 console.log("ZOROARK_ADMIN_IDEA_UI_PASS");
