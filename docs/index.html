@@ -94,6 +94,27 @@
       return body;
     }
   };
+  // The QA catalog is never a production publication path.
+  // Supabase access tokens are scoped to this host capability and never sent to the memo component.
+  const ZOROARK_CATALOG_QA_URL="https://ca-clover-1b53pl033-kaityo1222.vercel.app/api/zoroark/catalog";
+  async function requestZoroarkCatalog(method,payload){
+    if(profile?.role!=="admin"||!session?.user?.id)throw Error("ADMIN権限が必要です。");
+    const {data,error}=await client.auth.getSession();
+    if(error||!data.session?.access_token||data.session.user.id!==session.user.id)
+      throw Error("再ログインしてください。");
+    const res=await fetch(ZOROARK_CATALOG_QA_URL,{
+      method,headers:{"Content-Type":"application/json",Authorization:"Bearer "+data.session.access_token},
+      ...(payload?{body:JSON.stringify(payload)}:{}),cache:"no-store",credentials:"omit"
+    });
+    const result=await res.json().catch(()=>({}));
+    if(!res.ok)throw Error(res.status===503?"検証用カタログは現在OFF（DB未接続）":
+      result.error||"カタログを確認できません");
+    return result;
+  }
+  const zoroarkCatalogGateway={
+    getStatus(){return requestZoroarkCatalog("GET")},
+    submit(topic){return requestZoroarkCatalog("POST",{action:"submit",topic})}
+  };
   const COMMUNITY_PERIODS=[["1か月",30],["3か月",90],["6か月",180],["1年",365],["全期間",null]];
   const MEETUP_HISTORY_LIMITS=[25,50,100,null];
   const historyLoaderReady=import('./meetup-history-loader.mjs?v=20261113-all2');
@@ -775,7 +796,7 @@
     if(v==="zoroark-ideas"){
       if(profile?.role!=="admin"){app.innerHTML='<section class="card"><h2>🔒 ADMIN専用</h2><p>この画面は管理者だけが利用できます。</p></section>';return}
       app.innerHTML='<section class="card">お題メモを読み込み中...</section>';
-      try{const module=await import("./zoroark-ideas.mjs?v=20261115-management1");if(token!==renderToken)return;ideasLeave=module.mountIdeaMemo({host:app,role:profile.role,onBack:function(){go("my")}})}
+      try{const module=await import("./zoroark-ideas.mjs?v=20261115-catalog-stage1");if(token!==renderToken)return;ideasLeave=module.mountIdeaMemo({host:app,role:profile.role,catalogGateway:zoroarkCatalogGateway,onBack:function(){go("my")}})}
       catch(err){if(token===renderToken)app.innerHTML='<section class="card"><h2>読み込みに失敗しました</h2><p>再読み込みをお試しください。</p></section>'}
       return;
     }

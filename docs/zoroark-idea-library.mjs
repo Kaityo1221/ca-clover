@@ -8,7 +8,9 @@ export function normalizeEntry(x){
  if(bNo&&!/^\d{1,4}$/.test(bNo))throw Error("図鑑番号が不正です");
  if(x.a===x.b||(aNo&&bNo&&Number(aNo)===Number(bNo)))throw Error("同じポケモンは登録できません");
  if(x.note!=null&&!validString(x.note,2000))throw Error("メモが長すぎます");
- return {a:x.a.trim(),b:x.b.trim(),aNo,bNo,note:(x.note||"").trim(),at:validString(x.at,60)?x.at:"",status:x.status==="adopted"?"adopted":x.status==="archived"?"archived":"draft"};
+ if(x.difference!=null&&!validString(x.difference,500))throw Error("違いの説明が長すぎます");
+ if(x.level!=null&&!["","easy","normal","hard"].includes(x.level))throw Error("難易度の指定が不正です");
+ return {a:x.a.trim(),b:x.b.trim(),aNo,bNo,note:(x.note||"").trim(),difference:(x.difference||"").trim(),level:x.level||"",at:validString(x.at,60)?x.at:"",status:x.status==="adopted"?"adopted":x.status==="archived"?"archived":"draft"};
 }
 export function mergeEntries(existing,incoming){
  const output=existing.map(normalizeEntry),seen=new Set(output.map(pairKey));let added=0,skipped=0;
@@ -43,4 +45,31 @@ export function ideaVisibleIndexes(entries,filter="draft",query=""){
  .filter(({x})=>filter==="all"||x.status===filter)
  .filter(({x})=>!q||[x.a,x.b,x.note,x.aNo,x.bNo].some(s=>String(s).normalize("NFKC").toLocaleLowerCase("ja-JP").includes(q)))
  .map(({i})=>i).reverse();
+}
+
+/** The server catalog is authoritative; local "adopted" alone never means live. */
+export const topicNameKey=(a,b)=>[String(a).normalize("NFKC").trim().toLocaleLowerCase("ja-JP"),
+ String(b).normalize("NFKC").trim().toLocaleLowerCase("ja-JP")].sort().join("|");
+export function candidateForServer(row){
+ const x=normalizeEntry(row);
+ if(!x.note||x.note.length>500||!x.difference||!x.level)return null;
+ return {a:x.a,b:x.b,aNo:x.aNo,bNo:x.bNo,common:x.note,
+  difference:x.difference,level:x.level};
+}
+export function compareServerCatalog(row,result){
+ if(!result||!Array.isArray(result.baseKeys)||!Array.isArray(result.entries))
+  return {state:"unchecked",label:"🔍 サーバー未照合"};
+ const x=normalizeEntry(row),key=topicNameKey(x.a,x.b);
+ if(result.baseKeys.includes(key))
+  return {state:"live",label:"✅ 正式42組で利用中",id:null};
+ const matching=result.entries.find(v=>v&&topicNameKey(v.a,v.b)===key);
+ if(!matching)return {state:"missing",label:"⏳ サーバー未登録",id:null};
+ const id=Number(matching.id);
+ if(matching.status==="published"&&matching.activeInGame===true)
+  return {state:"live",label:"✅ ゲームで利用中・版"+matching.version,id};
+ if(matching.status==="published")return {state:"queued",label:"⏳ 公開済み・ゲーム出題OFF",id};
+ if(matching.status==="approved")return {state:"approved",label:"🟡 審査済み・未公開",id};
+ if(matching.status==="pending")return {state:"pending",label:"📨 サーバー申請済み",id};
+ if(matching.status==="retired")return {state:"retired",label:"📦 公開停止・ゲーム対象外",id};
+ return {state:"unchecked",label:"🔍 状態を確認できません"};
 }
