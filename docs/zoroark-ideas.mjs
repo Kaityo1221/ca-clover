@@ -124,6 +124,8 @@ export function mountIdeaMemo({host,role,onBack,gameCatalogGateway}){
   const changed=Object.keys(officialDrafts).length;
   const hiddenCount=effectiveTrash.officialIds.length+effectiveTrash.memoKeys.length;
   const activeCount=notebookRows(entries,officialDrafts,{kind:"all",trash:effectiveTrash}).length;
+  const memoDraftCount=entries.filter(x=>x.status!=="adopted"&&!effectiveTrash.memoKeys.includes(pairKey(x))).length;
+  const memoAdoptedCount=entries.filter(x=>x.status==="adopted"&&!effectiveTrash.memoKeys.includes(pairKey(x))).length;
   const levels=[["all","すべて"],["easy","初級"],["normal","中級"],["hard","上級"]];
   const groups=[["all","全件"],["official","正式42組"],["memo","自作メモ"],["trash","🗑 削除済み "+hiddenCount]];
   return '<main class="zim">'+header("登録したお題を確認・編集")+
@@ -131,6 +133,7 @@ export function mountIdeaMemo({host,role,onBack,gameCatalogGateway}){
    '<section class="card section"><h2>📚 ネタ帳</h2>'+
    '<p class="muted small">正式42組の削除・復元は全CA共通のゲーム出題対象にも反映します。管理者認証・サーバー確認が必要です。自作メモは端末内保存のため、削除してもゲーム出題には影響しません。</p>'+
    '<p class="zim-count">正式 '+OFFICIAL_ZOROARK_42.length+'組 ／ 自作 '+countLocal()+'件 ／ 編集下書き '+changed+'件 ／ 削除済み '+hiddenCount+'件</p>'+
+   '<p class="muted small">自作メモの内訳：📝 未処理 '+memoDraftCount+'件 ／ ⭐ 採用候補 '+memoAdoptedCount+'件 ／ 🗑 削除済み '+effectiveTrash.memoKeys.length+'件。採用候補はゲーム未反映です。</p>'+
    '<div class="zim-actions"><button class="zim-act alt" data-game-refresh '+(gameBusy?'disabled':'')+'>🔄 ゲーム出題状態を確認</button></div>'+
    '<div class="zim-tabs" role="group" aria-label="お題の種類">'+groups.map(([v,label])=>'<button data-book-kind="'+v+'" aria-pressed="'+String(kind===v)+'">'+label+'</button>').join("")+'</div>'+
    '<div class="zim-tabs" role="group" aria-label="難易度">'+levels.map(([v,label])=>'<button data-book-level="'+v+'" aria-pressed="'+String(level===v)+'">'+label+'</button>').join("")+'</div>'+
@@ -138,6 +141,7 @@ export function mountIdeaMemo({host,role,onBack,gameCatalogGateway}){
    '<button class="zim-act" data-book-search>検索</button><button class="zim-act alt" data-book-clear>解除</button></div>'+
    '<p class="muted small" role="status">表示 '+rows.length+' / '+(kind==="trash"?hiddenCount:activeCount)+'件</p>'+
    '<details><summary>📁 バックアップ・復元</summary><div class="zim-actions"><button class="zim-act alt" data-export>ネタ帳をJSON保存</button>'+
+   '<button class="zim-act alt" data-export-adopted>⭐ 採用候補JSON（ゲーム未反映）</button>'+
    '<label class="zim-act alt">JSON読み込み <input type="file" data-import accept=".json,application/json" style="max-width:130px"></label></div>'+
    '<p class="muted small">自作メモ・正式42組の編集下書き・削除済み状態を保存します。旧形式のメモJSONも読み込めます。</p></details>'+alerts()+'</section>')+
    (!editOfficialId?'<section class="card section"><h2>お題一覧</h2>'+
@@ -241,6 +245,19 @@ export function mountIdeaMemo({host,role,onBack,gameCatalogGateway}){
    const link=document.createElement("a");link.href=url;link.download="zoroark-notebook-backup.json";link.click();
    setTimeout(()=>URL.revokeObjectURL(url),1000);
   }catch(e){error="バックアップ失敗："+e.message;draw()}
+ }
+ function exportAdoptedCandidates(){
+  try{
+   if(entryReadError||trashError)throw Error("保存データを安全に読み取れません");
+   const rows=entries.filter(x=>x.status==="adopted"&&!trash.memoKeys.includes(pairKey(x)));
+   if(!rows.length)throw Error("採用候補がありません");
+   // Export is local-only and deliberately cannot publish to the shared game.
+   const data=notebookBackup(rows,{}, {officialIds:[],memoKeys:[]});
+   const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+   const url=URL.createObjectURL(blob),link=document.createElement("a");
+   link.href=url;link.download="zoroark-candidates-NOT-LIVE.json";link.click();
+   setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }catch(e){error="採用候補の保存失敗："+e.message;draw()}
  }
  async function importData(file){
   if(!file)return;
@@ -355,6 +372,7 @@ export function mountIdeaMemo({host,role,onBack,gameCatalogGateway}){
   const c=e.target.closest("[data-choose]");
   if(c){rememberForm();which=Number(c.dataset.choose);term="";showPicker();dialog.showModal();void changeGen(gen);return}
   if(e.target.closest("[data-save]")){save();return}
+  if(e.target.closest("[data-export-adopted]")){exportAdoptedCandidates();return}
   if(e.target.closest("[data-export]")){exportData();return}
  };
  const onDialog=e=>{
