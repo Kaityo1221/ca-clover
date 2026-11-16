@@ -29,7 +29,10 @@ assert.ok(moduleSource.includes('class="zg-play-top"') && moduleSource.includes(
 assert.ok(moduleSource.includes('if(name==="openNotebook"&&phase==="play-style")'),"notebook entry only navigates from play-style");
 assert.ok(index.includes('v==="zoroark-submit"') && index.includes('profile?.role!=="ca"&&profile?.role!=="admin"'),"CA submission route enforces approved role gate");
 assert.ok(index.includes('onNotebook:function(){go(profile?.role==="admin"?"zoroark-ideas":"zoroark-submit")}'),"ADMIN opens existing editor; CA opens submission entry");
-assert.ok(index.includes('サーバーへの送信・共有・ゲームへの反映はまだ行えません'),"unimplemented CA server submission is never presented as live");
+assert.ok(index.includes("notebookQAReady") && index.includes("zoroarkNotebookGateway"),"CA notebook is explicitly gated to QA Auth/API");
+assert.ok(index.includes("zoroark-ca-notebook.mjs") && index.includes("zoroark-admin-notebook.mjs"),"CA and ADMIN route to their own notebooks");
+assert.ok(index.includes("zoroarkShowLocal") && index.includes("zoroark-ideas.mjs"),"original local and official notebook is preserved");
+assert.ok(!index.includes("https://ca-clover.vercel.app/api/zoroark/notebook"),"no production notebook API target");
 assert.ok(moduleSource.includes('data-act="face-to-face"'),"face-to-face play can be selected");
 assert.ok(moduleSource.includes('data-act="remote"') && moduleSource.includes('<strong>リモート</strong>'),"remote play stays independently selectable");
 assert.ok(moduleSource.includes('phase==="remote-entry"'),"remote play opens a preparation screen");
