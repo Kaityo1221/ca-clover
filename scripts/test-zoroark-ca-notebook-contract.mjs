@@ -39,4 +39,7 @@ assert.ok(!route.includes("ca-clover.vercel.app"),"no production API target");
 const official=read("src/app/api/zoroark/official/route.ts");
 assert.match(official,/notebookConfig\(\)/,"local official42 QA origin must check isolated Auth gate");
 assert.match(official,/trustedOrigin/,"official42 local origin must be opt-in and fail closed");
+const round=read("src/app/api/zoroark/round/route.ts");
+assert.match(round,/notebookConfig\(\)/,"local QA round must validate QA credentials");
+assert.match(round,/roundOriginAllowed/,"local QA round only allowed with current gate");
 console.log("ZOROARK_CA_NOTEBOOK_CONTRACT_PASS isolated_auth=on current_role=on owner_filter=on admin_gate=on");
