@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { createZoroarkRound, chooseZoroarkPair } from "@/lib/zoroark-catalog.server";
 import { allowedZoroarkOrigin, allowedZoroarkRole, validateRoundRequest } from "@/lib/zoroark-api-policy";
+import { allowNotebookOrigin, notebookConfig } from "@/lib/zoroark-ca-notebook.server";
 import { OFFICIAL_TOPIC_CONTROL_ENABLED,validateOfficialTopicState } from "@/lib/zoroark-official-control.server";
 import { catalogRuntimeEnabled, runtimePublishedPairs } from "@/lib/zoroark-catalog-management.server";
 
@@ -9,6 +10,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PAGES_ORIGIN = "https://kaityo1221.github.io";
+// The QA browser may never send its isolated Supabase JWT to the production round API.
+function roundOriginAllowed(req:NextRequest){
+ if(allowedZoroarkOrigin(req.headers.get("origin"),req.nextUrl.origin))return true;
+ if(process.env.NODE_ENV!=="development" ||
+   !/^http:\/\/(?:localhost|127\.0\.0\.1):\d{2,5}$/.test(req.headers.get("origin")||""))return false;
+ try{notebookConfig();return allowNotebookOrigin(req)}catch{return false}
+}
 const headersBase = {
   "Cache-Control": "private, no-store, no-cache, max-age=0, must-revalidate",
   "Vary": "Authorization, Origin",
@@ -17,19 +25,19 @@ const headersBase = {
 };
 function response(request: NextRequest, data: object, status: number): NextResponse {
   const result = NextResponse.json(data, {status,headers:headersBase});
-  if (request.headers.get("origin") === PAGES_ORIGIN) {
-    result.headers.set("Access-Control-Allow-Origin", PAGES_ORIGIN);
+  if(request.headers.get("origin") && roundOriginAllowed(request)){
+    result.headers.set("Access-Control-Allow-Origin",request.headers.get("origin")!);
   }
   return result;
 }
 
 export async function OPTIONS(request: NextRequest) {
-  if (!allowedZoroarkOrigin(request.headers.get("origin"),request.nextUrl.origin)) {
+  if (!roundOriginAllowed(request)) {
     return response(request,{error:"接続元が許可されていません。"},403);
   }
   const result = new NextResponse(null, {status:204,headers:headersBase});
-  if (request.headers.get("origin") === PAGES_ORIGIN) {
-    result.headers.set("Access-Control-Allow-Origin", PAGES_ORIGIN);
+  if(request.headers.get("origin") && roundOriginAllowed(request)){
+    result.headers.set("Access-Control-Allow-Origin",request.headers.get("origin")!);
   }
   result.headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
   result.headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -43,7 +51,7 @@ export async function OPTIONS(request: NextRequest) {
  * A browser-side role or user ID is never accepted as authorization.
  */
 export async function POST(request: NextRequest) {
-  if (!allowedZoroarkOrigin(request.headers.get("origin"), request.nextUrl.origin)) {
+  if (!roundOriginAllowed(request)) {
     return response(request, {error:"接続元が許可されていません。"}, 403);
   }
   const match = /^Bearer ([A-Za-z0-9._~-]{20,8192})$/.exec(request.headers.get("authorization") || "");
