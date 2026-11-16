@@ -36,4 +36,7 @@ assert.match(route,/catalogPublishEnabled\(\)/);
 assert.match(catalog,/ZOROARK_CATALOG_RUNTIME_ENABLED/);
 assert.ok(!route.includes("service_role") && !auth.includes("service_role"),"no privileged client key");
 assert.ok(!route.includes("ca-clover.vercel.app"),"no production API target");
+const official=read("src/app/api/zoroark/official/route.ts");
+assert.match(official,/notebookConfig\(\)/,"local official42 QA origin must check isolated Auth gate");
+assert.match(official,/trustedOrigin/,"official42 local origin must be opt-in and fail closed");
 console.log("ZOROARK_CA_NOTEBOOK_CONTRACT_PASS isolated_auth=on current_role=on owner_filter=on admin_gate=on");
