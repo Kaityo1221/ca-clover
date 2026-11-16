@@ -237,7 +237,17 @@ export function mountZoroark({host,gateway,onBack}){
   if(name==="backSettings"){backSettings();return}
   if(name==="minus"){count=Math.max(3,count-1);render();return}
   if(name==="plus"){count=Math.min(12,count+1);render();return}
-  if(name==="start"){if(phase!=="setup"&&phase!=="results")return;gameMode=enableMimikyu?"manual":"simple";playMethod=null;gmJoins=false;phase="method-select";error="";render();return}
+  if(name==="start"){
+   if(phase==="setup"){
+    gameMode=enableMimikyu?"manual":"simple";playMethod=null;gmJoins=false;phase="method-select";error="";render();return;
+   }
+   // A completed handoff game should start the next round with the same settings.
+   // Also handles the results summary (if reached) without returning to setup.
+   if((phase==="results"||phase==="medal-summary")&&reveal&&playMethod==="handoff"&&!busy){
+    phase="gm-choice";void begin();return;
+   }
+   return;
+  }
   if(name==="chooseHandoff"&&phase==="method-select"){playMethod="handoff";phase="gm-choice";render();return}
   if(name==="chooseRoom"&&phase==="method-select"){playMethod="room";phase="gm-choice";render();return}
   if(name==="backMethod"){backMethod();return}
