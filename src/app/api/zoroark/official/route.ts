@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { allowedZoroarkOrigin } from "@/lib/zoroark-api-policy";
+import { allowNotebookOrigin, notebookConfig } from "@/lib/zoroark-ca-notebook.server";
 import {
  OFFICIAL_TOPIC_CONTROL_ENABLED,OFFICIAL_TOPIC_WRITE_ENABLED,
  isOfficialTopicId,validateOfficialTopicState
@@ -9,18 +10,25 @@ import {
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 const PAGES="https://kaityo1221.github.io";
+// Trust a local QA browser only with an explicitly verified isolated Auth/DB runtime.
+function trustedOrigin(req:NextRequest){
+ if(allowedZoroarkOrigin(req.headers.get("origin"),req.nextUrl.origin))return true;
+ if(process.env.NODE_ENV!=="development" ||
+   !/^http:\/\/(?:localhost|127\.0\.0\.1):\d{2,5}$/.test(req.headers.get("origin")||""))return false;
+ try{notebookConfig();return allowNotebookOrigin(req)}catch{return false}
+}
 const HEADERS={"Cache-Control":"private, no-store, no-cache, max-age=0, must-revalidate",
  "Vary":"Origin, Authorization","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"};
 function reply(req:NextRequest,value:object,status:number){
  const res=NextResponse.json(value,{status,headers:HEADERS});
- if(req.headers.get("origin")===PAGES)res.headers.set("Access-Control-Allow-Origin",PAGES);
+ if(req.headers.get("origin") && trustedOrigin(req))res.headers.set("Access-Control-Allow-Origin",req.headers.get("origin")!);
  return res;
 }
 export async function OPTIONS(req:NextRequest){
- if(!allowedZoroarkOrigin(req.headers.get("origin"),req.nextUrl.origin))
+ if(!trustedOrigin(req))
   return reply(req,{error:"origin_denied"},403);
  const res=new NextResponse(null,{status:204,headers:HEADERS});
- if(req.headers.get("origin")===PAGES)res.headers.set("Access-Control-Allow-Origin",PAGES);
+ if(req.headers.get("origin") && trustedOrigin(req))res.headers.set("Access-Control-Allow-Origin",req.headers.get("origin")!);
  res.headers.set("Access-Control-Allow-Methods","GET, POST, OPTIONS");
  res.headers.set("Access-Control-Allow-Headers","Content-Type, Authorization");
  res.headers.set("Access-Control-Max-Age","300");
@@ -43,7 +51,7 @@ async function admin(req:NextRequest){
  return {status:200 as const,client,userId:identity.user.id};
 }
 function guard(req:NextRequest){
- if(!allowedZoroarkOrigin(req.headers.get("origin"),req.nextUrl.origin))
+ if(!trustedOrigin(req))
   return reply(req,{error:"origin_denied"},403);
  if(!OFFICIAL_TOPIC_CONTROL_ENABLED)
   return reply(req,{error:"official_control_disabled"},503);
