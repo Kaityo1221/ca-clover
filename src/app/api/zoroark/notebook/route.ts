@@ -89,9 +89,9 @@ export async function POST(req:NextRequest){
    return answer(req,{entry:data,liveInGame:false},200);
   }
   if(auth.role!=="admin")return answer(req,{error:"admin_only"},403);
-  if(!["approve","publish","retire","reject","delete","restore"].includes(String(action))||
+  if(!["approve","publish","resume","retire","reject","delete","restore"].includes(String(action))||
     !validId(input.id))return answer(req,{error:"invalid_action"},400);
-  if(action==="publish"&&!catalogPublishEnabled())
+  if((action==="publish"||action==="resume")&&!catalogPublishEnabled())
    return answer(req,{error:"publishing_disabled"},403);
   const {data,error}=await auth.client.rpc("zoroark_topic_decide",{
    p_id:input.id,p_action:action});
