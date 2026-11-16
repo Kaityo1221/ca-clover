@@ -40,3 +40,56 @@ for(const action of ["move-status","edit-published","expectedRevision","confirmP
 assert.ok(!admin.includes('data-filter="retired"'),"legacy retired is not a tab");
 assert.ok(admin.includes("window.confirm"),"high-impact actions require explicit confirmation");
 console.log("ZOROARK_CA_NOTEBOOK_PAGES_PASS role_router=on qa_api_gate=on PR317_entry=preserved");
+const {mountAdminNotebook}=await import("../../docs/zoroark-admin-notebook.mjs");
+const {mountCANotebook}=await import("../../docs/zoroark-ca-notebook.mjs");
+const {searchPokemonV8}=await import("../../docs/zoroark-pokemon-picker-v8.mjs");
+// Isolated in-memory DOM simulation. This does not substitute for Safari or real RLS.
+const originalDocument=globalThis.document, originalWindow=globalThis.window;
+globalThis.document={head:{append(){}},createElement(){return {textContent:"",remove(){}}}};
+globalThis.window={confirm(){return true}};
+const fakeHost=()=>{const handlers={};return {innerHTML:"",handlers,
+ addEventListener(k,f){handlers[k]=f},removeEventListener(k){delete handlers[k]},
+ scrollIntoView(){}}};
+const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
+let transitionCount=0;
+for(const current of ["pending","approved","published","rejected","deleted","retired"]){
+ for(const dest of ["pending","approved","published","rejected","deleted"]){
+  if(current===dest)continue;
+  let entry={id:1,a:"ピカチュウ",b:"イーブイ",status:current,
+   common:"小型",difference:"形態",level:"easy",edit_revision:3,version:10,submitted_by:"test"};
+  let posted=null;
+  const gateway={async request(method,payload){
+   if(method==="GET")return {entries:[entry],baseCount:42,publishEnabled:true,runtimeEnabled:false};
+   posted=payload;entry={...entry,status:dest,edit_revision:4};
+   return {entry};
+  }};
+  const host=fakeHost(),stop=mountAdminNotebook({host,gateway,onBack(){}});
+  await tick();
+  assert.ok(!host.innerHTML.includes('data-filter="retired"'),"retired button prohibited");
+  host.handlers.click({target:{closest(){return {dataset:{act:"move-status",target:dest,id:"1"},
+   hasAttribute(n){return n==="data-act"}}}}});
+  await tick();
+  assert.equal(posted?.expectedStatus,current);
+  assert.equal(posted?.targetStatus,dest);
+  assert.equal(posted?.expectedRevision,3);
+  assert.equal(posted?.confirmPublish,dest==="published");
+  assert.equal(posted?.confirmDelete,dest==="deleted");
+  ++transitionCount;stop();
+ }
+}
+assert.equal(transitionCount,25);
+const privateHost=fakeHost();
+const stopPrivate=mountCANotebook({host:privateHost,gateway:{
+ async request(){return {entries:[{id:2,status:"rejected",a:"ルカリオ",b:"ゾロア"}]}}},onBack(){}});
+await tick();
+assert.ok(privateHost.innerHTML.includes("非公開の審査状態"),"leaked CA state blocked");
+assert.ok(!privateHost.innerHTML.includes("ルカリオ × ゾロア"),"CA leaked row not rendered");
+stopPrivate();
+globalThis.fetch=async()=>({ok:true,json:async()=>[{jp:"ピカチュウ",en:"Pikachu",no:"025",gen:"1"}]});
+for(const v of ["ピカ","pik","025"]){
+ const out=await searchPokemonV8(v);
+ assert.equal(out.hits.length,9,"each of nine stub generations searched");
+}
+globalThis.document=originalDocument;globalThis.window=originalWindow;
+console.log("ZOROARK_V8_INMEMORY_PASS",transitionCount,"moves + CA privacy + 9-gen search");
+
