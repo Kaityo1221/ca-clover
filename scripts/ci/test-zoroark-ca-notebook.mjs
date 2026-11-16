@@ -21,7 +21,10 @@ for(const [name,source] of [["ca",ca],["admin",admin]]){
 }
 assert.ok(html.includes('notebookQAReady'),"QA-only setting required");
 assert.ok(html.includes('http://localhost:3000/api/zoroark/notebook'),"fixed local API target");
-assert.ok(!html.includes('https://ca-clover.vercel.app/api/zoroark/notebook'),"no live notebook endpoint");
+assert.ok(html.includes('notebookProductionPage=!notebookLocalHost && location.origin==="https://kaityo1221.github.io"'),"production gateway only on canonical Pages origin");
+assert.ok(html.includes('notebookQAReady?"http://localhost:3000/api/zoroark/notebook":"https://ca-clover.vercel.app/api/zoroark/notebook"'),"strict QA / production API split");
+assert.ok(html.includes('if(!notebookRequestReady)throw Error'),"non canonical origin remains blocked");
+assert.ok(html.includes('["move-status","edit-published"].includes(payload.action)'),"new ADMIN-only actions guarded in parent");
 assert.ok(html.includes('zoroarkSubmit') || html.includes('zoroark-submit'),"CA route retained");
 assert.ok(html.includes('zoroarkShowLocal'),"local management integrated");
 assert.ok(html.includes("zoroarkNotebookGateway"),"token confined to parent page");
