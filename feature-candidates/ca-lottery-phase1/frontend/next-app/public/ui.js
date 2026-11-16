@@ -8,14 +8,24 @@ async function api(action,body={},id=null){
  const d=await res.json();if(!res.ok)throw Object.assign(Error(d.error),{status:res.status});return d;
 }
 const clear=()=>{view.replaceChildren();message.textContent='';};
-function ticket(d){clear();el('h2','🍀 登録テスト完了！');el('p',d.room);el('strong','参加番号 '+d.entry.number+' ・ '+d.entry.name);el('p','登録済み');el('details','').append();const det=view.lastChild;el('summary','端末変更用の復帰コード',det);el('p',d.recovery,det);el('p','本人だけで保管してください。別端末で使用すると以前の参加証は失効します。',det);}
+function ticket(d){clear();el('h2','🍀 登録テスト完了！');el('p',d.room);el('strong','参加番号 '+d.entry.number+' ・ '+d.entry.name);el('p','登録済み');el('details','').append();const det=view.lastChild;el('summary','端末変更用の復帰コード',det);el('p',d.recovery,det);el('p','本人だけで保管してください。別端末で使用すると以前の参加証は失効します。',det);btn('自分の抽選結果を確認',async()=>showResult(await api('myresult',{},room)));}
 async function guest(){
- const p=await api('prepare',{},room),me=await api('me',{},room);if(me.entry)return ticket(me);
+ let p;try{p=await api('prepare',{},room);}catch(e){if(e.status!==410)throw e;return showResult(await api('myresult',{},room));}
+ const me=await api('me',{},room);if(me.entry)return ticket(me);
  clear();el('h2',p.name);
  if(p.state==='open'){const name=input('Pokémon GOトレーナー名');name.maxLength=48;btn('参加登録',async()=>ticket(await api('join',{name:name.value},room)));}
  else el('p','受付は終了しています');
  const code=input('別端末からの復帰コード');code.autocomplete='off';
  btn('参加証を復元',async()=>ticket(await api('recover',{code:code.value.trim()},room)));
+}
+function showResult(d){
+ clear();el('h2','🎲 抽選結果');el('p',d.entry.name+' ・ 参加番号 '+d.entry.number);
+ const messages={not_started:'抽選前です。受付終了後の発表をお待ちください。',
+  pending:'当選者を順番に発表中です。最後までお待ちください。',
+  winner:'🎉 当選しました！ '+d.ordinal+'人目の当選者です。',
+  not_selected:'今回は当選しませんでした。ご参加ありがとうございました！'};
+ el('strong',messages[d.status]||'結果を確認できません');
+ btn('結果を更新',async()=>showResult(await api('myresult',{},room)));
 }
 function login(){clear();el('h2','CAログイン');const email=input('メールアドレス','email'),password=input('パスワード','password');btn('ログイン',async()=>{await api('login',{email:email.value,password:password.value});password.value='';await rooms();});}
 async function rooms(){
