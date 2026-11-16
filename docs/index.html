@@ -126,6 +126,29 @@
       return body;
     }
   };
+  // Official 42 game-stop control is also LOCAL QA ONLY. It never targets production.
+  const zoroarkOfficialQAGateway={
+    async request(method,payload){
+      if(!notebookQAReady)throw Error("隔離QA未設定のため正式42組の出題変更は禁止です。");
+      if(!session?.user?.id||profile?.role!=="admin")throw Error("ADMIN認証が必要です。");
+      const {data,error}=await client.auth.getSession();
+      if(error||!data.session?.access_token||data.session.user.id!==session.user.id)
+        throw Error("再ログインしてください。");
+      const res=await fetch("http://localhost:3000/api/zoroark/official",{
+        method,cache:"no-store",credentials:"omit",
+        headers:{Authorization:"Bearer "+data.session.access_token,
+          ...(method==="POST"?{"Content-Type":"application/json"}:{})},
+        ...(method==="POST"?{body:JSON.stringify(payload)}:{})
+      });
+      const body=await res.json().catch(()=>({}));
+      if(!res.ok)throw Error(body.error||"正式42組の隔離APIが応答しません。");
+      return body;
+    },
+    listStates(){return this.request("GET",null)},
+    setState(topicId,disabled,expectedRevision){
+      return this.request("POST",{topicId,disabled,expectedRevision});
+    }
+  };
   const COMMUNITY_PERIODS=[["1か月",30],["3か月",90],["6か月",180],["1年",365],["全期間",null]];
   const MEETUP_HISTORY_LIMITS=[25,50,100,null];
   const historyLoaderReady=import('./meetup-history-loader.mjs?v=20261113-all2');
@@ -839,7 +862,7 @@
         toShared.onclick=function(){show("shared")};
         toLocal.onclick=function(){show("local")};
         const adminUnmount=adminModule.mountAdminNotebook({host:shared,gateway:zoroarkNotebookGateway,onBack:function(){go("mini-games")}});
-        const localUnmount=localModule.mountIdeaMemo({host:local,role:profile.role,onBack:function(){go("mini-games")}});
+        const localUnmount=localModule.mountIdeaMemo({host:local,role:profile.role,gameCatalogGateway:zoroarkOfficialQAGateway,onBack:function(){go("mini-games")}});
         ideasLeave=function(){toShared.onclick=null;toLocal.onclick=null;adminUnmount();localUnmount();};
       }catch(err){
         if(token===renderToken)app.innerHTML='<section class="card"><h2>お題管理を読み込めません</h2><p>再読み込みをお試しください。</p></section>';
