@@ -49,7 +49,7 @@ assert.ok(moduleSource.includes('i!==value.wolf'),"Mimikyu never receives the wo
 assert.ok(moduleSource.includes('crypto.getRandomValues'),"additional role uses secure random source");
 assert.ok(moduleSource.includes('if(name==="backSettings")'),"player can return to unified settings");
 assert.ok(moduleSource.includes('typeof gateway.newRound!=="function"'),"CA auth remains mandatory without a dedicated GM");
-assert.ok(/zoroark-local\.mjs\?v=202611(?:15-always-role1|16-next-round-fix1|16-round-loading-fix1)/.test(index),"always-visible private role and next-round fix use cache-busted module");
+assert.ok(/zoroark-local\.mjs\?v=202611(?:15-always-role1|16-next-round-fix1|16-round-loading-fix1|16-round-error-retry1)/.test(index),"always-visible private role and next-round fix use cache-busted module");
 assert.ok(moduleSource.includes('phase==="card-private"'),"private question screen is present");
 assert.ok(moduleSource.includes('phase==="card-handoff"'),"private handoff mask is present");
 assert.ok(moduleSource.includes('questionHands=Array.from({length:count},()=>Array.from({length:5},drawQuestion))'),"each player gets five cards");
