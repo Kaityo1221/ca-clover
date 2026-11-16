@@ -94,7 +94,7 @@
       if(!session?.user?.id || !["ca","admin"].includes(profile?.role))throw Error("CAまたはADMINのみゲームマスターになれます。");
       const {data,error}=await client.auth.getSession();
       if(error||!data.session?.access_token||data.session.user.id!==session.user.id)throw Error("再ログインしてください。");
-      const res=await fetch("https://ca-clover.vercel.app/api/zoroark/round",{
+      const res=await fetch(notebookQAReady?"http://localhost:3000/api/zoroark/round":"https://ca-clover.vercel.app/api/zoroark/round",{
         method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+data.session.access_token},
         body:JSON.stringify(input),cache:"no-store",credentials:"omit"
       });
