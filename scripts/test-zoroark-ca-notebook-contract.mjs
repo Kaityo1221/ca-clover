@@ -21,7 +21,8 @@ for(const filename of files){
 const auth=read(files[0]),route=read(files[1]),catalog=read("src/lib/zoroark-catalog-management.server.ts");
 assert.match(auth,/ZOROARK_NOTEBOOK_ISOLATED_SUPABASE_URL/);
 assert.match(auth,/ZOROARK_NOTEBOOK_ISOLATED_PUBLISHABLE_KEY/);
-assert.match(auth,/wgiittrvgtiosogyhfcl/,"production project is blocked");
+assert.match(auth,/wgiittrvgtiosogyhfcl/,"canonical production DB ref pinned");
+assert.match(auth,/ZOROARK_NOTEBOOK_PRODUCTION_ENABLED/,"production is explicit opt-in");
 assert.match(auth,/notebook_api_disabled/);
 assert.match(auth,/client\.auth\.getUser/);
 assert.match(auth,/from\("profiles"\)/);
@@ -37,7 +38,7 @@ assert.match(auth,/ZOROARK_NOTEBOOK_PRODUCTION_ENABLED/,"production opt-in is in
 assert.match(route,/validateTopicCandidate\(input\.topic\)/);
 assert.match(route,/zoroark_topic_submit/);
 assert.match(route,/zoroark_topic_update/);
-assert.match(route,/zoroark_topic_decide/);
+assert.ok(!route.includes("zoroark_topic_decide"),"legacy decision action removed from V8 route");
 assert.match(route,/catalogPublishEnabled\(\)/);
 assert.match(catalog,/ZOROARK_CATALOG_RUNTIME_ENABLED/);
 assert.ok(!route.includes("service_role") && !auth.includes("service_role"),"no privileged client key");
