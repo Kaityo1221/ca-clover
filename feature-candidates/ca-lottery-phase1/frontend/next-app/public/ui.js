@@ -34,6 +34,37 @@ async function list(id){
  btn('QRを拡大',()=>{const dialog=el('dialog');const big=img.cloneNode();dialog.append(big);btn('閉じる',()=>dialog.close(),dialog);dialog.onclose=()=>dialog.remove();dialog.showModal();});
  }
  const ol=el('ol');for(const e of d.entries)el('li',e.name+' ・ '+new Date(e.registered).toLocaleString(),ol);
+ if(r.state==='closed'||r.state==='ended'){
+  const status=await api('drawstatus',{},id);
+  el('h3','🎲 お楽しみ抽選');
+  if(!status.draw){
+   if(r.state==='closed'&&!r.expired&&d.entries.length){
+    const amount=input('当選人数（1〜10名）','number');
+    amount.min='1';amount.max=String(Math.min(10,d.entries.length));amount.step='1';amount.value=String(Math.min(3,10,d.entries.length));
+    el('p','抽選結果は一度だけ確定し、やり直しはできません。');
+    btn('抽選を確定',async()=>{
+     const count=Number(amount.value);
+     if(!Number.isInteger(count)||count<1||count>10||count>d.entries.length)throw Error('当選人数を確認してください');
+     if(!confirm(count+'名の当選者を確定しますか？ やり直しはできません。'))return;
+     await api('draw',{count},id);await list(id);
+    });
+   }else el('p','抽選はまだ行われていません');
+  }else{
+   const draw=status.draw;
+   el('p','当選 '+draw.winnerCount+'名 ・ 発表済み '+draw.revealedCount+'名');
+   const winners=el('ol');
+   for(const w of draw.winners)el('li','🎉 '+w.ordinal+'人目：'+w.name+'（参加番号 '+w.number+'）',winners);
+   if(!draw.complete&&r.state==='closed'&&!r.expired)
+    btn('次の当選者を発表',async()=>{
+     const storageKey='caLotteryReveal:'+id;
+     let request=sessionStorage.getItem(storageKey);
+     if(!request){request=crypto.randomUUID();sessionStorage.setItem(storageKey,request);}
+     await api('reveal',{request},id);
+     sessionStorage.removeItem(storageKey);await list(id);
+    });
+   if(draw.complete)el('strong','🏆 当選者の発表が完了しました');
+  }
+ }
  btn('一覧を更新',()=>list(id));
  if(!r.expired&&r.state!=='ended'){
  const change=async state=>{await api('state',{state,version:r.version},id);await list(id);};
