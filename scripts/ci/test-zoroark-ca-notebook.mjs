@@ -25,6 +25,8 @@ assert.ok(!html.includes('https://ca-clover.vercel.app/api/zoroark/notebook'),"n
 assert.ok(html.includes('zoroarkSubmit') || html.includes('zoroark-submit'),"CA route retained");
 assert.ok(html.includes('zoroarkShowLocal'),"local management integrated");
 assert.ok(html.includes("zoroarkNotebookGateway"),"token confined to parent page");
+assert.ok(html.includes("zoroarkOfficialQAGateway"),"official 42 read/write gateway is QA-only");
+assert.ok(html.includes("gameCatalogGateway:zoroarkOfficialQAGateway"),"original official42 local editor receives isolated gateway");
 assert.ok(game.includes('data-act="openNotebook"'),"PR317 placement remains intact");
 assert.ok(ca.includes('row.status==="pending"'),"non-pending edit control excluded");
 for(const action of ["approve","publish","resume","retire","reject","delete","restore"])
