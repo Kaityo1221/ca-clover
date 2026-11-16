@@ -834,7 +834,7 @@
       }
       app.innerHTML='<section class="card">みんなのネタ帳を読み込み中…</section>';
       try{
-        const module=await import("./zoroark-ca-notebook.mjs?v=20261116-qa1");
+        const module=await import("./zoroark-ca-notebook.mjs?v=20261117-v8");
         if(token!==renderToken)return;
         notebookLeave=module.mountCANotebook({host:app,gateway:zoroarkNotebookGateway,onBack:function(){go("mini-games")}});
       }catch(err){
@@ -849,7 +849,7 @@
       app.innerHTML='<section class="card">会長のネタ帳を読み込み中…</section>';
       try{
         const [adminModule,localModule]=await Promise.all([
-          import("./zoroark-admin-notebook.mjs?v=20261116-qa1"),
+          import("./zoroark-admin-notebook.mjs?v=20261117-v8"),
           import("./zoroark-ideas.mjs?v=20261116-compat313")
         ]);
         if(token!==renderToken)return;
