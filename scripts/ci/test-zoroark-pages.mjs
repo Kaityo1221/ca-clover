@@ -32,7 +32,9 @@ assert.ok(index.includes('onNotebook:function(){go(profile?.role==="admin"?"zoro
 assert.ok(index.includes("notebookQAReady") && index.includes("zoroarkNotebookGateway"),"CA notebook is explicitly gated to QA Auth/API");
 assert.ok(index.includes("zoroark-ca-notebook.mjs") && index.includes("zoroark-admin-notebook.mjs"),"CA and ADMIN route to their own notebooks");
 assert.ok(index.includes("zoroarkShowLocal") && index.includes("zoroark-ideas.mjs"),"original local and official notebook is preserved");
-assert.ok(!index.includes("https://ca-clover.vercel.app/api/zoroark/notebook"),"no production notebook API target");
+assert.ok(index.includes('location.origin==="https://kaityo1221.github.io"'),"production notebook only on canonical Pages origin");
+assert.ok(index.includes('notebookQAReady?"http://localhost:3000/api/zoroark/notebook":"https://ca-clover.vercel.app/api/zoroark/notebook"'),"QA / production notebook target is explicit");
+assert.ok(index.includes('if(!notebookRequestReady)throw Error'),"unexpected host cannot call notebook");
 assert.ok(moduleSource.includes('data-act="face-to-face"'),"face-to-face play can be selected");
 assert.ok(moduleSource.includes('data-act="remote"') && moduleSource.includes('<strong>リモート</strong>'),"remote play stays independently selectable");
 assert.ok(moduleSource.includes('phase==="remote-entry"'),"remote play opens a preparation screen");
