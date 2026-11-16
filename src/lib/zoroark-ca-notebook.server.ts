@@ -17,7 +17,8 @@ export function notebookConfig(){
   throw new NotebookHttpError(503,"notebook_api_disabled");
  const url=process.env.ZOROARK_NOTEBOOK_ISOLATED_SUPABASE_URL?.trim();
  const key=process.env.ZOROARK_NOTEBOOK_ISOLATED_PUBLISHABLE_KEY?.trim();
- if(!url || !key || !/^https:\/\/[a-z0-9.-]+\.supabase\.co$/.test(url) ||\n    url.includes("wgiittrvgtiosogyhfcl"))
+ if(!url || !key || !/^https:\/\/[a-z0-9.-]+\.supabase\.co$/.test(url) ||
+    url.includes("wgiittrvgtiosogyhfcl"))
   throw new NotebookHttpError(503,"isolated_auth_unconfigured");
  const mainUrl=process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
  const mainKey=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
