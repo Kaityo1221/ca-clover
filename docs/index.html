@@ -61,8 +61,17 @@
 <script>
 (function(){
   "use strict";
-  const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
-  const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
+  // Local QA Auth is injected BEFORE page startup, never read on GitHub Pages.
+  // No cross-environment token reuse, and the production project is explicitly prohibited.
+  const notebookLocalHost=["localhost","127.0.0.1"].includes(location.hostname);
+  const notebookQA=notebookLocalHost?window.CA_CLOVER_ZOROARK_QA:null;
+  const notebookQAReady=!!(notebookQA&&typeof notebookQA.url==="string"&&
+    /^https:\/\/[a-z0-9.-]+\.supabase\.co$/.test(notebookQA.url)&&
+    !notebookQA.url.includes("wgiittrvgtiosogyhfcl")&&
+    typeof notebookQA.publishableKey==="string"&&
+    /^sb_publishable_[a-zA-Z0-9_-]{12,200}$/.test(notebookQA.publishableKey));
+  const SUPABASE_URL=notebookQAReady?notebookQA.url:"https://wgiittrvgtiosogyhfcl.supabase.co";
+  const SUPABASE_KEY=notebookQAReady?notebookQA.publishableKey:"sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
   const ROOT="https://kaityo1221.github.io/ca-clover/";
   const VERSION="my-community-20260927-feature-focus1";
   const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
@@ -77,7 +86,7 @@
   // CARD_METRICS_IMPORT_BEGIN
   const cardMetricsReady=import('./meetup-metrics.mjs?v=20261017-card1').catch(function(){return null});
   // CARD_METRICS_IMPORT_END
-  let session=null, profile=null, busy=false, flash=null, communityPeriod=90, meetupHistoryLimit=25, communityFeatureView="home", renderToken=0, zoroarkLeave=null, ideasLeave=null;
+  let session=null, profile=null, busy=false, flash=null, communityPeriod=90, meetupHistoryLimit=25, communityFeatureView="home", renderToken=0, zoroarkLeave=null, ideasLeave=null, notebookLeave=null;
   // Restricted capability: only a CA-authorized game request crosses this page boundary.
   // The caller receives the round, never the Supabase access token.
   const zoroarkGateway={
@@ -91,6 +100,29 @@
       });
       const body=await res.json().catch(()=>({}));
       if(!res.ok)throw Error(body.error||"ゲームを開始できません。");
+      return body;
+    }
+  };
+  // Scope-limited browser gateway: auth tokens stay in index.html, never in notebook modules.
+  // The API target is a fixed localhost QA service. No production writes can originate here.
+  const zoroarkNotebookGateway={
+    async request(method,payload,scope){
+      if(!notebookQAReady)throw Error("隔離QA認証は未設定です。公開・投稿は停止中です。");
+      if(!session?.user?.id||!["ca","admin"].includes(profile?.role))throw Error("CAログインが必要です。");
+      if(scope==="all"&&profile?.role!=="admin")throw Error("ADMIN専用です。");
+      if(payload?.action&&["approve","publish","resume","retire","reject","delete","restore"].includes(payload.action)&&profile?.role!=="admin")
+        throw Error("ADMIN専用操作です。");
+      const {data,error}=await client.auth.getSession();
+      if(error||!data.session?.access_token||data.session.user.id!==session.user.id)
+        throw Error("再ログインしてください。");
+      const base="http://localhost:3000/api/zoroark/notebook";
+      const url=base+(method==="GET"?"?scope="+encodeURIComponent(scope||"mine"):"");
+      const res=await fetch(url,{method,cache:"no-store",credentials:"omit",
+        headers:{"Authorization":"Bearer "+data.session.access_token,
+          ...(method==="POST"?{"Content-Type":"application/json"}:{})},
+        ...(method==="POST"?{body:JSON.stringify(payload)}:{})});
+      const body=await res.json().catch(()=>({}));
+      if(!res.ok)throw Error(body.error||"隔離APIが応答しません。");
       return body;
     }
   };
@@ -761,6 +793,7 @@
     historyGeneration++;
     if(zoroarkLeave){zoroarkLeave();zoroarkLeave=null;}
     if(ideasLeave){ideasLeave();ideasLeave=null;}
+    if(notebookLeave){notebookLeave();notebookLeave=null;}
     if(sendaiMapLeave){sendaiMapLeave();sendaiMapLeave=null;}
     if(settingsLeave){settingsLeave();settingsLeave=null;}
     // Full-roster card controls are scoped to each render; no legacy raffle panel remains.
@@ -774,19 +807,43 @@
     if(v==="admin"&&profile.role!=="admin"){v="my";location.hash="my"}
     if(v==="zoroark-submit"){
       if(profile?.role!=="ca"&&profile?.role!=="admin"){
-        app.innerHTML='<section class="card"><h2>🔒 CA専用</h2><p>お題投稿はログイン済みCAのみ利用できます。</p></section>';return;
+        app.innerHTML='<section class="card"><h2>🔒 CA専用</h2><p>CA認証が必要です。</p></section>';return;
       }
-      app.innerHTML='<section class="card hero" style="max-width:720px;margin:auto"><button type="button" class="btn" id="zoroarkSubmitBack">← ゲームへ戻る</button><h1>📚 みんなのネタ帳</h1><p class="muted">CA専用のお題投稿</p></section>'+
-        '<section class="card section" style="max-width:720px;margin:16px auto"><h2>🦊 お題を投稿</h2><p class="notice">投稿機能は現在準備中です。サーバーへの送信・共有・ゲームへの反映はまだ行えません。</p><p>投稿できるのはCAとしてログイン済みの方だけです。内容は会長が審査し、採用されたお題だけがゲームに反映される予定です。</p></section>';
-      const back=document.getElementById("zoroarkSubmitBack");
-      if(back)back.onclick=function(){go("mini-games")};
+      app.innerHTML='<section class="card">みんなのネタ帳を読み込み中…</section>';
+      try{
+        const module=await import("./zoroark-ca-notebook.mjs?v=20261116-qa1");
+        if(token!==renderToken)return;
+        notebookLeave=module.mountCANotebook({host:app,gateway:zoroarkNotebookGateway,onBack:function(){go("mini-games")}});
+      }catch(err){
+        if(token===renderToken)app.innerHTML='<section class="card"><h2>投稿画面を読み込めません</h2><p>再読み込みをお試しください。</p></section>';
+      }
       return;
     }
     if(v==="zoroark-ideas"){
-      if(profile?.role!=="admin"){app.innerHTML='<section class="card"><h2>🔒 ADMIN専用</h2><p>この画面は管理者だけが利用できます。</p></section>';return}
-      app.innerHTML='<section class="card">お題メモを読み込み中...</section>';
-      try{const module=await import("./zoroark-ideas.mjs?v=20261115-notebook-editor1");if(token!==renderToken)return;ideasLeave=module.mountIdeaMemo({host:app,role:profile.role,onBack:function(){go("my")}})}
-      catch(err){if(token===renderToken)app.innerHTML='<section class="card"><h2>読み込みに失敗しました</h2><p>再読み込みをお試しください。</p></section>'}
+      if(profile?.role!=="admin"){
+        app.innerHTML='<section class="card"><h2>🔒 ADMIN専用</h2><p>この画面は管理者だけが利用できます。</p></section>';return;
+      }
+      app.innerHTML='<section class="card">会長のネタ帳を読み込み中…</section>';
+      try{
+        const [adminModule,localModule]=await Promise.all([
+          import("./zoroark-admin-notebook.mjs?v=20261116-qa1"),
+          import("./zoroark-ideas.mjs?v=20261116-compat313")
+        ]);
+        if(token!==renderToken)return;
+        app.innerHTML='<section class="card" style="max-width:840px;margin:0 auto 12px"><button type="button" class="btn" id="zoroarkShowShared">📨 CA投稿の審査</button> <button type="button" class="btn" id="zoroarkShowLocal">📒 端末内ネタ帳・正式42組</button></section>'+
+          '<div id="zoroarkSharedPanel"></div><div id="zoroarkLocalPanel" hidden></div>';
+        const shared=app.querySelector("#zoroarkSharedPanel");
+        const local=app.querySelector("#zoroarkLocalPanel");
+        const show=function(which){shared.hidden=which==="local";local.hidden=which!=="local";};
+        const toShared=app.querySelector("#zoroarkShowShared"),toLocal=app.querySelector("#zoroarkShowLocal");
+        toShared.onclick=function(){show("shared")};
+        toLocal.onclick=function(){show("local")};
+        const adminUnmount=adminModule.mountAdminNotebook({host:shared,gateway:zoroarkNotebookGateway,onBack:function(){go("mini-games")}});
+        const localUnmount=localModule.mountIdeaMemo({host:local,role:profile.role,onBack:function(){go("mini-games")}});
+        ideasLeave=function(){toShared.onclick=null;toLocal.onclick=null;adminUnmount();localUnmount();};
+      }catch(err){
+        if(token===renderToken)app.innerHTML='<section class="card"><h2>お題管理を読み込めません</h2><p>再読み込みをお試しください。</p></section>';
+      }
       return;
     }
     if(v==="mini-games"){
