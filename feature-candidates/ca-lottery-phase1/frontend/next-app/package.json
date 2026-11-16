@@ -1,0 +1,1 @@
+{"name":"ca-lottery-local-preview","private":true,"scripts":{"dev":"next dev --webpack --hostname 127.0.0.1 --port 41739"},"dependencies":{"next":"16.3.3","react":"19.2.0","react-dom":"19.2.0"}}
