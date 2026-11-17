@@ -146,6 +146,29 @@ try {
   assert.equal(await historicalMapPage.locator('.mapbox .prefecture[data-code="13"].acquired').count(), 0);
   await historicalMapPage.close();
 
+  // A 2nd CA medal is acquired while the 1st CA medal is still missing.
+  // The right 2nd button must be green by ownership, and selection must remain visible.
+  const rolePage = await openPage({
+    collections: [collection("ca-b", "base")],
+  });
+  await rolePage.locator(".regionbtn").nth(1).click();
+  await rolePage.getByRole("button", { name: /^東京都/ }).click();
+  await rolePage.locator('.stamp[data-community="base"]').click();
+  const firstBadge = rolePage.locator('[data-modal-ca="ca-a"]');
+  const secondBadge = rolePage.locator('[data-modal-ca="ca-b"]');
+  assert.equal(await firstBadge.getAttribute("aria-pressed"), "false");
+  assert.equal(await firstBadge.evaluate(el => el.classList.contains("acquired")), false);
+  assert.equal(await secondBadge.getAttribute("aria-pressed"), "true");
+  assert.equal(await secondBadge.evaluate(el => el.classList.contains("acquired") && el.classList.contains("selected")), true);
+  assert.equal(await secondBadge.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(92, 133, 76)", "selected 2nd CA must be green");
+  await firstBadge.click();
+  assert.equal(await firstBadge.getAttribute("aria-pressed"), "true");
+  assert.equal(await firstBadge.evaluate(el => el.classList.contains("acquired")), false);
+  assert.equal(await secondBadge.getAttribute("aria-pressed"), "false");
+  assert.equal(await secondBadge.evaluate(el => el.classList.contains("acquired")), true);
+  assert.equal(await secondBadge.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(239, 247, 235)", "unselected owned 2nd CA remains light green");
+  await rolePage.close();
+
   const fixture = {
     role: "admin", identity,
     collections: [collection("ca-a", "base", "admin"), collection("ca-c", "north")],
