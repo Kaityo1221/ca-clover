@@ -84,7 +84,7 @@ jobs:
                     "limitations":["No Neon/Auth branch","No real Google/Discord OAuth","No browser/device E2E",
                                    "No production deploy or write"]}
           pathlib.Path("clover-qa-report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
-          lines = ["## 🍀 Clover QA v1","",f"**{'PASS' if passed else 'NO-GO'}** | commit \`{report['commit']}\`","",
+          lines = ["## 🍀 Clover QA v1","",f"**{'PASS' if passed else 'NO-GO'}** | commit {report['commit']}","",
                    "| Check | Result |","|---|---|"]
           lines += [f"| {k.lower()} | {v} |" for k,v in values.items()]
           lines += ["","**未実施:** Neon DB/Auth、実OAuth、実機ブラウザ、本番反映。",
@@ -105,6 +105,8 @@ jobs:
       - name: Fail closed on any missing or failed check
         if: always()
         env:
+          NEGATIVE: ${{ steps.negative.outcome }}
+          PREFLIGHT: ${{ steps.preflight.outcome }}
           INSTALL: ${{ steps.install.outcome }}
           BOUNDARY: ${{ steps.boundary.outcome }}
           TESTS: ${{ steps.tests.outcome }}
