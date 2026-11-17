@@ -65,11 +65,20 @@
   // No cross-environment token reuse, and the production project is explicitly prohibited.
   const notebookLocalHost=["localhost","127.0.0.1"].includes(location.hostname);
   const notebookQA=notebookLocalHost?window.CA_CLOVER_ZOROARK_QA:null;
+  // Local real-GoTrue QA is opt-in and loopback-only; production project forbidden.
+  const notebookLocalStack=!!(notebookLocalHost&&notebookQA?.useLocalStack===true&&
+    typeof notebookQA.url==="string"&&
+    /^http:\/\/(?:localhost|127\.0\.0\.1):\d{2,5}$/.test(notebookQA.url));
   const notebookQAReady=!!(notebookQA&&typeof notebookQA.url==="string"&&
-    /^https:\/\/[a-z0-9.-]+\.supabase\.co$/.test(notebookQA.url)&&
+    (/^https:\/\/[a-z0-9.-]+\.supabase\.co$/.test(notebookQA.url)||notebookLocalStack)&&
     !notebookQA.url.includes("wgiittrvgtiosogyhfcl")&&
     typeof notebookQA.publishableKey==="string"&&
-    /^sb_publishable_[a-zA-Z0-9_-]{12,200}$/.test(notebookQA.publishableKey));
+    (/^sb_publishable_[a-zA-Z0-9_-]{12,200}$/.test(notebookQA.publishableKey)||
+      (notebookLocalStack&&/^eyJ[A-Za-z0-9._-]{70,2048}$/.test(notebookQA.publishableKey))));
+  // Canonical GitHub Pages may call only the fixed production notebook API.
+  // Server/DB write and publish gates remain independent and OFF by default.
+  const notebookProductionPage=!notebookLocalHost && location.origin==="https://kaityo1221.github.io";
+  const notebookRequestReady=notebookQAReady||notebookProductionPage;
   const SUPABASE_URL=notebookQAReady?notebookQA.url:"https://wgiittrvgtiosogyhfcl.supabase.co";
   const SUPABASE_KEY=notebookQAReady?notebookQA.publishableKey:"sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
   const ROOT="https://kaityo1221.github.io/ca-clover/";
@@ -104,18 +113,18 @@
     }
   };
   // Scope-limited browser gateway: auth tokens stay in index.html, never in notebook modules.
-  // The API target is a fixed localhost QA service. No production writes can originate here.
+  // Strict selection: localhost QA or canonical GitHub Pages production. No fallback.
   const zoroarkNotebookGateway={
     async request(method,payload,scope){
-      if(!notebookQAReady)throw Error("隔離QA認証は未設定です。公開・投稿は停止中です。");
+      if(!notebookRequestReady)throw Error("投稿APIは許可されていません。");
       if(!session?.user?.id||!["ca","admin"].includes(profile?.role))throw Error("CAログインが必要です。");
       if(scope==="all"&&profile?.role!=="admin")throw Error("ADMIN専用です。");
-      if(payload?.action&&["approve","publish","resume","retire","reject","delete","restore"].includes(payload.action)&&profile?.role!=="admin")
+      if(payload?.action&&["move-status","edit-published"].includes(payload.action)&&profile?.role!=="admin")
         throw Error("ADMIN専用操作です。");
       const {data,error}=await client.auth.getSession();
       if(error||!data.session?.access_token||data.session.user.id!==session.user.id)
         throw Error("再ログインしてください。");
-      const base="http://localhost:3000/api/zoroark/notebook";
+      const base=notebookQAReady?"http://localhost:3000/api/zoroark/notebook":"https://ca-clover.vercel.app/api/zoroark/notebook";
       const url=base+(method==="GET"?"?scope="+encodeURIComponent(scope||"mine"):"");
       const res=await fetch(url,{method,cache:"no-store",credentials:"omit",
         headers:{"Authorization":"Bearer "+data.session.access_token,
@@ -834,7 +843,7 @@
       }
       app.innerHTML='<section class="card">みんなのネタ帳を読み込み中…</section>';
       try{
-        const module=await import("./zoroark-ca-notebook.mjs?v=20261116-qa1");
+        const module=await import("./zoroark-ca-notebook.mjs?v=20261117-v8");
         if(token!==renderToken)return;
         notebookLeave=module.mountCANotebook({host:app,gateway:zoroarkNotebookGateway,onBack:function(){go("mini-games")}});
       }catch(err){
@@ -849,7 +858,7 @@
       app.innerHTML='<section class="card">会長のネタ帳を読み込み中…</section>';
       try{
         const [adminModule,localModule]=await Promise.all([
-          import("./zoroark-admin-notebook.mjs?v=20261116-qa1"),
+          import("./zoroark-admin-notebook.mjs?v=20261117-v8"),
           import("./zoroark-ideas.mjs?v=20261116-compat313")
         ]);
         if(token!==renderToken)return;
