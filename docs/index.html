@@ -65,11 +65,16 @@
   // No cross-environment token reuse, and the production project is explicitly prohibited.
   const notebookLocalHost=["localhost","127.0.0.1"].includes(location.hostname);
   const notebookQA=notebookLocalHost?window.CA_CLOVER_ZOROARK_QA:null;
+  // Local real-GoTrue QA is opt-in and loopback-only; production project forbidden.
+  const notebookLocalStack=!!(notebookLocalHost&&notebookQA?.useLocalStack===true&&
+    typeof notebookQA.url==="string"&&
+    /^http:\/\/(?:localhost|127\.0\.0\.1):\d{2,5}$/.test(notebookQA.url));
   const notebookQAReady=!!(notebookQA&&typeof notebookQA.url==="string"&&
-    /^https:\/\/[a-z0-9.-]+\.supabase\.co$/.test(notebookQA.url)&&
+    (/^https:\/\/[a-z0-9.-]+\.supabase\.co$/.test(notebookQA.url)||notebookLocalStack)&&
     !notebookQA.url.includes("wgiittrvgtiosogyhfcl")&&
     typeof notebookQA.publishableKey==="string"&&
-    /^sb_publishable_[a-zA-Z0-9_-]{12,200}$/.test(notebookQA.publishableKey));
+    (/^sb_publishable_[a-zA-Z0-9_-]{12,200}$/.test(notebookQA.publishableKey)||
+      (notebookLocalStack&&/^eyJ[A-Za-z0-9._-]{70,2048}$/.test(notebookQA.publishableKey))));
   // Canonical GitHub Pages may call only the fixed production notebook API.
   // Server/DB write and publish gates remain independent and OFF by default.
   const notebookProductionPage=!notebookLocalHost && location.origin==="https://kaityo1221.github.io";
