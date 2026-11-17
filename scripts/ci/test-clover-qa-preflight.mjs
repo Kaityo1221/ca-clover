@@ -15,7 +15,7 @@ const cases = [
 ];
 for (const item of cases) {
   const run = spawnSync(process.execPath, [target], { encoding: 'utf8', env: { ...baseline, ...item.env } });
-  if (run.status !== item.expected || run.error || /dummy|test\\.invalid/.test(run.stdout + run.stderr)) {
+  if (run.status !== item.expected || run.error || (run.stdout + run.stderr).includes('dummy') || (run.stdout + run.stderr).includes('test.invalid')) {
     console.error('CLOVER_QA_GUARD_TEST_FAIL: ' + item.name);
     process.exit(1);
   }
