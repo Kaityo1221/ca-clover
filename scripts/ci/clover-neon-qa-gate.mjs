@@ -42,8 +42,11 @@ export function validateServerBranch(project, branch) {
   if (branch.parent_id != null)
     return reject('parent-data branches forbidden; require independent schema-only root');
   // Never trust a caller-supplied branchMode in place of Neon API metadata.
-  if (branch.init_source !== 'schema-only')
-    return reject('schema-only branch not verified from Neon metadata');
+  // Neon schema-only branches have been surfaced as "schema", "schema-only" or
+  // "parent-schema" across API/CLI versions. This is not sufficient to prove
+  // zero rows: a separate read-only exact row check remains mandatory.
+  if (!['schema', 'schema-only', 'parent-schema'].includes(branch.init_source))
+    return reject('schema-only init source not verified from Neon metadata');
   if (typeof branch.expires_at !== 'string' || !Number.isFinite(Date.parse(branch.expires_at)))
     return reject('missing server-confirmed expiration');
   const ttl = Date.parse(branch.expires_at) - Date.parse(branch.created_at);
