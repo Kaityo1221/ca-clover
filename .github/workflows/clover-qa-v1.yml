@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/clover-qa-v1.yml'
       - 'docs/CLOVER-QA-JOB-V1-2026-11-17.md'
+      - 'scripts/ci/clover-qa-preflight.mjs'
+      - 'scripts/ci/test-clover-qa-preflight.mjs'
 
 permissions:
   contents: read
@@ -32,9 +34,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Credential guard negative tests (synthetic, no network)
+        id: negative
+        continue-on-error: true
+        run: node scripts/ci/test-clover-qa-preflight.mjs
+      - name: Preflight deny real service connections
+        id: preflight
+        if: steps.negative.outcome == 'success'
+        continue-on-error: true
+        run: node scripts/ci/clover-qa-preflight.mjs
       - name: Install dependencies
         id: install
         continue-on-error: true
+        if: steps.preflight.outcome == 'success'
         run: npm install --no-audit --no-fund
       - name: Public/private boundary guard
         id: boundary
@@ -54,6 +66,8 @@ jobs:
       - name: Prepare mobile-friendly QA report
         if: always()
         env:
+          NEGATIVE: ${{ steps.negative.outcome }}
+          PREFLIGHT: ${{ steps.preflight.outcome }}
           INSTALL: ${{ steps.install.outcome }}
           BOUNDARY: ${{ steps.boundary.outcome }}
           TESTS: ${{ steps.tests.outcome }}
@@ -63,7 +77,7 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, os, pathlib
-          values = {key: os.getenv(key, "skipped") for key in ("INSTALL","BOUNDARY","TESTS","BUILD")}
+          values = {key: os.getenv(key, "skipped") for key in ("NEGATIVE","PREFLIGHT","INSTALL","BOUNDARY","TESTS","BUILD")}
           passed = all(value == "success" for value in values.values())
           report = {"job":"Clover QA v1","run_id":os.getenv("RUN_ID"),"commit":os.getenv("GIT_SHA"),
                     "steps":values,"result":"PASS" if passed else "NO-GO",
@@ -96,6 +110,8 @@ jobs:
           TESTS: ${{ steps.tests.outcome }}
           BUILD: ${{ steps.build.outcome }}
         run: |
+          test "$NEGATIVE" = success &&
+          test "$PREFLIGHT" = success &&
           test "$INSTALL" = success &&
           test "$BOUNDARY" = success &&
           test "$TESTS" = success &&
