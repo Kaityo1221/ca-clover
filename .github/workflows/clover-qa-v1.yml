@@ -8,6 +8,8 @@ on:
       - 'docs/CLOVER-QA-JOB-V1-2026-11-17.md'
       - 'scripts/ci/clover-qa-preflight.mjs'
       - 'scripts/ci/test-clover-qa-preflight.mjs'
+      - 'scripts/ci/clover-neon-qa-gate.mjs'
+      - 'scripts/ci/test-clover-neon-qa-gate.mjs'
 
 permissions:
   contents: read
@@ -43,10 +45,15 @@ jobs:
         if: steps.negative.outcome == 'success'
         continue-on-error: true
         run: node scripts/ci/clover-qa-preflight.mjs
+      - name: Neon QA metadata gate (no DB connection)
+        id: neon_gate
+        if: steps.preflight.outcome == 'success'
+        continue-on-error: true
+        run: node scripts/ci/test-clover-neon-qa-gate.mjs
       - name: Install dependencies
         id: install
         continue-on-error: true
-        if: steps.preflight.outcome == 'success'
+        if: steps.preflight.outcome == 'success' && steps.neon_gate.outcome == 'success'
         run: npm install --no-audit --no-fund
       - name: Public/private boundary guard
         id: boundary
@@ -68,6 +75,7 @@ jobs:
         env:
           NEGATIVE: ${{ steps.negative.outcome }}
           PREFLIGHT: ${{ steps.preflight.outcome }}
+          NEON_GATE: ${{ steps.neon_gate.outcome }}
           INSTALL: ${{ steps.install.outcome }}
           BOUNDARY: ${{ steps.boundary.outcome }}
           TESTS: ${{ steps.tests.outcome }}
@@ -77,7 +85,7 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, os, pathlib
-          values = {key: os.getenv(key, "skipped") for key in ("NEGATIVE","PREFLIGHT","INSTALL","BOUNDARY","TESTS","BUILD")}
+          values = {key: os.getenv(key, "skipped") for key in ("NEGATIVE","PREFLIGHT","NEON_GATE","INSTALL","BOUNDARY","TESTS","BUILD")}
           passed = all(value == "success" for value in values.values())
           report = {"job":"Clover QA v1","run_id":os.getenv("RUN_ID"),"commit":os.getenv("GIT_SHA"),
                     "steps":values,"result":"PASS" if passed else "NO-GO",
@@ -107,6 +115,7 @@ jobs:
         env:
           NEGATIVE: ${{ steps.negative.outcome }}
           PREFLIGHT: ${{ steps.preflight.outcome }}
+          NEON_GATE: ${{ steps.neon_gate.outcome }}
           INSTALL: ${{ steps.install.outcome }}
           BOUNDARY: ${{ steps.boundary.outcome }}
           TESTS: ${{ steps.tests.outcome }}
@@ -114,6 +123,7 @@ jobs:
         run: |
           test "$NEGATIVE" = success &&
           test "$PREFLIGHT" = success &&
+          test "$NEON_GATE" = success &&
           test "$INSTALL" = success &&
           test "$BOUNDARY" = success &&
           test "$TESTS" = success &&
