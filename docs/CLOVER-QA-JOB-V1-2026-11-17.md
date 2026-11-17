@@ -83,3 +83,25 @@ GitHub Actions #44058648579 は安全ガード・Neonメタデータ合成テス
 公開されているnpmのパッケージ一覧では `csstype@3.2.3` が公開済みの最新版として表示されており、3.2.4は取得できていない。このため、Draft PRに限り `package.json` の `overrides.csstype = 3.2.3` を追加。既存パッケージのインストール再現性を改善する最小変更であり、新しい機能・DB接続・認証切替は行わない。
 
 `package-lock.json` は現行mainに存在しないため、将来は依存の確定と `npm ci` への移行を別レビューで判断する。今回の変更は試験がPASSするまで未確定とする。
+
+## 工程④: スキーマ専用隔離環境の作成手段の確定（2026-11-17）
+
+Neon公式Branching Workflowsの記載では、スキーマ専用ブランチはCLIで以下の方式を用いる。スキーマ専用ブランチはBetaであり、通常のブランチとは別の独立ルートとして扱われる。**通常のparent-data作成を代用しない**。
+
+```text
+neon branches create --project-id still-hill-22136867 \
+  --name clover-qa-<英数字とハイフン8文字以上> \
+  --parent br-flat-dust-b4vc28pb \
+  --schema-only --expires-at <現在UTC時刻+24時間>
+```
+
+このコマンドは**例示・設計であり、実行済みではない**。現在の接続済みNeon MCP `create_branch` には `--schema-only` に相当する引数がなく、CLIもこの作業環境で未導入・未認証。Neon Authはテストプロジェクトの標準ブランチでは未有効。スキーマ専用ブランチの初期化後にAuthを構成する手順、認証ユーザー・セッションが引き継がれないことは未実証。
+
+安全な進め方:
+1. `scripts/ci/clover-neon-schema-only-plan.mjs` で対象プロジェクト・親ブランチ・命名・24時間期限を厳密に検査した**オフライン計画のみ**を生成する。CLI、API、DBは呼び出さない。
+2. `scripts/ci/test-clover-neon-schema-only-plan.mjs` で合成正常系・不正コマンド・親ブランチすり替え等を拒否検証する。
+3. **実作成前の必須条件**：CLIの認証方法と最小権限、Free利用枠、schema-only実行可否、Authと他の副作用を継承しない証明、ブランチ削除・期限切れ後の証跡保護。元ブランチのデータを表示・ダンプしない。
+4. 独立した管理操作で作成した場合でも、サーバー側のブランチID・初期化方式・期限、実DBの行数ゼロ、Authの実ユーザーとセッションゼロを別手段で証明するまで**接続・試験を許可しない**。現在の `validateServerBranch` の `init_source` 値は実レスポンスと突き合わせる必要がある。
+5. PR由来の任意コードにNeon作成/削除API資格情報を渡さない。既存本番、他案件、Cloudflare、Supabase、Vercelに触れない。
+
+**判定:** CLI作成ルートとオフライン計画テストを実装。実ブランチ作成・実DB/Neon Auth試験は未実施でNO-GO。
