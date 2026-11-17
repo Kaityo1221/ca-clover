@@ -48,3 +48,18 @@
 - 自動Preview停止設定はVercel側で更新したが、次回GitHub更新で本当に抑止されるか、独立した履歴照合が必要。
 
 **完了判定:** GitHub Actionsの新コミットにおけるガード・既存テスト・ビルド・レポートの全PASSを確認するまで、Phase ③の総合PASSとは呼ばない。PRはDraft、NO-GOを維持。
+
+## Phase ④ Neon QA環境の読み取り調査・接続メタデータガード（2026-11-17）
+
+Neonの既存プロジェクトを読み取りで調査したところ、`ca-clover-test`（project id `still-hill-22136867`）がある。これは**候補**であり、実行権限・個人情報の不存在・安全性まで認証したものではない。別途 `ca-clover-zoroark-prod` が存在するため、プロジェクト名の曖昧照合は禁止する。アンテナショップ関連の別プロジェクトも対象外。
+
+`ca-clover-test` の既存ブランチの `init_source` は確認した範囲で `parent-data`。Auth/個人情報を継承した可能性を排除できないので、**既存ブランチの無条件複製は行わない**。
+
+- `scripts/ci/clover-neon-qa-gate.mjs` は接続せず、対象プロジェクトの厳密一致、QAブランチ命名規則、非default、schema-only、synthetic fixture/Auth、外部副作用遮断宣言、24時間期限をチェックする。
+- `scripts/ci/test-clover-neon-qa-gate.mjs` は正常1件と拒否13件を合成データだけで検証。実DBへの接続はゼロ。
+- Actions実行前半にメタデータテストを追加し、FAILの場合は依存導入・試験・ビルドを実行しない。
+- **このメタデータガードは偽造できる入力の形式検査であり、認証されたNeon APIで実ブランチ属性を照合する工程の代わりではない。** 現時点でNeonブランチ作成、接続情報取得、スキーマ抽出、Auth有効化、実SQL実行、データ複製は未実施。
+- 次段階では、schema-onlyブランチ（現行Neonドキュメント上Beta）のAuth初期化可否や行データ0件、ID/対象ブランチのサーバー照合、独立した最小権限と外向き通信制御を検証してから実DBテストを許可する。
+- 既存の本番認証やSupabase接続を変更しない。GitHub Actionsの既存Secretを注入せず、接続情報をGitHubにコミットしない。QA用作成API権限は最終的にPR由来の任意コードと分離する。
+
+**Phase ④はメタデータ事前検証の実装中であり、Neon DB実連携完了ではない。** PR #325はDraft／本番NO-GO維持。
