@@ -24,3 +24,30 @@ export function validateQaTarget(target) {
     return reject('24-hour expiry required');
   return { permitted: true, reason: 'metadata validated; no connection authorized' };
 }
+
+/**
+ * Only verified server-returned branch metadata may advance to data verification.
+ * This does NOT prove row count, Auth emptiness or external egress isolation.
+ */
+export function validateServerBranch(project, branch) {
+  const reject = reason => ({ permitted: false, reason });
+  if (project?.id !== QA_PROJECT_ID || project?.name !== QA_PROJECT_NAME)
+    return reject('Neon server project metadata mismatch');
+  if (branch?.project_id !== project.id)
+    return reject('Neon server branch project mismatch');
+  if (typeof branch.name !== 'string' || !/^clover-qa-[a-z0-9-]{8,70}$/.test(branch.name))
+    return reject('Neon server branch is not QA-scoped');
+  if (branch.default !== false || branch.protected !== false)
+    return reject('default or protected branch forbidden');
+  if (branch.parent_id != null)
+    return reject('parent-data branches forbidden; require independent schema-only root');
+  // Never trust a caller-supplied branchMode in place of Neon API metadata.
+  if (branch.init_source !== 'schema-only')
+    return reject('schema-only branch not verified from Neon metadata');
+  if (typeof branch.expires_at !== 'string' || !Number.isFinite(Date.parse(branch.expires_at)))
+    return reject('missing server-confirmed expiration');
+  const ttl = Date.parse(branch.expires_at) - Date.parse(branch.created_at);
+  if (!Number.isFinite(ttl) || ttl <= 0 || ttl > 24 * 60 * 60 * 1000)
+    return reject('server-confirmed expiry must be within 24h of creation');
+  return { permitted: true, reason: 'server metadata accepted; DB rows/Auth remain UNVERIFIED' };
+}
