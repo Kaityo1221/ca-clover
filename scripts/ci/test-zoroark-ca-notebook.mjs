@@ -20,6 +20,10 @@ for(const [name,source] of [["ca",ca],["admin",admin]]){
  new Script(code,{filename:name+"-notebook"});
 }
 assert.ok(html.includes('notebookQAReady'),"QA-only setting required");
+assert.ok(html.includes('const notebookLocalStack='),"explicit local GoTrue QA opt-in required");
+assert.ok(html.includes('notebookQA?.useLocalStack===true'),"browser QA cannot silently use loopback");
+assert.ok(html.includes('notebookLocalHost&&'),"only loopback Pages may use local GoTrue");
+assert.ok(html.includes('notebookQA.url.includes("wgiittrvgtiosogyhfcl")'),"production Supabase is forbidden in QA");
 assert.ok(html.includes('http://localhost:3000/api/zoroark/notebook'),"fixed local API target");
 assert.ok(html.includes('notebookProductionPage=!notebookLocalHost && location.origin==="https://kaityo1221.github.io"'),"production gateway only on canonical Pages origin");
 assert.ok(html.includes('notebookQAReady?"http://localhost:3000/api/zoroark/notebook":"https://ca-clover.vercel.app/api/zoroark/notebook"'),"strict QA / production API split");
