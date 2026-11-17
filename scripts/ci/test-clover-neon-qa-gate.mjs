@@ -41,6 +41,10 @@ const serverBranch = {
   created_at: now.toISOString(), expires_at: expiry.toISOString(),
 };
 assert.equal(validateServerBranch(apiProject, serverBranch).permitted, true);
+for(const init_source of ['schema','schema-only','parent-schema']) {
+  assert.equal(validateServerBranch(apiProject, {...serverBranch,init_source}).permitted, true, init_source);
+  assert.equal(validateServerBranch(apiProject, {...serverBranch,init_source,parent_id:'br-flat-dust-b4vc28pb'}).permitted, false, init_source + ' with parent');
+}
 const badServerBranches = [
   ['live project', { project_id: 'silent-sea-07101633' }],
   ['default', { default: true }],
