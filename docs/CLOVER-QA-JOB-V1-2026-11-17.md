@@ -63,3 +63,15 @@ Neonの既存プロジェクトを読み取りで調査したところ、`ca-clo
 - 既存の本番認証やSupabase接続を変更しない。GitHub Actionsの既存Secretを注入せず、接続情報をGitHubにコミットしない。QA用作成API権限は最終的にPR由来の任意コードと分離する。
 
 **Phase ④はメタデータ事前検証の実装中であり、Neon DB実連携完了ではない。** PR #325はDraft／本番NO-GO維持。
+
+## 工程④追加調査と停止条件（2026-11-17）
+
+- 直前のNeonメタデータガードを含むGitHub Actions #44058117281 はPASS。既存CI #44058117310 はこの記録更新時に別途確認。
+- Neon接続の読み取り調査で、対象プロジェクト `ca-clover-test` の default branch `main` は **Neon Auth未有効**と判明。無断でAuthを有効化しない。
+- 現在接続されているNeonブランチ作成ツールは **通常のparent-dataブランチのみ**。schema-onlyを指定できないため、通常作成で代用しない。
+- 追加検証 `validateServerBranch` は、Neon APIから返されたはずの実サーバーメタデータに対して、QA専用プロジェクトとブランチ名、非default・非protected、親なし、schema-only初期化、有効期限24時間以内を要求する。**今は合成レスポンスでの単体試験のみ**。実Neon APIの schema-only 応答における `init_source` 値は未検証のため、実際の形式に合わせた調整を要する可能性がある。
+- **実DB側の受入条件**：Neon側の正式なschema-only作成手段、初期行0件、テスト専用認証ユーザー、外部OAuth/通知無効、ブランチID実照合、後片付け、無料枠と費用、認証・機微情報の非継承。すべて検証するまでは実行しない。
+- GitHub Actionsのサービス資格情報を勝手に注入しない。PRが改ざんできるコードとブランチ作成資格情報を同一ジョブに置かない。
+- 本番Neon `ca-clover-zoroark-prod`、現行Supabase、他サービスの本番資産へは接続・書込みしない。
+
+**判定：Phase ④は『事前ガード実装済み、実Neon接続とAuth試験は未実施』。本番NO-GO。**
