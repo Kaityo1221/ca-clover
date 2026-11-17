@@ -1,0 +1,102 @@
+name: Clover QA v1 (isolated, no deploy)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/clover-qa-v1.yml'
+      - 'docs/CLOVER-QA-JOB-V1-2026-11-17.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clover-qa-v1-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-qa:
+    name: No-secret CI / read-only reporting
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+      # Never provide production DB, Auth, webhook or deployment credentials.
+      # This v1 workflow does not access Neon, Cloudflare or Vercel.
+    steps:
+      - name: Checkout the exact commit
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        id: install
+        continue-on-error: true
+        run: npm install --no-audit --no-fund
+      - name: Public/private boundary guard
+        id: boundary
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        run: node scripts/ci/verify-public-boundary.mjs
+      - name: Existing isolated test suite
+        id: tests
+        if: steps.install.outcome == 'success' && steps.boundary.outcome == 'success'
+        continue-on-error: true
+        run: npm test
+      - name: Build without production secrets
+        id: build
+        if: steps.install.outcome == 'success' && steps.boundary.outcome == 'success'
+        continue-on-error: true
+        run: npm run build
+      - name: Prepare mobile-friendly QA report
+        if: always()
+        env:
+          INSTALL: ${{ steps.install.outcome }}
+          BOUNDARY: ${{ steps.boundary.outcome }}
+          TESTS: ${{ steps.tests.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+          GIT_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          values = {key: os.getenv(key, "skipped") for key in ("INSTALL","BOUNDARY","TESTS","BUILD")}
+          passed = all(value == "success" for value in values.values())
+          report = {"job":"Clover QA v1","run_id":os.getenv("RUN_ID"),"commit":os.getenv("GIT_SHA"),
+                    "steps":values,"result":"PASS" if passed else "NO-GO",
+                    "limitations":["No Neon/Auth branch","No real Google/Discord OAuth","No browser/device E2E",
+                                   "No production deploy or write"]}
+          pathlib.Path("clover-qa-report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
+          lines = ["## 🍀 Clover QA v1","",f"**{'PASS' if passed else 'NO-GO'}** | commit \`{report['commit']}\`","",
+                   "| Check | Result |","|---|---|"]
+          lines += [f"| {k.lower()} | {v} |" for k,v in values.items()]
+          lines += ["","**未実施:** Neon DB/Auth、実OAuth、実機ブラウザ、本番反映。",
+                    "**注意:** これは既存CIの試験再利用。本人確認や本番公開のGOではありません。"]
+          pathlib.Path("clover-qa-report.md").write_text("\n".join(lines)+"\n")
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a") as f: f.write("\n".join(lines)+"\n")
+          PY
+      - name: Keep report as downloadable evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clover-qa-v1-report
+          path: |
+            clover-qa-report.json
+            clover-qa-report.md
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Fail closed on any missing or failed check
+        if: always()
+        env:
+          INSTALL: ${{ steps.install.outcome }}
+          BOUNDARY: ${{ steps.boundary.outcome }}
+          TESTS: ${{ steps.tests.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+        run: |
+          test "$INSTALL" = success &&
+          test "$BOUNDARY" = success &&
+          test "$TESTS" = success &&
+          test "$BUILD" = success
