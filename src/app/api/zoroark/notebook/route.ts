@@ -7,6 +7,20 @@ import {catalogRuntimeEnabled,catalogPublishEnabled} from "@/lib/zoroark-catalog
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 const LIMIT=8192;
+const TARGETS=["pending","approved","published","rejected","deleted"] as const;
+const SOURCES=[...TARGETS,"retired"] as const;
+const allowedStatus=(v:unknown,items:readonly string[])=>typeof v==="string"&&items.includes(v);
+const privateView=(x:Record<string,unknown>)=>{
+ const {id,a,b,a_no,b_no,common,difference,level,edit_revision,submitted_at}=x;
+ return {id,a,b,a_no,b_no,common,difference,level,edit_revision,submitted_at};
+};
+function rpcError(req:NextRequest,e:{code?:string}|null,op:string){
+ if(!e)return null;
+ const code=e.code||"";
+ return answer(req,{error:op+"_"+(code==="40001"||code==="23505"?"conflict":
+   code==="42501"?"forbidden":code==="22023"?"invalid":"unavailable")},
+   code==="40001"||code==="23505"?409:code==="42501"?403:code==="22023"?400:503);
+}
 const baseHeaders={"Cache-Control":"private, no-store, max-age=0","Vary":"Origin, Authorization",
  "X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"};
 
@@ -39,18 +53,18 @@ export async function GET(req:NextRequest){
   const scope=req.nextUrl.searchParams.get("scope")||"mine";
   if(scope!=="mine" && scope!=="all")return answer(req,{error:"invalid_scope"},400);
   if(scope==="all" && auth.role!=="admin")return answer(req,{error:"admin_only"},403);
-  let query=auth.client.from("zoroark_topic_candidates")
-   .select("id,a,b,a_no,b_no,common,difference,level,status,version,edit_revision,submitted_by,submitted_at,reviewed_at,published_at,retired_at,deleted_at")
-   .order("id",{ascending:false}).limit(500);
-  if(scope==="mine")query=query.eq("submitted_by",auth.user.id);
-  const {data,error}=await query;
+  // SECURITY: users cannot directly SELECT unpublished rows or review status.
+  // SQL RPCs re-check DB role; CA rows have review metadata removed.
+  const {data,error}=await auth.client.rpc(scope==="all"?
+   "zoroark_topic_admin_list":"zoroark_topic_list_mine");
   if(error||!Array.isArray(data))return answer(req,{error:"list_unavailable"},503);
-  const runtimeEnabled=catalogRuntimeEnabled();
-  const catalogVersion=Math.max(0,...data.map(x=>Number(x.version)||0));
-  return answer(req,{entries:data,catalogVersion,baseCount:PAIRS.length,
-   runtimeEnabled,publishEnabled:auth.role==="admin"&&catalogPublishEnabled(),
-   // Status is server-owned. A submitted/approved draft can never be live.
-   liveIds:runtimeEnabled?data.filter(x=>x.status==="published").map(x=>x.id):[]});
+  const entries=scope==="all"?data:data.map(privateView);
+  const isAdmin=scope==="all";
+  const runtimeEnabled=isAdmin&&catalogRuntimeEnabled();
+  const catalogVersion=isAdmin?Math.max(0,...entries.map(x=>Number(x.version)||0)):0;
+  return answer(req,{entries,catalogVersion,baseCount:PAIRS.length,
+   runtimeEnabled,publishEnabled:isAdmin&&catalogPublishEnabled(),
+   liveIds:runtimeEnabled?entries.filter(x=>x.status==="published").map(x=>x.id):[]});
  }catch(e){return errorAnswer(req,e)}
 }
 export async function POST(req:NextRequest){
@@ -66,7 +80,8 @@ export async function POST(req:NextRequest){
   if(!body||typeof body!=="object"||Array.isArray(body))return answer(req,{error:"invalid_body"},400);
   const input=body as Record<string,unknown>;
   const action=input.action;
-  if(action==="submit" || action==="edit"){
+  if(action==="submit" || action==="edit" || action==="edit-published"){
+   if(action==="edit-published"&&auth.role!=="admin")return answer(req,{error:"admin_only"},403);
    const topic=validateTopicCandidate(input.topic);
    if(!topic)return answer(req,{error:"invalid_topic"},400);
    if(isExistingCatalogPair(topic,PAIRS))
@@ -77,26 +92,46 @@ export async function POST(req:NextRequest){
     if(error)return answer(req,{error:error.code==="23505"?"duplicate_pair":
       error.code==="42501"?"submission_disabled_or_denied":"submission_unavailable"},
       error.code==="23505"?409:error.code==="42501"?403:503);
-    return answer(req,{entry:data,liveInGame:false},201);
+    return answer(req,{entry:auth.role==="admin"?data:privateView(data),liveInGame:false},201);
    }
    if(!validId(input.id)||!validRevision(input.expectedRevision))
     return answer(req,{error:"invalid_edit_revision"},400);
-   const {data,error}=await auth.client.rpc("zoroark_topic_update",{
-    p_id:input.id,p_topic:safe,p_expected_revision:input.expectedRevision});
-   if(error)return answer(req,{error:["40001","23505"].includes(error.code)?"edit_conflict":
-    error.code==="42501"?"edit_forbidden":"edit_unavailable"},
-    ["40001","23505"].includes(error.code)?409:error.code==="42501"?403:503);
-   return answer(req,{entry:data,liveInGame:false},200);
+   if(action==="edit"){
+    const {data,error}=await auth.client.rpc("zoroark_topic_update",{
+     p_id:input.id,p_topic:safe,p_expected_revision:input.expectedRevision});
+    const failed=rpcError(req,error,"edit");if(failed)return failed;
+    return answer(req,{entry:auth.role==="admin"?data:privateView(data),liveInGame:false});
+   }
+   if(!validRevision(input.expectedVersion)||input.confirmPublishEdit!==true)
+    return answer(req,{error:"published_edit_confirmation_required"},400);
+   if(!catalogPublishEnabled())return answer(req,{error:"publishing_disabled"},403);
+   const {data,error}=await auth.client.rpc("zoroark_topic_edit_published",{
+    p_id:input.id,p_topic:safe,p_expected_revision:input.expectedRevision,
+    p_expected_version:input.expectedVersion,p_confirm:true});
+   const failed=rpcError(req,error,"published_edit");if(failed)return failed;
+   if(data?.status!=="published")return answer(req,{error:"published_edit_unverified"},503);
+   return answer(req,{entry:data,liveInGame:catalogRuntimeEnabled()});
   }
   if(auth.role!=="admin")return answer(req,{error:"admin_only"},403);
-  if(!["approve","publish","resume","retire","reject","delete","restore"].includes(String(action))||
-    !validId(input.id))return answer(req,{error:"invalid_action"},400);
-  if((action==="publish"||action==="resume")&&!catalogPublishEnabled())
-   return answer(req,{error:"publishing_disabled"},403);
-  const {data,error}=await auth.client.rpc("zoroark_topic_decide",{
-   p_id:input.id,p_action:action});
-  if(error)return answer(req,{error:error.code==="42501"?"review_disabled_or_denied":"review_conflict"},
-   error.code==="42501"?403:409);
-  return answer(req,{entry:data,liveInGame:catalogRuntimeEnabled()&&data?.status==="published"},200);
+  // V8 CAS-only transitions. Never silently fall back to legacy decide RPC.
+  if(action!=="move-status")return answer(req,{error:"invalid_action"},400);
+  if(!validId(input.id)||!validRevision(input.expectedRevision)||
+     !allowedStatus(input.expectedStatus,SOURCES)||
+     !allowedStatus(input.targetStatus,TARGETS)||
+     input.expectedStatus===input.targetStatus)
+   return answer(req,{error:"invalid_transition"},400);
+  if(input.targetStatus==="published"){
+   if(input.confirmPublish!==true)return answer(req,{error:"publish_confirmation_required"},400);
+   if(!catalogPublishEnabled())return answer(req,{error:"publishing_disabled"},403);
+  }
+  if(input.targetStatus==="deleted"&&input.confirmDelete!==true)
+   return answer(req,{error:"delete_confirmation_required"},400);
+  const {data,error}=await auth.client.rpc("zoroark_topic_move_status",{
+   p_id:input.id,p_target:input.targetStatus,
+   p_expected_status:input.expectedStatus,p_expected_revision:input.expectedRevision,
+   p_confirm_publish:input.confirmPublish===true,p_confirm_delete:input.confirmDelete===true});
+  const failed=rpcError(req,error,"move");if(failed)return failed;
+  if(data?.status!==input.targetStatus)return answer(req,{error:"transition_unverified"},503);
+  return answer(req,{entry:data,liveInGame:catalogRuntimeEnabled()&&data.status==="published"});
  }catch(e){return errorAnswer(req,e)}
 }
