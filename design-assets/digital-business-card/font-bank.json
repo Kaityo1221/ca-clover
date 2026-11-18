@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "created_at": "2026-11-18",
   "scope": "CA Clover digital business card font databank (isolated draft)",
   "production_status": "NO-GO",
@@ -27,7 +27,9 @@
       "web_embedding_review": "pending",
       "asset_status": "catalog_only",
       "binary_path": null,
-      "production_enabled": false
+      "production_enabled": false,
+      "preview_enabled": false,
+      "delivery": "not_configured"
     },
     {
       "id": "aoyagi-kouzan-t",
@@ -44,7 +46,9 @@
       "web_embedding_review": "pending",
       "asset_status": "catalog_only",
       "binary_path": null,
-      "production_enabled": false
+      "production_enabled": false,
+      "preview_enabled": false,
+      "delivery": "not_configured"
     },
     {
       "id": "aoyagi-soseki",
@@ -62,7 +66,9 @@
       "web_embedding_review": "pending",
       "asset_status": "catalog_only",
       "binary_path": null,
-      "production_enabled": false
+      "production_enabled": false,
+      "preview_enabled": false,
+      "delivery": "not_configured"
     },
     {
       "id": "kouzan-gyosho",
@@ -80,7 +86,9 @@
       "web_embedding_review": "pending",
       "asset_status": "catalog_only",
       "binary_path": null,
-      "production_enabled": false
+      "production_enabled": false,
+      "preview_enabled": false,
+      "delivery": "not_configured"
     },
     {
       "id": "kouzan-sosho",
@@ -97,7 +105,9 @@
       "web_embedding_review": "pending",
       "asset_status": "catalog_only",
       "binary_path": null,
-      "production_enabled": false
+      "production_enabled": false,
+      "preview_enabled": false,
+      "delivery": "not_configured"
     },
     {
       "id": "yuji-boku",
@@ -115,7 +125,9 @@
       "web_embedding_review": "OFL permits embedding with license compliance",
       "asset_status": "catalog_only",
       "binary_path": null,
-      "production_enabled": false
+      "production_enabled": false,
+      "preview_enabled": true,
+      "delivery": "google_fonts_cdn_preview"
     },
     {
       "id": "yuji-mai",
@@ -133,7 +145,9 @@
       "web_embedding_review": "OFL permits embedding with license compliance",
       "asset_status": "catalog_only",
       "binary_path": null,
-      "production_enabled": false
+      "production_enabled": false,
+      "preview_enabled": true,
+      "delivery": "google_fonts_cdn_preview"
     },
     {
       "id": "yuji-syuku",
@@ -151,7 +165,23 @@
       "web_embedding_review": "OFL permits embedding with license compliance",
       "asset_status": "catalog_only",
       "binary_path": null,
-      "production_enabled": false
+      "production_enabled": false,
+      "preview_enabled": true,
+      "delivery": "google_fonts_cdn_preview"
     }
-  ]
+  ],
+  "delivery_policy": {
+    "preferred_mode": "licensed_webfont_cdn_or_isolated_object_storage",
+    "database_role": "metadata_only_no_binary",
+    "font_asset_prefix": "digital-business-card/fonts/<font-id>/<sha256>.woff2",
+    "current_cdn": "Google Fonts CSS service for Yuji Boku / Mai / Syuku",
+    "isolated_storage_status": "not_provisioned",
+    "font_loading_rule": "Do not show a font as available until its original glyphs are actually loaded and licensable",
+    "security_notes": [
+      "Do not allow arbitrary remote CSS/font URL input",
+      "CSP and CORS must be reviewed prior to integration",
+      "No production DB, Storage, Pages or deployments were changed"
+    ]
+  },
+  "preview_page": "docs/experiments/digital-business-card-font-picker.html"
 }
