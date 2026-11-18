@@ -92,4 +92,10 @@ const local={
 assert.deepEqual(run(local),allTrue,"opted-in ephemeral local stack accepted");
 assert.deepEqual(run({...local,ZOROARK_NOTEBOOK_LOCAL_STACK_ENABLED:"false"}),allFalse,
  "local test requires explicit local-stack consent");
+const legacyCatalog=readFileSync("src/app/api/zoroark/catalog/route.ts","utf8");
+assert.match(legacyCatalog,/export async function GET/, "ADMIN catalog inspection remains available");
+assert.match(legacyCatalog,/catalog_v8_use_notebook_api/, "V8 legacy write endpoint must retire");
+assert.ok(!legacyCatalog.includes('rpc("zoroark_topic_decide"'),
+ "revoked non-CAS legacy decide RPC must never be invoked by V8");
+console.log("ZOROARK_V8_LEGACY_CATALOG_RETIRED_PASS");
 console.log("ZOROARK_V8_CATALOG_AUTH_BOUNDARY_PASS cases=13 network=0 production_changes=0");
