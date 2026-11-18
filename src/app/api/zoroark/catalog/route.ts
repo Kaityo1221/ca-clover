@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { allowedZoroarkOrigin } from "@/lib/zoroark-api-policy";
 import { PAIRS } from "@/lib/zoroark-catalog.server";
 import { catalogManagementEnabled, catalogPublishEnabled, catalogRuntimeEnabled } from "@/lib/zoroark-catalog-management.server";
-import { topicPairKey, validateTopicCandidate, isExistingCatalogPair } from "@/lib/zoroark-catalog-review";
+import { topicPairKey } from "@/lib/zoroark-catalog-review";
 
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
@@ -61,34 +61,9 @@ export async function GET(req:NextRequest){
    entries:data.map(x=>({...x,activeInGame:catalogRuntimeEnabled()&&x.status==="published"}))},200);
  }catch{return response(req,{error:"catalog_unavailable"},503)}
 }
+// V8 retired legacy mutable catalog decisions in favor of CAS-protected notebook RPCs.
+// The ADMIN GET remains read-only; never invoke the deprecated decide() RPC.
 export async function POST(req:NextRequest){
  const guard=isolatedGate(req);if(guard)return guard;
- try{
-  const auth=await authorize(req);
-  if(auth.status!==200||!auth.client)return response(req,{error:"admin_only"},auth.status);
-  if(Number(req.headers.get("content-length")||0)>8192)return response(req,{error:"payload_too_large"},413);
-  const raw=await req.text();if(raw.length>8192)return response(req,{error:"payload_too_large"},413);
-  let body:unknown;try{body=JSON.parse(raw)}catch{return response(req,{error:"invalid_json"},400)}
-  if(!body||typeof body!=="object"||Array.isArray(body))return response(req,{error:"invalid_body"},400);
-  const input=body as Record<string,unknown>;
-  if(input.action==="submit"){
-   const candidate=validateTopicCandidate(input.topic);
-   if(!candidate)return response(req,{error:"missing_name_common_difference_or_difficulty"},400);
-   if(isExistingCatalogPair(candidate,PAIRS))return response(req,{error:"already_in_base_catalog"},409);
-   const {data,error}=await auth.client.rpc("zoroark_topic_submit",{p_topic:
-    {...candidate,pair_key:topicPairKey(candidate.a,candidate.b)}});
-   if(error)return response(req,{error:error.code==="23505"?"already_submitted":"submission_unavailable"},
-    error.code==="23505"?409:503);
-   return response(req,{entry:data,liveInGame:false},201);
-  }
-  if(!["approve","publish","retire"].includes(String(input.action))||
-    !Number.isSafeInteger(input.id)||Number(input.id)<1||Number(input.id)>9999)
-   return response(req,{error:"invalid_action"},400);
-  if(input.action==="publish"&&!catalogPublishEnabled())
-   return response(req,{error:"publishing_disabled"},403);
-  const {data,error}=await auth.client.rpc("zoroark_topic_decide",{
-   p_id:input.id,p_action:input.action});
-  if(error)return response(req,{error:"review_not_applied"},409);
-  return response(req,{entry:data,liveInGame:catalogRuntimeEnabled()&&input.action==="publish"},200);
- }catch{return response(req,{error:"catalog_unavailable"},503)}
+ return response(req,{error:"catalog_v8_use_notebook_api"},410);
 }
