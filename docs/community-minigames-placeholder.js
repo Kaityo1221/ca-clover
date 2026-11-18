@@ -2,6 +2,7 @@
 "use strict";
 const STYLE_ID="caCommunityMinigamesPlaceholderStyle";
 const GAME_ITEMS=[
+ ["🎲","CAお楽しみ抽選会","QR参加受付・ランダム抽選・当選者発表"],
  ["✨","ゲットチャレンジ","色違い・100%・背景・CP下一桁など"],
  ["❓","クイズ","タイプクイズ・GBL・自由問題"],
  ["⏳","タイムチャレンジ","制限時間内の捕獲など"],
