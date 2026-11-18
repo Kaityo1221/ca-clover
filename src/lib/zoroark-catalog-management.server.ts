@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Pair } from "./zoroark-game";
 import { PAIRS } from "./zoroark-catalog.server";
+import {notebookConfig} from "./zoroark-ca-notebook.server";
 import { publishedTopicToPair, topicPairKey } from "./zoroark-catalog-review";
 
 const isolated=()=>process.env.VERCEL_ENV==="preview"||
@@ -10,9 +11,18 @@ const productionAuthorized=()=>process.env.VERCEL_ENV==="production" &&
  process.env.ZOROARK_NOTEBOOK_PRODUCTION_ENABLED==="true" &&
  process.env.ZOROARK_CATALOG_PRODUCTION_ENABLED==="true";
 const activeScope=()=>isolated()||productionAuthorized();
-export const catalogManagementEnabled=()=>activeScope()&&process.env.ZOROARK_CATALOG_MANAGEMENT_ENABLED==="true";
-export const catalogPublishEnabled=()=>catalogManagementEnabled()&&process.env.ZOROARK_CATALOG_PUBLISH_ENABLED==="true";
-export const catalogRuntimeEnabled=()=>activeScope()&&process.env.ZOROARK_CATALOG_RUNTIME_ENABLED==="true";
+// The old catalog route and the round runtime share the V8 notebook identity.
+// Refuse Preview/Production cross-project reads, even if a catalog flag is enabled.
+// A missing notebook configuration always keeps catalog operations disabled.
+const catalogAuthMatched=()=>{
+ try{notebookConfig();return true}catch{return false}
+};
+export const catalogManagementEnabled=()=>activeScope()&&
+ process.env.ZOROARK_CATALOG_MANAGEMENT_ENABLED==="true"&&catalogAuthMatched();
+export const catalogPublishEnabled=()=>catalogManagementEnabled()&&
+ process.env.ZOROARK_CATALOG_PUBLISH_ENABLED==="true";
+export const catalogRuntimeEnabled=()=>activeScope()&&
+ process.env.ZOROARK_CATALOG_RUNTIME_ENABLED==="true"&&catalogAuthMatched();
 
 // Requires the versioned, reviewed SQL schema and row-level security.
 // No privileged service-role token is used; this is the requesting CA JWT.
