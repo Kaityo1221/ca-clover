@@ -1,0 +1,42 @@
+name: Zoroark V8 Local Real GoTrue Official API QA (No Deploy)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/zoroark-v8-public-real-auth-qa.yml'
+      - 'scripts/test-zoroark-real-auth-local.mjs'
+      - 'src/app/api/zoroark/**'
+      - 'src/lib/zoroark-**'
+permissions:
+  contents: read
+jobs:
+  local-real-gotrue:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Guard against remote credentials and check disposable Docker/psql
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "${SUPABASE_ACCESS_TOKEN:-}"
+          test -z "${DATABASE_URL:-}"
+          test -z "${SUPABASE_PROJECT_ID:-}"
+          docker info >/dev/null
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+          psql --version
+      - name: Install dependencies with no repository credentials
+        run: npm install --no-audit --no-fund --ignore-scripts
+      - name: Real GoTrue signed JWT, PostgREST and Next official-topic API on ephemeral localhost
+        run: node scripts/test-zoroark-real-auth-local.mjs
