@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "npm run test:auth-routing && npm run test:sendai-map-policy && node scripts/test-sendai-map-api.cjs && node --experimental-strip-types scripts/test-zoroark-engine.ts && node scripts/test-zoroark-http-isolated.mjs && node scripts/test-zoroark-pg-isolated.mjs && npm run test:zoroark-official-control && npm run test:zoroark-catalog-integration && npm run test:zoroark-catalog-review && npm run test:zoroark-ca-notebook",
+    "test": "npm run test:auth-routing && npm run test:sendai-map-policy && node scripts/test-sendai-map-api.cjs && node --experimental-strip-types scripts/test-zoroark-engine.ts && node scripts/test-zoroark-http-isolated.mjs && node scripts/test-zoroark-pg-isolated.mjs && npm run test:zoroark-official-control && npm run test:zoroark-catalog-integration && npm run test:zoroark-catalog-review && npm run test:zoroark-ca-notebook && npm run test:zoroark-catalog-auth-boundary",
     "test:auth-routing": "node --experimental-strip-types scripts/test-auth-routing.ts",
     "test:sendai-map-policy": "node --experimental-strip-types scripts/test-sendai-map-policy.ts",
     "test:zoroark-real-auth-local": "node scripts/test-zoroark-real-auth-local.mjs",
@@ -14,7 +14,8 @@
     "test:zoroark-official-control": "node scripts/test-zoroark-official-control-isolated.mjs",
     "test:zoroark-catalog-integration": "node scripts/test-zoroark-catalog-integration-contract.mjs",
     "test:zoroark-catalog-review": "node --experimental-strip-types scripts/test-zoroark-catalog-review.ts",
-    "test:zoroark-ca-notebook": "node scripts/test-zoroark-ca-notebook-contract.mjs"
+    "test:zoroark-ca-notebook": "node scripts/test-zoroark-ca-notebook-contract.mjs",
+    "test:zoroark-catalog-auth-boundary": "node scripts/test-zoroark-v8-catalog-auth-boundary.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.2.0",
