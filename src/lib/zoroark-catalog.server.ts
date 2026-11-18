@@ -53,8 +53,12 @@ export function chooseZoroarkPair(
   level: DifficultyChoice,
   recent: readonly string[],
   choose: (max: number) => number = max => randomInt(max),
+  additional: readonly Pair[] = [],
+  disabledIds: ReadonlySet<string> = new Set<string>(),
 ): Pair {
-  const matching = PAIRS.filter(p => level === "all" || p.level === level);
+  // Official disables affect future rounds only; preview candidates remain separate.
+  const matching = [...PAIRS, ...additional].filter(p =>
+    (level === "all" || p.level === level) && !disabledIds.has(p.id));
   if (!matching.length) throw new Error("No catalog entries");
   const newPairs = matching.filter(p => !recent.includes(p.id));
   const pool = newPairs.length ? newPairs : matching;

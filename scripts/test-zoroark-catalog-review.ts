@@ -1,0 +1,36 @@
+import assert from "node:assert/strict";
+import {validateTopicCandidate,topicPairKey,isExistingCatalogPair,publishedTopicToPair} from "../src/lib/zoroark-catalog-review.ts";
+
+const base={a:"マッギョ",b:"カイリキー",aNo:"618",bNo:"68",
+ common:"マッチョ",difference:"タイプと姿",level:"normal"};
+const parsed=validateTopicCandidate(base);
+assert.ok(parsed);
+assert.equal(topicPairKey(" カイリキー ","マッギョ"),topicPairKey(base.a,base.b));
+assert.equal(publishedTopicToPair({...base,id:27,status:"published",version:4}).id,"x0027");
+assert.equal(publishedTopicToPair({...base,id:27,status:"published",version:4}).level,"normal");
+assert.equal(isExistingCatalogPair(parsed,[{id:"m01",level:"normal",a:"カイリキー",b:"マッギョ",common:"",difference:""}]),true);
+for(const value of [
+ {...base,a:" "},{...base,b:"マッギョ"},{...base,difference:""},{...base,level:"all"},
+ {...base,common:""},{...base,aNo:"no"},{...base,bNo:"123456"},{...base,a:42}
+])assert.equal(validateTopicCandidate(value),null);
+for(const row of [{...base,id:27,status:"pending"},{...base,id:10000,status:"published"},
+ {...base,id:27,status:"published",difference:""}])
+ assert.throws(()=>publishedTopicToPair(row));
+import {readFileSync} from "node:fs";
+const management=readFileSync(new URL("../src/lib/zoroark-catalog-management.server.ts",import.meta.url),"utf8");
+const route=readFileSync(new URL("../src/app/api/zoroark/catalog/route.ts",import.meta.url),"utf8");
+const round=readFileSync(new URL("../src/app/api/zoroark/round/route.ts",import.meta.url),"utf8");
+for(const token of ["ZOROARK_CATALOG_MANAGEMENT_ENABLED","ZOROARK_CATALOG_PUBLISH_ENABLED",
+ "ZOROARK_CATALOG_RUNTIME_ENABLED","VERCEL_ENV","runtimePublishedPairs"])
+ assert.ok(management.includes(token),"feature gate "+token);
+for(const token of ["profiles","admin","allowedZoroarkOrigin","published","runtimeEnabled",
+ "auth.getUser","catalog_v8_use_notebook_api"])
+ assert.ok(route.includes(token),"admin API read-only and legacy retirement boundary "+token);
+assert.ok(!route.includes('zoroark_topic_decide'),"V8 must not invoke revoked non-CAS decision RPC");
+const notebook=readFileSync(new URL("../src/app/api/zoroark/notebook/route.ts",import.meta.url),"utf8");
+assert.ok(notebook.includes("already_official"),"V8 notebook rejects official duplicates");
+assert.ok(notebook.includes("publishing_disabled"),"V8 notebook enforces publish gate");
+assert.ok(notebook.includes("zoroark_topic_move_status"),"V8 uses CAS review RPC");
+assert.ok(route.includes("baseKeys:PAIRS.map"),"ADMIN statuses cover baseline 42 exact pairs");
+assert.ok(round.includes("catalogRuntimeEnabled() ? await runtimePublishedPairs"),"round uses staged catalog only when gated");
+console.log("ZOROARK_CATALOG_REVIEW_PASS");
