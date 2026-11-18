@@ -1,0 +1,157 @@
+{
+  "schema_version": "1.0",
+  "created_at": "2026-11-18",
+  "scope": "CA Clover digital business card font databank (isolated draft)",
+  "production_status": "NO-GO",
+  "notes": [
+    "Metadata index only. No font files stored, served, or distributed.",
+    "Validate font file provenance, actual glyph coverage and CORS/embedding rules before web deployment.",
+    "Never modify production Supabase, Neon, GitHub Pages, Cron, Auth, RLS or deployment without an explicit GO.",
+    "User-selectable fonts are for the personalized name card; do not print CA CLOVER branding on card faces."
+  ],
+  "default_preview_text": "みんな集まれ",
+  "fonts": [
+    {
+      "id": "kouzan-brush",
+      "name": "衡山毛筆",
+      "family": "Kouzan Brush",
+      "style": "力強い正統派",
+      "source_url": "https://opentype.jp/kouzanmouhitufont.htm",
+      "license_url": "https://opentype.jp/kouzanmouhitufont.htm",
+      "license": "無料・商用利用可能（配布元記載）",
+      "source": "Musashi System",
+      "recommended_for": [
+        "勢・墨アート",
+        "裏面キャッチコピー"
+      ],
+      "web_embedding_review": "pending",
+      "asset_status": "catalog_only",
+      "binary_path": null,
+      "production_enabled": false
+    },
+    {
+      "id": "aoyagi-kouzan-t",
+      "name": "青柳衡山T",
+      "family": "Aoyagi Kouzan Font T",
+      "style": "大胆な筆題字",
+      "source_url": "https://opentype.jp/aoyagikouzanfontt.htm",
+      "license_url": "https://opentype.jp/aoyagikouzanfontt.htm",
+      "license": "無料・商用利用可能（配布元記載）",
+      "source": "Musashi System",
+      "recommended_for": [
+        "勢・墨アート"
+      ],
+      "web_embedding_review": "pending",
+      "asset_status": "catalog_only",
+      "binary_path": null,
+      "production_enabled": false
+    },
+    {
+      "id": "aoyagi-soseki",
+      "name": "青柳疎石",
+      "family": "Aoyagi Soseki",
+      "style": "繊細なかすれ",
+      "source_url": "https://opentype.jp/aoyagisosekifont.htm",
+      "license_url": "https://opentype.jp/aoyagisosekifont.htm",
+      "license": "無料・商用利用可能（配布元記載）",
+      "source": "Musashi System",
+      "recommended_for": [
+        "春・桜",
+        "秋・紅葉"
+      ],
+      "web_embedding_review": "pending",
+      "asset_status": "catalog_only",
+      "binary_path": null,
+      "production_enabled": false
+    },
+    {
+      "id": "kouzan-gyosho",
+      "name": "衡山毛筆 行書",
+      "family": "Kouzan Gyosho",
+      "style": "流れる筆跡",
+      "source_url": "https://opentype.jp/kouzangyousho.htm",
+      "license_url": "https://opentype.jp/kouzangyousho.htm",
+      "license": "無料・商用利用可能（配布元記載）",
+      "source": "Musashi System",
+      "recommended_for": [
+        "和・伝統",
+        "春・桜"
+      ],
+      "web_embedding_review": "pending",
+      "asset_status": "catalog_only",
+      "binary_path": null,
+      "production_enabled": false
+    },
+    {
+      "id": "kouzan-sosho",
+      "name": "衡山毛筆 草書",
+      "family": "Kouzan Sosho",
+      "style": "大胆な崩し文字",
+      "source_url": "https://opentype.jp/kouzansousho.htm",
+      "license_url": "https://opentype.jp/kouzansousho.htm",
+      "license": "無料・商用利用可能（配布元記載）",
+      "source": "Musashi System",
+      "recommended_for": [
+        "勢・墨アート"
+      ],
+      "web_embedding_review": "pending",
+      "asset_status": "catalog_only",
+      "binary_path": null,
+      "production_enabled": false
+    },
+    {
+      "id": "yuji-boku",
+      "name": "Yuji Boku",
+      "family": "Yuji Boku",
+      "style": "個性的な和風文字",
+      "source_url": "https://fonts.google.com/specimen/Yuji+Boku",
+      "license_url": "https://github.com/google/fonts/blob/main/ofl/yujiboku/OFL.txt",
+      "license": "SIL Open Font License 1.1",
+      "source": "Google Fonts / Kinuta Font Factory",
+      "recommended_for": [
+        "勢・墨アート",
+        "和・伝統"
+      ],
+      "web_embedding_review": "OFL permits embedding with license compliance",
+      "asset_status": "catalog_only",
+      "binary_path": null,
+      "production_enabled": false
+    },
+    {
+      "id": "yuji-mai",
+      "name": "Yuji Mai",
+      "family": "Yuji Mai",
+      "style": "優美で軽快",
+      "source_url": "https://fonts.google.com/specimen/Yuji+Mai",
+      "license_url": "https://github.com/google/fonts/blob/main/ofl/yujimai/OFL.txt",
+      "license": "SIL Open Font License 1.1",
+      "source": "Google Fonts / Kinuta Font Factory",
+      "recommended_for": [
+        "春・桜",
+        "秋・紅葉"
+      ],
+      "web_embedding_review": "OFL permits embedding with license compliance",
+      "asset_status": "catalog_only",
+      "binary_path": null,
+      "production_enabled": false
+    },
+    {
+      "id": "yuji-syuku",
+      "name": "Yuji Syuku",
+      "family": "Yuji Syuku",
+      "style": "端正で伝統的",
+      "source_url": "https://fonts.google.com/specimen/Yuji+Syuku",
+      "license_url": "https://github.com/google/fonts/blob/main/ofl/yujisyuku/OFL.txt",
+      "license": "SIL Open Font License 1.1",
+      "source": "Google Fonts / Kinuta Font Factory",
+      "recommended_for": [
+        "凛・シンプル",
+        "和・伝統"
+      ],
+      "web_embedding_review": "OFL permits embedding with license compliance",
+      "asset_status": "catalog_only",
+      "binary_path": null,
+      "production_enabled": false
+    }
+  ]
+}
