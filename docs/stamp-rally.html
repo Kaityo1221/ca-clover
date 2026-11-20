@@ -94,6 +94,34 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
 .japanmaphead{flex-wrap:wrap;gap:8px}.japanmap h2{white-space:normal}.japanmaphead .sub{color:#6d7d65}
 @media(max-width:430px){.topin{gap:8px}.topin .logo{width:36px;height:36px;flex-shrink:0}.topin .btn{padding:9px 10px;font-size:11px;white-space:nowrap}.hero{padding:18px 14px}.regionbtn{padding:13px 12px;gap:9px}.leaf{width:34px;height:34px;flex-shrink:0}.prefbtn{gap:8px;padding:12px 10px}.prefbtn>div{min-width:0}.prefbtn .progress{padding:5px 8px}.prefbtn .chev{flex-shrink:0}}
 @media(max-width:359px){.summary{grid-template-columns:1fr 1fr}.summary-item.own-medal{grid-column:1/-1;order:3;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid #e6d9c9;padding-top:8px}.own-medal dt{min-height:0}.own-label-break{display:none}.own-medal dd{margin:0}.prefname{font-size:14px}}
+
+/* Floating catalog controls: display only, no ownership mutations. */
+.medal-ca-setting-flags{display:inline;font-size:8px;font-weight:800;white-space:normal;color:#517147}.canames .caname{white-space:normal;overflow-wrap:anywhere;text-overflow:clip}
+body.medal-filter-ready main{padding-bottom:calc(108px + env(safe-area-inset-bottom))}
+body.medal-filter-open{overflow:hidden}
+.medal-tools{position:fixed;right:14px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:70}
+.medal-tools-fab{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:52px;padding:12px 19px;border:1px solid rgba(255,255,255,.85);border-radius:999px;background:linear-gradient(110deg,#77a872,#276c37);box-shadow:0 9px 24px rgba(24,67,29,.25);color:#fff;font-size:15px;font-weight:900;letter-spacing:.03em}
+.medal-tools-fab svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.medal-tools-fab:focus-visible,.medal-tools-sheet button:focus-visible,.medal-tools-sheet select:focus-visible{outline:3px solid #306e44;outline-offset:3px}
+.medal-tools-fab.has-filter::after{content:"";width:7px;height:7px;border-radius:50%;background:#fae08d;box-shadow:0 0 0 2px rgba(255,255,255,.4)}
+.medal-tools-backdrop{position:fixed;inset:0;background:rgba(18,30,20,.42);backdrop-filter:blur(2px);z-index:0}
+.medal-tools-sheet{position:fixed;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));width:min(430px,calc(100vw - 20px));max-height:min(78dvh,650px);overflow:auto;overscroll-behavior:contain;border-radius:28px;border:1px solid #d9e4ce;background:#fbfff7;box-shadow:0 16px 65px rgba(12,32,16,.28);padding:18px;z-index:1}
+.medal-tools-sheet[hidden],.medal-tools-backdrop[hidden]{display:none!important}
+.medal-tools.is-open .medal-tools-fab{visibility:hidden}
+.medal-tools-sheet-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.medal-tools-sheet-head h2{margin:0;color:#315632;font-size:20px}
+.medal-tools-close{width:36px;height:36px;display:grid;place-items:center;border:1px solid #d2dfc9;border-radius:50%;background:#fff;color:#3d6341;font-size:24px;line-height:1}
+.medal-tools-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.medal-tools-actions button{flex:1;min-width:110px;border:1px solid #c3d5b9;border-radius:999px;background:#fff;padding:10px;color:#3e6439;font-size:12px;font-weight:900}
+.medal-tools-filter{display:grid;grid-template-columns:110px minmax(0,1fr);align-items:center;gap:9px;margin:10px 0;font-size:13px;font-weight:850;color:#36583b}
+.medal-tools-filter select{width:100%;min-width:0;padding:11px 12px;border:1px solid #c3d5b9;border-radius:999px;background:#fff;color:#36583b;font:inherit}
+.medal-tools-filter select:disabled{color:#89998a;background:#f0f3ed}
+.medal-tools-info{font-size:11px;line-height:1.6;color:#657d59;margin-top:8px}
+.medal-tools-sheet-footer{display:flex;gap:9px;margin-top:16px}
+.medal-tools-sheet-footer button{flex:1;min-height:44px;border-radius:999px;padding:9px 12px;font-weight:900;font-size:13px}
+.medal-tools-reset{background:#fff;border:1px solid #a5c19c;color:#3d6c3f}
+.medal-tools-apply{background:#3b783e;border:1px solid #3b783e;color:#fff}
+@media(max-width:359px){.medal-tools{right:10px}.medal-tools-fab{min-height:48px;padding:10px 14px;font-size:14px}.medal-tools-filter{grid-template-columns:1fr;gap:4px}}
 </style>
 <link rel="stylesheet" href="./clover-global-home.css?v=20261113-home1">
 </head>
@@ -1043,8 +1071,8 @@ async function load(){
       const picture=!showIcon?"":coverSrc
        ?'<img data-ca-community-icon="1" data-original="'+esc(c.avatar_url||"")+'" src="'+esc(coverSrc)+'" alt="" loading="lazy">'
        :window.CACommunityIcon.img(client,c,'alt="" loading="lazy"');
-      const caLabels=c.cas.length?c.cas.slice(0,2).map(x=>'<div class="caname '+(isAdminCatalogMode||x.acquired?'on':'off')+'">'+(isAdminCatalogMode?'◇ ':x.acquired?'● ':'○ ')+esc(x.trainer_name)+'</div>').join(""):'<div class="caname off">CA未設定</div>';
-      return '<button type="button" class="stamp" data-community="'+esc(c.id)+'"><div class="medal '+(showIcon?'':'unowned')+(isGachiMonCommunity(c)?' gachimon-face-fit':'')+'"><div class="medalinner"><span class="fallback">'+(showIcon?'🍀':'？')+'</span>'+picture+'</div>'+(!isAdminCatalogMode&&allGot?'<span class="check">✓</span>':'')+'</div><div class="cname">'+esc(c.name)+'</div><div class="canames">'+caLabels+(c.cas.length>2?'<div class="caname off">+'+(c.cas.length-2)+'</div>':'')+'</div></button>';
+      const caLabels=c.cas.length?c.cas.map(x=>'<div class="caname '+(isAdminCatalogMode||x.acquired?'on':'off')+'">'+(isAdminCatalogMode?'◇ ':x.acquired?'● ':'○ ')+esc(x.trainer_name)+'</div>').join(""):'<div class="caname off">CA未設定</div>';
+      return '<button type="button" class="stamp" data-community="'+esc(c.id)+'"><div class="medal '+(showIcon?'':'unowned')+(isGachiMonCommunity(c)?' gachimon-face-fit':'')+'"><div class="medalinner"><span class="fallback">'+(showIcon?'🍀':'？')+'</span>'+picture+'</div>'+(!isAdminCatalogMode&&allGot?'<span class="check">✓</span>':'')+'</div><div class="cname">'+esc(c.name)+'</div><div class="canames">'+caLabels+'</div></button>';
     }).join(""):'<div class="empty">Communityはありません</div>';
     return '<div class="pref"><button class="prefbtn"><div><div class="prefname">'+esc(p)+'</div><div class="sub">'+rows.length+' Community</div></div><span class="progress">'+(isAdminCatalogMode?'展示 '+cas.length+'種類':'取得 '+acquired+' / '+cas.length)+'</span><span class="chev">⌄</span></button><div class="stamps">'+stamps+'</div></div>';
   }).join("");
@@ -1053,6 +1081,163 @@ async function load(){
 
  status.hidden=true;
  regionsEl.hidden=false;
+
+ // Catalog controls are client-side only. Source ownership and grant records stay untouched.
+ let medalTools=document.getElementById("medalListTools");
+ if(!medalTools){
+  medalTools=document.createElement("section");
+  medalTools.id="medalListTools";
+  medalTools.className="medal-tools";
+  medalTools.setAttribute("aria-label","全国メダル一覧の操作");
+  medalTools.innerHTML=`
+    <button type="button" class="medal-tools-fab" id="medalsFilterToggle" aria-controls="medalsFilterSheet" aria-expanded="false" aria-haspopup="dialog" aria-label="絞り込みを開く">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2" fill="#45864b" stroke="white"/><circle cx="16" cy="17" r="2" fill="#45864b" stroke="white"/></svg>
+      絞り込み
+    </button>
+    <div class="medal-tools-backdrop" id="medalsFilterBackdrop" hidden></div>
+    <section class="medal-tools-sheet" id="medalsFilterSheet" role="dialog" aria-modal="true" aria-label="全国メダル一覧の絞り込み" hidden>
+      <div class="medal-tools-sheet-head"><h2>絞り込み</h2><button type="button" id="medalsFilterClose" class="medal-tools-close" aria-label="絞り込みを閉じる">×</button></div>
+      <div class="medal-tools-actions"><button type="button" id="medalsExpandAll">一括開く</button><button type="button" id="medalsCollapseAll">一括閉じる</button></div>
+      <label class="medal-tools-filter" for="medalsOwnershipFilter">取得状況<select id="medalsOwnershipFilter"><option value="all">すべて</option><option value="owned">取得済み</option><option value="unowned">未取得</option></select></label>
+      <label class="medal-tools-filter" for="medalsPhotoFilter">プロフィール写真<select id="medalsPhotoFilter" disabled><option value="all">すべて</option><option value="set">設定済み</option><option value="unset">未設定</option></select></label>
+      <label class="medal-tools-filter" for="medalsMessageFilter">交換時の一言<select id="medalsMessageFilter" disabled><option value="all">すべて</option><option value="set">設定済み</option><option value="unset">未設定</option></select></label>
+      <div id="medalsFilterInfo" class="medal-tools-info" aria-live="polite"></div>
+      <div id="medalsProfileInfo" class="medal-tools-info" aria-live="polite">写真・一言の設定状況を確認中…</div>
+      <div class="medal-tools-sheet-footer"><button type="button" id="medalsFilterReset" class="medal-tools-reset">条件をクリア</button><button type="button" id="medalsFilterApply" class="medal-tools-apply">閉じる</button></div>
+    </section>`;
+  regionsEl.before(medalTools);
+ }
+ const ownershipFilter=medalTools.querySelector("#medalsOwnershipFilter");
+ const photoFilter=medalTools.querySelector("#medalsPhotoFilter");
+ const messageFilter=medalTools.querySelector("#medalsMessageFilter");
+ const filterInfo=medalTools.querySelector("#medalsFilterInfo");
+ const profileInfo=medalTools.querySelector("#medalsProfileInfo");
+ // The mobile filter lives above the list; the original region markup is unchanged.
+ document.body.classList.add("medal-filter-ready");
+ const filterToggle=medalTools.querySelector("#medalsFilterToggle");
+ const filterSheet=medalTools.querySelector("#medalsFilterSheet");
+ const filterBackdrop=medalTools.querySelector("#medalsFilterBackdrop");
+ const closeFilter=()=>{
+  filterSheet.hidden=true;
+  filterBackdrop.hidden=true;
+  medalTools.classList.remove("is-open");
+  document.body.classList.remove("medal-filter-open");
+  filterToggle.setAttribute("aria-expanded","false");
+  filterToggle.focus({preventScroll:true});
+ };
+ const openFilter=()=>{
+  filterSheet.hidden=false;
+  filterBackdrop.hidden=false;
+  medalTools.classList.add("is-open");
+  document.body.classList.add("medal-filter-open");
+  filterToggle.setAttribute("aria-expanded","true");
+  medalTools.querySelector("#medalsFilterClose").focus({preventScroll:true});
+ };
+ filterToggle.addEventListener("click",openFilter);
+ filterBackdrop.addEventListener("click",closeFilter);
+ medalTools.querySelector("#medalsFilterClose").addEventListener("click",closeFilter);
+ medalTools.querySelector("#medalsFilterApply").addEventListener("click",closeFilter);
+ filterSheet.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){e.preventDefault();closeFilter();}
+  if(e.key==="Tab"){
+   const candidates=[...filterSheet.querySelectorAll("button:not([disabled]),select:not([disabled])")];
+   const first=candidates[0],last=candidates[candidates.length-1];
+   if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+   else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+  }
+ });
+ medalTools.querySelector("#medalsFilterReset").addEventListener("click",()=>{
+  medalTools.querySelector("#medalsOwnershipFilter").value="all";
+  medalTools.querySelector("#medalsPhotoFilter").value="all";
+  medalTools.querySelector("#medalsMessageFilter").value="all";
+  medalTools.querySelector("#medalsOwnershipFilter").dispatchEvent(new Event("change"));
+ });
+
+ const profileStatuses=new Map();
+ let profileLoaded=false;
+ const checkProfile=(community,kind,choice)=>{
+  if(choice==="all")return true;
+  // A Community has multiple CAs; "set" means at least one, "unset" means none.
+  const isSet=Boolean(community&&community.cas.some(ca=>profileStatuses.get(String(ca.id))?.[kind]));
+  return choice==="set"?isSet:!isSet;
+ };
+ const applyMedalFilter=()=>{
+  const choice=ownershipFilter.value;
+  let visible=0;
+  regionsEl.querySelectorAll(".region").forEach(region=>{
+   let regionCount=0;
+   region.querySelectorAll(".pref").forEach(pref=>{
+    let prefCount=0;
+    pref.querySelectorAll(".stamp[data-community]").forEach(btn=>{
+     const community=stampCommunityById.get(btn.dataset.community);
+     const owned=Boolean(community&&community.cas.some(ca=>ca.acquired));
+     const allowedOwnership=choice==="all"||(choice==="owned"?owned:!owned);
+     const show=allowedOwnership&&(!profileLoaded||(
+      checkProfile(community,"photo_set",photoFilter.value)&&
+      checkProfile(community,"message_set",messageFilter.value)
+     ));
+     btn.hidden=!show;
+     btn.style.display=show?"":"none";
+     if(show)prefCount++;
+    });
+    pref.hidden=prefCount===0;
+    if(!pref.hidden)regionCount+=prefCount;
+   });
+   region.hidden=regionCount===0;
+   visible+=regionCount;
+  });
+  filterInfo.textContent=visible+" Communityを表示中。設定状況はCommunity内のいずれかのCAを基準に判定します。";
+  filterToggle.classList.toggle("has-filter",ownershipFilter.value!=="all"||photoFilter.value!=="all"||messageFilter.value!=="all");
+ };
+ [ownershipFilter,photoFilter,messageFilter].forEach(el=>el.addEventListener("change",applyMedalFilter));
+ medalTools.querySelector("#medalsExpandAll").addEventListener("click",()=>{
+  regionsEl.querySelectorAll(".region:not([hidden]),.pref:not([hidden])").forEach(el=>el.classList.add("open"));
+ });
+ medalTools.querySelector("#medalsCollapseAll").addEventListener("click",()=>{
+  regionsEl.querySelectorAll(".region,.pref").forEach(el=>el.classList.remove("open"));
+ });
+ applyMedalFilter();
+ // Dependency: isolated backend batch RPC. Fail closed if absent; never label unknown as unset.
+ const caIds=[...new Set(communities.flatMap(c=>c.cas.map(ca=>String(ca.id)).filter(Boolean)))];
+ const loadProfileStatuses=async()=>{
+  try{
+   const allRows=[];
+   for(let i=0;i<caIds.length;i+=400){
+    const result=await client.rpc("ca_medal_profile_settings_status",{p_ca_member_ids:caIds.slice(i,i+400)});
+    if(result.error)throw result.error;
+    if(!Array.isArray(result.data))throw Error("Invalid profile status response");
+    allRows.push(...result.data);
+   }
+   // A result must cover all requested CAs, or an unavailable CA might falsely appear unset.
+   if(new Set(allRows.map(row=>String(row.ca_member_id))).size!==caIds.length)throw Error("Incomplete profile status response");
+   allRows.forEach(row=>profileStatuses.set(String(row.ca_member_id),{photo_set:row.photo_set===true,message_set:row.message_set===true}));
+   regionsEl.querySelectorAll(".stamp[data-community]").forEach(btn=>{
+    const community=stampCommunityById.get(btn.dataset.community);
+    if(!community)return;
+    const labels=btn.querySelectorAll(".canames .caname");
+    community.cas.forEach((ca,index)=>{
+     const label=labels[index];
+     const data=profileStatuses.get(String(ca.id));
+     if(!label||!data)return;
+     const flags=document.createElement("span");
+     flags.className="medal-ca-setting-flags";
+     flags.textContent=" · 📷"+(data.photo_set?"済":"未")+" 💬"+(data.message_set?"済":"未");
+     flags.title="プロフィール写真 "+(data.photo_set?"設定済み":"未設定")+"／交換時の一言 "+(data.message_set?"設定済み":"未設定");
+     label.appendChild(flags);
+    });
+   });
+   profileLoaded=true;
+   photoFilter.disabled=false;
+   messageFilter.disabled=false;
+   profileInfo.textContent="📷 写真と💬 交換時の一言の設定状況を表示中";
+   applyMedalFilter();
+  }catch(_){
+   profileInfo.textContent="写真・一言の一括照会は未接続です。対応Backend適用後に利用可能になります。";
+   photoFilter.disabled=true;
+   messageFilter.disabled=true;
+  }
+ };
+ void loadProfileStatuses();
  document.querySelectorAll(".regionbtn").forEach(b=>b.onclick=()=>b.parentElement.classList.toggle("open"));
  document.querySelectorAll(".prefbtn").forEach(b=>b.onclick=()=>b.parentElement.classList.toggle("open"));
  window.CACommunityIcon.bind(regionsEl);
