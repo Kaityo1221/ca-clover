@@ -242,7 +242,7 @@ async function icons(){
 
 async function accounts(){
  app.innerHTML=title("home","ACCOUNTS","👥 CAアカウント","Googleログイン後のアカウント権限を管理します。認証済みCAとADMINは全員メダルラリーを利用できます。Dは参加者CSVの追加権限です。")+
-  '<label class="tiny strong muted section" for="accountDirectorySearch">CA名・トレーナー名で検索</label><input id="accountDirectorySearch" type="search" class="input section" placeholder="CA名・トレーナー名" autocomplete="off" aria-controls="list"><div id="accountDirectoryCount" class="small muted strong section" role="status" aria-live="polite"></div><div id="accountsStatus" class="tiny strong muted section" role="status" aria-live="polite"></div><div id="list" class="section">'+msg("読み込み中...")+'</div>';
+  '<label class="tiny strong muted section" for="accountDirectorySearch">CA名・トレーナー名で検索</label><input id="accountDirectorySearch" type="search" class="input section" placeholder="CA名・トレーナー名" autocomplete="off" aria-controls="list"><div id="accountRoleTabs" class="actions section" role="group" aria-label="アカウント種別で絞り込み"></div><div id="accountDirectoryCount" class="small muted strong section" role="status" aria-live="polite"></div><div id="accountsStatus" class="tiny strong muted section" role="status" aria-live="polite"></div><div id="list" class="section">'+msg("読み込み中...")+'</div>';
  const [profilesResult,permissionsResult,identitiesResult,caMembersResult]=await Promise.all([
   client.from("profiles").select("id,email,niantic_id,role,created_at").order("created_at",{ascending:false}),
   client.from("user_permissions").select("user_id,permission_code").eq("permission_code","D"),
@@ -268,9 +268,19 @@ async function accounts(){
   document.getElementById("accountsStatus").textContent="CA名簿情報を取得できませんでした。トレーナー名での検索は利用できますが、CA名簿からの名前検索は利用できません。";
  }
  const search=document.getElementById("accountDirectorySearch");
+ let activeRoleFilter="all";
  function renderAccountList(){
+ const roleTabs=document.getElementById("accountRoleTabs");
+ if(roleTabs){
+  const categories=[["all","すべて",profiles.length],["pending","PENDING",profiles.filter(x=>x.role==="pending").length],["ca","CA",profiles.filter(x=>x.role==="ca").length],["admin","ADMIN",profiles.filter(x=>x.role==="admin").length],["d","D",profiles.filter(x=>x.role==="ca"&&dUsers.has(x.id)).length]];
+  roleTabs.innerHTML=categories.map(([key,label,n])=>'<button type="button" class="btn '+(activeRoleFilter===key?"":"line")+'" data-account-category="'+key+'" aria-pressed="'+(activeRoleFilter===key)+'" style="width:auto;padding:9px 12px;font-size:13px">'+label+' ('+n+')</button>').join("");
+  roleTabs.querySelectorAll("[data-account-category]").forEach(button=>button.onclick=()=>{if(locked)return;activeRoleFilter=button.dataset.accountCategory;renderAccountList();});
+ }
+
  const q=(search?.value||"").trim().normalize("NFKC").toLocaleLowerCase("ja");
  const filtered=profiles.filter(x=>{
+  if(activeRoleFilter==="d"&&!(x.role==="ca"&&dUsers.has(x.id)))return false;
+  if(activeRoleFilter!=="all"&&activeRoleFilter!=="d"&&x.role!==activeRoleFilter)return false;
   const caRows=lookupCa(x);
   const value=[x.niantic_id||"",...caRows.map(c=>c.trainer_name||"")].join(" ").normalize("NFKC").toLocaleLowerCase("ja");
   return !q||value.includes(q);
