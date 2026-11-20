@@ -242,10 +242,12 @@ async function icons(){
 
 async function accounts(){
  app.innerHTML=title("home","ACCOUNTS","👥 CAアカウント","Googleログイン後のアカウント権限を管理します。認証済みCAとADMINは全員メダルラリーを利用できます。Dは参加者CSVの追加権限です。")+
-  '<div id="accountsStatus" class="tiny strong muted section" role="status" aria-live="polite"></div><div id="list" class="section">'+msg("読み込み中...")+'</div>';
- const [profilesResult,permissionsResult]=await Promise.all([
+  '<label class="tiny strong muted section" for="accountDirectorySearch">CA名・都道府県で検索</label><input id="accountDirectorySearch" type="search" class="input section" placeholder="トレーナー名・CA名・都道府県" autocomplete="off" aria-controls="list"><div id="accountDirectoryCount" class="small muted strong section" role="status" aria-live="polite"></div><div id="accountsStatus" class="tiny strong muted section" role="status" aria-live="polite"></div><div id="list" class="section">'+msg("読み込み中...")+'</div>';
+ const [profilesResult,permissionsResult,identitiesResult,caMembersResult]=await Promise.all([
   client.from("profiles").select("id,email,niantic_id,role,created_at").order("created_at",{ascending:false}),
-  client.from("user_permissions").select("user_id,permission_code").eq("permission_code","D")
+  client.from("user_permissions").select("user_id,permission_code").eq("permission_code","D"),
+  client.from("user_ca_identities").select("user_id,ca_member_id,is_primary"),
+  client.from("ca_members").select("id,trainer_name,prefecture")
  ]);
  const list=document.getElementById("list");
  if(profilesResult.error||permissionsResult.error){
@@ -253,7 +255,29 @@ async function accounts(){
   return;
  }
  const dUsers=new Set((permissionsResult.data||[]).map(x=>x.user_id));
- list.innerHTML=(profilesResult.data||[]).map(x=>{
+ const profiles=profilesResult.data||[];
+ const caMap=new Map((caMembersResult.data||[]).map(c=>[c.id,c]));
+ const identitiesByUser=new Map();
+ (identitiesResult.data||[]).forEach(identity=>{
+  const rows=identitiesByUser.get(identity.user_id)||[];
+  rows.push(identity);
+  identitiesByUser.set(identity.user_id,rows);
+ });
+ const lookupCa=x=>(identitiesByUser.get(x.id)||[]).map(i=>({...i,ca:caMap.get(i.ca_member_id)})).filter(i=>i.ca).sort((a,b)=>Number(b.is_primary)-Number(a.is_primary)).map(i=>i.ca);
+ if(identitiesResult.error||caMembersResult.error){
+  document.getElementById("accountsStatus").textContent="CA名簿情報を取得できませんでした。トレーナー名での検索は利用できますが、都道府県検索は一部利用できません。";
+ }
+ const search=document.getElementById("accountDirectorySearch");
+ function renderAccountList(){
+ const q=search.value.trim().normalize("NFKC").toLocaleLowerCase("ja");
+ const filtered=profiles.filter(x=>{
+  const caRows=lookupCa(x);
+  const value=[x.niantic_id||"",...caRows.flatMap(c=>[c.trainer_name||"",c.prefecture||""])].join(" ").normalize("NFKC").toLocaleLowerCase("ja");
+  return !q||value.includes(q);
+ });
+ document.getElementById("accountDirectoryCount").textContent=filtered.length+" / "+profiles.length+" 件表示";
+ list.innerHTML=filtered.length?filtered.map(x=>{
+  const caRows=lookupCa(x);
   const id=e(x.id);
   const granted=dUsers.has(x.id);
   const roles=["pending","ca","admin"].map(role=>{
@@ -266,10 +290,10 @@ async function accounts(){
   const help=granted&&x.role==="ca"
    ?'<div class="tiny muted section">ロール変更する場合は、先にD権限を解除してください。</div>'
    :"";
-  return '<section class="claim"><div class="row between wraprow"><div><h3>'+e(x.email||"メール未取得")+'</h3><div class="small muted strong">Pokémon GO トレーナー名: '+e(x.niantic_id||"未登録")+'</div><div class="tiny muted">登録 '+e(fmt(x.created_at))+'</div></div><div class="actions">'+roles+dButton+'</div></div>'+help+'</section>';
- }).join("");
- let locked=false;
- const buttons=app.querySelectorAll("[data-role],[data-d]");
+  const caDetails=caRows.length?'<div class="small muted strong">CA名簿: '+e([...new Set(caRows.map(c=>c.trainer_name).filter(Boolean))].join(" / ")||"未登録")+' / '+e([...new Set(caRows.map(c=>c.prefecture).filter(Boolean))].join(" / ")||"都道府県未登録")+'</div>':"";
+  return '<section class="claim"><div class="row between wraprow"><div><h3>'+e(x.email||"メール未取得")+'</h3><div class="small muted strong">Pokémon GO トレーナー名: '+e(x.niantic_id||"未登録")+'</div>'+caDetails+'<div class="tiny muted">登録 '+e(fmt(x.created_at))+'</div></div><div class="actions">'+roles+dButton+'</div></div>'+help+'</section>';
+ }).join(""):msg("検索条件に一致するCAアカウントはありません。");
+ const buttons=list.querySelectorAll("[data-role],[data-d]");
  buttons.forEach(b=>b.onclick=async()=>{
   if(locked)return;
   locked=true;
@@ -290,6 +314,10 @@ async function accounts(){
    }
   }
  });
+ }
+ let locked=false;
+ search.oninput=()=>{if(!locked)renderAccountList();};
+ renderAccountList();
 }
 
 async function accountAudit(){
