@@ -161,6 +161,10 @@ try {
   const controlPage = await openPage({
     identity, profileRows, collections: [collection("ca-a", "base"), collection("ca-c", "north")],
   });
+  assert.equal(await controlPage.locator("#medalsFilterToggle").count(), 1, "Floating filter is present");
+  assert.equal(await controlPage.locator("#medalsFilterSheet").isHidden(), true, "Filter sheet starts closed");
+  await controlPage.locator("#medalsFilterToggle").click();
+  assert.equal(await controlPage.locator("#medalsFilterSheet").isVisible(), true, "Floating filter opens sheet");
   await controlPage.locator("#medalsPhotoFilter:not([disabled])").waitFor();
   assert.equal(await controlPage.locator(".medal-ca-setting-flags").count(), 4,
     "All 1st/2nd CAs must show status, including second CA of one community");
@@ -191,9 +195,25 @@ try {
   assert.equal(await controlPage.locator(".region:not([hidden])").count(), 1,
     "Regions containing no matches are hidden");
   assert.equal(await controlPage.locator("#medalsFilterInfo").textContent().then(x=>x.includes("1 Community")), true);
+  assert.equal(await controlPage.locator("#medalsFilterToggle").getAttribute("aria-expanded"), "true");
+  await controlPage.locator("#medalsFilterReset").click();
+  assert.equal(await controlPage.locator("#medalsOwnershipFilter").inputValue(), "all");
+  assert.equal(await controlPage.locator("#medalsPhotoFilter").inputValue(), "all");
+  assert.equal(await controlPage.locator("#medalsMessageFilter").inputValue(), "all");
+  assert.equal(await controlPage.locator(".region:not([hidden])").count(), 2, "Reset restores all regions");
+  await controlPage.keyboard.press("Escape");
+  assert.equal(await controlPage.locator("#medalsFilterSheet").isHidden(), true, "Escape dismisses sheet");
+  assert.equal(await controlPage.locator("#medalsFilterToggle").getAttribute("aria-expanded"), "false");
+  await controlPage.locator("#medalsFilterToggle").click();
+  await controlPage.locator("#medalsFilterApply").click();
+  assert.equal(await controlPage.locator("#medalsFilterSheet").isHidden(), true, "Close action dismisses sheet");
+  await controlPage.setViewportSize({ width: 320, height: 740 });
+  const floatingButton = await controlPage.locator("#medalsFilterToggle").boundingBox();
+  assert.ok(floatingButton && floatingButton.x >= 0 && floatingButton.x + floatingButton.width <= 320, "Floating button fits 320px screen");
   await controlPage.close();
 
   const unavailablePage = await openPage({ profileError: true });
+  await unavailablePage.locator("#medalsFilterToggle").click();
   await unavailablePage.locator("#medalsProfileInfo").waitFor();
   assert.equal(await unavailablePage.locator("#medalsPhotoFilter").isDisabled(), true);
   assert.equal(await unavailablePage.locator("#medalsMessageFilter").isDisabled(), true);
