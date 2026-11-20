@@ -200,7 +200,7 @@ try {
   assert.equal(await controlPage.locator("#medalsOwnershipFilter").inputValue(), "all");
   assert.equal(await controlPage.locator("#medalsPhotoFilter").inputValue(), "all");
   assert.equal(await controlPage.locator("#medalsMessageFilter").inputValue(), "all");
-  assert.equal(await controlPage.locator(".region:not([hidden])").count(), 2, "Reset restores all regions");
+  assert.equal(await controlPage.locator(".region:not([hidden])").count(), 4, "Reset restores all four catalog regions");
   await controlPage.keyboard.press("Escape");
   assert.equal(await controlPage.locator("#medalsFilterSheet").isHidden(), true, "Escape dismisses sheet");
   assert.equal(await controlPage.locator("#medalsFilterToggle").getAttribute("aria-expanded"), "false");
