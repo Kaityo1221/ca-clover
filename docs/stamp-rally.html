@@ -107,6 +107,7 @@ body.medal-filter-open{overflow:hidden}
 .medal-tools-backdrop{position:fixed;inset:0;background:rgba(18,30,20,.42);backdrop-filter:blur(2px);z-index:0}
 .medal-tools-sheet{position:fixed;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));width:min(430px,calc(100vw - 20px));max-height:min(78dvh,650px);overflow:auto;overscroll-behavior:contain;border-radius:28px;border:1px solid #d9e4ce;background:#fbfff7;box-shadow:0 16px 65px rgba(12,32,16,.28);padding:18px;z-index:1}
 .medal-tools-sheet[hidden],.medal-tools-backdrop[hidden]{display:none!important}
+.complete-label[hidden]{display:none!important}
 .medal-tools.is-open .medal-tools-fab{visibility:hidden}
 .medal-tools-sheet-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
 .medal-tools-sheet-head h2{margin:0;color:#315632;font-size:20px}
@@ -1097,7 +1098,7 @@ async function load(){
     <div class="medal-tools-backdrop" id="medalsFilterBackdrop" hidden></div>
     <section class="medal-tools-sheet" id="medalsFilterSheet" role="dialog" aria-modal="true" aria-label="全国メダル一覧の絞り込み" hidden>
       <div class="medal-tools-sheet-head"><h2>絞り込み</h2><button type="button" id="medalsFilterClose" class="medal-tools-close" aria-label="絞り込みを閉じる">×</button></div>
-      <div class="medal-tools-actions"><button type="button" id="medalsExpandAll">一括開く</button><button type="button" id="medalsCollapseAll">一括閉じる</button></div>
+      <div class="medal-tools-actions"><button type="button" id="medalsExpandAll">一括オープン</button><button type="button" id="medalsCollapseAll">一括クローズ</button></div>
       <label class="medal-tools-filter" for="medalsOwnershipFilter">取得状況<select id="medalsOwnershipFilter"><option value="all">すべて</option><option value="owned">取得済み</option><option value="unowned">未取得</option></select></label>
       <label class="medal-tools-filter" for="medalsPhotoFilter">プロフィール写真<select id="medalsPhotoFilter" disabled><option value="all">すべて</option><option value="set">設定済み</option><option value="unset">未設定</option></select></label>
       <label class="medal-tools-filter" for="medalsMessageFilter">交換時の一言<select id="medalsMessageFilter" disabled><option value="all">すべて</option><option value="set">設定済み</option><option value="unset">未設定</option></select></label>
@@ -1165,12 +1166,15 @@ async function load(){
   const choice=ownershipFilter.value;
   let visible=0;
   regionsEl.querySelectorAll(".region").forEach(region=>{
-   let regionCount=0;
+   let regionCount=0,regionOwned=0,regionTotal=0;
    region.querySelectorAll(".pref").forEach(pref=>{
-    let prefCount=0;
+    let prefCount=0,prefOwned=0,prefTotal=0;
     pref.querySelectorAll(".stamp[data-community]").forEach(btn=>{
      const community=stampCommunityById.get(btn.dataset.community);
-     const owned=Boolean(community&&community.cas.some(ca=>ca.acquired));
+     const caRows=community?.cas||[];
+     // Denominators remain the original total CA medals, even when filtered.
+     prefTotal+=caRows.length;
+     const owned=caRows.some(ca=>ca.acquired);
      const allowedOwnership=choice==="all"||(choice==="owned"?owned:!owned);
      const show=allowedOwnership&&(!profileLoaded||(
       checkProfile(community,"photo_set",photoFilter.value)&&
@@ -1178,12 +1182,31 @@ async function load(){
      ));
      btn.hidden=!show;
      btn.style.display=show?"":"none";
-     if(show)prefCount++;
+     if(show){
+      prefCount++;
+      // Numerator counts acquired CA medals within visible Communities.
+      prefOwned+=caRows.filter(ca=>ca.acquired).length;
+     }
     });
     pref.hidden=prefCount===0;
+    if(!isAdminCatalogMode){
+     const label=pref.querySelector(".prefbtn .progress");
+     if(label)label.textContent="取得 "+prefOwned+" / "+prefTotal;
+    }
+    regionTotal+=prefTotal;
+    regionOwned+=prefOwned;
     if(!pref.hidden)regionCount+=prefCount;
    });
    region.hidden=regionCount===0;
+   if(!isAdminCatalogMode){
+    const label=region.querySelector(".regionbtn .regionprogress");
+    if(label)label.textContent="メダル "+regionOwned+" / "+regionTotal;
+    region.classList.toggle("has-medals",regionOwned>0);
+    const complete=regionTotal>0&&regionOwned===regionTotal;
+    region.classList.toggle("complete",complete);
+    const badge=region.querySelector(".complete-label");
+    if(badge)badge.hidden=!complete;
+   }
    visible+=regionCount;
   });
   filterInfo.textContent=visible+" Communityを表示中。設定状況はCommunity内のいずれかのCAを基準に判定します。";
