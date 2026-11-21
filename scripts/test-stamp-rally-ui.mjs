@@ -228,7 +228,8 @@ try {
       collection("shikoku-1", "shikoku-community-1"),
     ],
   });
-  await shikokuPage.locator("#medalsPhotoFilter:not([disabled])").waitFor();
+  // The sheet is intentionally closed on load; readiness must not require visibility.
+  await shikokuPage.locator("#medalsPhotoFilter:not([disabled])").waitFor({ state: "attached" });
   const shikoku = shikokuPage.locator(".region").filter({hasText: "四国"});
   const tokushima = shikoku.locator(".pref").filter({hasText: "徳島県"});
   assert.equal(await shikoku.locator(".regionprogress").textContent(), "メダル 2 / 11");
