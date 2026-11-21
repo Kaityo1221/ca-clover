@@ -30,7 +30,11 @@ assert.ok(ui.includes("保存する変更は、この端末の"));
 assert.ok(!ui.includes("ZOROARK_CATALOG_QA_URL"));
 assert.ok(!ui.includes("zoroark_topic_submit"));
 assert.ok(!engine.includes("localStorage"));
-assert.ok(html.includes("zoroark-ideas.mjs?v=20261115-notebook-editor1"));
+// V8 keeps the original local official42 notebook behind an ADMIN-only tab.
+// Check the current import paths rather than an obsolete cache-busting version.
+assert.ok(html.includes('import("./zoroark-ideas.mjs?v=20261116-compat313")'));
+assert.ok(html.includes('import("./zoroark-admin-notebook.mjs?v=20261117-v8")'));
+assert.ok(html.includes('id="zoroarkLocalPanel" hidden'));
 
 const globals={document:globalThis.document,window:globalThis.window,localStorage:globalThis.localStorage,fetch:globalThis.fetch};
 try{

@@ -19,9 +19,12 @@ const html=readFileSync("docs/index.html","utf8");
 assert.ok(ui.includes("data-import"));
 assert.ok(ui.includes("data-edit"));
 assert.ok(ui.includes("data-adopt"));
-assert.ok(ui.includes("safeMergeNotebook(entries,officialDrafts,incoming)"));
+// The V8-compatible import preserves old drafts AND the deleted-item list.
+assert.ok(ui.includes("safeMergeNotebook(entries,officialDrafts,incoming,{officialIds:[],memoKeys:trash.memoKeys})"));
+assert.ok(ui.includes("saveNotebookTrash(localStorage,merged.trash") || ui.includes("saveNotebookTrash(localStorage,{officialIds:trash.officialIds,memoKeys:merged.trash.memoKeys})"));
+assert.ok(ui.includes("既存の編集は上書きしません"));
 assert.ok(ui.includes("localStorage.setItem(KEY"));
-assert.ok(html.includes("zoroark-ideas.mjs?v=20261115-notebook-editor1"));
+assert.ok(html.includes('import("./zoroark-ideas.mjs?v=20261116-compat313")'));
 assert.ok(ui.includes("OFFICIAL_ZOROARK_42"),"official catalog list exists");
 assert.ok(ui.includes("正式42組"),"official 42 group exists");
 console.log("ZOROARK_JSON_LIBRARY_PASS");
