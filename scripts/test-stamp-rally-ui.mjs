@@ -212,6 +212,45 @@ try {
   assert.ok(floatingButton && floatingButton.x >= 0 && floatingButton.x + floatingButton.width <= 320, "Floating button fits 320px screen");
   await controlPage.close();
 
+  // User-reported Shikoku case: acquired 2/11 becomes 1/11 with CA-photo filter.
+  // The denominator always remains the original CA-medal catalog size.
+  const shikokuCAs = Array.from({length: 11}, (_, i) =>
+    ca(`shikoku-${i}`, `shikoku-community-${i}`, "徳島県"));
+  const shikokuRows = shikokuCAs.map((row, i) => ({
+    ca_member_id: row.ca_member_id, photo_set: i === 0, message_set: i === 1,
+  }));
+  const shikokuPage = await openPage({
+    identity,
+    catalog: [...catalog, ...shikokuCAs],
+    profileRows: [...profileRows, ...shikokuRows],
+    collections: [
+      collection("shikoku-0", "shikoku-community-0"),
+      collection("shikoku-1", "shikoku-community-1"),
+    ],
+  });
+  // The sheet is intentionally closed on load; readiness must not require visibility.
+  await shikokuPage.locator("#medalsPhotoFilter:not([disabled])").waitFor({ state: "attached" });
+  const shikoku = shikokuPage.locator(".region").filter({hasText: "四国"});
+  const tokushima = shikoku.locator(".pref").filter({hasText: "徳島県"});
+  assert.equal(await shikoku.locator(".regionprogress").textContent(), "メダル 2 / 11");
+  assert.equal(await tokushima.locator(".progress").textContent(), "取得 2 / 11");
+  await shikokuPage.locator("#medalsFilterToggle").click();
+  assert.equal(await shikokuPage.locator("#medalsExpandAll").textContent(), "一括オープン");
+  assert.equal(await shikokuPage.locator("#medalsCollapseAll").textContent(), "一括クローズ");
+  await shikokuPage.locator("#medalsPhotoFilter").selectOption("set");
+  assert.equal(await shikoku.locator(".regionprogress").textContent(), "メダル 1 / 11");
+  assert.equal(await tokushima.locator(".progress").textContent(), "取得 1 / 11");
+  await shikokuPage.locator("#medalsPhotoFilter").selectOption("unset");
+  assert.equal(await shikoku.locator(".regionprogress").textContent(), "メダル 1 / 11",
+    "Unconfigured-only shows the other acquired CA medal");
+  await shikokuPage.locator("#medalsPhotoFilter").selectOption("all");
+  await shikokuPage.locator("#medalsOwnershipFilter").selectOption("unowned");
+  assert.equal(await shikoku.locator(".regionprogress").textContent(), "メダル 0 / 11");
+  await shikokuPage.locator("#medalsFilterReset").click();
+  assert.equal(await shikoku.locator(".regionprogress").textContent(), "メダル 2 / 11");
+  assert.equal(await tokushima.locator(".progress").textContent(), "取得 2 / 11");
+  await shikokuPage.close();
+
   const unavailablePage = await openPage({ profileError: true });
   await unavailablePage.locator("#medalsFilterToggle").click();
   await unavailablePage.locator("#medalsProfileInfo").waitFor();
