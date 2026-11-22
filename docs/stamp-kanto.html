@@ -7,6 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>関東CA Network | CA Clover</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./auth-session-72h.js?v=20261122-v1"></script>
 <!--
 Kanto prefecture vector outlines derived from:
 PA4KEV/japan-vector-map (MIT License)
@@ -138,6 +139,7 @@ const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
 const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
 const ROOT="https://kaityo1221.github.io/ca-clover/";
 const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
+window.CAAuth72.install(client,{redirectTo:"https://kaityo1221.github.io/ca-clover/"});
 
 const nodes={
  "群馬":[1369,1183],

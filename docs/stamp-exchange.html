@@ -7,6 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>CA Clover メダル交換</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./auth-session-72h.js?v=20261122-v1"></script>
 <script src="./community-icon.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
@@ -45,6 +46,7 @@ const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
 const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
 const ROOT="https://kaityo1221.github.io/ca-clover/";
 const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
+window.CAAuth72.install(client,{redirectTo:"https://kaityo1221.github.io/ca-clover/"});
 const app=document.getElementById("app");
 let currentSession=null,currentToken=null,currentUser=null,pollTimer=null,countTimer=null,stream=null,scanFrame=null,busy=false,message="",online=navigator.onLine,phase="idle";
 function e(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c])}

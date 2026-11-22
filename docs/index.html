@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#84cc16">
   <title>CA Clover | GitHub Pages Mirror</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./auth-session-72h.js?v=20261122-v1"></script>
   <!-- CA profile-photo release: private Storage/RLS and photo RPC verified 2026-11-13. -->
   <script>window.CA_PROFILE_PHOTO_UPLOAD_ENABLED = true;</script>
   <script src="./home-clover.js?v=20261114-minigames-nav1" defer></script>
@@ -74,6 +75,7 @@
   const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}
   });
+window.CAAuth72.install(client,{onExpire:function(){session=null;profile=null;renderToken++;render()}});
 
   // Legacy draw CSV retained in source only. Card CSV now uses full roster.
   // Independent full roster CSV entry. Existing raffle/check-in CSV remains unchanged.

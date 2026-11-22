@@ -78,7 +78,7 @@ async function prep(page,mode){
   }
   window.__designTest={getPinned:()=>pinned};
   const client={
-   auth:{getSession:async()=>({data:{session:{user:{id:'qa-browser-user'},access_token:'qa-only'}}})},
+   auth:{getSession:async()=>({data:{session:{user:{id:'qa-browser-user'},access_token:'qa-only'}}}),signOut:async()=>({error:null})},
    from:chain,
    rpc:async(name,args)=>{
     if(name==='stamp_rally_catalog')return {data:rows,error:null};

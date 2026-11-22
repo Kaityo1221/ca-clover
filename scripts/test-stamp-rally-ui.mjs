@@ -9,6 +9,7 @@ const require = createRequire(import.meta.url);
 const playwright = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const engine = process.env.BROWSER_ENGINE || "chromium";
 const html = await readFile(new URL("../docs/stamp-rally.html", import.meta.url), "utf8");
+const auth72 = await readFile(new URL("../docs/auth-session-72h.js", import.meta.url), "utf8");
 const map = await readFile(new URL("../docs/assets/geolonia-map-mobile.svg", import.meta.url), "utf8");
 const browser = await playwright[engine].launch({
   headless: true,
@@ -45,7 +46,7 @@ async function openPage(fixture = {}, width = 375) {
       communities: fixture.readableCommunities || catalog.map(row => ({ id: row.community_id, prefecture: row.prefecture })),
     };
     window.supabase = { createClient: () => ({
-      auth: { getSession: async () => ({ data: { session: fixture.loggedOut ? null : { user: { id: "current-user" } } } }) },
+      auth: { getSession: async () => ({ data: { session: fixture.loggedOut ? null : { user: { id: "current-user" } } } }), signOut: async () => ({error:null}) },
       rpc: async (name, args) => {
         window.testRequests.push({ rpc: name, args });
         if (name === "ca_medal_profile_settings_status") {
@@ -86,6 +87,9 @@ async function openPage(fixture = {}, width = 375) {
     const url = new URL(route.request().url());
     if (url.origin === origin && url.pathname === "/stamp-rally.html") {
       return route.fulfill({ contentType: "text/html", body: html });
+    }
+    if (url.origin === origin && url.pathname === "/auth-session-72h.js") {
+      return route.fulfill({ contentType: "text/javascript", body: auth72 });
     }
     if (url.origin === origin && url.pathname.endsWith(".svg")) {
       return route.fulfill({ contentType: "image/svg+xml", body: map });
