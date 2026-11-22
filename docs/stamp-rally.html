@@ -111,17 +111,10 @@ body.medal-filter-open{overflow:hidden}
 .medal-tools.is-open .medal-tools-fab{visibility:hidden}
 .medal-tools-sheet-head{display:flex;align-items:center;justify-content:space-between;gap:7px;margin-bottom:14px}
 .medal-tools-sheet-head h2{margin:0;color:#315632;font-size:20px;line-height:1.2;white-space:nowrap;flex:none}
-.medal-tools-head-actions{display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0}
-.medal-tools-mini{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:7px 8px;border:1px solid #c3d5b9;border-radius:999px;background:#fff;color:#3e6439;font-size:11px;font-weight:850;line-height:1.2;white-space:nowrap}
+.medal-bulk-toolbar{display:flex;align-items:center;justify-content:flex-end;gap:7px;margin:6px 3px 11px;min-height:36px}
+.medal-bulk-toolbar .medal-tools-mini{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:7px 11px;border:1px solid #c3d5b9;border-radius:999px;background:#f7fbf2;color:#3e6439;font-size:11px;font-weight:850;line-height:1.2;white-space:nowrap}
 .medal-tools-close{flex:0 0 36px;width:36px;height:36px;display:grid;place-items:center;border:1px solid #d2dfc9;border-radius:50%;background:#fff;color:#3d6341;font-size:24px;line-height:1}
-@media(max-width:374px){
- .medal-tools-sheet-head{display:grid;grid-template-columns:1fr auto;align-items:center;row-gap:8px}
- .medal-tools-head-actions{display:contents}
- .medal-tools-close{grid-column:2;grid-row:1;justify-self:end}
- .medal-tools-head-actions .medal-tools-mini{grid-row:2}
- #medalsExpandAll{grid-column:1;justify-self:end}
- #medalsCollapseAll{grid-column:2;justify-self:end}
-}
+@media(max-width:359px){.medal-bulk-toolbar{gap:6px}.medal-bulk-toolbar .medal-tools-mini{padding:7px 9px;font-size:10px}}
 .medal-tools-filter{display:grid;grid-template-columns:110px minmax(0,1fr);align-items:center;gap:9px;margin:10px 0;font-size:13px;font-weight:850;color:#36583b}
 .medal-tools-filter select{width:100%;min-width:0;padding:11px 12px;border:1px solid #c3d5b9;border-radius:999px;background:#fff;color:#36583b;font:inherit}
 .medal-tools-filter select:disabled{color:#89998a;background:#f0f3ed}
@@ -1107,11 +1100,7 @@ async function load(){
     <section class="medal-tools-sheet" id="medalsFilterSheet" role="dialog" aria-modal="true" aria-label="全国メダル一覧の絞り込み" hidden>
       <div class="medal-tools-sheet-head">
         <h2>絞り込み</h2>
-        <div class="medal-tools-head-actions" role="group" aria-label="地域一覧の一括操作">
-          <button type="button" id="medalsExpandAll" class="medal-tools-mini">一括オープン</button>
-          <button type="button" id="medalsCollapseAll" class="medal-tools-mini">一括クローズ</button>
-          <button type="button" id="medalsFilterClose" class="medal-tools-close" aria-label="絞り込みを閉じる">×</button>
-        </div>
+        <button type="button" id="medalsFilterClose" class="medal-tools-close" aria-label="絞り込みを閉じる">×</button>
       </div>
       <label class="medal-tools-filter" for="medalsOwnershipFilter">取得状況<select id="medalsOwnershipFilter"><option value="all">すべて</option><option value="owned">取得済み</option><option value="unowned">未取得</option></select></label>
       <label class="medal-tools-filter" for="medalsPhotoFilter">プロフィール写真<select id="medalsPhotoFilter" disabled><option value="all">すべて</option><option value="set">設定済み</option><option value="unset">未設定</option></select></label>
@@ -1121,6 +1110,17 @@ async function load(){
       <div class="medal-tools-sheet-footer"><button type="button" id="medalsFilterReset" class="medal-tools-reset">条件をクリア</button><button type="button" id="medalsFilterApply" class="medal-tools-apply">閉じる</button></div>
     </section>`;
   regionsEl.before(medalTools);
+ }
+ // Bulk accordion operations live above the first region card, outside the filter modal.
+ let bulkToolbar=document.getElementById("medalsBulkToolbar");
+ if(!bulkToolbar){
+  bulkToolbar=document.createElement("div");
+  bulkToolbar.id="medalsBulkToolbar";
+  bulkToolbar.className="medal-bulk-toolbar";
+  bulkToolbar.setAttribute("role","group");
+  bulkToolbar.setAttribute("aria-label","地域一覧の一括操作");
+  bulkToolbar.innerHTML='<button type="button" id="medalsExpandAll" class="medal-tools-mini">一括オープン</button><button type="button" id="medalsCollapseAll" class="medal-tools-mini">一括クローズ</button>';
+  regionsEl.before(bulkToolbar);
  }
  const ownershipFilter=medalTools.querySelector("#medalsOwnershipFilter");
  const photoFilter=medalTools.querySelector("#medalsPhotoFilter");
@@ -1227,10 +1227,10 @@ async function load(){
   filterToggle.classList.toggle("has-filter",ownershipFilter.value!=="all"||photoFilter.value!=="all"||messageFilter.value!=="all");
  };
  [ownershipFilter,photoFilter,messageFilter].forEach(el=>el.addEventListener("change",applyMedalFilter));
- medalTools.querySelector("#medalsExpandAll").addEventListener("click",()=>{
+ bulkToolbar.querySelector("#medalsExpandAll").addEventListener("click",()=>{
   regionsEl.querySelectorAll(".region:not([hidden]),.pref:not([hidden])").forEach(el=>el.classList.add("open"));
  });
- medalTools.querySelector("#medalsCollapseAll").addEventListener("click",()=>{
+ bulkToolbar.querySelector("#medalsCollapseAll").addEventListener("click",()=>{
   regionsEl.querySelectorAll(".region,.pref").forEach(el=>el.classList.remove("open"));
  });
  applyMedalFilter();
