@@ -96,10 +96,9 @@ button{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
 @media(max-width:359px){.summary{grid-template-columns:1fr 1fr}.summary-item.own-medal{grid-column:1/-1;order:3;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid #e6d9c9;padding-top:8px}.own-medal dt{min-height:0}.own-label-break{display:none}.own-medal dd{margin:0}.prefname{font-size:14px}}
 
 /* Floating catalog controls: display only, no ownership mutations. */
-/* CA status indicators stay together on one line below the trainer name, even in a 3-column grid. */
-.canames .caname{display:flex;flex-direction:column;align-items:center;gap:2px;max-width:100%;white-space:normal;overflow:hidden;text-overflow:clip;overflow-wrap:normal}
-.medal-ca-trainer{display:block;max-width:100%;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4}
-.medal-ca-setting-flags{display:block;flex:none;max-width:100%;white-space:nowrap;overflow:hidden;color:#517147;font-size:8px;font-weight:800;line-height:1.35}
+/* Keep the trainer name exactly as before; place both settings indicators on the next line. */
+.canames .caname{white-space:normal;overflow-wrap:anywhere;text-overflow:clip}
+.medal-ca-setting-flags{display:block;white-space:nowrap;font-size:8px;font-weight:800;line-height:1.4;color:#517147}
 body.medal-filter-ready main{padding-bottom:calc(108px + env(safe-area-inset-bottom))}
 body.medal-filter-open{overflow:hidden}
 .medal-tools{position:fixed;right:14px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:70}
@@ -1076,7 +1075,7 @@ async function load(){
       const picture=coverSrc
        ?'<img data-ca-community-icon="1" data-original="'+esc(c.avatar_url||"")+'" src="'+esc(coverSrc)+'" alt="" loading="lazy">'
        :window.CACommunityIcon.img(client,c,'alt="" loading="lazy"');
-      const caLabels=c.cas.length?c.cas.map(x=>'<div class="caname '+(isAdminCatalogMode||x.acquired?'on':'off')+'"><span class="medal-ca-trainer" title="'+esc(x.trainer_name)+'">'+(isAdminCatalogMode?'◇ ':x.acquired?'● ':'○ ')+esc(x.trainer_name)+'</span></div>').join(""):'<div class="caname off">CA未設定</div>';
+      const caLabels=c.cas.length?c.cas.map(x=>'<div class="caname '+(isAdminCatalogMode||x.acquired?'on':'off')+'">'+(isAdminCatalogMode?'◇ ':x.acquired?'● ':'○ ')+esc(x.trainer_name)+'</div>').join(""):'<div class="caname off">CA未設定</div>';
       return '<button type="button" class="stamp" data-community="'+esc(c.id)+'"><div class="medal '+(showIcon?'':'unowned')+(isGachiMonCommunity(c)?' gachimon-face-fit':'')+'"><div class="medalinner"><span class="fallback">'+(showIcon?'🍀':'◇')+'</span>'+picture+'</div>'+(!isAdminCatalogMode&&allGot?'<span class="check">✓</span>':'')+'</div><div class="cname">'+esc(c.name)+'</div><div class="canames">'+caLabels+'</div></button>';
     }).join(""):'<div class="empty">Communityはありません</div>';
     return '<div class="pref"><button class="prefbtn"><div><div class="prefname">'+esc(p)+'</div><div class="sub">'+rows.length+' Community</div></div><span class="progress">'+(isAdminCatalogMode?'展示 '+cas.length+'種類':'取得 '+acquired+' / '+cas.length)+'</span><span class="chev">⌄</span></button><div class="stamps">'+stamps+'</div></div>';
