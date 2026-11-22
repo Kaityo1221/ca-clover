@@ -8,7 +8,7 @@ function install(client,options){
  const originalGet=auth.getSession.bind(auth);
  const originalSignOut=auth.signOut.bind(auth);
  const config=options||{};
- let deadline=0,timer=null,expiring=false,currentUserId=null,fallbackRecord=null;
+ let deadline=0,timer=null,expiring=false,currentUserId=null,fallbackRecord=null,blockedLogin=null;
  function read(){
   try{const v=JSON.parse(root.localStorage.getItem(KEY)||"null");return v&&typeof v==="object"?v:null}catch(_){return fallbackRecord}
  }
@@ -39,6 +39,12 @@ function install(client,options){
   const now=Date.now(),id=String(session.user.id);
   const parsed=Date.parse(session.user.last_sign_in_at||"");
   const reported=Number.isFinite(parsed)&&parsed>0&&parsed<=now+300000?parsed:null;
+  // Prevent an in-flight getSession from reactivating the login after signOut.
+  // A genuinely newer OAuth sign-in is allowed to start a fresh three-day window.
+  if(blockedLogin?.userId===id){
+   if(reported===null||reported<=blockedLogin.startedAt+1000)return false;
+   blockedLogin=null;
+  }
   const stored=read();
   let started;
   if(stored?.userId===id&&Number.isFinite(stored.startedAt)&&stored.startedAt>0){
@@ -52,7 +58,7 @@ function install(client,options){
   if(!stored||stored.userId!==id||stored.startedAt!==started)write({userId:id,startedAt:started});
   deadline=started+LIFE_MS;
   stop();
-  if(now>=deadline){void expire();return false}
+  if(now>=deadline){blockedLogin={userId:id,startedAt:started};void expire();return false}
   timer=root.setTimeout(()=>{void checkNow()},Math.min(deadline-now+40,2147483647));
   return true;
  }
@@ -72,6 +78,7 @@ function install(client,options){
    if(event==="SIGNED_OUT"){
     stop();deadline=0;currentUserId=null;forget();expiring=false;
    }else if(session){
+    if(event==="SIGNED_IN"&&blockedLogin?.userId===String(session.user?.id)&&!session.user?.last_sign_in_at)blockedLogin=null;
     // Never await signOut inside the Supabase auth event callback.
     Promise.resolve().then(()=>assess(session));
    }
