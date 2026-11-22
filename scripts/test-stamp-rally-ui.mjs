@@ -74,7 +74,13 @@ async function openPage(fixture = {}, width = 375) {
         return query;
       },
     }) };
-    window.CACommunityIcon = { url: () => "", img: () => "", bind: () => {} };
+    const iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180"><rect width="180" height="180" fill="#e83f43"/><circle cx="90" cy="90" r="68" fill="#2bba66"/><path d="M90 38L142 128H38Z" fill="#315ae8"/></svg>';
+    const iconUrl = fixture.silhouetteIcons ? "data:image/svg+xml;charset=utf-8," + encodeURIComponent(iconSvg) : "";
+    window.CACommunityIcon = {
+      url: () => iconUrl,
+      img: () => iconUrl ? '<img data-ca-community-icon="1" src="' + iconUrl + '" alt="" loading="lazy">' : "",
+      bind: () => {},
+    };
   }, { fixture, catalog });
   await page.route("**/*", route => {
     const url = new URL(route.request().url());
@@ -150,6 +156,66 @@ try {
   assert.equal(await historicalMapPage.locator('.mapbox .prefecture[data-code="13"].acquired').count(), 0);
   await historicalMapPage.close();
 
+
+  // Unowned icon silhouettes: public Community art stays visible but never becomes an owned medal.
+  // The same unowned treatment is required in the regional grid and 2D modal.
+  for (const width of [320, 375, 390, 430]) {
+    const silhouettePage = await openPage({
+      identity, silhouetteIcons: true,
+      collections: [collection("ca-a", "base", "self")],
+    }, width);
+    await silhouettePage.locator("#medalsExpandAll").click();
+    const earned = silhouettePage.locator('.stamp[data-community="base"]');
+    const unearned = silhouettePage.locator('.stamp[data-community="north"]');
+    assert.equal(await earned.locator(".medal.unowned").count(), 0, "Earned medal retains colour at " + width);
+    assert.equal(await unearned.locator(".medal.unowned").count(), 1, "Missing medal is gray at " + width);
+    assert.equal(await unearned.locator(".medalinner img").count(), 1, "Unowned medal shows Community art at " + width);
+    assert.equal(await unearned.locator(".fallback").textContent(), "◇", "No question mark for unowned medals");
+    const colors = await silhouettePage.evaluate(() => {
+      const earned=document.querySelector('.stamp[data-community="base"] .medalinner');
+      const unearned=document.querySelector('.stamp[data-community="north"] .medalinner');
+      const img=unearned.querySelector("img");
+      return {
+        earnedFilter:getComputedStyle(earned).filter,
+        unearnedFilter:getComputedStyle(unearned).filter,
+        unearnedOpacity:Number(getComputedStyle(unearned).opacity),
+        imageFilter:getComputedStyle(img).filter,
+        imageSrc:img.getAttribute("src"),
+      };
+    });
+    assert.equal(colors.earnedFilter, "none", "Earned medal must not be desaturated at " + width);
+    assert.match(colors.unearnedFilter, /grayscale\(1\)/, "Unowned parent is grayscale at " + width);
+    assert.match(colors.imageFilter, /grayscale\(1\)/, "Unowned source image is grayscale at " + width);
+    assert.ok(colors.unearnedOpacity >= 0.7, "Silhouette contrast remains readable at " + width);
+    assert.ok(colors.imageSrc?.startsWith("data:image/svg+xml"), "Community source art used at " + width);
+    await unearned.click();
+    assert.equal(await silhouettePage.locator("#stampZoom2D.unowned").count(), 1, "Unowned modal stays unowned");
+    assert.equal(await silhouettePage.locator("#stamp3d.show").count(), 0, "Unowned must not unlock 3D");
+    assert.equal(await silhouettePage.locator("#stampZoom2D .fallback").textContent(), "◇");
+    assert.match(await silhouettePage.locator("#stampZoom2D .medalinner").evaluate(el=>getComputedStyle(el).filter),
+      /grayscale\(1\)/, "Unowned zoom is grayscale");
+    assert.ok((await silhouettePage.locator("#stampZoomImg").getAttribute("src"))?.startsWith("data:image/svg+xml"),
+      "Unowned zoom includes public Community icon");
+    await silhouettePage.locator("#stampClose").click();
+    if (process.env.SCREENSHOT_DIR) {
+      await mkdir(process.env.SCREENSHOT_DIR, {recursive:true});
+      await unearned.scrollIntoViewIfNeeded();
+      await silhouettePage.screenshot({path:join(process.env.SCREENSHOT_DIR,"unowned-gray-silhouette-" + width + ".png")});
+    }
+    await silhouettePage.close();
+  }
+  // A Community without icon metadata must remain unowned with a neutral placeholder,
+  // not leak a previous medal image or imply ownership.
+  const noIconPage = await openPage({identity});
+  await noIconPage.locator("#medalsExpandAll").click();
+  const noIcon = noIconPage.locator('.stamp[data-community="north"]');
+  assert.equal(await noIcon.locator(".fallback").textContent(), "◇");
+  assert.equal(await noIcon.locator(".medalinner img").count(), 0, "Missing source is never fabricated");
+  await noIcon.click();
+  assert.equal(await noIconPage.locator("#stampZoomImg").getAttribute("src"), null, "Modal clears missing source");
+  assert.equal(await noIconPage.locator("#stampZoom2D.unowned").count(), 1);
+  assert.equal(await noIconPage.locator("#stamp3d.show").count(), 0);
+  await noIconPage.close();
 
   // Controls must work with the same synthetic catalog and never depend on live RPC.
   const profileRows = [
