@@ -166,48 +166,44 @@ try {
   await controlPage.locator("#medalsFilterToggle").click();
   assert.equal(await controlPage.locator("#medalsFilterSheet").isVisible(), true, "Floating filter opens sheet");
   await controlPage.locator("#medalsPhotoFilter:not([disabled])").waitFor();
-  // Compact bulk controls belong to the filter header, not a separate wide row.
-  assert.equal(await controlPage.locator("#medalsFilterSheet .medal-tools-actions").count(), 0);
-  assert.equal(await controlPage.locator(".medal-tools-head-actions #medalsExpandAll").textContent(), "一括オープン");
-  assert.equal(await controlPage.locator(".medal-tools-head-actions #medalsCollapseAll").textContent(), "一括クローズ");
+  // Bulk controls are outside the modal and immediately above the first region panel.
+  assert.equal(await controlPage.locator("#medalsFilterSheet #medalsExpandAll").count(), 0);
+  assert.equal(await controlPage.locator("#medalsFilterSheet #medalsCollapseAll").count(), 0);
+  assert.equal(await controlPage.locator("#medalsBulkToolbar #medalsExpandAll").textContent(), "一括オープン");
+  assert.equal(await controlPage.locator("#medalsBulkToolbar #medalsCollapseAll").textContent(), "一括クローズ");
+  await controlPage.locator("#medalsFilterClose").click();
   for (const width of [320, 375, 390, 430]) {
-    await controlPage.setViewportSize({ width, height: 900 });
+    await controlPage.setViewportSize({width, height:900});
     const layout = await controlPage.evaluate(() => {
       const rect = selector => {
-        const r = document.querySelector(selector).getBoundingClientRect();
-        return { x:r.x, y:r.y, right:r.right, bottom:r.bottom, width:r.width, height:r.height };
+        const r=document.querySelector(selector).getBoundingClientRect();
+        return {x:r.x, y:r.y, right:r.right, bottom:r.bottom, width:r.width, height:r.height};
       };
       return {
-        sheet:rect("#medalsFilterSheet"),
-        title:rect(".medal-tools-sheet-head h2"),
+        first:rect("#regions .region"),
+        toolbar:rect("#medalsBulkToolbar"),
         open:rect("#medalsExpandAll"),
         close:rect("#medalsCollapseAll"),
-        dismiss:rect("#medalsFilterClose"),
-        firstField:rect(".medal-tools-filter"),
       };
     });
-    const overlaps = (a,b) => a.x < b.right - 1 && a.right > b.x + 1 && a.y < b.bottom - 1 && a.bottom > b.y + 1;
-    assert.ok(layout.sheet.x >= -1 && layout.sheet.right <= width + 1, "Filter sheet inside " + width + "px viewport");
-    for (const key of ["title", "open", "close", "dismiss"]) {
-      const r = layout[key];
-      assert.ok(r.width > 0 && r.height > 0 && r.x >= layout.sheet.x + 4 &&
-        r.right <= layout.sheet.right - 4, "Filter header item " + key + " within sheet at " + width);
-      assert.ok(r.bottom < layout.firstField.y, "Header control " + key + " stays above fields at " + width);
-    }
-    for (const [a,b] of [["title","open"],["title","close"],["title","dismiss"],["open","close"],["open","dismiss"],["close","dismiss"]]) {
-      assert.ok(!overlaps(layout[a], layout[b]), "Filter header controls " + a + "/" + b + " overlap at " + width);
-    }
-    assert.ok(layout.open.height < 45 && layout.close.height < 45, "Header bulk controls remain compact at " + width);
+    const overlaps=(a,b)=>a.x<b.right-1 && a.right>b.x+1 && a.y<b.bottom-1 && a.bottom>b.y+1;
+    assert.ok(layout.toolbar.x>=-1 && layout.toolbar.right<=width+1, "Bulk toolbar within viewport " + width);
+    assert.ok(layout.toolbar.bottom<=layout.first.y + 2, "Bulk toolbar remains above first region " + width);
+    assert.ok(layout.open.x>=layout.first.x-2 && layout.close.right<=layout.first.right+2, "Bulk buttons align to first region right edge " + width);
+    assert.ok(!overlaps(layout.open,layout.close), "Bulk buttons do not overlap " + width);
+    assert.ok(layout.open.height<45 && layout.close.height<45, "Bulk buttons remain small at " + width);
     await controlPage.locator("#medalsExpandAll").click();
-    assert.equal(await controlPage.locator(".region.open").count(), 4, "Bulk-open remains operable at " + width);
+    assert.equal(await controlPage.locator(".region.open").count(), 4, "Bulk-open operates outside filter " + width);
     await controlPage.locator("#medalsCollapseAll").click();
-    assert.equal(await controlPage.locator(".region.open").count(), 0, "Bulk-close remains operable at " + width);
+    assert.equal(await controlPage.locator(".region.open").count(), 0, "Bulk-close operates outside filter " + width);
     if (process.env.SCREENSHOT_DIR) {
-      await mkdir(process.env.SCREENSHOT_DIR, { recursive:true });
-      await controlPage.screenshot({path:join(process.env.SCREENSHOT_DIR, "medal-filter-header-" + width + ".png")});
+      await mkdir(process.env.SCREENSHOT_DIR, {recursive:true});
+      await controlPage.locator("#medalsBulkToolbar").scrollIntoViewIfNeeded();
+      await controlPage.screenshot({path:join(process.env.SCREENSHOT_DIR,"medal-bulk-region-top-" + width + ".png")});
     }
   }
-  await controlPage.setViewportSize({ width:375, height:900 });
+  await controlPage.setViewportSize({width:375,height:900});
+  await controlPage.locator("#medalsFilterToggle").click();
   assert.equal(await controlPage.locator(".medal-ca-setting-flags").count(), 4,
     "All 1st/2nd CAs must show status, including second CA of one community");
   assert.match(await controlPage.locator('.stamp[data-community="base"]').textContent(), /📷済 💬未/);
