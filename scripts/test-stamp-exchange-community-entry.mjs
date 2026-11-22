@@ -80,7 +80,7 @@ async function checkAccess(role,loggedIn,profileError,rpcError){
  const ctx={
   document:{getElementById:id=>{assert.ok(els.has(id),"Unknown element "+id);return els.get(id)},
    querySelectorAll:selector=>{assert.equal(selector,"[data-period]");return buttons}},
-  window:{supabase:{createClient:()=>client},StampExchangeCommunityCore:core,
+  window:{supabase:{createClient:()=>client},CAAuth72:{install(){}},StampExchangeCommunityCore:core,
    StampExchangeStats:{recent:(days,period)=>days.slice(period==="7"?-7:period==="30"?-30:0),
     monthKey:day=>day.slice(0,7),monthDays:(days,month)=>days.filter(x=>x.day.startsWith(month)),
     shiftMonth:()=>null}},
