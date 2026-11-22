@@ -46,7 +46,7 @@ async function prep(page,mode){
  await page.route('https://**/*',route=>route.abort());
  await page.route('**/community-icon.js*',route=>route.fulfill({status:200,contentType:'application/javascript',body:''}));
  await page.addInitScript(({mode,rows,A,B})=>{
-  window.CACommunityIcon={url:()=>'',bind:()=>{}};
+  window.CACommunityIcon={url:()=>'',img:()=>'',bind:()=>{}};
   const hasDesigns=mode==='multi-designs'||mode==='single-design';
   const collectionId='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
   const versionOne='11111111-1111-4111-8111-111111111111';
