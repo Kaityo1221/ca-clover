@@ -46,7 +46,7 @@ async function openPage(fixture = {}, width = 375) {
       communities: fixture.readableCommunities || catalog.map(row => ({ id: row.community_id, prefecture: row.prefecture })),
     };
     window.supabase = { createClient: () => ({
-      auth: { getSession: async () => ({ data: { session: fixture.loggedOut ? null : { user: { id: "current-user" } } } }) },
+      auth: { getSession: async () => ({ data: { session: fixture.loggedOut ? null : { user: { id: "current-user" } } } }), signOut: async () => ({error:null}) },
       rpc: async (name, args) => {
         window.testRequests.push({ rpc: name, args });
         if (name === "ca_medal_profile_settings_status") {
