@@ -7,6 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-store">
 <title>みんなの交換記録 | CA Clover</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./auth-session-72h.js?v=20261122-v1"></script>
 <script src="./stamp-exchange-stats-core.js?v=4"></script>
 <script src="./stamp-exchange-community-core.js?v=1"></script>
 <style>
@@ -143,6 +144,7 @@ tbody tr.active{background:#f2f8ed}
 const URL="https://wgiittrvgtiosogyhfcl.supabase.co";
 const KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
 const client=window.supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
+window.CAAuth72.install(client,{redirectTo:"https://kaityo1221.github.io/ca-clover/"});
 const stats=window.StampExchangeStats,core=window.StampExchangeCommunityCore;
 const get=id=>document.getElementById(id);
 let state=null,month=null,period="all",selectedDay=null,loading=false;

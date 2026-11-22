@@ -9,6 +9,7 @@
 <meta http-equiv="Expires" content="0">
 <title>CA Clover | Medal Rally</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./auth-session-72h.js?v=20261122-v1"></script>
 <script src="./community-icon.js"></script>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 <style>
@@ -215,6 +216,7 @@ document.documentElement.style.setProperty("--gachi-mon-sheet-scale",String(GACH
 document.documentElement.style.setProperty("--gachi-mon-modal2d-scale",String(GACHI_MON_FACE.modal2DScale));
 document.documentElement.style.setProperty("--gachi-mon-offset",(GACHI_MON_FACE.offset*100)+"%");
 const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
+window.CAAuth72.install(client,{redirectTo:"https://kaityo1221.github.io/ca-clover/"});
 const status=document.getElementById("status");
 const stampBackLink=document.getElementById("stampBackLink");
 const regionsEl=document.getElementById("regions");

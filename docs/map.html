@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Activity Map | CA Clover</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./auth-session-72h.js?v=20261122-v1"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <style>
@@ -24,6 +25,7 @@ const SUPABASE_URL="https://wgiittrvgtiosogyhfcl.supabase.co";
 const SUPABASE_KEY="sb_publishable_QTCqijfNvnysUTMylNIyTA_6ngosaPN";
 const ROOT="https://kaityo1221.github.io/ca-clover/";
 const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
+window.CAAuth72.install(client,{redirectTo:"https://kaityo1221.github.io/ca-clover/"});
 const app=document.getElementById("app");
 const periods=[[30,"30日"],[90,"90日"],[180,"180日"],[365,"1年"],[0,"全期間"]];
 const metrics=[["checkin_count","✅ Check-in"],["meetup_count","🔥 Meetup"],["ca_meetup_count","🍀 CA Meetup"],["rsvp_count","📨 RSVP"]];
