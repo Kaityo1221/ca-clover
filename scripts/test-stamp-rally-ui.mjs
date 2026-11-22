@@ -260,6 +260,42 @@ try {
     assert.ok(layout.open.height<45 && layout.close.height<45, "Bulk buttons remain small at " + width);
     await controlPage.locator("#medalsExpandAll").click();
     assert.equal(await controlPage.locator(".region.open").count(), 4, "Bulk-open operates outside filter " + width);
+    // Trainer names retain their original text and wrapping; the two status indicators
+    // sit together below that text rather than splitting onto separate lines.
+    const caStatusLayout = await controlPage.evaluate(() => {
+      return [...document.querySelectorAll(".stamp:not([hidden]) .canames .caname")].filter(label => {
+        return !!label.querySelector(".medal-ca-setting-flags") && label.getClientRects().length > 0;
+      }).map(label => {
+        const flags=label.querySelector(".medal-ca-setting-flags");
+        const nameNode=label.firstChild;
+        const range=document.createRange();
+        if(nameNode?.nodeType===Node.TEXT_NODE)range.selectNodeContents(nameNode);
+        const nameRect=range.getBoundingClientRect();
+        const flagsRect=flags.getBoundingClientRect();
+        const computed=getComputedStyle(flags);
+        return {
+          hasOriginalTrainerText: nameNode?.nodeType===Node.TEXT_NODE,
+          labelText: nameNode?.textContent || "",
+          flagsText: flags.textContent || "",
+          nameBottom: nameRect.bottom,
+          flagsTop: flagsRect.top,
+          flagsHeight: flagsRect.height,
+          lineHeight: parseFloat(computed.lineHeight),
+          whiteSpace: computed.whiteSpace,
+          display: computed.display,
+        };
+      });
+    });
+    assert.ok(caStatusLayout.length >= 4, "CA status fixture visible at " + width);
+    for (const item of caStatusLayout) {
+      assert.ok(item.hasOriginalTrainerText, "Trainer name remains unwrapped in its original DOM text node at " + width);
+      assert.ok(item.labelText.trim().length > 0, "Trainer name remains displayed at " + width);
+      assert.match(item.flagsText, /^📷[済未] 💬[済未]$/, "Photo and message status remain on one row at " + width);
+      assert.equal(item.display, "block", "Status indicators occupy a dedicated second row at " + width);
+      assert.equal(item.whiteSpace, "nowrap", "Status icons do not wrap internally at " + width);
+      assert.ok(item.flagsTop >= item.nameBottom - 2, "Status row follows trainer name at " + width);
+      assert.ok(item.flagsHeight <= item.lineHeight + 3, "Photo and message indicators do not split into two lines at " + width);
+    }
     await controlPage.locator("#medalsCollapseAll").click();
     assert.equal(await controlPage.locator(".region.open").count(), 0, "Bulk-close operates outside filter " + width);
     if (process.env.SCREENSHOT_DIR) {
