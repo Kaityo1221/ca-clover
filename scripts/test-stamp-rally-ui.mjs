@@ -210,11 +210,14 @@ try {
   assert.match(await controlPage.locator('.stamp[data-community="base"]').textContent(), /📷未 💬済/);
   const visibleStamps = () => controlPage.locator('.stamp[data-community]:visible').count();
   assert.equal(await visibleStamps(), 0, "All accordions should initially be closed");
+  // Outside-page accordion controls are not clickable while the modal backdrop is open.
+  await controlPage.locator("#medalsFilterClose").click();
   await controlPage.locator("#medalsExpandAll").click();
   assert.equal(await visibleStamps(), 4, "Expand opens all regions and prefectures");
   await controlPage.locator("#medalsCollapseAll").click();
   assert.equal(await visibleStamps(), 0, "Collapse closes all regions and prefectures");
   await controlPage.locator("#medalsExpandAll").click();
+  await controlPage.locator("#medalsFilterToggle").click();
   await controlPage.locator("#medalsOwnershipFilter").selectOption("owned");
   assert.equal(await visibleStamps(), 2, "Owned community rule includes either CA");
   await controlPage.locator("#medalsOwnershipFilter").selectOption("unowned");
