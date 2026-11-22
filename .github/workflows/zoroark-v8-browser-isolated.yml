@@ -1,0 +1,41 @@
+name: Zoroark V8 Chromium WebKit Real Browser QA (No Deploy)
+on:
+  pull_request:
+    paths:
+      - 'docs/zoroark-ca-notebook.mjs'
+      - 'docs/zoroark-admin-notebook.mjs'
+      - 'docs/zoroark-pokemon-picker-v8.mjs'
+      - 'scripts/ci/test-zoroark-v8-real-browser.mjs'
+      - '.github/workflows/zoroark-v8-browser-isolated.yml'
+permissions:
+  contents: read
+jobs:
+  real-browser-synthetic:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Verify public/private boundary and browser fixture syntax
+        run: |
+          node scripts/ci/verify-public-boundary.mjs
+          node --check scripts/ci/test-zoroark-v8-real-browser.mjs
+      - name: Install isolated pinned browser runtime
+        run: npm install --prefix /tmp/clover-zoroark-v8-browser --no-audit --no-fund --ignore-scripts playwright@1.62.1
+      - name: Install Chromium and WebKit
+        run: /tmp/clover-zoroark-v8-browser/node_modules/.bin/playwright install --with-deps chromium webkit
+      - name: Run real browser V8 CA and ADMIN mobile QA with synthetic-only data
+        run: node scripts/ci/test-zoroark-v8-real-browser.mjs
+        env:
+          PLAYWRIGHT_RUNTIME: /tmp/clover-zoroark-v8-browser/node_modules
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: zoroark-v8-isolated-real-browser
+          path: qa-artifacts/zoroark-v8-browser
+          retention-days: 7
