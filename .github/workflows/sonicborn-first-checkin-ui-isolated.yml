@@ -1,0 +1,31 @@
+name: Sonicborn First Check-in UI Isolated QA (No Deploy)
+on:
+  push:
+    branches:
+      - feature/sonicborn-first-checkin-ui-isolated-20261114
+  pull_request:
+    paths:
+      - 'docs/meetup-first-checkin-*.mjs'
+      - 'scripts/ci/test-meetup-history-first-checkin.mjs'
+      - '.github/workflows/sonicborn-first-checkin-ui-isolated.yml'
+permissions:
+  contents: read
+jobs:
+  syntax-and-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Syntax checks
+        run: |
+          node --check docs/meetup-first-checkin-ui.mjs
+          node --check docs/meetup-first-checkin-config.mjs
+      - name: First-checkin UI and Meetup history regression
+        run: node --test scripts/ci/test-meetup-history-first-checkin.mjs scripts/ci/test-meetup-history-loader.mjs scripts/ci/test-meetup-history-page.mjs
+      - name: Public boundary check
+        run: node scripts/ci/verify-public-boundary.mjs
