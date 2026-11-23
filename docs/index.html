@@ -780,6 +780,16 @@ window.CAAuth72.install(client,{onExpire:function(){session=null;profile=null;re
     header();
     let v=route();
     if(v==="admin"&&profile.role!=="admin"){v="my";location.hash="my"}
+    if(v==="zoroark-submit"){
+      if(profile?.role!=="ca"&&profile?.role!=="admin"){
+        app.innerHTML='<section class="card"><h2>🔒 CA専用</h2><p>お題投稿はログイン済みCAのみ利用できます。</p></section>';return;
+      }
+      app.innerHTML='<section class="card hero" style="max-width:720px;margin:auto"><button type="button" class="btn" id="zoroarkSubmitBack">← ゲームへ戻る</button><h1>📚 みんなのネタ帳</h1><p class="muted">CA専用のお題投稿</p></section>'+
+        '<section class="card section" style="max-width:720px;margin:16px auto"><h2>🦊 お題を投稿</h2><p class="notice">投稿機能は現在準備中です。サーバーへの送信・共有・ゲームへの反映はまだ行えません。</p><p>投稿できるのはCAとしてログイン済みの方だけです。内容は会長が審査し、採用されたお題だけがゲームに反映される予定です。</p></section>';
+      const back=document.getElementById("zoroarkSubmitBack");
+      if(back)back.onclick=function(){go("mini-games")};
+      return;
+    }
     if(v==="zoroark-ideas"){
       if(profile?.role!=="admin"){app.innerHTML='<section class="card"><h2>🔒 ADMIN専用</h2><p>この画面は管理者だけが利用できます。</p></section>';return}
       app.innerHTML='<section class="card">お題メモを読み込み中...</section>';
@@ -795,9 +805,9 @@ window.CAAuth72.install(client,{onExpire:function(){session=null;profile=null;re
       app.innerHTML='<section class="card"><h2>🦊 ゲームの準備中…</h2></section>';
       const host=app;
       try{
-        const module=await import("./zoroark-local.mjs?v=20261116-round-error-retry1");
+        const module=await import("./zoroark-local.mjs?v=20261116-ca-notebook-entry1");
         if(token!==renderToken||!host.isConnected)return;
-        zoroarkLeave=module.mountZoroark({host,gateway:zoroarkGateway,onBack:function(){go("my")}});
+        zoroarkLeave=module.mountZoroark({host,gateway:zoroarkGateway,onBack:function(){go("my")},onNotebook:function(){go(profile?.role==="admin"?"zoroark-ideas":"zoroark-submit")}});
       }catch(_err){if(token===renderToken)app.innerHTML='<section class="card"><h2>ゲームを起動できません</h2><p>画面を再読み込みしてください。</p><button class="btn section" id="gameBack">戻る</button></section>';const b=document.getElementById("gameBack");if(b)b.onclick=function(){go("my")}}
       return;
     }
