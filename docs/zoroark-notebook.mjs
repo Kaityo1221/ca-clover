@@ -1,8 +1,9 @@
 // Local-only draft/edit helpers. No network calls and no writes to game catalog.
 import {OFFICIAL_ZOROARK_42} from "./zoroark-official42.mjs?v=20261115-v1";
-import {parseImport,mergeEntries,exportDocument} from "./zoroark-idea-library.mjs";
+import {parseImport,mergeEntries,exportDocument,pairKey} from "./zoroark-idea-library.mjs";
 export const OFFICIAL_DRAFTS_KEY="ca-zoroark-official42-drafts-v1";
 export const NOTEBOOK_FORMAT="ca-zoroark-notebook-v1";
+export const NOTEBOOK_TRASH_KEY="ca-zoroark-notebook-trash-v1";
 const BASE=new Map(OFFICIAL_ZOROARK_42.map(row=>[row.id,row]));
 const valid=(x,max)=>typeof x==="string"&&x.trim().length>0&&x.length<=max&&!/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(x);
 const normalizeName=x=>String(x).normalize("NFKC").trim().toLocaleLowerCase("ja-JP");
@@ -59,22 +60,59 @@ export function saveOfficialDrafts(storage,proposed){
  storage.setItem(OFFICIAL_DRAFTS_KEY,JSON.stringify(checked));
  return checked;
 }
-export function notebookRows(entries,drafts,{kind="all",level="all",query=""}={}){
- if(!["all","official","memo"].includes(kind)||!["all","easy","normal","hard"].includes(level))throw Error("一覧の絞り込みが不正です");
+
+const EMPTY_TRASH=()=>({officialIds:[],memoKeys:[]});
+export function verifyNotebookTrash(value){
+ if(value===undefined||value===null)return EMPTY_TRASH();
+ if(!value||typeof value!=="object"||Array.isArray(value))throw Error("削除済みデータの形式が不正です");
+ const {officialIds=[],memoKeys=[]}=value;
+ if(!Array.isArray(officialIds)||!Array.isArray(memoKeys)||officialIds.length>42||memoKeys.length>500)
+  throw Error("削除済みデータの件数が不正です");
+ if(officialIds.some(id=>typeof id!=="string"||!BASE.has(id))||
+    memoKeys.some(key=>typeof key!=="string"||key.length<1||key.length>200||/[\u0000-\u001F]/.test(key)))
+  throw Error("削除済みデータに不正な項目があります");
+ if(new Set(officialIds).size!==officialIds.length||new Set(memoKeys).size!==memoKeys.length)
+  throw Error("削除済みデータが重複しています");
+ return {officialIds:[...officialIds],memoKeys:[...memoKeys]};
+}
+export function loadNotebookTrash(storage){
+ try{
+  const raw=storage.getItem(NOTEBOOK_TRASH_KEY);
+  if(!raw)return {trash:EMPTY_TRASH(),error:null};
+  if(raw.length>180000)throw Error("保存サイズが大きすぎます");
+  return {trash:verifyNotebookTrash(JSON.parse(raw)),error:null};
+ }catch{
+  return {trash:EMPTY_TRASH(),error:"削除済みデータを読み取れません。元データ保護のため削除・復元・読み込みを停止しています。"};
+ }
+}
+export function saveNotebookTrash(storage,proposed){
+ const value=verifyNotebookTrash(proposed);
+ storage.setItem(NOTEBOOK_TRASH_KEY,JSON.stringify(value));
+ return value;
+}
+export function isNotebookDeleted(row,trash){
+ const t=verifyNotebookTrash(trash);
+ return row.source==="official"?t.officialIds.includes(row.id):
+  row.source==="memo"?t.memoKeys.includes(pairKey(row)):false;
+}
+export function notebookRows(entries,drafts,{kind="all",level="all",query="",trash=EMPTY_TRASH()}={}){
+ if(!["all","official","memo","trash"].includes(kind)||!["all","easy","normal","hard"].includes(level))throw Error("一覧の絞り込みが不正です");
+ const checked=verifyNotebookTrash(trash),officialHidden=new Set(checked.officialIds),memoHidden=new Set(checked.memoKeys);
  const term=String(query||"").normalize("NFKC").trim().toLocaleLowerCase("ja-JP");
- const official=kind==="memo"?[]:OFFICIAL_ZOROARK_42.map(row=>({...effectiveOfficial(row,drafts),source:"official"}));
- const memo=kind==="official"?[]:entries.map((row,index)=>({...row,source:"memo",index}));
+ const official=kind==="memo"?[]:OFFICIAL_ZOROARK_42.map(row=>({...effectiveOfficial(row,drafts),source:"official",deleted:officialHidden.has(row.id)}));
+ const memo=kind==="official"?[]:entries.map((row,index)=>({...row,source:"memo",index,deleted:memoHidden.has(pairKey(row))}));
  return [...official,...memo].filter(row=>{
+  if(kind==="trash"?!row.deleted:row.deleted)return false;
   if(level!=="all"&&row.level!==level)return false;
   if(!term)return true;
   return [row.id,row.a,row.b,row.common,row.note,row.difference].some(v=>String(v??"").normalize("NFKC").toLocaleLowerCase("ja-JP").includes(term));
  });
 }
-export function notebookBackup(entries,drafts){
+export function notebookBackup(entries,drafts,trash=EMPTY_TRASH()){
  const verified=verifyOfficialDrafts(drafts);
- return {format:NOTEBOOK_FORMAT,version:1,exportedAt:new Date().toISOString(),
-  entries:exportDocument(entries).entries,officialDrafts:verified,
-  notice:"端末内の編集・新規候補のみ。ゲームには反映されません。"};
+ return {format:NOTEBOOK_FORMAT,version:2,exportedAt:new Date().toISOString(),
+  entries:exportDocument(entries).entries,officialDrafts:verified,trash:verifyNotebookTrash(trash),
+  notice:"端末内の編集・削除済み状態・新規候補のバックアップ。ゲーム本編には反映されません。"};
 }
 export function parseNotebookImport(content){
  if(typeof content!=="string"||content.length>2000000)throw Error("JSONは2MB以内にしてください");
@@ -82,11 +120,11 @@ export function parseNotebookImport(content){
  if(value?.format===NOTEBOOK_FORMAT){
   if(!Array.isArray(value.entries))throw Error("保存形式が不正です");
   return {entries:parseImport(JSON.stringify({format:"ca-zoroark-ideas-v2",entries:value.entries})),
-   officialDrafts:verifyOfficialDrafts(value.officialDrafts||{})};
+   officialDrafts:verifyOfficialDrafts(value.officialDrafts||{}),trash:verifyNotebookTrash(value.trash)};
  }
- return {entries:parseImport(content),officialDrafts:{}};
+ return {entries:parseImport(content),officialDrafts:{},trash:EMPTY_TRASH()};
 }
-export function safeMergeNotebook(currentEntries,currentDrafts,incoming){
+export function safeMergeNotebook(currentEntries,currentDrafts,incoming,currentTrash=EMPTY_TRASH()){
  const entries=mergeEntries(currentEntries,incoming.entries);
  const drafts={...verifyOfficialDrafts(currentDrafts)};
  let added=0,skipped=0;
@@ -94,6 +132,11 @@ export function safeMergeNotebook(currentEntries,currentDrafts,incoming){
   if(Object.prototype.hasOwnProperty.call(drafts,id)){skipped++;continue}
   drafts[id]=change;added++;
  }
- return {entries:entries.entries,drafts:verifyOfficialDrafts(drafts),
-  addedMemo:entries.added,skippedMemo:entries.skipped,addedOfficial:added,skippedOfficial:skipped};
+ const before=verifyNotebookTrash(currentTrash),source=verifyNotebookTrash(incoming.trash);
+ const mergedTrash=verifyNotebookTrash({officialIds:[...new Set([...before.officialIds,...source.officialIds])],
+   memoKeys:[...new Set([...before.memoKeys,...source.memoKeys])]});
+ return {entries:entries.entries,drafts:verifyOfficialDrafts(drafts),trash:mergedTrash,
+  addedMemo:entries.added,skippedMemo:entries.skipped,addedOfficial:added,skippedOfficial:skipped,
+  addedDeleted:mergedTrash.officialIds.length+mergedTrash.memoKeys.length-
+   before.officialIds.length-before.memoKeys.length};
 }
